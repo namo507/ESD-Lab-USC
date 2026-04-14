@@ -32,6 +32,18 @@
 NANO_ID_*
 participant_*
 
+# ─── Additional PHI Safety Nets ─────────────────────────────
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.db
+*.sqlite
+
 # ─── Directories with raw/sensitive data ────────────────────
 raw/
 secure_data/

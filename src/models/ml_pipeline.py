@@ -26,6 +26,7 @@ from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
+from xgboost import XGBClassifier
 
 from src.utils.logging_utils import get_pipeline_logger
 
@@ -34,6 +35,11 @@ logger = get_pipeline_logger(__name__)
 _ESTIMATORS: dict[str, Any] = {
     "random_forest": RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1),
     "gradient_boosting": GradientBoostingClassifier(n_estimators=200, random_state=42),
+    "xgboost": XGBClassifier(
+        n_estimators=300, max_depth=5, learning_rate=0.05,
+        subsample=0.8, colsample_bytree=0.8, scale_pos_weight=1,
+        eval_metric="auc", random_state=42, n_jobs=-1,
+    ),
     "logistic_regression": LogisticRegression(max_iter=1000, random_state=42, solver="lbfgs"),
     "svm": SVC(probability=True, random_state=42, kernel="rbf"),
 }

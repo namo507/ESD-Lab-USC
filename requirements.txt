@@ -28,10 +28,10 @@ fancyimpute>=0.7.0
 # ─── REDCap ─────────────────────────────────────────────────
 redcap>=1.1.0
 
-# ─── LLM / RAG (protocol documentation assistance) ──────────
-langchain>=0.1.0
-langchain-community>=0.0.20
-pinecone-client>=3.0.0
+# ─── Clustering ─────────────────────────────────────────────
+# Used by src/models/clustering.py for DBSCAN phenotyping
+# (scikit-learn already listed above covers this)
+
 
 # ─── Visualization ──────────────────────────────────────────
 matplotlib>=3.8.0

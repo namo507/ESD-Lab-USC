@@ -122,7 +122,7 @@ The **NANO Study** (Neurodevelopment of Autonomic and Neural Organization) is a 
 | `src/preprocessing/` | ECG cleaning, HRV, temperature pipeline | Research Programmer / Co-I O'Reilly | 15% |
 | `src/feature_engineering/` | Feature matrix construction | Research Programmer / Co-I O'Reilly | 10% |
 | `src/imputation/` | MICE multiple imputation | Biostatistician | 5% |
-| `src/models/` | ML, deep learning, mixed effects, LGCMs | Co-I O'Reilly / Biostatistician | 15% |
+| `src/models/` | ML, deep learning, clustering, mixed effects, LGCMs | Co-I O'Reilly / Biostatistician | 15% |
 | `src/visualization/` | Publication-quality figures | Research Programmer | 5% |
 | `src/utils/` | Config, logging, HIPAA utilities | Research Programmer | 5% |
 | `notebooks/` | Exploration, walkthroughs, demos | All | 5% |
@@ -130,6 +130,20 @@ The **NANO Study** (Neurodevelopment of Autonomic and Neural Organization) is a 
 | `tests/` | pytest unit/integration tests | Research Programmer | 5% |
 | `docs/` | SOPs, guides, compliance checklists | PI / All | 5% |
 | `reports/` | Figures, data quality reports, manuscript drafts | All | 5% |
+| `references/` | R01 documents, published papers, lab readings | PI / All | — |
+
+### R01 Conceptual Mapping
+
+How this repository maps to the four core R01 research areas:
+
+| R01 Area | Repository Modules |
+|----------|-------------------|
+| **Data Preprocessing Pipeline** | `src/data_ingestion/`, `src/preprocessing/`, `redcap/`, `scripts/` |
+| **Longitudinal Modeling** | `src/models/mixed_effects_models.R`, `src/models/latent_growth_curves.R`, `src/imputation/` |
+| **ASD ML Prediction** | `src/models/ml_pipeline.py`, `src/models/clustering.py`, `src/models/deep_learning_ecg.py`, `src/models/transformer_ecg.py`, `src/feature_engineering/` |
+| **Docs & Infrastructure** | `docs/`, `config/`, `data/data_dictionary/`, `.github/`, `Makefile` |
+
+
 
 ---
 

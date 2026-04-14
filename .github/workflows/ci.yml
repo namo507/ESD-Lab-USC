@@ -23,6 +23,7 @@ jobs:
 
       - name: Run pytest
         run: |
+          # test_imputation.py requires R + rpy2 bridge (not available in CI runner)
           pytest tests/ -v --tb=short \
             --ignore=tests/test_imputation.py
 
