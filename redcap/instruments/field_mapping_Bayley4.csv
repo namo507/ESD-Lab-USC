@@ -1,0 +1,17 @@
+bayley4_subtest_code,bayley4_subtest_label,redcap_field_name,events,domain,score_type,range,scoring_notes
+COG_scaled,Cognition Scaled Score,bayley4_cog_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Cognitive,scaled,1-19,Age-normed
+RECL_scaled,Receptive Language Scaled Score,bayley4_recl_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Language,scaled,1-19,
+EXPL_scaled,Expressive Language Scaled Score,bayley4_expl_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Language,scaled,1-19,
+FM_scaled,Fine Motor Scaled Score,bayley4_fm_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Motor,scaled,1-19,
+GM_scaled,Gross Motor Scaled Score,bayley4_gm_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Motor,scaled,1-19,
+SE_scaled,Social-Emotional Scaled Score,bayley4_se_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Social-Emotional,scaled,1-19,
+AC_scaled,Adaptive Behavior Scaled Score,bayley4_ac_scaled,month_6_arm_1|month_12_arm_1|month_36_arm_1,Adaptive,scaled,1-19,
+COG_composite,Cognitive Composite Score (Primary DV),bayley4_cog_composite,month_6_arm_1|month_12_arm_1|month_36_arm_1,Cognitive,composite,40-160,Derived from age-normed scaled
+LANG_composite,Language Composite Score,bayley4_lang_composite,month_6_arm_1|month_12_arm_1|month_36_arm_1,Language,composite,40-160,
+MOTOR_composite,Motor Composite Score,bayley4_motor_composite,month_6_arm_1|month_12_arm_1|month_36_arm_1,Motor,composite,40-160,
+SE_composite,Social-Emotional Composite Score,bayley4_se_composite,month_6_arm_1|month_12_arm_1|month_36_arm_1,Social-Emotional,composite,40-160,
+AC_composite,Adaptive Behavior Composite Score,bayley4_ac_composite,month_6_arm_1|month_12_arm_1|month_36_arm_1,Adaptive,composite,40-160,
+administration_date,Bayley-4 Administration Date,bayley4_admin_date,month_6_arm_1|month_12_arm_1|month_36_arm_1,Admin,date,,PHI
+examiner_initials,Examiner Initials,bayley4_examiner,month_6_arm_1|month_12_arm_1|month_36_arm_1,Admin,text,,
+age_at_testing_days,Chronological Age at Testing (days),bayley4_age_days,month_6_arm_1|month_12_arm_1|month_36_arm_1,Admin,calc,,Computed from DOB
+corrected_age_weeks,Corrected Age at Testing (weeks),bayley4_corrected_age_weeks,month_6_arm_1|month_12_arm_1|month_36_arm_1,Admin,calc,,Computed for preterm infants

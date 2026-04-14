@@ -1,0 +1,142 @@
+# ============================================================
+# NANO Study — Model Configuration
+# Hyperparameters for ML and DL models
+# ============================================================
+
+# ─── Global Settings ─────────────────────────────────────────
+global:
+  random_seed: 42
+  n_cv_folds: 5
+  cv_strategy: "stratified"  # stratified k-fold
+  n_jobs: -1  # use all cores
+  scoring_classification: "roc_auc"
+  scoring_regression: "neg_root_mean_squared_error"
+  test_size: 0.20  # held-out test set proportion
+
+# ─── Feature Selection ───────────────────────────────────────
+feature_selection:
+  method: "RFECV"  # Recursive Feature Elimination with CV
+  min_features_to_select: 5
+  step: 1
+  multicollinearity_threshold: 0.90  # Pearson |r| threshold for clustering
+  variance_threshold: 0.01  # remove near-zero variance features
+
+# ─── Random Forest ───────────────────────────────────────────
+random_forest:
+  n_estimators: [100, 200, 500]
+  max_depth: [null, 5, 10, 20]
+  min_samples_split: [2, 5, 10]
+  min_samples_leaf: [1, 2, 4]
+  max_features: ["sqrt", "log2", 0.3]
+  bootstrap: true
+  class_weight: "balanced"
+  n_permutation_repeats: 50  # for permutation importance
+
+# ─── XGBoost ─────────────────────────────────────────────────
+xgboost:
+  n_estimators: [100, 300, 500]
+  max_depth: [3, 5, 7]
+  learning_rate: [0.01, 0.05, 0.1]
+  subsample: [0.7, 0.8, 1.0]
+  colsample_bytree: [0.7, 0.8, 1.0]
+  reg_alpha: [0, 0.1, 1.0]
+  reg_lambda: [1.0, 5.0, 10.0]
+  scale_pos_weight: "auto"  # set to n_neg/n_pos for imbalanced classes
+  eval_metric: "auc"
+  early_stopping_rounds: 20
+
+# ─── Support Vector Machine ──────────────────────────────────
+svm:
+  C: [0.01, 0.1, 1.0, 10.0, 100.0]
+  kernel: ["rbf", "linear"]
+  gamma: ["scale", "auto"]
+  class_weight: "balanced"
+  probability: true  # required for AUROC
+
+# ─── 1D-CNN + LSTM (PyTorch) ─────────────────────────────────
+cnn_lstm:
+  # Input: [batch, channels, time_steps]
+  input_channels: 1
+  input_length: 3000  # 5-min window at 10 Hz downsampled IBI
+  # CNN layers
+  conv_layers:
+    - out_channels: 32
+      kernel_size: 7
+      stride: 1
+      padding: 3
+    - out_channels: 64
+      kernel_size: 5
+      stride: 1
+      padding: 2
+    - out_channels: 128
+      kernel_size: 3
+      stride: 1
+      padding: 1
+  pool_size: 2
+  dropout_rate: 0.3
+  batch_norm: true
+  # LSTM layers
+  lstm_hidden_size: 128
+  lstm_num_layers: 2
+  lstm_dropout: 0.3
+  # Fully connected
+  fc_hidden_size: 64
+  output_size: 1  # regression (ADOS CSS) or 2 (binary classification)
+  # Training
+  learning_rate: 0.0005
+  batch_size: 32
+  n_epochs: 100
+  patience: 15  # early stopping
+  optimizer: "AdamW"
+  weight_decay: 0.01
+  scheduler: "ReduceLROnPlateau"
+  scheduler_patience: 5
+  scheduler_factor: 0.5
+  # Self-supervised pre-training
+  pretrain_dataset: "PhysioNet_MIMIC"
+  pretrain_epochs: 50
+  pretrain_task: "masked_IBI_reconstruction"
+
+# ─── Transformer (Time-Series) ───────────────────────────────
+transformer:
+  # Patch-based ECG input
+  patch_length: 64
+  patch_stride: 32
+  d_model: 128
+  n_heads: 8
+  n_encoder_layers: 4
+  d_feedforward: 512
+  dropout: 0.1
+  max_seq_length: 512
+  # Training
+  learning_rate: 0.0001
+  batch_size: 16
+  n_epochs: 150
+  warmup_steps: 1000
+  optimizer: "AdamW"
+  weight_decay: 0.0001
+
+# ─── Evaluation ──────────────────────────────────────────────
+evaluation:
+  classification_metrics:
+    - "roc_auc"
+    - "average_precision"
+    - "f1_macro"
+    - "balanced_accuracy"
+    - "sensitivity"
+    - "specificity"
+  regression_metrics:
+    - "r2"
+    - "rmse"
+    - "mae"
+    - "pearson_r"
+  bootstrap:
+    n_samples: 2000
+    confidence_level: 0.95
+  subgroup_analyses:
+    - variable: "ga_bin"
+      groups: ["24-26w", "27-29w", "30-32w"]
+    - variable: "group_code"
+      groups: ["ASIB", "PT", "TD"]
+    - variable: "sex"
+      groups: ["Male", "Female"]

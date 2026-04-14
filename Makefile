@@ -1,0 +1,108 @@
+# NANO Study — Makefile
+# Usage: make <target>
+# Run `make help` to list all targets
+
+.DEFAULT_GOAL := help
+PYTHON := python3
+VENV := .venv
+PIP := $(VENV)/bin/pip
+PYTEST := $(VENV)/bin/pytest
+BLACK := $(VENV)/bin/black
+FLAKE8 := $(VENV)/bin/flake8
+ISORT := $(VENV)/bin/isort
+
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env
+
+help:  ## Show this help message
+	@echo "NANO Study — Available Makefile targets:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo ""
+	@echo "HIPAA REMINDER: Never run pipeline targets on unencrypted drives."
+
+# ─── Setup ───────────────────────────────────────────────────────────────────
+
+install: $(VENV)/bin/activate  ## Install Python dependencies in virtualenv
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+	$(VENV)/bin/pre-commit install
+	@echo "✓ Python environment ready. Next: copy .env.example → .env and configure."
+
+$(VENV)/bin/activate:
+	$(PYTHON) -m venv $(VENV)
+
+install-r:  ## Install R dependencies via renv
+	Rscript -e "if (!requireNamespace('renv', quietly=TRUE)) install.packages('renv'); renv::restore()"
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+
+test:  ## Run pytest test suite
+	$(PYTEST) tests/ -v --tb=short --cov=src --cov-report=term-missing
+
+test-fast:  ## Run pytest excluding slow integration tests
+	$(PYTEST) tests/ -v --tb=short -m "not slow"
+
+# ─── Code Quality ────────────────────────────────────────────────────────────
+
+lint:  ## Run black, flake8, and isort checks
+	$(BLACK) --check src/ tests/ scripts/ redcap/
+	$(FLAKE8) src/ tests/ scripts/ redcap/
+	$(ISORT) --check-only src/ tests/ scripts/ redcap/
+
+format:  ## Auto-format code with black and isort
+	$(BLACK) src/ tests/ scripts/ redcap/
+	$(ISORT) src/ tests/ scripts/ redcap/
+
+# ─── Pipeline ────────────────────────────────────────────────────────────────
+
+check-env:  ## Verify .env is configured and secure drive is mounted
+	@test -f .env || (echo "ERROR: .env not found. Copy .env.example → .env" && exit 1)
+	@$(PYTHON) -c "from src.utils.config_loader import load_config; load_config()" || \
+		(echo "ERROR: Config validation failed. Check .env and config/paths.yml" && exit 1)
+	@echo "✓ Environment configured correctly."
+
+redcap-sync:  ## Pull latest REDCap records, run QC, send summary email
+	@echo "Running REDCap daily sync..."
+	$(VENV)/bin/python scripts/redcap_daily_sync.py
+	@echo "✓ REDCap sync complete."
+
+ecg-batch:  ## Batch process all ECG files in raw_ecg_dir
+	@echo "Starting ECG batch processing..."
+	$(VENV)/bin/python scripts/ecg_batch_processor.py
+	@echo "✓ ECG batch processing complete."
+
+quality-report:  ## Generate HTML data quality dashboard
+	$(VENV)/bin/python scripts/generate_data_quality_report.py
+	@echo "✓ Data quality report saved to reports/data_quality/"
+
+deidentify:  ## Export de-identified analysis dataset
+	@echo "⚠️  Creating de-identified export. Audit log will be written."
+	$(VENV)/bin/python scripts/export_deidentified_dataset.py
+	@echo "✓ De-identified dataset exported."
+
+run-pipeline:  ## Run full analysis pipeline end-to-end
+	@$(MAKE) check-env
+	@echo "Starting full NANO Study pipeline..."
+	bash scripts/run_full_pipeline.sh
+	@echo "✓ Full pipeline complete. Check logs/ for details."
+
+# ─── Backup ──────────────────────────────────────────────────────────────────
+
+verify-backup:  ## Verify secure server backup integrity
+	bash scripts/backup_verification.sh
+
+# ─── Cleanup ─────────────────────────────────────────────────────────────────
+
+clean:  ## Remove Python cache files and test artifacts
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
+	find . -type f -name "*.pyc" -delete 2>/dev/null; true
+	find . -type f -name "*.pyo" -delete 2>/dev/null; true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null; true
+	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null; true
+	find . -type f -name ".coverage" -delete 2>/dev/null; true
+	@echo "✓ Cleaned Python cache and test artifacts."
+
+clean-all: clean  ## Remove virtualenv and all generated files
+	rm -rf $(VENV)
+	@echo "✓ Removed virtualenv. Run 'make install' to reinstall."

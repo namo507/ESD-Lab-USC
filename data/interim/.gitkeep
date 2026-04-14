@@ -1,0 +1,11 @@
+# Interim Data
+# ============
+# Intermediate cleaning stages, generated automatically by pipeline.
+# Path: $NANO_DATA_ROOT/interim/
+# See config/paths.yml for full path definitions.
+#
+# Contents:
+#   ecg_filtered/   <- Bandpass-filtered ECG signals
+#   rpeaks/         <- Detected R-peak indices and IBI series
+#   quality_flags/  <- Per-window quality flags (accepted/rejected)
+#   redcap_merged/  <- Pre-merge REDCap + physio data frames

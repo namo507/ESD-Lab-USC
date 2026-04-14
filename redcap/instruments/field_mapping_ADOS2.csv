@@ -1,0 +1,34 @@
+ados2_item_code,ados2_item_label,redcap_field_name,events,module,domain,scoring_notes
+A1,Overall level of non-echoed language,ados2_a1,month_12_arm_1,T|1,Language/Communication,0-3
+A2,Frequency of vocalizations directed to others,ados2_a2,month_12_arm_1,T|1,Language/Communication,0-2
+A3,Vocalization/Verbalization directed to others,ados2_a3,month_12_arm_1,T,Language/Communication,0-2
+A4,Pointing,ados2_a4,month_12_arm_1,T|1,Language/Communication,0-2
+A5,Gestures,ados2_a5,month_12_arm_1,T|1,Language/Communication,0-2
+A6,Intonation of vocalizations/verbalizations,ados2_a6,month_12_arm_1,T|1,Language/Communication,0-2
+A7,Immediate echolalia,ados2_a7,month_12_arm_1,1,Language/Communication,0-2
+A8,Stereotyped/idiosyncratic use of words or phrases,ados2_a8,month_12_arm_1,1,Language/Communication,0-2
+B1,Unusual eye contact,ados2_b1,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B2,Facial expressions directed to others,ados2_b2,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B3,Anticipatory response of being picked up,ados2_b3,month_12_arm_1,T,Reciprocal Social Interaction,0-2
+B4,Showing,ados2_b4,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B5,Spontaneous initiation of joint attention,ados2_b5,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B6,Response to joint attention,ados2_b6,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B7,Quality of social overtures,ados2_b7,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B8,Quality of social response,ados2_b8,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B9,Amount of social overtures/maintenance of attention,ados2_b9,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+B10,Overall quality of rapport,ados2_b10,month_12_arm_1,T|1,Reciprocal Social Interaction,0-2
+C1,Unusual sensory exploration of objects,ados2_c1,month_12_arm_1,T|1,Play,0-2
+C2,Imaginative play / creativity,ados2_c2,month_12_arm_1,T|1,Play,0-2
+D1,Unusual hand and finger and other complex mannerisms,ados2_d1,month_12_arm_1,T|1,Stereotyped/RRB,0-2
+D2,Self-injurious behavior,ados2_d2,month_12_arm_1,T|1,Stereotyped/RRB,0-2
+D3,Unusually repetitive interests or stereotyped behaviors,ados2_d3,month_12_arm_1,T|1,Stereotyped/RRB,0-2
+D4,Compulsions or rituals,ados2_d4,month_12_arm_1,1,Stereotyped/RRB,0-2
+SA_raw_score,Social Affect Raw Score (sum of A+B items),ados2_sa_raw,month_12_arm_1|month_36_arm_1,T|1|2,Composite,0-28
+RRB_raw_score,Restricted/Repetitive Behavior Raw Score (sum of C+D),ados2_rrb_raw,month_12_arm_1|month_36_arm_1,T|1|2,Composite,0-8
+Total_raw_score,Total Raw Score (SA + RRB),ados2_total_raw,month_12_arm_1|month_36_arm_1,T|1|2,Composite,Calculated field
+CSS_SA,Calibrated Severity Score - Social Affect,ados2_css_sa,month_12_arm_1|month_36_arm_1,T|1|2,CSS,1-10
+CSS_RRB,Calibrated Severity Score - RRB,ados2_css_rrb,month_12_arm_1|month_36_arm_1,T|1|2,CSS,1-10
+CSS_Total,Calibrated Severity Score - Total (Primary DV),ados2_css_total,month_12_arm_1|month_36_arm_1,T|1|2,CSS,1-10
+module_administered,ADOS-2 Module Administered,ados2_module,month_12_arm_1|month_36_arm_1,all,Admin,T=Toddler/1=Module1/2=Module2
+examiner_initials,Examiner Initials,ados2_examiner,month_12_arm_1|month_36_arm_1,all,Admin,
+administration_date,ADOS-2 Administration Date,ados2_admin_date,month_12_arm_1|month_36_arm_1,all,Admin,PHI

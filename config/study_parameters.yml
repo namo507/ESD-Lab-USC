@@ -1,0 +1,130 @@
+# ============================================================
+# NANO Study — Study Parameters Configuration
+# ============================================================
+
+# ─── Sample ──────────────────────────────────────────────────
+sample:
+  n_participants_target: 260
+  n_nicu_sites: 2  # MUSC, Prisma Health
+  study_duration_years: 5
+
+# ─── Participant Groups ──────────────────────────────────────
+groups:
+  asib:
+    code: 1
+    label: "ASIB"
+    description: "Very preterm infants meeting ASD criteria at 36 months"
+    n_target: 65
+  pt:
+    code: 2
+    label: "PT"
+    description: "Very preterm infants with typical development at 36 months"
+    n_target: 130
+  td:
+    code: 3
+    label: "TD"
+    description: "Term-born infants with typical development"
+    n_target: 65
+
+# ─── Gestational Age Bins ────────────────────────────────────
+ga_bins:
+  - label: "24-26w"
+    min_weeks: 24
+    max_weeks: 26
+    description: "Extreme preterm (24-26 weeks GA)"
+  - label: "27-29w"
+    min_weeks: 27
+    max_weeks: 29
+    description: "Severe preterm (27-29 weeks GA)"
+  - label: "30-32w"
+    min_weeks: 30
+    max_weeks: 32
+    description: "Moderate preterm (30-32 weeks GA)"
+  - label: "full_term"
+    min_weeks: 37
+    max_weeks: 42
+    description: "Full-term controls (37-42 weeks GA)"
+
+# ─── Visit Schedule ──────────────────────────────────────────
+visit_schedule:
+  events: [1, 2, 3, 6, 9, 12, 24, 36]  # months corrected gestational age
+  physiological_events: [1, 2, 3, 6, 9, 12, 36]  # events with ECG recording
+  assessment_events: [6, 12, 36]  # events with Bayley-4 / ADOS-2
+  questionnaire_only_events: [24]
+
+# ─── Primary Dependent Variables ────────────────────────────
+primary_dvs:
+  - name: "HDA_SA"
+    label: "Heart Rate Deceleration during Sustained Attention phase"
+    type: "continuous"
+    unit: "ms"
+    redcap_field: null  # derived from ECG preprocessing
+  - name: "HR_decel"
+    label: "Heart Rate Deceleration magnitude during orienting"
+    type: "continuous"
+    unit: "bpm"
+    redcap_field: null  # derived
+  - name: "RSA"
+    label: "Respiratory Sinus Arrhythmia"
+    type: "continuous"
+    unit: "ms^2"
+    redcap_field: null  # derived
+  - name: "ADOS_CSS"
+    label: "ADOS-2 Calibrated Severity Score (total)"
+    type: "ordinal"
+    range: [1, 10]
+    redcap_field: "ados2_css_total"
+
+# ─── Secondary Dependent Variables ──────────────────────────
+secondary_dvs:
+  - name: "RMSSD"
+    label: "Root Mean Square of Successive Differences"
+    unit: "ms"
+  - name: "SDNN"
+    label: "Standard deviation of NN intervals"
+    unit: "ms"
+  - name: "CPTd"
+    label: "Central-Peripheral Temperature difference (abdominal - peripheral)"
+    unit: "°C"
+  - name: "Bayley4_Cog"
+    label: "Bayley-4 Cognitive Composite Score"
+    redcap_field: "bayley4_cog_composite"
+  - name: "MCHAT_total"
+    label: "M-CHAT-R/F total score"
+    redcap_field: "mchat_total"
+
+# ─── ECG Processing Parameters ───────────────────────────────
+ecg:
+  sampling_rate_hz: 1024
+  rr_interval_units: "ms"
+  bandpass_low_hz: 0.5
+  bandpass_high_hz: 40.0
+  artifact_threshold_sd: 3.5
+  min_valid_beats_per_window: 5
+  max_missing_beats_pct: 10.0  # reject windows with >10% discarded
+  window_length_seconds: 300   # 5-minute analysis windows
+  overlap_seconds: 60          # 1-minute overlap between windows
+  hda_phases:
+    - name: "orienting"
+      description: "Initial HR deceleration at stimulus onset"
+    - name: "sustained_attention"
+      description: "Trough of HR deceleration"
+    - name: "termination"
+      description: "HR return to baseline"
+    - name: "inattention"
+      description: "Baseline HR between look bouts"
+
+# ─── Temperature Parameters ──────────────────────────────────
+temperature:
+  sampling_interval_min: 1
+  min_valid_data_pct: 80  # require >= 80% valid data per 24h period
+  cpTd_formula: "abdominal_temp - peripheral_temp"
+  normal_cpTd_range: [0.5, 4.0]  # degrees C
+
+# ─── Statistical Parameters ──────────────────────────────────
+statistics:
+  alpha: 0.05
+  n_bootstrap_samples: 2000
+  n_permutations: 10000
+  multiple_comparison_method: "FDR"  # Benjamini-Hochberg
+  effect_size_metrics: ["cohen_d", "eta_squared", "r"]
