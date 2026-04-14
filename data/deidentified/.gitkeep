@@ -1,0 +1,12 @@
+# De-identified Data
+# ==================
+# De-identified analysis datasets for manuscript preparation.
+# All participant IDs replaced with SHA-256 hashed pseudonyms.
+# All dates shifted to age-in-days offsets.
+# Audit log generated for every transformation.
+#
+# Path: $NANO_DATA_ROOT/deidentified/
+# See config/paths.yml and docs/hipaa_compliance_checklist.md
+#
+# WARNING: Even de-identified data should not be committed to git.
+# Consult with PI and IRB before any data sharing.

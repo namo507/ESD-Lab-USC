@@ -1,0 +1,139 @@
+# ============================================================
+# NANO Study — REDCap Configuration
+# API token is in .env (NEVER in this file).
+# ============================================================
+
+api:
+  base_url: "${REDCAP_API_URL}"
+  # Token loaded from environment: REDCAP_API_TOKEN
+  format: "json"
+  type: "flat"
+  chunk_size: 500  # records per API request (pagination)
+  timeout_seconds: 120
+
+# ─── Project IDs ────────────────────────────────────────────
+projects:
+  main:
+    project_id: "${REDCAP_PROJECT_ID_MAIN}"
+    description: "NANO Study main longitudinal database"
+    arms:
+      - arm_num: 1
+        name: "asib_arm"
+        label: "ASIB (ASD + Biomarkers)"
+      - arm_num: 2
+        name: "pt_arm"
+        label: "Preterm Typical"
+      - arm_num: 3
+        name: "td_arm"
+        label: "Term-born Typical Development"
+  questionnaires:
+    project_id: "${REDCAP_PROJECT_ID_QUESTIONNAIRES}"
+    description: "NANO Study parent questionnaires (PRAPARE, EPDS)"
+
+# ─── Longitudinal Events ────────────────────────────────────
+events:
+  - event_name: "nicu_admission_arm_1"
+    label: "NICU Admission"
+    month_offset: 0
+    arms: [1, 2]
+    required_instruments:
+      - demographics
+      - nicu_morbidity
+      - ecg_recording_log
+  - event_name: "month_1_arm_1"
+    label: "1 Month CGA"
+    month_offset: 1
+    arms: [1, 2, 3]
+    required_instruments:
+      - nnns_attention_1_3m
+      - ecg_recording_log
+      - temperature_recording_log
+  - event_name: "month_2_arm_1"
+    label: "2 Months CGA"
+    month_offset: 2
+    arms: [1, 2, 3]
+    required_instruments:
+      - nnns_attention_1_3m
+      - ecg_recording_log
+      - temperature_recording_log
+      - behavioral_coding_log
+  - event_name: "month_3_arm_1"
+    label: "3 Months CGA"
+    month_offset: 3
+    arms: [1, 2, 3]
+    required_instruments:
+      - nnns_attention_1_3m
+      - ecg_recording_log
+      - temperature_recording_log
+      - csbs_social_communication
+  - event_name: "month_6_arm_1"
+    label: "6 Months"
+    month_offset: 6
+    arms: [1, 2, 3]
+    required_instruments:
+      - ecg_recording_log
+      - temperature_recording_log
+      - bayley4_scores
+      - asq3_milestones
+  - event_name: "month_9_arm_1"
+    label: "9 Months"
+    month_offset: 9
+    arms: [1, 2, 3]
+    required_instruments:
+      - ecg_recording_log
+      - temperature_recording_log
+      - mchat_r_tf
+      - csbs_social_communication
+  - event_name: "month_12_arm_1"
+    label: "12 Months"
+    month_offset: 12
+    arms: [1, 2, 3]
+    required_instruments:
+      - ecg_recording_log
+      - temperature_recording_log
+      - bayley4_scores
+      - ados2_scores
+  - event_name: "month_24_arm_1"
+    label: "24 Months (Questionnaire Only)"
+    month_offset: 24
+    arms: [1, 2, 3]
+    required_instruments:
+      - prapare_sdoh
+      - epds_maternal_depression
+      - asq3_milestones
+  - event_name: "month_36_arm_1"
+    label: "36 Months"
+    month_offset: 36
+    arms: [1, 2, 3]
+    required_instruments:
+      - ados2_scores
+      - bayley4_scores
+      - ecg_recording_log
+      - hmet_recording_log
+
+# ─── Key Field Names ─────────────────────────────────────────
+fields:
+  participant_id: "nano_id"
+  dob: "dob"
+  visit_date: "visit_date"
+  gestational_age_weeks: "ga_weeks"
+  gestational_age_days: "ga_days"
+  group_assignment: "group_code"  # 1=ASIB, 2=PT, 3=TD
+  sex: "sex"  # 1=Male, 2=Female
+  race_ethnicity: "race_eth"
+  ecg_file_transferred: "ecg_transfer_confirmed"
+  primary_dv_ados_css: "ados2_css_total"
+  primary_dv_bayley_cog: "bayley4_cog_composite"
+
+# ─── Completeness Thresholds ─────────────────────────────────
+quality:
+  min_completeness_pct: 80  # flag participant if < 80% fields complete
+  ecg_transfer_window_hours: 48  # flag if ECG not transferred within 48h
+
+# ─── Export Settings ─────────────────────────────────────────
+export:
+  include_survey_fields: true
+  include_dag: true
+  include_form_complete_field: true
+  date_format: "YMD"
+  decimal_character: "."

@@ -1,0 +1,76 @@
+# ============================================================
+# NANO Study — Data Paths Configuration
+# All paths use ${NANO_DATA_ROOT} from environment.
+# Set NANO_DATA_ROOT in .env (NEVER commit .env).
+# ============================================================
+
+# Root of encrypted secure data drive (set in .env)
+# Example: /Volumes/nano_secure (macOS) or /mnt/nano_secure (Linux)
+data_root: "${NANO_DATA_ROOT}"
+
+# ─── Raw Data Directories (READ-ONLY after collection) ────────
+raw:
+  ecg_dir: "${NANO_DATA_ROOT}/raw/ecg"
+  # ECG subdirectories by device
+  hero_dir: "${NANO_DATA_ROOT}/raw/ecg/hero_monitor"
+  actiheart_dir: "${NANO_DATA_ROOT}/raw/ecg/actiheart5"
+  temperature_dir: "${NANO_DATA_ROOT}/raw/temperature"
+  video_dir: "${NANO_DATA_ROOT}/raw/video"
+  datavyu_exports_dir: "${NANO_DATA_ROOT}/raw/datavyu_exports"
+  hmet_dir: "${NANO_DATA_ROOT}/raw/hmet"
+
+# ─── REDCap Exports ─────────────────────────────────────────
+redcap:
+  export_dir: "${NANO_DATA_ROOT}/redcap_exports"
+  # Timestamped subdirectory created per pull
+  latest_export_dir: "${NANO_DATA_ROOT}/redcap_exports/latest"
+
+# ─── Processed Data Directories ─────────────────────────────
+processed:
+  ecg_dir: "${NANO_DATA_ROOT}/processed/ecg"
+  # Per-participant HRV feature matrices (parquet)
+  hrv_features_dir: "${NANO_DATA_ROOT}/processed/ecg/hrv_features"
+  # Cleaned IBI time series
+  ibi_dir: "${NANO_DATA_ROOT}/processed/ecg/ibi_cleaned"
+  temperature_dir: "${NANO_DATA_ROOT}/processed/temperature"
+  behavioral_coding_dir: "${NANO_DATA_ROOT}/processed/behavioral_coding"
+  # Merged physiological + REDCap feature matrices
+  feature_matrices_dir: "${NANO_DATA_ROOT}/processed/feature_matrices"
+
+# ─── Interim / Intermediate Data ────────────────────────────
+interim:
+  base_dir: "${NANO_DATA_ROOT}/interim"
+  ecg_filtered_dir: "${NANO_DATA_ROOT}/interim/ecg_filtered"
+  rpeaks_dir: "${NANO_DATA_ROOT}/interim/rpeaks"
+  quality_flags_dir: "${NANO_DATA_ROOT}/interim/quality_flags"
+  redcap_merged_dir: "${NANO_DATA_ROOT}/interim/redcap_merged"
+
+# ─── De-identified Data ─────────────────────────────────────
+deidentified:
+  base_dir: "${NANO_DATA_ROOT}/deidentified"
+  analysis_dataset_dir: "${NANO_DATA_ROOT}/deidentified/analysis_datasets"
+  audit_log_dir: "${NANO_DATA_ROOT}/deidentified/audit_logs"
+
+# ─── Models ─────────────────────────────────────────────────
+models:
+  base_dir: "${NANO_DATA_ROOT}/models"
+  sklearn_dir: "${NANO_DATA_ROOT}/models/sklearn"
+  torch_dir: "${NANO_DATA_ROOT}/models/torch"
+  r_models_dir: "${NANO_DATA_ROOT}/models/r_models"
+  # SHAP explanations
+  shap_dir: "${NANO_DATA_ROOT}/models/shap_values"
+
+# ─── Outputs & Reports ──────────────────────────────────────
+outputs:
+  base_dir: "${NANO_DATA_ROOT}/outputs"
+  tables_dir: "${NANO_DATA_ROOT}/outputs/tables"
+  figures_dir: "reports/figures"  # committed to repo (non-PHI)
+  data_quality_dir: "reports/data_quality"  # committed to repo
+  manuscripts_dir: "reports/manuscripts"
+
+# ─── Logs ────────────────────────────────────────────────────
+logs:
+  base_dir: "logs"
+  pipeline_log: "logs/pipeline.log"
+  redcap_sync_log: "logs/redcap_sync.log"
+  audit_log: "logs/data_access_audit.log"

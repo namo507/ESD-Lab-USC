@@ -1,0 +1,65 @@
+variable_name,label,form_name,event,field_type,choices_if_radio,validation,phi_flag,notes
+nano_id,NANO Participant ID,demographics,all_events,text,,regex: NANO-[0-9]{4},TRUE,Primary identifier - never commit
+dob,Date of Birth,demographics,nicu_admission_arm_1,text_date,,date_mdy,TRUE,PHI - used to calculate age offsets only
+sex,Sex assigned at birth,demographics,nicu_admission_arm_1,radio,"1=Male | 2=Female | 3=Intersex/Other",required,FALSE,
+race_eth,Race/Ethnicity,demographics,nicu_admission_arm_1,radio,"1=Non-Hispanic White | 2=Non-Hispanic Black | 3=Hispanic | 4=Asian | 5=Multiracial | 6=Other/Unknown",required,FALSE,
+ga_weeks,Gestational Age at Birth (weeks),demographics,nicu_admission_arm_1,text_integer,,[23,42],FALSE,Computed from LMP/ultrasound
+ga_days,Gestational Age at Birth (days remainder),demographics,nicu_admission_arm_1,text_integer,,[0,6],FALSE,
+birth_weight_g,Birth Weight (grams),demographics,nicu_admission_arm_1,text_integer,,[300,5000],FALSE,
+group_code,Study Group Assignment,demographics,nicu_admission_arm_1,radio,"1=ASIB | 2=PT | 3=TD",required,FALSE,Assigned by PI based on 36m outcome
+visit_date,Visit Date,all_visit_forms,all_events,text_date,,date_mdy,TRUE,PHI - shifted to age_in_days in deidentified dataset
+age_in_days,Age at Visit (days from DOB),all_visit_forms,all_events,calc,,integer,FALSE,Calculated: visit_date - dob
+ecg_recording_date,ECG Recording Date,ecg_recording_log,physiological_events,text_date,,date_mdy,TRUE,PHI
+ecg_file_name,ECG File Name (no path),ecg_recording_log,physiological_events,text,,,FALSE,Filename only - no path
+ecg_transfer_confirmed,ECG Data Transferred to Server,ecg_recording_log,physiological_events,yesno,,,FALSE,1=Yes 0=No
+ecg_duration_min,ECG Recording Duration (minutes),ecg_recording_log,physiological_events,text_number,,[0,120],FALSE,
+ecg_quality_flag,ECG Quality Rating,ecg_recording_log,physiological_events,radio,"1=Excellent (>90% valid) | 2=Good (80-90%) | 3=Marginal (70-80%) | 4=Rejected (<70%)",required,FALSE,
+hero_recording_id,HeRO Monitor Recording ID,ecg_recording_log,nicu_admission_arm_1,text,,,FALSE,
+actiheart_serial,Actiheart-5 Serial Number,ecg_recording_log,physiological_events,text,,,FALSE,
+temp_recording_date,Temperature Recording Date,temperature_recording_log,physiological_events,text_date,,date_mdy,TRUE,PHI
+temp_abdominal_start,Abdominal Temperature at Recording Start (C),temperature_recording_log,physiological_events,text_number,,[30.0,42.0],FALSE,
+temp_peripheral_start,Peripheral Temperature at Recording Start (C),temperature_recording_log,physiological_events,text_number,,[25.0,40.0],FALSE,
+temp_quality_flag,Temperature Data Quality Flag,temperature_recording_log,physiological_events,radio,"1=Good (>80% valid) | 2=Marginal (60-80%) | 3=Rejected (<60%)",required,FALSE,
+nnns_habituation,NNNS-II Habituation Subscale,nnns_attention_1_3m,month_1_arm_1,text_number,,[0,9],FALSE,
+nnns_attention,NNNS-II Attention Subscale,nnns_attention_1_3m,month_1_arm_1,text_number,,[0,9],FALSE,
+nnns_arousal,NNNS-II Arousal Subscale,nnns_attention_1_3m,month_1_arm_1,text_number,,[0,9],FALSE,
+nnns_regulation,NNNS-II Regulation Subscale,nnns_attention_1_3m,month_1_arm_1,text_number,,[0,9],FALSE,
+nnns_nonoptimal_reflexes,NNNS-II Non-optimal Reflexes Count,nnns_attention_1_3m,month_1_arm_1,text_integer,,[0,20],FALSE,
+ados2_module,ADOS-2 Module Administered,ados2_scores,month_12_arm_1,radio,"T=Toddler | 1=Module 1 | 2=Module 2",required,FALSE,
+ados2_sa_raw,ADOS-2 Social Affect Raw Score,ados2_scores,month_12_arm_1,text_integer,,[0,28],FALSE,
+ados2_rrb_raw,ADOS-2 Restricted/Repetitive Behavior Raw Score,ados2_scores,month_12_arm_1,text_integer,,[0,20],FALSE,
+ados2_total_raw,ADOS-2 Total Raw Score,ados2_scores,month_12_arm_1,calc,,,FALSE,ados2_sa_raw + ados2_rrb_raw
+ados2_css_sa,ADOS-2 Calibrated Severity Score - Social Affect,ados2_scores,month_12_arm_1,text_integer,,[1,10],FALSE,
+ados2_css_rrb,ADOS-2 Calibrated Severity Score - RRB,ados2_scores,month_12_arm_1,text_integer,,[1,10],FALSE,
+ados2_css_total,ADOS-2 Calibrated Severity Score - Total,ados2_scores,month_12_arm_1,text_integer,,[1,10],FALSE,Primary DV
+bayley4_cog_scaled,Bayley-4 Cognition Scaled Score,bayley4_scores,month_6_arm_1,text_integer,,[1,19],FALSE,
+bayley4_cog_composite,Bayley-4 Cognition Composite Score,bayley4_scores,month_6_arm_1,text_integer,,[40,160],FALSE,Primary DV
+bayley4_lang_composite,Bayley-4 Language Composite Score,bayley4_scores,month_6_arm_1,text_integer,,[40,160],FALSE,
+bayley4_motor_composite,Bayley-4 Motor Composite Score,bayley4_scores,month_6_arm_1,text_integer,,[40,160],FALSE,
+mchat_total,M-CHAT-R/F Total Score,mchat_r_tf,month_9_arm_1,text_integer,,[0,20],FALSE,
+mchat_risk_category,M-CHAT-R/F Risk Category,mchat_r_tf,month_9_arm_1,radio,"0=Low Risk | 1=Medium Risk | 2=High Risk",required,FALSE,
+csbs_social,CSBS Social Composite,csbs_social_communication,month_3_arm_1,text_integer,,[0,100],FALSE,
+csbs_speech,CSBS Speech Composite,csbs_social_communication,month_3_arm_1,text_integer,,[0,100],FALSE,
+csbs_symbolic,CSBS Symbolic Composite,csbs_social_communication,month_3_arm_1,text_integer,,[0,100],FALSE,
+prapare_food_insecurity,PRAPARE Food Insecurity Indicator,prapare_sdoh,month_24_arm_1,yesno,,,FALSE,SDOH indicator
+prapare_housing_instability,PRAPARE Housing Instability Indicator,prapare_sdoh,month_24_arm_1,yesno,,,FALSE,SDOH indicator
+prapare_financial_strain,PRAPARE Financial Strain Indicator,prapare_sdoh,month_24_arm_1,yesno,,,FALSE,SDOH indicator
+epds_total,Edinburgh Postnatal Depression Scale Total,epds_maternal_depression,month_24_arm_1,text_integer,,[0,30],FALSE,
+epds_si_item,EPDS Item 10 (Self-harm ideation),epds_maternal_depression,month_24_arm_1,text_integer,,[0,3],FALSE,FLAG if > 0
+nicu_ivh_grade,IVH Grade (0=none to 4=severe),nicu_morbidity,nicu_admission_arm_1,radio,"0=None | 1=Grade I | 2=Grade II | 3=Grade III | 4=Grade IV",required,FALSE,
+nicu_nec,Necrotizing Enterocolitis,nicu_morbidity,nicu_admission_arm_1,yesno,,,FALSE,
+nicu_bpd,Bronchopulmonary Dysplasia,nicu_morbidity,nicu_admission_arm_1,radio,"0=None | 1=Mild | 2=Moderate | 3=Severe",required,FALSE,
+nicu_rop,Retinopathy of Prematurity Stage,nicu_morbidity,nicu_admission_arm_1,radio,"0=None | 1=Stage 1 | 2=Stage 2 | 3=Stage 3+ | 4=Treated",required,FALSE,
+nicu_sepsis,Culture-confirmed Sepsis,nicu_morbidity,nicu_admission_arm_1,yesno,,,FALSE,
+nicu_nicu_los_days,NICU Length of Stay (days),nicu_morbidity,nicu_admission_arm_1,text_integer,,[1,365],FALSE,
+asq3_communication,ASQ-3 Communication Domain Score,asq3_milestones,month_6_arm_1,text_integer,,[0,60],FALSE,
+asq3_gross_motor,ASQ-3 Gross Motor Domain Score,asq3_milestones,month_6_arm_1,text_integer,,[0,60],FALSE,
+asq3_fine_motor,ASQ-3 Fine Motor Domain Score,asq3_milestones,month_6_arm_1,text_integer,,[0,60],FALSE,
+asq3_problem_solving,ASQ-3 Problem Solving Domain Score,asq3_milestones,month_6_arm_1,text_integer,,[0,60],FALSE,
+asq3_personal_social,ASQ-3 Personal-Social Domain Score,asq3_milestones,month_6_arm_1,text_integer,,[0,60],FALSE,
+behavioral_coding_coder_1,Behavioral Coding Coder 1 Initials,behavioral_coding_log,month_2_arm_1,text,,,FALSE,
+behavioral_coding_coder_2,Behavioral Coding Coder 2 Initials,behavioral_coding_log,month_2_arm_1,text,,,FALSE,
+behavioral_icc,Behavioral Coding Inter-rater ICC,behavioral_coding_log,month_2_arm_1,text_number,,[0.0,1.0],FALSE,
+maternal_education,Maternal Education Level,demographics,nicu_admission_arm_1,radio,"1=Less than HS | 2=HS/GED | 3=Some college | 4=Bachelor degree | 5=Graduate degree",required,FALSE,SES indicator
+household_income,Annual Household Income (category),demographics,nicu_admission_arm_1,radio,"1=<$20k | 2=$20k-$40k | 3=$40k-$60k | 4=$60k-$80k | 5=>$80k",required,FALSE,SES indicator
+insurance_type,Primary Insurance Type,demographics,nicu_admission_arm_1,radio,"1=Private | 2=Medicaid | 3=CHIP | 4=Self-pay | 5=Other",required,FALSE,SES proxy

@@ -1,0 +1,145 @@
+# ============================================================
+# NANO Study — ESD Lab .gitignore
+# HIPAA: NEVER commit raw data, PHI, or credentials
+# ============================================================
+
+# ─── Raw / PHI Data Files ───────────────────────────────────
+# Exclude most CSV/data files but allow committed metadata/dictionary files
+*.csv
+# Allow data dictionary CSVs (non-PHI metadata committed to repo)
+!data/data_dictionary/*.csv
+!redcap/instruments/*.csv
+*.xlsx
+*.xls
+*.sav
+*.rdata
+*.RData
+*.rds
+*.Rds
+*.mat
+*.edf
+*.dat
+*.bdf
+*.mp4
+*.mov
+*.avi
+*.wav
+*.ecg
+
+# ─── PHI-tagged files (any file matching these patterns) ────
+*_PHI*
+*_raw*
+NANO_ID_*
+participant_*
+
+# ─── Directories with raw/sensitive data ────────────────────
+raw/
+secure_data/
+credentials/
+
+# ─── Environment & credentials ──────────────────────────────
+.env
+.env.local
+.env.*.local
+config/redcap_config_local.yml
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ─── Python ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+.eggs/
+.Python
+env/
+venv/
+ENV/
+.venv/
+.env/
+pip-wheel-metadata/
+.pip
+*.whl
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# ─── R ──────────────────────────────────────────────────────
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj.user/
+.Rproj.user
+renv/library/
+renv/python/
+renv/staging/
+renv/.cache/
+# Keep renv.lock committed; ignore renv/ runtime cache
+
+# ─── Logs ───────────────────────────────────────────────────
+logs/
+*.log
+*.out
+
+# ─── OS / Editor ────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# ─── Compiled / Binary ──────────────────────────────────────
+*.pyc
+*.class
+*.o
+*.a
+
+# ─── Reports (generated artifacts; keep templates) ──────────
+reports/figures/*.png
+reports/figures/*.pdf
+reports/figures/*.svg
+reports/data_quality/*.html
+reports/manuscripts/*.pdf
+
+# ─── Jupyter ────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ─── Node (REDCap hooks dev) ────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Temporary files ────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig

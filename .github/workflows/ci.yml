@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: |
+          pytest tests/ -v --tb=short \
+            --ignore=tests/test_imputation.py
+
+      - name: Check formatting (black)
+        run: black --check src/ tests/ scripts/ redcap/
+
+      - name: Run flake8
+        run: |
+          flake8 src/ tests/ scripts/ redcap/ \
+            --max-line-length=88 \
+            --extend-ignore=E203,W503
