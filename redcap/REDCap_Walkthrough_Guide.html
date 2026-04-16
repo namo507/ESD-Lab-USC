@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REDCap Walkthrough — NANO Study</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+    <style>
+        :root {
+            --bg-primary: #f0f2f5;
+            --bg-card: #ffffff;
+            --bg-header: #73000a;
+            --bg-header-dark: #5a0008;
+            --text-primary: #1a1a2e;
+            --text-secondary: #555;
+            --text-on-dark: #ffffff;
+            --accent: #73000a;
+            --accent-light: #ffeaec;
+            --blue: #2563eb;
+            --blue-light: #e8f0fe;
+            --green: #059669;
+            --green-light: #d1fae5;
+            --orange: #d97706;
+            --orange-light: #fef3c7;
+            --purple: #7c3aed;
+            --purple-light: #ede9fe;
+            --gap: 20px;
+            --radius: 12px;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ─── Navigation ─── */
+        .nav {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--bg-header);
+            padding: 0 24px;
+            display: flex; align-items: center; gap: 8px;
+            overflow-x: auto;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        .nav-brand {
+            color: var(--text-on-dark); font-weight: 700; font-size: 16px;
+            padding: 14px 12px 14px 0;
+            border-right: 1px solid rgba(255,255,255,0.2);
+            margin-right: 8px; white-space: nowrap;
+        }
+        .nav a {
+            color: rgba(255,255,255,0.8); text-decoration: none;
+            font-size: 13px; padding: 14px 10px; white-space: nowrap;
+            transition: all 0.2s; border-bottom: 2px solid transparent;
+        }
+        .nav a:hover, .nav a.active { color: white; border-bottom-color: #ffc107; }
+
+        /* ─── Layout ─── */
+        .container { max-width: 1200px; margin: 0 auto; padding: var(--gap); }
+        .section { animation: fadeIn 0.3s ease; }
+        .section.hidden { display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ─── Hero ─── */
+        .hero {
+            background: linear-gradient(135deg, var(--bg-header), var(--bg-header-dark));
+            color: white; padding: 48px 32px; border-radius: var(--radius);
+            margin-bottom: var(--gap); text-align: center;
+        }
+        .hero h1 { font-size: 28px; margin-bottom: 8px; }
+        .hero p { font-size: 16px; opacity: 0.85; max-width: 700px; margin: 0 auto; }
+
+        /* ─── Cards ─── */
+        .card {
+            background: var(--bg-card); border-radius: var(--radius);
+            padding: 24px; margin-bottom: var(--gap); box-shadow: var(--shadow);
+        }
+        .card h2 {
+            font-size: 20px; margin-bottom: 16px; padding-bottom: 8px;
+            border-bottom: 2px solid var(--accent-light); color: var(--accent);
+        }
+        .card h3 { font-size: 16px; margin: 16px 0 8px; color: var(--text-primary); }
+        .card p { margin-bottom: 12px; color: var(--text-secondary); }
+
+        /* ─── Diagrams (pure SVG/CSS) ─── */
+        .diagram-box {
+            background: #fafbfc; border: 1px solid #e5e7eb; border-radius: 8px;
+            padding: 24px; margin: 16px 0; overflow-x: auto; text-align: center;
+        }
+        .diagram-box svg { max-width: 100%; height: auto; }
+
+        /* ─── Flow nodes ─── */
+        .flow { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; margin: 16px 0; }
+        .flow-v { display: flex; flex-direction: column; gap: 12px; align-items: center; margin: 16px 0; }
+        .fnode {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 12px 20px; border-radius: 10px; font-size: 13px;
+            font-weight: 600; text-align: center; min-width: 130px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1); line-height: 1.3;
+        }
+        .fnode small { display: block; font-weight: 400; font-size: 11px; opacity: 0.85; margin-top: 2px; }
+        .fnode-red { background: #73000a; color: #fff; }
+        .fnode-blue { background: #2563eb; color: #fff; }
+        .fnode-green { background: #059669; color: #fff; }
+        .fnode-purple { background: #7c3aed; color: #fff; }
+        .fnode-orange { background: #d97706; color: #fff; }
+        .fnode-dark { background: #1e3a5f; color: #fff; }
+        .fnode-light { background: #f3f4f6; color: #333; border: 2px solid #d1d5db; }
+        .fnode-white { background: #fff; color: #333; border: 2px solid #e5e7eb; }
+        .farrow { font-size: 22px; color: var(--accent); font-weight: 700; }
+        .farrow-down { font-size: 22px; color: var(--accent); font-weight: 700; }
+        .farrow-label { font-size: 10px; color: var(--text-secondary); text-align: center; display: block; }
+
+        /* ─── Step cards ─── */
+        .step-row { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+        .step-card {
+            flex: 1; min-width: 160px;
+            background: var(--bg-card); border: 2px solid #e5e7eb; border-radius: var(--radius);
+            padding: 16px; text-align: center; transition: all 0.2s;
+        }
+        .step-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(115,0,10,0.15); }
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--accent); color: white; font-weight: 700; font-size: 16px; margin-bottom: 8px;
+        }
+        .step-card h4 { font-size: 14px; margin-bottom: 4px; }
+        .step-card p { font-size: 12px; color: var(--text-secondary); margin: 0; }
+
+        /* ─── Code blocks ─── */
+        .code-block {
+            background: #1e1e2e; border-radius: 8px; padding: 16px 20px;
+            margin: 12px 0; overflow-x: auto; position: relative;
+        }
+        .code-block pre {
+            color: #cdd6f4; font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+            font-size: 13px; line-height: 1.5; white-space: pre; margin: 0;
+        }
+        .code-lang {
+            position: absolute; top: 8px; right: 12px; font-size: 11px; color: #6c7086;
+            background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;
+        }
+        .kw { color: #cba6f7; } .fn { color: #89b4fa; } .str { color: #a6e3a1; }
+        .cm { color: #6c7086; font-style: italic; } .num { color: #fab387; } .op { color: #89dceb; }
+
+        /* ─── Info boxes ─── */
+        .info-box { border-radius: 8px; padding: 14px 18px; margin: 12px 0; font-size: 14px; }
+        .info-box.tip { background: var(--green-light); border-left: 4px solid var(--green); }
+        .info-box.warn { background: var(--orange-light); border-left: 4px solid var(--orange); }
+        .info-box.note { background: var(--blue-light); border-left: 4px solid var(--blue); }
+        .info-box.danger { background: var(--accent-light); border-left: 4px solid var(--accent); }
+        .info-box strong { display: block; margin-bottom: 4px; }
+
+        /* ─── Grid ─── */
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--gap); margin: var(--gap) 0; }
+
+        /* ─── KPI row ─── */
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 20px 0; }
+        .kpi { background: var(--bg-card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); text-align: center; }
+        .kpi-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 32px; font-weight: 700; color: var(--accent); margin: 4px 0; }
+        .kpi-sub { font-size: 12px; color: var(--text-secondary); }
+
+        /* ─── Table ─── */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+        .data-table th { background: var(--accent); color: white; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .data-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+        .data-table tr:hover td { background: #faf5f5; }
+
+        /* ─── Tabs ─── */
+        .tab-bar { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid #e5e7eb; }
+        .tab-btn {
+            padding: 10px 20px; border: none; background: none; cursor: pointer;
+            font-size: 14px; font-weight: 500; color: var(--text-secondary);
+            border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--accent); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ─── Badges ─── */
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-py { background: #3572A5; color: white; }
+        .badge-r { background: #198CE7; color: white; }
+        .badge-api { background: var(--green); color: white; }
+
+        /* ─── Sequence diagrams (pure CSS) ─── */
+        .seq { margin: 20px 0; font-size: 13px; }
+        .seq-row { display: flex; align-items: stretch; min-height: 48px; }
+        .seq-actor {
+            width: 140px; min-width: 140px; text-align: center; padding: 8px 4px;
+            font-weight: 600; font-size: 12px; background: var(--accent); color: white;
+            border-radius: 6px; margin: 0 4px;
+        }
+        .seq-line { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 40px; }
+        .seq-msg {
+            background: var(--blue-light); border: 1px solid #bfdbfe; border-radius: 6px;
+            padding: 6px 12px; font-size: 12px; text-align: center; margin: 4px 0;
+            max-width: 280px; position: relative;
+        }
+        .seq-msg::before { content: '→'; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--blue); font-weight: 700; }
+        .seq-msg.reply { background: var(--green-light); border-color: #86efac; }
+        .seq-msg.reply::before { content: '←'; color: var(--green); }
+        .seq-note {
+            background: #fef3c7; border: 1px dashed #f59e0b; border-radius: 6px;
+            padding: 6px 12px; font-size: 11px; text-align: center; margin: 8px auto; max-width: 260px;
+        }
+
+        /* ─── Subgraph boxes ─── */
+        .subgraph {
+            border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px;
+            margin: 8px 0; position: relative;
+        }
+        .subgraph-label {
+            position: absolute; top: -12px; left: 16px;
+            background: var(--bg-primary); padding: 0 8px;
+            font-size: 12px; font-weight: 700; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .subgraph.input { border-color: #93c5fd; background: #f0f7ff; }
+        .subgraph.core { border-color: #fca5a5; background: #fff5f5; }
+        .subgraph.output { border-color: #86efac; background: #f0fdf4; }
+        .subgraph.purple { border-color: #c4b5fd; background: #f5f3ff; }
+
+        /* ─── Pipeline visual ─── */
+        .pipeline { display: flex; gap: 0; align-items: stretch; margin: 20px 0; flex-wrap: wrap; }
+        .pipe-stage {
+            flex: 1; min-width: 140px; padding: 16px 12px; text-align: center;
+            color: white; font-size: 13px; font-weight: 600;
+            position: relative; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 4px;
+        }
+        .pipe-stage small { font-weight: 400; font-size: 11px; opacity: 0.85; }
+        .pipe-stage:first-child { border-radius: 10px 0 0 10px; }
+        .pipe-stage:last-child { border-radius: 0 10px 10px 0; }
+        .pipe-stage::after {
+            content: ''; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+            width: 0; height: 0; border-left: 12px solid currentColor; border-top: 20px solid transparent;
+            border-bottom: 20px solid transparent; z-index: 2;
+        }
+        .pipe-stage:last-child::after { display: none; }
+        .pipe-s1 { background: #2563eb; color: #2563eb; color: white; }
+        .pipe-s1::after { border-left-color: #2563eb; }
+        .pipe-s2 { background: #7c3aed; color: white; }
+        .pipe-s2::after { border-left-color: #7c3aed; }
+        .pipe-s3 { background: #d97706; color: white; }
+        .pipe-s3::after { border-left-color: #d97706; }
+        .pipe-s4 { background: #059669; color: white; }
+        .pipe-s4::after { border-left-color: #059669; }
+        .pipe-s5 { background: #73000a; color: white; }
+        .pipe-s5::after { border-left-color: #73000a; }
+
+        /* ─── ER Diagram (CSS) ─── */
+        .er-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+        .er-entity {
+            border: 2px solid; border-radius: 10px; padding: 12px; text-align: center;
+            font-size: 13px; font-weight: 600; position: relative;
+        }
+        .er-entity small { display: block; font-weight: 400; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .er-red { border-color: #73000a; background: #fff5f5; color: #73000a; }
+        .er-blue { border-color: #2563eb; background: #f0f7ff; color: #2563eb; }
+        .er-green { border-color: #059669; background: #f0fdf4; color: #059669; }
+        .er-purple { border-color: #7c3aed; background: #f5f3ff; color: #7c3aed; }
+        .er-orange { border-color: #d97706; background: #fffbeb; color: #d97706; }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            .nav { padding: 0 12px; }
+            .hero { padding: 32px 20px; }
+            .hero h1 { font-size: 22px; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .step-row { flex-direction: column; }
+            .pipeline { flex-direction: column; }
+            .pipe-stage { border-radius: 8px !important; }
+            .pipe-stage::after { display: none; }
+        }
+        @media print {
+            .nav { position: static; }
+            .section.hidden { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════ NAVIGATION ═══════════════ -->
+<nav class="nav">
+    <span class="nav-brand">REDCap Guide</span>
+    <a href="#" data-section="overview" class="active">Overview</a>
+    <a href="#" data-section="architecture">Architecture</a>
+    <a href="#" data-section="api-setup">API Setup</a>
+    <a href="#" data-section="data-pull">Data Pull</a>
+    <a href="#" data-section="data-push">Data Push</a>
+    <a href="#" data-section="qc-pipeline">QC Pipeline</a>
+    <a href="#" data-section="daily-sync">Daily Sync</a>
+    <a href="#" data-section="nano-study">NANO Study</a>
+    <a href="#" data-section="cheatsheet">Cheatsheet</a>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════ 1. OVERVIEW ═══════════════ -->
+<div id="overview" class="section">
+    <div class="hero">
+        <h1>Understanding REDCap &amp; API-Driven Data Analytics</h1>
+        <p>A visual walkthrough of REDCap's architecture, API data extraction, quality control, and integration with Python/R analytics — tailored to the NANO Study</p>
+    </div>
+
+    <div class="card">
+        <h2>What is REDCap?</h2>
+        <p>REDCap (Research Electronic Data Capture) is a secure, web-based application designed for clinical and translational research data collection. Developed at Vanderbilt University, it is used by thousands of institutions worldwide for HIPAA-compliant research data management.</p>
+        <div class="kpi-row">
+            <div class="kpi"><div class="kpi-label">Institutions</div><div class="kpi-value">6,800+</div><div class="kpi-sub">Worldwide</div></div>
+            <div class="kpi"><div class="kpi-label">Projects Hosted</div><div class="kpi-value">2.3M+</div><div class="kpi-sub">Research Studies</div></div>
+            <div class="kpi"><div class="kpi-label">Compliance</div><div class="kpi-value">HIPAA</div><div class="kpi-sub">21 CFR Part 11</div></div>
+            <div class="kpi"><div class="kpi-label">API Format</div><div class="kpi-value">REST</div><div class="kpi-sub">JSON / CSV / XML</div></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>The Big Picture: REDCap in Your Analytics Workflow</h2>
+        <div class="pipeline">
+            <div class="pipe-stage pipe-s1">REDCap<small>Web Interface</small></div>
+            <div class="pipe-stage pipe-s2">REST API<small>Export Records</small></div>
+            <div class="pipe-stage pipe-s3">Python / R<small>Data Pull</small></div>
+            <div class="pipe-stage pipe-s4">QC Pipeline<small>Validate & Clean</small></div>
+            <div class="pipe-stage pipe-s5">Analytics<small>Visualize & Model</small></div>
+        </div>
+        <div class="diagram-box">
+            <div class="flow">
+                <div class="fnode fnode-red">REDCap<small>Web Interface</small></div>
+                <div class="farrow">
+                    <span>&#10132;</span>
+                    <span class="farrow-label">Manual Entry</span>
+                </div>
+                <div class="fnode fnode-dark">REDCap<small>Database</small></div>
+                <div class="farrow">
+                    <span>&#10132;</span>
+                    <span class="farrow-label">REST API</span>
+                </div>
+                <div class="fnode fnode-blue">Python / R<small>Data Pull</small></div>
+                <div class="farrow">
+                    <span>&#10132;</span>
+                    <span class="farrow-label">Parquet/RDS</span>
+                </div>
+                <div class="fnode fnode-green">QC Pipeline<small>Validate</small></div>
+                <div class="farrow">
+                    <span>&#10132;</span>
+                    <span class="farrow-label">Clean Data</span>
+                </div>
+                <div class="fnode fnode-purple">Analytics<small>Visualize</small></div>
+            </div>
+            <div style="margin-top:12px;">
+                <div class="flow">
+                    <div class="fnode fnode-orange" style="margin-left:auto">API Push<small>Write Back</small></div>
+                    <div class="farrow" style="transform:scaleX(-1)">&#10132;</div>
+                    <div class="fnode fnode-dark" style="margin-right:auto">REDCap DB<small>Updated</small></div>
+                </div>
+            </div>
+        </div>
+        <p>This circular workflow means REDCap is not just a data entry tool — it's the central hub of your research data lifecycle. The API is the bridge that connects REDCap to your analytics environment.</p>
+    </div>
+
+    <div class="card">
+        <h2>Core REDCap Concepts</h2>
+        <div class="grid-2">
+            <div>
+                <h3>Projects &amp; Arms</h3>
+                <p>A <strong>Project</strong> is your study container. <strong>Arms</strong> represent different study groups (e.g., treatment vs. control). Each arm can have its own timeline of events.</p>
+                <h3>Events (Longitudinal)</h3>
+                <p>Events are time points in your study (e.g., Baseline, Month 6, Month 12). They create the longitudinal structure that tracks participants over time.</p>
+                <h3>Instruments / Forms</h3>
+                <p>Instruments are the data collection forms (e.g., Demographics, ADOS-2 Scores). Each instrument maps to a set of fields and can be assigned to specific events.</p>
+            </div>
+            <div>
+                <h3>Records</h3>
+                <p>Each participant is a <strong>Record</strong> identified by a unique ID (e.g., <code>nano_id</code>). Records span across events, creating one row per participant-event combination.</p>
+                <h3>Data Access Groups (DAGs)</h3>
+                <p>DAGs restrict which records users can see — essential for multi-site studies. Your NANO study uses DAGs to separate sites.</p>
+                <h3>The API</h3>
+                <p>REDCap's REST API lets you programmatically export/import records, metadata, files, and reports using a simple token-based authentication.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ 2. ARCHITECTURE ═══════════════ -->
+<div id="architecture" class="section hidden">
+    <div class="card">
+        <h2>REDCap Data Model Architecture</h2>
+        <p>Understanding how REDCap structures data internally is key to writing efficient API queries and merging data correctly.</p>
+        <div class="er-grid">
+            <div class="er-entity er-red">PROJECT<small>Study container</small></div>
+            <div class="er-entity er-blue">ARM<small>Study group</small></div>
+            <div class="er-entity er-purple">EVENT<small>Time point</small></div>
+            <div class="er-entity er-green">INSTRUMENT<small>Data form</small></div>
+            <div class="er-entity er-orange">FIELD<small>Variable</small></div>
+            <div class="er-entity er-red">RECORD<small>Participant</small></div>
+            <div class="er-entity er-blue">EVENT_DATA<small>Data per visit</small></div>
+            <div class="er-entity er-green">FIELD_VALUE<small>Stored value</small></div>
+        </div>
+        <div class="diagram-box">
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 0;">
+                <strong>Relationships:</strong><br>
+                PROJECT → contains many ARMs → each ARM defines many EVENTs → each EVENT has designated INSTRUMENTs → each INSTRUMENT has many FIELDs<br>
+                PROJECT → stores many RECORDs → each RECORD has EVENT_DATA per event → each EVENT_DATA stores FIELD_VALUEs
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>How Data Flows Through REDCap</h2>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0;">
+            <div class="subgraph input" style="flex:1; min-width: 260px;">
+                <div class="subgraph-label">Data Entry Layer</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; padding-top: 8px;">
+                    <div class="fnode fnode-blue" style="flex:1; min-width: 100px;">Web Forms<small>Manual Entry</small></div>
+                    <div class="fnode fnode-blue" style="flex:1; min-width: 100px;">Survey Links<small>Self-Report</small></div>
+                    <div class="fnode fnode-blue" style="flex:1; min-width: 100px;">Mobile App<small>Offline</small></div>
+                    <div class="fnode fnode-blue" style="flex:1; min-width: 100px;">API Import<small>Programmatic</small></div>
+                </div>
+            </div>
+        </div>
+        <div class="farrow-down" style="text-align:center; font-size: 28px;">&#11015;</div>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0;">
+            <div class="subgraph core" style="flex:1; min-width: 260px;">
+                <div class="subgraph-label">REDCap Core</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; padding-top: 8px;">
+                    <div class="fnode fnode-red" style="flex:1; min-width: 100px;">MySQL DB<small>Storage</small></div>
+                    <div class="fnode fnode-red" style="flex:1; min-width: 100px;">Validation<small>Range Checks</small></div>
+                    <div class="fnode fnode-red" style="flex:1; min-width: 100px;">Audit Trail<small>Change Log</small></div>
+                    <div class="fnode fnode-red" style="flex:1; min-width: 100px;">Calc Fields<small>@CALC</small></div>
+                </div>
+            </div>
+        </div>
+        <div class="farrow-down" style="text-align:center; font-size: 28px;">&#11015;</div>
+        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0;">
+            <div class="subgraph output" style="flex:1; min-width: 260px;">
+                <div class="subgraph-label">Data Export Layer</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; padding-top: 8px;">
+                    <div class="fnode fnode-green" style="flex:1; min-width: 100px;">REST API<small>JSON/CSV/XML</small></div>
+                    <div class="fnode fnode-green" style="flex:1; min-width: 100px;">Reports<small>Module</small></div>
+                    <div class="fnode fnode-green" style="flex:1; min-width: 100px;">Data Exports<small>Labels/Raw</small></div>
+                    <div class="fnode fnode-green" style="flex:1; min-width: 100px;">File Repo<small>Attachments</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Longitudinal Data Structure Explained</h2>
+        <p>In a longitudinal project, each API export row is uniquely identified by <strong>record_id + redcap_event_name</strong>. This is the key concept for merging and analytics.</p>
+        <table class="data-table">
+            <thead><tr><th>record_id</th><th>redcap_event_name</th><th>nano_id</th><th>ga_weeks</th><th>bayley4_cog</th><th>ados2_css</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td>nicu_admission_arm_1</td><td>NANO-0001</td><td>28</td><td></td><td></td></tr>
+                <tr><td>1</td><td>month_6_arm_1</td><td></td><td></td><td>95</td><td></td></tr>
+                <tr><td>1</td><td>month_12_arm_1</td><td></td><td></td><td>98</td><td>4</td></tr>
+                <tr><td>2</td><td>nicu_admission_arm_1</td><td>NANO-0002</td><td>32</td><td></td><td></td></tr>
+                <tr><td>2</td><td>month_6_arm_1</td><td></td><td></td><td>102</td><td></td></tr>
+            </tbody>
+        </table>
+        <div class="info-box note">
+            <strong>Key Insight:</strong> Demographics (like ga_weeks) only appear at the baseline event. Assessment scores appear at their designated events. When you pull data via API, you get this "long" format — you'll need to reshape it for cross-sectional analysis.
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ 3. API SETUP ═══════════════ -->
+<div id="api-setup" class="section hidden">
+    <div class="card">
+        <h2>Getting Your API Token — Step by Step</h2>
+        <div class="step-row">
+            <div class="step-card"><div class="step-num">1</div><h4>Log into REDCap</h4><p>Go to your institution's REDCap URL</p></div>
+            <div class="step-card"><div class="step-num">2</div><h4>Open Your Project</h4><p>Navigate to the NANO Study project</p></div>
+            <div class="step-card"><div class="step-num">3</div><h4>API Page</h4><p>Project Setup → API</p></div>
+            <div class="step-card"><div class="step-num">4</div><h4>Request Token</h4><p>Click "Request API Token"</p></div>
+            <div class="step-card"><div class="step-num">5</div><h4>Store Securely</h4><p>Save in .env (NEVER in code)</p></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>API Token Workflow</h2>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <div class="flow">
+                    <div class="fnode fnode-blue">Researcher</div>
+                    <div class="farrow">&#10132;<span class="farrow-label">Request Token</span></div>
+                    <div class="fnode fnode-red">REDCap Admin Panel</div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="flow">
+                    <div class="fnode fnode-red">REDCap Admin Panel</div>
+                    <div class="farrow">&#10132;<span class="farrow-label">Awaiting Approval</span></div>
+                    <div class="fnode fnode-orange">Institution Admin</div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="flow">
+                    <div class="fnode fnode-orange">Admin Approves</div>
+                    <div class="farrow">&#10132;<span class="farrow-label">Token Generated</span></div>
+                    <div class="fnode fnode-green">Token Displayed</div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="flow">
+                    <div class="fnode fnode-blue">Researcher</div>
+                    <div class="farrow">&#10132;<span class="farrow-label">Copy & Save</span></div>
+                    <div class="fnode fnode-dark">.env File<small>REDCAP_API_TOKEN=xxxxx</small></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Setting Up Your .env File</h2>
+        <div class="code-block">
+            <span class="code-lang">bash (.env)</span>
+            <pre><span class="cm"># ──── REDCap API Configuration ────</span>
+<span class="kw">REDCAP_API_URL</span>=<span class="str">https://redcap.yourinstitution.edu/api/</span>
+<span class="kw">REDCAP_API_TOKEN</span>=<span class="str">YOUR_32_CHARACTER_TOKEN_HERE</span>
+
+<span class="cm"># ──── Project IDs ────</span>
+<span class="kw">REDCAP_PROJECT_ID_MAIN</span>=<span class="num">12345</span>
+<span class="kw">REDCAP_PROJECT_ID_QUESTIONNAIRES</span>=<span class="num">12346</span>
+
+<span class="cm"># ──── Data paths ────</span>
+<span class="kw">NANO_DATA_ROOT</span>=<span class="str">/secure/data/nano_study</span></pre>
+        </div>
+        <div class="info-box danger">
+            <strong>HIPAA Security Rules:</strong> Never commit API tokens to Git. Add <code>.env</code> to <code>.gitignore</code>. Tokens grant full read/write access to protected health information.
+        </div>
+        <div class="grid-2">
+            <div>
+                <h3>Loading in Python</h3>
+                <div class="code-block"><span class="code-lang">Python</span><pre><span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">import</span> os
+
+load_dotenv()  <span class="cm"># reads .env</span>
+api_url   = os.environ[<span class="str">"REDCAP_API_URL"</span>]
+api_token = os.environ[<span class="str">"REDCAP_API_TOKEN"</span>]</pre></div>
+            </div>
+            <div>
+                <h3>Loading in R</h3>
+                <div class="code-block"><span class="code-lang">R</span><pre><span class="fn">readRenviron</span>(<span class="str">".env"</span>)
+
+api_url   <span class="op">&lt;-</span> <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_URL"</span>)
+api_token <span class="op">&lt;-</span> <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_TOKEN"</span>)</pre></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>API Permissions Explained</h2>
+        <table class="data-table">
+            <thead><tr><th>Permission</th><th>What It Allows</th><th>When You Need It</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Export Records</strong></td><td>Pull participant data via API</td><td>Always — primary data extraction</td></tr>
+                <tr><td><strong>Import Records</strong></td><td>Push computed scores back</td><td>Writing QC flags or computed fields</td></tr>
+                <tr><td><strong>Export Metadata</strong></td><td>Get data dictionary</td><td>Dynamic forms or field validation</td></tr>
+                <tr><td><strong>Export Field Names</strong></td><td>List all field names</td><td>Programmatic field discovery</td></tr>
+                <tr><td><strong>Export Reports</strong></td><td>Pull pre-built reports</td><td>Filtered, pre-configured data views</td></tr>
+                <tr><td><strong>Delete Records</strong></td><td>Remove records via API</td><td>Rarely — use with extreme caution</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══════════════ 4. DATA PULL ═══════════════ -->
+<div id="data-pull" class="section hidden">
+    <div class="card">
+        <h2>Data Pull Workflow</h2>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <div class="fnode fnode-blue" style="width:240px;">Start: Pull Script<small>python redcap_pull.py</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-dark" style="width:240px;">Load .env<small>API Token + URL</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-purple" style="width:240px;">Create Project Object<small>redcap.Project(url, token)</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-light" style="width:240px; font-weight:700;">How many records?</div>
+                <div style="display:flex; gap:40px; align-items:flex-start; margin-top:8px;">
+                    <div class="flow-v" style="flex:1;">
+                        <div style="font-size:12px; color:var(--text-secondary);">&#8592; Less than 500</div>
+                        <div class="fnode fnode-green" style="width:180px;">Single API Call<small>export_records()</small></div>
+                    </div>
+                    <div class="flow-v" style="flex:1;">
+                        <div style="font-size:12px; color:var(--text-secondary);">More than 500 &#8594;</div>
+                        <div class="fnode fnode-orange" style="width:180px;">Paginated Pull<small>500 records/batch</small></div>
+                        <div class="farrow-down">&#11015;</div>
+                        <div style="display:flex; gap:8px;">
+                            <div class="fnode fnode-light" style="font-size:11px; padding:8px;">Batch 1</div>
+                            <div class="fnode fnode-light" style="font-size:11px; padding:8px;">Batch 2</div>
+                            <div class="fnode fnode-light" style="font-size:11px; padding:8px;">Batch N</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-purple" style="width:240px;">pd.concat() All Batches</div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-dark" style="width:240px;">Save as Parquet<small>timestamped file</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-green" style="width:240px;">Done! Ready for QC</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Pull Implementation</h2>
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="pull-py">Python <span class="badge badge-py">PyCap</span></button>
+            <button class="tab-btn" data-tab="pull-r">R <span class="badge badge-r">REDCapR</span></button>
+            <button class="tab-btn" data-tab="pull-curl">cURL <span class="badge badge-api">Raw API</span></button>
+        </div>
+        <div id="pull-py" class="tab-panel active">
+            <div class="code-block"><span class="code-lang">Python</span><pre><span class="kw">import</span> redcap
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">import</span> os
+
+load_dotenv()
+
+<span class="cm"># 1. Connect to REDCap</span>
+project = redcap.<span class="fn">Project</span>(
+    os.environ[<span class="str">"REDCAP_API_URL"</span>],
+    os.environ[<span class="str">"REDCAP_API_TOKEN"</span>]
+)
+
+<span class="cm"># 2. Pull ALL records (flat format)</span>
+df = project.<span class="fn">export_records</span>(
+    format_type=<span class="str">"df"</span>,
+    df_kwargs={<span class="str">"dtype"</span>: <span class="kw">str</span>}
+)
+
+<span class="cm"># 3. Pull SPECIFIC event only</span>
+df_m12 = project.<span class="fn">export_records</span>(
+    format_type=<span class="str">"df"</span>,
+    events=[<span class="str">"month_12_arm_1"</span>]
+)
+
+<span class="cm"># 4. Pull SPECIFIC fields only</span>
+df_ados = project.<span class="fn">export_records</span>(
+    format_type=<span class="str">"df"</span>,
+    fields=[<span class="str">"record_id"</span>, <span class="str">"ados2_css_total"</span>]
+)
+
+<span class="cm"># 5. Save as Parquet</span>
+df.<span class="fn">to_parquet</span>(<span class="str">"redcap_export.parquet"</span>, index=<span class="kw">False</span>)</pre></div>
+            <div class="info-box tip"><strong>Why Parquet?</strong> Parquet preserves types, compresses 5-10x smaller than CSV, and loads 10x faster. Your NANO pull script exports to Parquet by default.</div>
+        </div>
+        <div id="pull-r" class="tab-panel">
+            <div class="code-block"><span class="code-lang">R</span><pre><span class="kw">library</span>(REDCapR)
+<span class="kw">library</span>(tidyverse)
+<span class="fn">readRenviron</span>(<span class="str">".env"</span>)
+
+<span class="cm"># 1. Pull ALL records with labels</span>
+result <span class="op">&lt;-</span> REDCapR::<span class="fn">redcap_read</span>(
+  redcap_uri   = <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_URL"</span>),
+  token        = <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_TOKEN"</span>),
+  raw_or_label = <span class="str">"label"</span>,     <span class="cm"># Factor labels!</span>
+  batch_size   = <span class="num">500</span>L
+)
+df <span class="op">&lt;-</span> result<span class="op">$</span>data
+
+<span class="cm"># 2. Pull specific event</span>
+result_m12 <span class="op">&lt;-</span> REDCapR::<span class="fn">redcap_read</span>(
+  redcap_uri = <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_URL"</span>),
+  token      = <span class="fn">Sys.getenv</span>(<span class="str">"REDCAP_API_TOKEN"</span>),
+  events     = <span class="str">"month_12_arm_1"</span>
+)
+
+<span class="cm"># 3. Save as RDS</span>
+<span class="fn">saveRDS</span>(df, <span class="str">"redcap_export.rds"</span>)</pre></div>
+            <div class="info-box tip"><strong>R Advantage:</strong> Using <code>raw_or_label = "label"</code> returns human-readable values (e.g., "Male" instead of "1").</div>
+        </div>
+        <div id="pull-curl" class="tab-panel">
+            <div class="code-block"><span class="code-lang">bash</span><pre><span class="cm"># Export all records as JSON</span>
+curl <span class="op">-X</span> POST <span class="str">"https://redcap.institution.edu/api/"</span> \
+  <span class="op">-d</span> <span class="str">"token=YOUR_TOKEN"</span> \
+  <span class="op">-d</span> <span class="str">"content=record"</span> \
+  <span class="op">-d</span> <span class="str">"format=json"</span> \
+  <span class="op">-d</span> <span class="str">"type=flat"</span>
+
+<span class="cm"># Export data dictionary (metadata)</span>
+curl <span class="op">-X</span> POST <span class="str">"https://redcap.institution.edu/api/"</span> \
+  <span class="op">-d</span> <span class="str">"token=YOUR_TOKEN"</span> \
+  <span class="op">-d</span> <span class="str">"content=metadata"</span> \
+  <span class="op">-d</span> <span class="str">"format=json"</span></pre></div>
+            <div class="info-box note"><strong>Raw API:</strong> All REDCap API calls are POST requests to a single endpoint. The <code>content</code> parameter determines what you're requesting.</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>API Request / Response Anatomy</h2>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <div class="flow" style="gap: 24px;">
+                    <div class="fnode fnode-blue" style="width:150px;">Python/R Script</div>
+                    <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+                        <div style="background:#e8f0fe; border:1px solid #bfdbfe; border-radius:6px; padding:6px 16px; font-size:12px; position:relative;">
+                            POST /api/ &nbsp; token + content=record + format=json
+                            <span style="position:absolute; left:-14px; top:50%; transform:translateY(-50%); color:#2563eb;">&#10132;</span>
+                        </div>
+                    </div>
+                    <div class="fnode fnode-red" style="width:150px;">REDCap API</div>
+                </div>
+                <div style="text-align:center; font-size:11px; color:var(--text-secondary);">&#11015; Authenticate token → Query DB → Format response</div>
+                <div class="flow" style="gap: 24px;">
+                    <div class="fnode fnode-blue" style="width:150px;">Python/R Script</div>
+                    <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+                        <div style="background:#d1fae5; border:1px solid #86efac; border-radius:6px; padding:6px 16px; font-size:12px; position:relative;">
+                            JSON array of records [ {record_id: 1, ...}, ... ]
+                            <span style="position:absolute; right:-14px; top:50%; transform:translateY(-50%) scaleX(-1); color:#059669;">&#10132;</span>
+                        </div>
+                    </div>
+                    <div class="fnode fnode-red" style="width:150px;">REDCap API</div>
+                </div>
+                <div style="text-align:center;"><div class="seq-note">Parse → DataFrame → Parquet file</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ 5. DATA PUSH ═══════════════ -->
+<div id="data-push" class="section hidden">
+    <div class="card">
+        <h2>Pushing Data Back to REDCap</h2>
+        <p>After computing derived scores (e.g., QC flags, composite indices), you can push them back to REDCap fields via the API import endpoint.</p>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <div class="fnode fnode-purple" style="width:260px;">Analytics Output<small>Computed scores</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-dark" style="width:260px;">Validate Records<small>Check record_id + event</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-light" style="width:260px; font-weight:700;">All records valid?</div>
+                <div style="display:flex; gap:40px; margin-top:8px;">
+                    <div class="flow-v" style="flex:1;">
+                        <div style="font-size:12px; color:var(--green);">&#10003; Yes</div>
+                        <div class="fnode fnode-green" style="width:180px;">Push to REDCap<small>import_records()</small></div>
+                    </div>
+                    <div class="flow-v" style="flex:1;">
+                        <div style="font-size:12px; color:var(--orange);">&#9888; Some Invalid</div>
+                        <div class="fnode fnode-orange" style="width:180px;">Split valid / invalid</div>
+                        <div class="farrow-down">&#11015;</div>
+                        <div style="display:flex; gap:8px;">
+                            <div class="fnode fnode-green" style="font-size:11px; padding:8px;">Push valid</div>
+                            <div class="fnode fnode-light" style="font-size:11px; padding:8px;">Save invalid for review</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="farrow-down" style="margin-top:12px;">&#11015;</div>
+                <div class="fnode fnode-light" style="width:260px; font-weight:700;">Overwrite mode?</div>
+                <div style="display:flex; gap:40px; margin-top:8px;">
+                    <div class="flow-v" style="flex:1;">
+                        <div class="fnode fnode-blue" style="width:180px;">normal<small>Only fill empty fields</small></div>
+                    </div>
+                    <div class="flow-v" style="flex:1;">
+                        <div class="fnode fnode-red" style="width:180px;">overwrite<small>Replace existing values</small></div>
+                    </div>
+                </div>
+                <div class="farrow-down" style="margin-top:12px;">&#11015;</div>
+                <div class="fnode fnode-green" style="width:260px;">REDCap Updated!</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Push Code Example</h2>
+        <div class="code-block"><span class="code-lang">Python</span><pre><span class="kw">import</span> redcap, pandas <span class="kw">as</span> pd
+
+<span class="cm"># 1. Load computed scores</span>
+df = pd.<span class="fn">read_parquet</span>(<span class="str">"computed_scores.parquet"</span>)
+
+<span class="cm"># 2. Select only fields to push</span>
+push_cols = [<span class="str">"record_id"</span>, <span class="str">"redcap_event_name"</span>,
+             <span class="str">"bayley4_cog_composite"</span>, <span class="str">"qc_flag"</span>]
+df_push = df[push_cols]
+
+<span class="cm"># 3. Convert to records and push</span>
+records = df_push.<span class="fn">to_dict</span>(orient=<span class="str">"records"</span>)
+project = redcap.<span class="fn">Project</span>(api_url, api_token)
+response = project.<span class="fn">import_records</span>(
+    records,
+    overwrite=<span class="str">"normal"</span>,  <span class="cm"># only fill blanks</span>
+    return_format_type=<span class="str">"json"</span>
+)
+<span class="kw">print</span>(<span class="str">f"Pushed {response['count']} records"</span>)</pre></div>
+        <div class="info-box warn"><strong>Safety First:</strong> Always use <code>--dry-run</code> first! Your NANO push script supports <code>python redcap_push.py --input scores.parquet --dry-run</code></div>
+    </div>
+</div>
+
+<!-- ═══════════════ 6. QC PIPELINE ═══════════════ -->
+<div id="qc-pipeline" class="section hidden">
+    <div class="card">
+        <h2>Quality Control Pipeline</h2>
+        <p>Your NANO Study has an automated QC system that catches data errors before they reach analysis.</p>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <div class="fnode fnode-blue" style="width:260px;">Raw REDCap Export<small>Parquet file</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                    <div class="fnode fnode-orange" style="width:160px;">Range Checks<small>30+ field ranges</small></div>
+                    <div class="fnode fnode-orange" style="width:160px;">Date Logic<small>visit_date > DOB</small></div>
+                    <div class="fnode fnode-orange" style="width:160px;">Cross-Field Logic<small>TD + preterm = error</small></div>
+                    <div class="fnode fnode-orange" style="width:160px;">Duplicate Detect<small>record_id + event</small></div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="fnode fnode-dark" style="width:260px;">Consolidated QC Flags</div>
+                <div class="farrow-down">&#11015;</div>
+                <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:center;">
+                    <div class="flow-v">
+                        <div style="font-size:12px; color:var(--accent);">&#9888; Flags found</div>
+                        <div class="fnode fnode-red" style="width:180px;">Flag File<small>Parquet output</small></div>
+                        <div class="fnode fnode-red" style="width:180px;">HTML Audit<small>PI review report</small></div>
+                    </div>
+                    <div class="flow-v">
+                        <div style="font-size:12px; color:var(--green);">&#10003; All clean</div>
+                        <div class="fnode fnode-green" style="width:180px;">Proceed to<small>Analytics!</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>QC Checks in Your Pipeline</h2>
+        <div class="grid-2">
+            <div>
+                <h3>Range Checks (30+ fields)</h3>
+                <table class="data-table">
+                    <thead><tr><th>Field</th><th>Min</th><th>Max</th></tr></thead>
+                    <tbody>
+                        <tr><td>ga_weeks</td><td>22</td><td>42</td></tr>
+                        <tr><td>birth_weight_g</td><td>300</td><td>5000</td></tr>
+                        <tr><td>ados2_css_total</td><td>1</td><td>10</td></tr>
+                        <tr><td>bayley4_cog_composite</td><td>40</td><td>160</td></tr>
+                        <tr><td>mchat_total</td><td>0</td><td>20</td></tr>
+                        <tr><td>epds_total</td><td>0</td><td>30</td></tr>
+                        <tr><td>ecg_duration_min</td><td>0</td><td>120</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div>
+                <h3>Logic Checks</h3>
+                <div class="info-box danger"><strong>Critical:</strong> visit_date before DOB</div>
+                <div class="info-box warn"><strong>High:</strong> Group = TD but GA &lt; 37 weeks</div>
+                <div class="info-box warn"><strong>Medium:</strong> ECG transfer confirmed but no file name</div>
+                <div class="info-box note"><strong>Duplicate:</strong> Same record_id + event combination</div>
+                <h3 style="margin-top:16px">Completeness Threshold</h3>
+                <p>Records with &lt;80% fields completed are flagged. Configurable in <code>redcap_config.yml</code>.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>QC Severity Distribution</h2>
+        <div style="max-width: 400px; margin: 0 auto;">
+            <canvas id="qc-severity-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ 7. DAILY SYNC ═══════════════ -->
+<div id="daily-sync" class="section hidden">
+    <div class="card">
+        <h2>Automated Daily Sync Pipeline</h2>
+        <p>The <code>redcap_daily_sync.py</code> script runs as a cron job, pulling fresh data, running QC, and emailing the PI a summary every day.</p>
+        <div class="diagram-box">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:stretch;">
+                <div class="subgraph input" style="flex:1; min-width:200px;">
+                    <div class="subgraph-label">Cron Job</div>
+                    <div class="flow-v" style="padding-top:8px;">
+                        <div class="fnode fnode-blue" style="width:160px;">Timer<small>e.g., 6:00 AM</small></div>
+                        <div class="farrow-down">&#11015;</div>
+                        <div class="fnode fnode-blue" style="width:160px;">daily_sync.py</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; font-size:28px; color:var(--accent);">&#10132;</div>
+                <div class="subgraph core" style="flex:2; min-width:280px;">
+                    <div class="subgraph-label">Sync Pipeline</div>
+                    <div class="flow" style="padding-top: 8px;">
+                        <div class="fnode fnode-red" style="min-width:120px;">1. Pull<small>REDCap API</small></div>
+                        <div class="farrow">&#10132;</div>
+                        <div class="fnode fnode-red" style="min-width:120px;">2. QC<small>Range+Logic</small></div>
+                        <div class="farrow">&#10132;</div>
+                        <div class="fnode fnode-red" style="min-width:120px;">3. Flag<small>&lt;80% done</small></div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; font-size:28px; color:var(--accent);">&#10132;</div>
+                <div class="subgraph output" style="flex:1; min-width:200px;">
+                    <div class="subgraph-label">Outputs</div>
+                    <div class="flow-v" style="padding-top:8px; gap:8px;">
+                        <div class="fnode fnode-green" style="width:150px; padding:8px;">Sync Log<small>.log file</small></div>
+                        <div class="fnode fnode-green" style="width:150px; padding:8px;">Email to PI<small>Summary</small></div>
+                        <div class="fnode fnode-green" style="width:150px; padding:8px;">QC Flags<small>Parquet</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Setting Up the Cron Job</h2>
+        <div class="code-block"><span class="code-lang">bash</span><pre><span class="cm"># Edit crontab</span>
+crontab <span class="op">-e</span>
+
+<span class="cm"># Run daily at 6:00 AM</span>
+<span class="num">0 6</span> * * * cd /path/to/nano-study && \
+  /path/to/python scripts/redcap_daily_sync.py \
+  >> logs/cron_output.log <span class="num">2</span>>&<span class="num">1</span>
+
+<span class="cm"># Dry run test first:</span>
+python scripts/redcap_daily_sync.py <span class="op">--dry-run</span></pre></div>
+        <div class="info-box tip"><strong>Email Summary:</strong> Includes total records pulled, QC-flagged count, and incomplete records (&lt;80%). Keeps the PI informed without checking REDCap manually.</div>
+    </div>
+</div>
+
+<!-- ═══════════════ 8. NANO STUDY ═══════════════ -->
+<div id="nano-study" class="section hidden">
+    <div class="card">
+        <h2>NANO Study — Complete Data Architecture</h2>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <!-- Projects -->
+                <div style="display:flex; gap:16px; justify-content:center;">
+                    <div class="fnode fnode-red" style="width:200px;">Main DB<small>Longitudinal</small></div>
+                    <div class="fnode fnode-red" style="width:200px;">Questionnaire<small>Project</small></div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Arms -->
+                <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+                    <div class="fnode fnode-blue" style="width:170px;">ASIB<small>ASD + Biomarkers</small></div>
+                    <div class="fnode fnode-blue" style="width:170px;">PT<small>Preterm Typical</small></div>
+                    <div class="fnode fnode-blue" style="width:170px;">TD<small>Term-born Typical</small></div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Events -->
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">NICU</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M1</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M2</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M3</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M6</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M9</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M12</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M24</div>
+                    <div class="fnode fnode-purple" style="padding:8px 12px; font-size:11px;">M36</div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Instruments -->
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">Demographics</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">NNNS</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">ECG/Temp</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">Bayley-4</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">ADOS-2</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">ASQ-3</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">M-CHAT</div>
+                    <div class="fnode fnode-green" style="padding:8px 10px; font-size:11px;">PRAPARE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Event–Instrument Timeline</h2>
+        <div style="overflow-x: auto;">
+            <canvas id="timeline-chart" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Full Multi-Source Data Fusion Pipeline</h2>
+        <div class="diagram-box">
+            <div class="flow-v">
+                <!-- Collection layer -->
+                <div class="subgraph input" style="width:100%;">
+                    <div class="subgraph-label">Data Collection</div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding-top:8px;">
+                        <div class="fnode fnode-blue" style="width:140px;">REDCap<small>Clinical Data</small></div>
+                        <div class="fnode fnode-blue" style="width:140px;">ECG Device<small>HRV Files</small></div>
+                        <div class="fnode fnode-blue" style="width:140px;">Temp Sensors<small>Thermo Data</small></div>
+                        <div class="fnode fnode-blue" style="width:140px;">Video<small>Behavioral</small></div>
+                    </div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Ingestion -->
+                <div class="subgraph purple" style="width:100%;">
+                    <div class="subgraph-label">Ingestion + QC</div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding-top:8px;">
+                        <div class="fnode fnode-purple" style="width:140px;">redcap_pull.py<small>API Export</small></div>
+                        <div class="fnode fnode-purple" style="width:140px;">Signal Proc<small>HRV + Temp</small></div>
+                        <div class="fnode fnode-purple" style="width:140px;">Behavioral<small>Coding</small></div>
+                        <div class="fnode fnode-orange" style="width:140px;">QC Pipeline<small>Validate</small></div>
+                    </div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Merge -->
+                <div class="fnode fnode-dark" style="width:300px;">redcap_merge.py<small>Join on nano_id + event</small></div>
+                <div class="farrow-down">&#11015;</div>
+                <!-- Analytics -->
+                <div class="subgraph output" style="width:100%;">
+                    <div class="subgraph-label">Analytics</div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding-top:8px;">
+                        <div class="fnode fnode-green" style="width:140px;">Statistical<small>Analysis</small></div>
+                        <div class="fnode fnode-green" style="width:140px;">Machine<small>Learning</small></div>
+                        <div class="fnode fnode-green" style="width:140px;">Visualization<small>Dashboards</small></div>
+                    </div>
+                </div>
+                <div class="farrow-down">&#11015;</div>
+                <div class="flow">
+                    <div class="fnode fnode-orange" style="width:200px;">redcap_push.py<small>Write Back Scores</small></div>
+                    <div class="farrow">&#10132;</div>
+                    <div class="fnode fnode-red" style="width:200px;">REDCap Updated<small>Computed fields stored</small></div>
+                </div>
+            </div>
+        </div>
+        <div class="info-box tip"><strong>Data Fusion:</strong> The <code>redcap_merge.py</code> script joins REDCap clinical data with physiological signals (HRV, temperature) and behavioral coding using <code>nano_id</code> + <code>redcap_event_name</code> as the composite key.</div>
+    </div>
+
+    <div class="card">
+        <h2>NANO Study File Structure</h2>
+        <div class="code-block"><span class="code-lang">Project Layout</span><pre>redcap/
+├── api/
+│   ├── redcap_pull.py        <span class="cm"># Pull records → Parquet</span>
+│   ├── redcap_push.py        <span class="cm"># Push scores → REDCap</span>
+│   ├── redcap_audit.py       <span class="cm"># Completeness report</span>
+│   └── redcap_r_pull.R       <span class="cm"># R alternative (REDCapR)</span>
+├── quality_control/
+│   ├── redcap_qc_pipeline.py <span class="cm"># Automated QC checks</span>
+│   ├── double_entry_validation.py
+│   └── missing_data_report.R
+├── instruments/
+│   ├── field_mapping_ADOS2.csv
+│   ├── field_mapping_Bayley4.csv
+│   └── README.md
+├── hooks/
+│   ├── auto_complete_dob.js  <span class="cm"># Auto-calc adjusted age</span>
+│   ├── flag_missing_ecg.js   <span class="cm"># 48h ECG transfer alert</span>
+│   └── visit_completion_checker.js
+scripts/
+└── redcap_daily_sync.py      <span class="cm"># Cron: pull + QC + email</span>
+config/
+└── redcap_config.yml         <span class="cm"># Master configuration</span></pre></div>
+    </div>
+</div>
+
+<!-- ═══════════════ 9. CHEATSHEET ═══════════════ -->
+<div id="cheatsheet" class="section hidden">
+    <div class="card">
+        <h2>Quick Reference Cheatsheet</h2>
+        <h3>Common Commands</h3>
+        <div class="code-block"><span class="code-lang">bash</span><pre><span class="cm"># Pull all records</span>
+python redcap/api/redcap_pull.py
+
+<span class="cm"># Pull specific event only</span>
+python redcap/api/redcap_pull.py <span class="op">--event</span> month_12_arm_1
+
+<span class="cm"># Dry run (test without saving)</span>
+python redcap/api/redcap_pull.py <span class="op">--dry-run</span>
+
+<span class="cm"># Run QC pipeline</span>
+python redcap/quality_control/redcap_qc_pipeline.py
+
+<span class="cm"># Generate audit report</span>
+python redcap/api/redcap_audit.py
+
+<span class="cm"># Push computed scores (dry run first!)</span>
+python redcap/api/redcap_push.py <span class="op">--input</span> scores.parquet <span class="op">--dry-run</span>
+python redcap/api/redcap_push.py <span class="op">--input</span> scores.parquet
+
+<span class="cm"># Daily sync (for cron)</span>
+python scripts/redcap_daily_sync.py</pre></div>
+
+        <h3>Common API Parameters</h3>
+        <table class="data-table">
+            <thead><tr><th>Parameter</th><th>Values</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td><code>content</code></td><td>record, metadata, event, instrument, arm</td><td>What to export/import</td></tr>
+                <tr><td><code>format</code></td><td>json, csv, xml</td><td>Response format</td></tr>
+                <tr><td><code>type</code></td><td>flat, eav</td><td>Data structure</td></tr>
+                <tr><td><code>rawOrLabel</code></td><td>raw, label, both</td><td>Return coded values or labels</td></tr>
+                <tr><td><code>events</code></td><td>event_name_arm_1</td><td>Filter to specific events</td></tr>
+                <tr><td><code>fields</code></td><td>field_name1, field_name2</td><td>Filter to specific fields</td></tr>
+                <tr><td><code>records</code></td><td>1, 2, 3</td><td>Filter to specific record IDs</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Key Python Libraries</h3>
+        <table class="data-table">
+            <thead><tr><th>Library</th><th>Install</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td><code>PyCap</code></td><td><code>pip install PyCap</code></td><td>Python REDCap API wrapper</td></tr>
+                <tr><td><code>python-dotenv</code></td><td><code>pip install python-dotenv</code></td><td>Load .env files</td></tr>
+                <tr><td><code>pandas</code></td><td><code>pip install pandas</code></td><td>Data manipulation</td></tr>
+                <tr><td><code>pyarrow</code></td><td><code>pip install pyarrow</code></td><td>Parquet read/write</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Key R Libraries</h3>
+        <table class="data-table">
+            <thead><tr><th>Library</th><th>Install</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td><code>REDCapR</code></td><td><code>install.packages("REDCapR")</code></td><td>R REDCap API wrapper</td></tr>
+                <tr><td><code>tidyverse</code></td><td><code>install.packages("tidyverse")</code></td><td>Data wrangling</td></tr>
+                <tr><td><code>yaml</code></td><td><code>install.packages("yaml")</code></td><td>Config file reading</td></tr>
+                <tr><td><code>here</code></td><td><code>install.packages("here")</code></td><td>Project-relative paths</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Troubleshooting Quick Reference</h2>
+        <table class="data-table">
+            <thead><tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr><td>403 Forbidden</td><td>Token lacks permission</td><td>Request additional API rights from admin</td></tr>
+                <tr><td>Empty export</td><td>Instruments not designated to events</td><td>Check event-instrument mapping</td></tr>
+                <tr><td>Missing events</td><td>Wrong event name format</td><td>Use exact: <code>month_12_arm_1</code></td></tr>
+                <tr><td>Import fails</td><td>Missing record_id or event column</td><td>Ensure both columns in push DataFrame</td></tr>
+                <tr><td>Timeout on pull</td><td>Too many records per request</td><td>Reduce chunk_size (default: 500)</td></tr>
+                <tr><td>Survey not sending</td><td>Condition logic error</td><td>Test in Record Status Dashboard</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ─── Section Navigation ─────────────────────────────────
+const navLinks = document.querySelectorAll('.nav a');
+const sections = document.querySelectorAll('.section');
+
+function showSection(id) {
+    sections.forEach(s => {
+        if (s.id === id) { s.classList.remove('hidden'); }
+        else { s.classList.add('hidden'); }
+    });
+    navLinks.forEach(a => {
+        a.classList.toggle('active', a.dataset.section === id);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Init charts lazily
+    if (id === 'qc-pipeline' && !window._qcChartInit) { initQCSeverityChart(); window._qcChartInit = true; }
+    if (id === 'nano-study' && !window._timelineInit) { initTimelineChart(); window._timelineInit = true; }
+}
+
+navLinks.forEach(link => {
+    link.addEventListener('click', e => { e.preventDefault(); showSection(link.dataset.section); });
+});
+
+// ─── Tab Switching ──────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const parent = btn.closest('.card');
+        parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        parent.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+});
+
+// ─── QC Severity Chart ──────────────────────────────────
+function initQCSeverityChart() {
+    const ctx = document.getElementById('qc-severity-chart');
+    if (!ctx) return;
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Critical (Date Logic)', 'High (Range/Logic)', 'Medium (Transfer)', 'Low (Completeness)'],
+            datasets: [{
+                data: [5, 25, 15, 55],
+                backgroundColor: ['#73000a', '#dc3545', '#ffc107', '#6c757d'],
+                borderColor: '#ffffff', borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true, cutout: '55%',
+            plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, font: { size: 12 } } } }
+        }
+    });
+}
+
+// ─── NANO Timeline Chart ────────────────────────────────
+function initTimelineChart() {
+    const ctx = document.getElementById('timeline-chart');
+    if (!ctx) return;
+
+    const events = ['NICU', 'M1', 'M2', 'M3', 'M6', 'M9', 'M12', 'M24', 'M36'];
+    const instruments = {
+        'Demographics':  [1,0,0,0,0,0,0,0,0],
+        'NICU Morbidity':[1,0,0,0,0,0,0,0,0],
+        'ECG/Temp':      [1,1,1,1,1,1,1,0,1],
+        'NNNS':          [0,1,1,1,0,0,0,0,0],
+        'Bayley-4':      [0,0,0,0,1,0,1,0,1],
+        'ADOS-2':        [0,0,0,0,0,0,1,0,1],
+        'ASQ-3':         [0,0,0,0,1,0,0,1,0],
+        'M-CHAT':        [0,0,0,0,0,1,0,0,0],
+        'CSBS':          [0,0,0,1,0,1,0,0,0],
+        'PRAPARE/EPDS':  [0,0,0,0,0,0,0,1,0],
+    };
+    const colors = ['#73000a','#dc3545','#2563eb','#7c3aed','#059669','#d97706','#0891b2','#be185d','#4f46e5','#65a30d'];
+
+    const datasets = Object.entries(instruments).map(([name, data], i) => ({
+        label: name,
+        data: data.map(v => v ? 1 : 0),
+        backgroundColor: colors[i] + 'CC',
+        borderColor: colors[i],
+        borderWidth: 1, borderRadius: 4, barPercentage: 0.85,
+    }));
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: { labels: events, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ctx.raw > 0 ? `${ctx.dataset.label}: Collected` : '',
+                        title: items => `Event: ${items[0].label}`
+                    },
+                    filter: item => item.raw > 0
+                }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false }, title: { display: true, text: 'Study Event', font: { weight: 'bold' } } },
+                y: { stacked: true, display: false }
+            }
+        }
+    });
+}
+</script>
+</body>
+</html>
