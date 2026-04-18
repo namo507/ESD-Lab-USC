@@ -11,8 +11,9 @@ A single web page (`dashboard/index.html`) that shows, at a glance,
 JSON file (`dashboard/data/dashboard_data.json`) that the nightly
 pipeline rebuilds from REDCap and the feature matrix.
 
-The dashboard is *static* — no server, no database. You can email it,
-zip it, or host it on a lab shared drive.
+The dashboard can still be hosted as static files, but the repository now
+also includes a lightweight live runtime that serves the site, watches the
+source folders, and refreshes the generated JSON outputs automatically.
 
 ## 2. Opening the dashboard
 
@@ -20,15 +21,25 @@ zip it, or host it on a lab shared drive.
 Navigate to `dashboard/index.html` in Finder / File Explorer and
 double-click. It opens in your default browser.
 
-### Option B — From a URL (if you host it)
+### Option B — Live Docker runtime (recommended)
+
+```bash
+docker compose up --build dashboard
+```
+
+Then open `http://localhost:8080/dashboard/`.
+
+### Option C — From a URL (if you host it)
 ```
 https://<lab-server>/nano/dashboard/
 ```
 
 If the charts look blank, make sure the file
 `dashboard/data/dashboard_data.json` exists next to `index.html`.
+If the reading library is empty, make sure
+`dashboard/data/readings_data.json` has been generated.
 
-## 3. Six sections, one per tab
+## 3. Seven sections on one continuous page
 
 | Tab | What it answers | Key widgets |
 |-----|------------------|-------------|
@@ -38,6 +49,7 @@ If the charts look blank, make sure the file
 | **ML Performance** | Are our models any good? | ROC curves, AUROC with CI, SHAP, subgroup sensitivity, confusion summary |
 | **Trajectories** | Are the groups diverging over time? | Biomarker trajectory with CI bands, visit completion bars, intercept/slope table |
 | **Cohort Table** | Who's in the sample right now? | Sortable, filterable participant table (surrogate IDs only) |
+| **Reading Library** | What new papers and materials have landed in the repo? | Searchable PDF cards, category chips, latest-update stats |
 
 ## 4. Understanding the ‘i’ hint pop-ups
 
@@ -54,18 +66,18 @@ The same plain-language information is the canonical truth in
 ## 5. How the numbers get there
 
 ```
- REDCap  ──┐
-            ├──► build_dashboard_data.{py, R} ──► dashboard_data.json ──► index.html
- Features ─┤        (aggregates, PHI scrub)
- Models  ──┘
+ REDCap / Features / Models ──► build_dashboard_data.{py, R} ──► dashboard_data.json ──► index.html
+ ESD Lab readings/           ──► build_readings_index.py       ──► readings_data.json  ──► index.html
 ```
 
 1. **Nightly cron** (`scripts/redcap_daily_sync.py`) pulls REDCap and
    runs QC.
 2. **Pipeline** (`dashboard/pipelines/build_dashboard_data.py`) joins
    REDCap + features + model metrics, strips PHI, and writes the JSON.
-3. **Dashboard** (`dashboard/index.html`) reads the JSON in the
-   browser and draws everything with Chart.js.
+3. **Readings index** (`dashboard/pipelines/build_readings_index.py`)
+   scans `ESD Lab readings/` and writes the searchable reading library.
+4. **Dashboard** (`dashboard/index.html`) reads both JSON files in the
+   browser, animates updates, and redraws the charts with Chart.js.
 
 ## 6. Something looks wrong — who do I ask?
 
@@ -74,6 +86,7 @@ The same plain-language information is the canonical truth in
 | Enrollment number too low | `data_source` chip in top bar — is it `synthetic_demo`? | Research Programmer |
 | ROC curve missing | `models/_metrics.json` present? | Co-I O'Reilly |
 | A participant in the table should not be there | `cohort_table` in JSON | Data Coordinator |
+| Reading library missing a PDF | `dashboard/data/readings_data.json` regenerated after the file was added? | Research Programmer |
 | Numbers changed unexpectedly | Diff today's `dashboard_data.json` vs yesterday's | Research Programmer |
 
 ## 7. Privacy

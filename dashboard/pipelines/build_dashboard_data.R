@@ -82,6 +82,19 @@ load_config <- function(path) {
   yaml::yaml.load(raw)
 }
 
+has_unresolved_template <- function(path) {
+  is.character(path) && grepl("\\$\\{[^}]+\\}", path)
+}
+
+pick_configured_path <- function(default, ...) {
+  candidates <- list(...)
+  for (candidate in candidates) {
+    if (is.null(candidate) || has_unresolved_template(candidate)) next
+    return(candidate)
+  }
+  default
+}
+
 # ---- Study constants (mirror config/study_parameters.yml) ------------------
 GROUPS <- list(
   ASIB = list(n_target = 65,  color = "#C44E52", label = "ASIB (VPT + ASD traits)"),
@@ -105,12 +118,20 @@ surrogate_id <- function(real_id, salt) {
 
 # ---- Loaders --------------------------------------------------------------
 load_parquet_safe <- function(path) {
-  if (!file.exists(path)) {
-    log_info("Missing parquet: %s", path)
-    return(NULL)
+  candidates <- c(path)
+  if (grepl("\\.parquet$", path)) {
+    candidates <- c(candidates, sub("\\.parquet$", ".csv", path))
   }
-  log_info("Reading parquet: %s", path)
-  arrow::read_parquet(path) |> as.data.table()
+  for (candidate in candidates) {
+    if (!file.exists(candidate)) next
+    log_info("Reading dashboard input: %s", candidate)
+    if (grepl("\\.csv$", candidate)) {
+      return(fread(candidate))
+    }
+    return(arrow::read_parquet(candidate) |> as.data.table())
+  }
+  log_info("Missing dashboard input: %s", path)
+  NULL
 }
 
 load_dd <- function(path) {
@@ -335,10 +356,10 @@ main <- function() {
   if (!dir.exists(root)) root <- getwd()
 
   paths <- cfg$paths %||% list()
-  redcap_path   <- paths$deidentified$redcap_latest   %||% file.path(root, "data/processed/redcap_latest.parquet")
-  features_path <- paths$processed$feature_matrix      %||% file.path(root, "data/processed/feature_matrix.parquet")
-  dd_path       <- paths$data_dictionary               %||% file.path(root, "data/data_dictionary/NANO_master_data_dictionary.csv")
-  metrics_path  <- paths$models$metrics                %||% file.path(root, "models/_metrics.json")
+  redcap_path   <- pick_configured_path(file.path(root, "data/processed/redcap_latest.parquet"), paths$processed$redcap_latest, paths$deidentified$redcap_latest)
+  features_path <- pick_configured_path(file.path(root, "data/processed/feature_matrix.parquet"), paths$processed$feature_matrix)
+  dd_path       <- pick_configured_path(file.path(root, "data/data_dictionary/NANO_master_data_dictionary.csv"), paths$data_dictionary)
+  metrics_path  <- pick_configured_path(file.path(root, "models/_metrics.json"), paths$models$metrics)
 
   redcap   <- load_parquet_safe(redcap_path)
   features <- load_parquet_safe(features_path)

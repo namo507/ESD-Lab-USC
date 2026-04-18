@@ -13,9 +13,12 @@ indifferent to which one was used:
 | `dashboard/pipelines/generate_synthetic_dashboard_data.py` | Python | Demos, onboarding, smoke tests. No real data needed. |
 | `dashboard/pipelines/build_dashboard_data.py`             | Python | Nightly cron on the analysis server. |
 | `dashboard/pipelines/build_dashboard_data.R`              | R      | Ad-hoc rebuilds from R (analysts working in RStudio). |
+| `dashboard/pipelines/build_readings_index.py`             | Python | Re-index the `ESD Lab readings/` library. |
 
-Each writes `dashboard/data/dashboard_data.json`. The dashboard
-(`dashboard/index.html`) reloads it on every page refresh.
+The first three write `dashboard/data/dashboard_data.json`. The readings
+pipeline writes `dashboard/data/readings_data.json`. The dashboard
+(`dashboard/index.html`) reloads them automatically in live mode and on
+page refresh in static mode.
 
 ## 2. Nightly schedule
 
@@ -28,13 +31,33 @@ Each writes `dashboard/data/dashboard_data.json`. The dashboard
 The cron line lives in `scripts/crontab.nano` (checked in). Update
 that file to change the schedule; the deploy script applies it.
 
-## 3. Running it manually
+The readings index is not tied to the REDCap cron. In live mode, the
+dashboard runtime watches `ESD Lab readings/` and regenerates the index
+whenever a new file lands in that folder.
+
+## 3. Live Docker mode
+
+```bash
+docker compose up --build dashboard
+```
+
+What that does:
+
+1. Serves the repository root at `http://localhost:8080/`.
+2. Redirects `/` to `/dashboard/`.
+3. Polls dashboard inputs and `ESD Lab readings/` every 20 seconds.
+4. Rebuilds `dashboard_data.json`, `readings_data.json`, and `runtime_status.json` when an input changes.
+
+## 4. Running it manually
 
 ```bash
 # Inside the project root, VPN connected, .env configured
 
 # (A) Smoke test (no REDCap access needed)
 python dashboard/pipelines/generate_synthetic_dashboard_data.py
+
+# (A2) Re-index the readings library
+python dashboard/pipelines/build_readings_index.py
 
 # (B) Full run against the real secure mount
 python dashboard/pipelines/build_dashboard_data.py
@@ -46,9 +69,10 @@ python dashboard/pipelines/build_dashboard_data.py --fallback-synthetic
 Rscript dashboard/pipelines/build_dashboard_data.R
 ```
 
-After any of these, open `dashboard/index.html` in your browser.
+After any of these, open `dashboard/index.html` in your browser, or run
+the Docker service for automatic refreshes.
 
-## 4. Inputs
+## 5. Inputs
 
 | Input | Default path | Required? | What if missing |
 |-------|--------------|-----------|-----------------|
@@ -56,15 +80,18 @@ After any of these, open `dashboard/index.html` in your browser.
 | Feature matrix | `${NANO_DATA_ROOT}/processed/feature_matrix.parquet` | Yes (prod) | Pipeline errors; use `--fallback-synthetic` |
 | Data dictionary | `data/data_dictionary/NANO_master_data_dictionary.csv` | Recommended | PHI scrub is skipped (unsafe) |
 | Model metrics  | `${NANO_DATA_ROOT}/models/_metrics.json`             | Optional | `ml_performance` is empty; the ML tab says "no model run yet" |
+| ESD Lab readings | `ESD Lab readings/` | Optional | Reading library renders empty state |
 
-## 5. Outputs
+## 6. Outputs
 
 | File | Schema | Who reads it |
 |------|--------|--------------|
 | `dashboard/data/dashboard_data.json` | Documented in `dashboard/context_skill/references/dashboard_schema.md` | `dashboard/index.html` (Chart.js) |
+| `dashboard/data/readings_data.json` | Reading metadata summary + searchable cards | `dashboard/index.html` |
+| `dashboard/data/runtime_status.json` | Last rebuild state + watcher health | Live dashboard runtime + operators |
 | `logs/dashboard_build_<date>.log`    | plain text | Research Programmer when debugging |
 
-## 6. Safety & privacy
+## 7. Safety & privacy
 
 * All columns flagged `phi_flag=true` in the data dictionary are
   stripped **before** any aggregation.
@@ -75,7 +102,10 @@ After any of these, open `dashboard/index.html` in your browser.
   leaves the frame untouched. In that state you should re-run with
   `--fallback-synthetic` until the dictionary is restored.
 
-## 7. Failure playbook
+The readings index only uses committed filenames and file metadata. It
+does not extract PDF contents or transmit documents anywhere.
+
+## 8. Failure playbook
 
 | Symptom | Probable cause | Fix |
 |---------|----------------|-----|
@@ -83,9 +113,10 @@ After any of these, open `dashboard/index.html` in your browser.
 | Pipeline runs but dashboard shows stale numbers | Browser cache | Hard-refresh (`Cmd+Shift+R`) |
 | Trajectories chart is empty | `feature_matrix.parquet` missing `month` column | Re-run feature engineering |
 | ML tab is empty | `_metrics.json` missing or older than 30 days | Re-run `src/models/train_all.py` |
+| Reading library did not update | `build_readings_index.py` did not run or file extension is unsupported | Re-run the readings index or check the live service logs |
 | Nightly cron failed silently | Check `logs/dashboard_build_<date>.log` | If missing, check cron mail or `scripts/redcap_daily_sync.py` |
 
-## 8. Adding a new section to the dashboard
+## 9. Adding a new section to the dashboard
 
 1. Add the data to `build_payload` (both Python and R) so the JSON gets
    a new key.
@@ -97,7 +128,7 @@ After any of these, open `dashboard/index.html` in your browser.
 5. Run `python dashboard/context_skill/extract_context.py --check` to
    make sure the three stay in sync.
 
-## 9. Rolling back
+## 10. Rolling back
 
 Because the output JSON is self-contained, rolling back is trivial:
 

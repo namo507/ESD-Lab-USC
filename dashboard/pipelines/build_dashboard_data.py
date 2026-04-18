@@ -52,7 +52,9 @@ import argparse
 import hashlib
 import json
 import logging
+import math
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -65,6 +67,11 @@ import yaml
 # ─── Project imports (best-effort so script runs standalone) ────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
+UNRESOLVED_TEMPLATE_PATTERN = re.compile(r"\$\{[^}]+\}")
+DEFAULT_REDCAP_PATH = PROJECT_ROOT / "data" / "processed" / "redcap_latest.parquet"
+DEFAULT_FEATURE_PATH = PROJECT_ROOT / "data" / "processed" / "feature_matrix.parquet"
+DEFAULT_DD_PATH = PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv"
+DEFAULT_METRICS_PATH = PROJECT_ROOT / "models" / "_metrics.json"
 
 try:
     from src.utils.logging_utils import get_pipeline_logger
@@ -83,7 +90,11 @@ def load_config(config_path: Path) -> dict:
     raw = config_path.read_text()
     for key, val in os.environ.items():
         raw = raw.replace(f"${{{key}}}", val)
-    return yaml.safe_load(raw)
+    return yaml.safe_load(raw) or {}
+
+
+def _has_unresolved_template(value: str) -> bool:
+    return bool(UNRESOLVED_TEMPLATE_PATTERN.search(value))
 
 
 def _resolve_paths(cfg: dict) -> dict[str, Path]:
@@ -92,11 +103,91 @@ def _resolve_paths(cfg: dict) -> dict[str, Path]:
     flat = cfg.get("paths", cfg)
     for k, v in flat.items():
         if isinstance(v, str):
+            if _has_unresolved_template(v):
+                continue
             out[k] = Path(v).expanduser()
         elif isinstance(v, dict):
             for kk, vv in v.items():
+                if isinstance(vv, str) and _has_unresolved_template(vv):
+                    continue
                 out[f"{k}.{kk}"] = Path(vv).expanduser()
     return out
+
+
+def _pick_configured_path(paths: dict[str, Path], keys: tuple[str, ...], default: Path) -> Path:
+    for key in keys:
+        configured = paths.get(key)
+        if configured is not None and not _has_unresolved_template(str(configured)):
+            return configured
+    return default
+
+
+def _tabular_candidates(path: Path) -> list[Path]:
+    candidates = [path]
+    if path.suffix.lower() == ".parquet":
+        candidates.append(path.with_suffix(".csv"))
+    elif path.suffix.lower() == ".csv":
+        candidates.append(path.with_suffix(".parquet"))
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = str(candidate)
+        if key not in seen:
+            unique.append(candidate)
+            seen.add(key)
+    return unique
+
+
+def _read_tabular_frame(path: Path, label: str) -> Optional[pd.DataFrame]:
+    for candidate in _tabular_candidates(path):
+        if not candidate.exists():
+            continue
+        if candidate.suffix.lower() == ".parquet":
+            df = pd.read_parquet(candidate)
+        elif candidate.suffix.lower() == ".csv":
+            df = pd.read_csv(candidate)
+        else:
+            continue
+        logger.info("%s rows=%d cols=%d (%s)", label, *df.shape, candidate)
+        return df
+    logger.warning("%s not found: %s", label, path)
+    return None
+
+
+def _infer_data_source(redcap: Optional[pd.DataFrame]) -> str:
+    if redcap is not None and "dashboard_input_source" in redcap.columns:
+        values = redcap["dashboard_input_source"].dropna().astype(str)
+        if not values.empty:
+            return values.iloc[0]
+    return "redcap_live + feature_matrix"
+
+
+def _make_json_safe(value: Any) -> Any:
+    if value is pd.NA:
+        return None
+    if isinstance(value, dict):
+        return {key: _make_json_safe(inner) for key, inner in value.items()}
+    if isinstance(value, list):
+        return [_make_json_safe(inner) for inner in value]
+    if isinstance(value, tuple):
+        return [_make_json_safe(inner) for inner in value]
+    if isinstance(value, np.generic):
+        return _make_json_safe(value.item())
+    if isinstance(value, float):
+        return None if not math.isfinite(value) else value
+    return value
+
+
+def _atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
+    """Write JSON atomically so the live dashboard never reads partial output."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    safe_payload = _make_json_safe(payload)
+    temp_path.write_text(
+        json.dumps(safe_payload, indent=2, default=str, allow_nan=False),
+        encoding="utf-8",
+    )
+    temp_path.replace(output_path)
 
 
 # ─── ID anonymization ───────────────────────────────────────────────────────
@@ -109,22 +200,12 @@ def _surrogate_id(real_id: str, salt: str) -> str:
 # ─── Loaders ────────────────────────────────────────────────────────────────
 def load_redcap_mirror(redcap_parquet: Path) -> Optional[pd.DataFrame]:
     """Load the REDCap nightly mirror (longitudinal parquet)."""
-    if not redcap_parquet.exists():
-        logger.warning("REDCap mirror not found: %s", redcap_parquet)
-        return None
-    df = pd.read_parquet(redcap_parquet)
-    logger.info("REDCap mirror rows=%d cols=%d", *df.shape)
-    return df
+    return _read_tabular_frame(redcap_parquet, "REDCap mirror")
 
 
 def load_feature_matrix(features_parquet: Path) -> Optional[pd.DataFrame]:
     """Load the wide feature matrix (one row per participant × event)."""
-    if not features_parquet.exists():
-        logger.warning("Feature matrix not found: %s", features_parquet)
-        return None
-    df = pd.read_parquet(features_parquet)
-    logger.info("Feature matrix rows=%d cols=%d", *df.shape)
-    return df
+    return _read_tabular_frame(features_parquet, "Feature matrix")
 
 
 def load_data_dictionary(dd_csv: Path) -> Optional[pd.DataFrame]:
@@ -132,7 +213,11 @@ def load_data_dictionary(dd_csv: Path) -> Optional[pd.DataFrame]:
     if not dd_csv.exists():
         logger.warning("Data dictionary not found: %s", dd_csv)
         return None
-    return pd.read_csv(dd_csv)
+    try:
+        return pd.read_csv(dd_csv)
+    except Exception as exc:
+        logger.warning("Data dictionary could not be parsed: %s", exc)
+        return None
 
 
 def load_model_metrics(metrics_json: Path) -> Optional[dict]:
@@ -314,9 +399,9 @@ def build_trajectories(features: pd.DataFrame) -> dict:
             for m in months_int:
                 subset = gf[gf["month"] == m][col].dropna()
                 if len(subset) < 3:
-                    means_list.append(float("nan"))
-                    ci_low.append(float("nan"))
-                    ci_high.append(float("nan"))
+                    means_list.append(None)
+                    ci_low.append(None)
+                    ci_high.append(None)
                     continue
                 mu = float(subset.mean())
                 se = float(subset.std(ddof=1) / np.sqrt(len(subset)))
@@ -388,6 +473,7 @@ def build_payload(
     dd: Optional[pd.DataFrame],
     metrics: Optional[dict],
     salt: str = "nano_default_salt",
+    data_source: str = "redcap_live + feature_matrix",
 ) -> dict:
     """Assemble the full dashboard payload (same schema as the synthetic gen)."""
     if redcap is None or features is None:
@@ -397,10 +483,10 @@ def build_payload(
 
     redcap = drop_phi(redcap, dd)
 
-    return {
+    payload = {
         "meta": {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
-            "data_source": "redcap_live + feature_matrix",
+            "data_source": data_source,
             "pipeline_commit": os.getenv("GIT_COMMIT", "unknown"),
             "study": {
                 "name": "NANO Study",
@@ -420,6 +506,7 @@ def build_payload(
         "redcap_audit":     build_redcap_audit(redcap),
         "cohort_table":     build_cohort_table(redcap, salt),
     }
+    return _make_json_safe(payload)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -437,6 +524,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--fallback-synthetic", action="store_true",
         help="If inputs are missing, fall back to the synthetic generator.",
     )
+    parser.add_argument(
+        "--bootstrap-demo-inputs",
+        action="store_true",
+        help="Materialize repo-local demo REDCap/features/metrics inputs when secure inputs are unavailable.",
+    )
     parser.add_argument("--salt", default=os.getenv("NANO_ID_SALT", "nano_default_salt"))
     args = parser.parse_args(argv)
 
@@ -447,23 +539,32 @@ def main(argv: Optional[list[str]] = None) -> int:
         cfg = {}
     paths = _resolve_paths(cfg)
 
-    redcap_path = paths.get("deidentified.redcap_latest",
-                             PROJECT_ROOT / "data" / "processed" / "redcap_latest.parquet")
-    features_path = paths.get("processed.feature_matrix",
-                               PROJECT_ROOT / "data" / "processed" / "feature_matrix.parquet")
-    dd_path = paths.get("data_dictionary",
-                        PROJECT_ROOT / "data" / "data_dictionary"
-                        / "NANO_master_data_dictionary.csv")
-    metrics_path = paths.get("models.metrics",
-                              PROJECT_ROOT / "models" / "_metrics.json")
+    redcap_path = _pick_configured_path(paths, ("processed.redcap_latest", "deidentified.redcap_latest"), DEFAULT_REDCAP_PATH)
+    features_path = _pick_configured_path(paths, ("processed.feature_matrix",), DEFAULT_FEATURE_PATH)
+    dd_path = _pick_configured_path(paths, ("data_dictionary",), DEFAULT_DD_PATH)
+    metrics_path = _pick_configured_path(paths, ("models.metrics",), DEFAULT_METRICS_PATH)
+
+    if args.bootstrap_demo_inputs:
+        redcap_missing = all(not candidate.exists() for candidate in _tabular_candidates(redcap_path))
+        feature_missing = all(not candidate.exists() for candidate in _tabular_candidates(features_path))
+        metrics_missing = not metrics_path.exists()
+        if redcap_missing or feature_missing or metrics_missing:
+            from dashboard.pipelines import bootstrap_dashboard_demo_inputs as demo_inputs
+
+            demo_paths = demo_inputs.materialize_demo_inputs()
+            redcap_path = demo_paths["redcap"]
+            features_path = demo_paths["feature_matrix"]
+            metrics_path = demo_paths["metrics"]
+            logger.info("Bootstrapped repo-local dashboard inputs for local development.")
 
     redcap = load_redcap_mirror(redcap_path)
     features = load_feature_matrix(features_path)
     dd = load_data_dictionary(dd_path)
     metrics = load_model_metrics(metrics_path)
+    data_source = _infer_data_source(redcap)
 
     try:
-        payload = build_payload(redcap, features, dd, metrics, salt=args.salt)
+        payload = build_payload(redcap, features, dd, metrics, salt=args.salt, data_source=data_source)
     except FileNotFoundError as exc:
         if args.fallback_synthetic:
             logger.warning("%s — falling back to synthetic generator.", exc)
@@ -473,8 +574,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             logger.error("%s  (pass --fallback-synthetic to emit demo data)", exc)
             return 2
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2, default=str))
+    _atomic_write_json(args.output, payload)
     logger.info("✓ Wrote dashboard payload → %s", args.output)
     logger.info("  data_source: %s", payload["meta"]["data_source"])
     logger.info("  keys: %s", list(payload.keys()))

@@ -1,0 +1,14 @@
+.git
+.github
+.mypy_cache
+.pytest_cache
+.venv
+**/__pycache__
+**/*.pyc
+archive/
+data/deidentified/
+data/interim/
+data/processed/
+data/raw/
+logs/
+notebooks/

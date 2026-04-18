@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -86,6 +86,27 @@ run-pipeline:  ## Run full analysis pipeline end-to-end
 	@echo "Starting full NANO Study pipeline..."
 	bash scripts/run_full_pipeline.sh
 	@echo "✓ Full pipeline complete. Check logs/ for details."
+
+dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
+	$(PYTHON) dashboard/pipelines/build_readings_index.py
+	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+	@echo "✓ Dashboard JSON refreshed."
+
+dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
+	$(PYTHON) dashboard/pipelines/bootstrap_dashboard_demo_inputs.py
+	@echo "✓ Repo-local dashboard demo inputs refreshed."
+
+dashboard-build:  ## Build the live dashboard Docker image
+	docker compose build dashboard
+
+dashboard-up:  ## Start the live dashboard at http://localhost:8080/dashboard/
+	docker compose up --build dashboard
+
+dashboard-down:  ## Stop the live dashboard container
+	docker compose down
+
+dashboard-logs:  ## Tail live dashboard logs
+	docker compose logs -f dashboard
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
 

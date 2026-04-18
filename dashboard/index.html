@@ -5,161 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NANO Study · Research Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
-<style>
-:root {
-  --bg: #f6f6f4;
-  --card: #ffffff;
-  --ink: #1a1a1a;
-  --ink-soft: #555;
-  --ink-mute: #888;
-  --border: #e6e4df;
-  --accent: #73000a;
-  --accent-soft: #a23a44;
-  --asib: #c44e52;
-  --pt:   #4c72b0;
-  --td:   #55a868;
-  --ok:   #2f7a3a;
-  --warn: #a87e00;
-  --bad:  #a8321a;
-  --radius: 10px;
-  --gap: 16px;
-  --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.05);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; }
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-
-.app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-
-/* ─── Sidebar ─── */
-.sidebar {
-  background: #1a1a1a; color: #e9e6df;
-  padding: 24px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
-}
-.brand { display: flex; align-items: baseline; gap: 6px; margin-bottom: 2px; }
-.brand-mark { color: var(--accent-soft); font-weight: 800; font-size: 20px; letter-spacing: -0.5px; }
-.brand-name { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; }
-.brand-sub  { font-size: 11px; color: #9a938a; margin-bottom: 28px; }
-.nav { display: flex; flex-direction: column; gap: 2px; }
-.nav a {
-  color: #d6d1c8; padding: 9px 12px; border-radius: 6px; font-size: 13.5px;
-  display: flex; align-items: center; gap: 10px; transition: background 0.15s;
-}
-.nav a:hover { background: #2a2a2a; color: #fff; text-decoration: none; }
-.nav a.active { background: var(--accent); color: #fff; }
-.nav .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
-.nav .section-label { color: #7b7369; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 18px 12px 6px; }
-.side-meta { position: absolute; bottom: 16px; left: 16px; right: 16px; font-size: 11px; color: #7b7369; line-height: 1.6; }
-
-/* ─── Main ─── */
-.main { padding: 24px 32px 64px; max-width: 1400px; }
-.topbar {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
-}
-.page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-.page-sub  { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
-.topbar-right { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--ink-mute); }
-.pulse { display: inline-block; width: 8px; height: 8px; background: var(--ok); border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite; }
-@keyframes pulse { 0%{ box-shadow: 0 0 0 0 rgba(47,122,58,0.5); } 70%{ box-shadow: 0 0 0 8px rgba(47,122,58,0); } 100%{ box-shadow: 0 0 0 0 rgba(47,122,58,0); } }
-
-.section { margin-top: 28px; }
-.section h2 {
-  font-size: 13px; text-transform: uppercase; letter-spacing: 1.3px;
-  color: var(--ink-soft); font-weight: 600; margin-bottom: 12px;
-  display: flex; align-items: center; gap: 10px;
-}
-.section h2 .num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-
-.hide { display: none !important; }
-
-/* ─── Cards / KPIs ─── */
-.grid { display: grid; gap: var(--gap); }
-.grid.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.grid.two   { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
-.grid.three { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-
-.card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px 18px; box-shadow: var(--shadow); position: relative;
-}
-.card h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
-.card .hint { position: absolute; top: 14px; right: 14px; color: var(--ink-mute); cursor: help; font-size: 13px; width: 18px; height: 18px; border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-.card .hint:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
-.hint-popup {
-  position: absolute; top: 36px; right: 10px; z-index: 10; width: 280px;
-  background: #1a1a1a; color: #f2efe8; padding: 12px 14px; border-radius: 8px;
-  font-size: 12px; line-height: 1.55; opacity: 0; pointer-events: none; transition: opacity 0.15s;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.2);
-}
-.hint-popup::before {
-  content: ""; position: absolute; top: -6px; right: 14px; width: 10px; height: 10px;
-  background: #1a1a1a; transform: rotate(45deg);
-}
-.card .hint:hover + .hint-popup { opacity: 1; }
-.hint-popup b { color: var(--accent-soft); }
-
-.kpi .label { font-size: 11px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.8px; }
-.kpi .value { font-size: 26px; font-weight: 700; margin-top: 4px; letter-spacing: -0.5px; }
-.kpi .delta { font-size: 12px; margin-top: 2px; }
-.kpi .delta.ok { color: var(--ok); }
-.kpi .delta.warn { color: var(--warn); }
-.kpi .delta.bad { color: var(--bad); }
-
-.chart-wrap { position: relative; height: 260px; }
-.chart-wrap.tall { height: 320px; }
-
-/* ─── Pipeline diagram ─── */
-.pipeline { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); overflow-x: auto; }
-.pipeline svg { width: 100%; min-width: 860px; height: 360px; display: block; }
-.pl-node { cursor: pointer; transition: filter 0.15s; }
-.pl-node:hover { filter: brightness(1.1); }
-.pl-node text { font-family: inherit; font-size: 12px; fill: #fff; font-weight: 500; pointer-events: none; }
-.pl-stage-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; fill: var(--ink-mute); font-weight: 600; }
-.pl-explainer { margin-top: 12px; padding: 14px 16px; background: #f8f5ee; border-left: 3px solid var(--accent); border-radius: 4px; font-size: 13px; line-height: 1.65; }
-.pl-explainer b { color: var(--accent); }
-.pl-explainer .code { font-family: "SF Mono", Menlo, Monaco, monospace; background: #1a1a1a; color: #f2efe8; padding: 1px 6px; border-radius: 3px; font-size: 11.5px; }
-
-/* ─── Tables ─── */
-table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.data th { text-align: left; padding: 9px 12px; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); cursor: pointer; user-select: none; background: #fafaf7; }
-table.data th:hover { background: #f2efe8; color: var(--ink); }
-table.data td { padding: 9px 12px; border-bottom: 1px solid #f0eee8; }
-table.data tr:hover td { background: #fafaf7; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-.badge.ok   { background: #e2f0e5; color: var(--ok); }
-.badge.warn { background: #fbf3dd; color: var(--warn); }
-.badge.bad  { background: #fbe0db; color: var(--bad); }
-.badge.asib { background: #fbe0db; color: var(--asib); }
-.badge.pt   { background: #e2ecf5; color: var(--pt); }
-.badge.td   { background: #e2f0e5; color: var(--td); }
-
-/* ─── Filters ─── */
-.filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.filter { display: flex; align-items: center; gap: 6px; }
-.filter label { font-size: 11px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.5px; }
-.filter select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 13px; color: var(--ink); cursor: pointer; }
-
-/* ─── Footer ─── */
-footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--ink-mute); font-size: 11.5px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-
-/* ─── Links / deep links ─── */
-.deeplinks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.deeplinks a { font-size: 11.5px; background: #f2efe8; padding: 4px 9px; border-radius: 14px; color: var(--accent); border: 1px solid var(--border); }
-.deeplinks a:hover { background: var(--accent); color: #fff; text-decoration: none; border-color: var(--accent); }
-
-/* ─── Responsive ─── */
-@media (max-width: 980px) {
-  .app { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-  .brand-sub, .side-meta { display: none; }
-  .nav { flex-direction: row; flex-wrap: wrap; }
-  .nav .section-label { display: none; }
-  .main { padding: 20px; }
-}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app">
@@ -179,6 +28,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
       <a href="#ml" data-target="ml"><span class="dot"></span>ML Performance</a>
       <a href="#trajectories" data-target="trajectories"><span class="dot"></span>Trajectories</a>
       <a href="#cohort" data-target="cohort"><span class="dot"></span>Cohort Table</a>
+      <a href="#readings" data-target="readings"><span class="dot"></span>Reading Library</a>
 
       <span class="section-label">Repository</span>
       <a href="../README.md" target="_blank"><span class="dot"></span>README</a>
@@ -192,7 +42,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
   </aside>
 
   <!-- ─── Main ─── -->
-  <main class="main">
+  <main class="main" id="main">
     <!-- Topbar -->
     <div class="topbar">
       <div>
@@ -200,11 +50,40 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
         <div class="page-sub" id="page-sub">R01 longitudinal cohort · VPT infants from NICU admission through 36 months</div>
       </div>
       <div class="topbar-right">
-        <span><span class="pulse"></span>Live</span>
-        <span>Updated <span id="updated-at">—</span></span>
-        <span id="data-source-chip">synthetic_demo</span>
+        <span class="status-pill live"><span class="pulse"></span>Live monitor</span>
+        <span class="status-pill" id="sync-state">Booting</span>
+        <span class="status-pill soft">Updated <span id="updated-at">—</span></span>
+        <span class="status-pill soft">Refresh in <span id="next-refresh">—</span></span>
+        <span id="data-source-chip" class="status-pill soft">synthetic_demo</span>
       </div>
     </div>
+
+    <div id="error-banner" class="error-banner hide"></div>
+
+    <section class="sync-banner" id="sync-banner">
+      <div class="sync-copy">
+        <span class="eyebrow">Continuous dashboard mode</span>
+        <h1>Operational metrics, model visuals, and lab readings in one continuously refreshed surface.</h1>
+        <p id="sync-notes">Watching dashboard data inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.</p>
+      </div>
+      <div class="sync-cards">
+        <div class="sync-card">
+          <span class="sync-label">Build cycles</span>
+          <strong id="runtime-build-count">0</strong>
+          <span id="runtime-build-status">Waiting for first sync</span>
+        </div>
+        <div class="sync-card">
+          <span class="sync-label">Indexed readings</span>
+          <strong id="runtime-readings-count">0</strong>
+          <span id="runtime-readings-latest">No readings indexed yet</span>
+        </div>
+        <div class="sync-card">
+          <span class="sync-label">Auto refresh cadence</span>
+          <strong id="runtime-refresh-interval">20s</strong>
+          <span id="runtime-source">Standby</span>
+        </div>
+      </div>
+    </section>
 
     <!-- ─── Section: Overview ─── -->
     <section id="overview">
@@ -273,10 +152,10 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
     </section>
 
     <!-- ─── Section: Pipeline ─── -->
-    <section id="pipeline" class="hide">
+    <section id="pipeline">
       <div class="section">
         <h2><span class="num">3</span>Data Flow Pipeline</h2>
-        <p class="page-sub" style="margin-bottom: 12px;">
+        <p class="page-sub section-subhead">
           Click any stage for a plain-language explanation of what it does. Each stage maps to a folder in this repo.
         </p>
         <div class="pipeline">
@@ -291,22 +170,22 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
             <g class="pl-node" data-key="hero">
               <rect x="30" y="50" width="150" height="46" rx="6" fill="#c44e52"/>
               <text x="105" y="72" text-anchor="middle">HeRO NICU Monitor</text>
-              <text x="105" y="86" text-anchor="middle" style="font-size:10px; opacity:0.9">ECG @ 1024 Hz</text>
+              <text x="105" y="86" text-anchor="middle" class="pl-meta">ECG @ 1024 Hz</text>
             </g>
             <g class="pl-node" data-key="actiheart">
               <rect x="30" y="110" width="150" height="46" rx="6" fill="#c44e52"/>
               <text x="105" y="132" text-anchor="middle">Actiheart-5</text>
-              <text x="105" y="146" text-anchor="middle" style="font-size:10px; opacity:0.9">R-R intervals</text>
+              <text x="105" y="146" text-anchor="middle" class="pl-meta">R-R intervals</text>
             </g>
             <g class="pl-node" data-key="squirrel">
               <rect x="30" y="170" width="150" height="46" rx="6" fill="#c44e52"/>
               <text x="105" y="192" text-anchor="middle">Squirrel Datalogger</text>
-              <text x="105" y="206" text-anchor="middle" style="font-size:10px; opacity:0.9">Skin Temp · 1-min</text>
+              <text x="105" y="206" text-anchor="middle" class="pl-meta">Skin Temp · 1-min</text>
             </g>
             <g class="pl-node" data-key="datavyu">
               <rect x="30" y="230" width="150" height="46" rx="6" fill="#c44e52"/>
               <text x="105" y="252" text-anchor="middle">DataVyu Coding</text>
-              <text x="105" y="266" text-anchor="middle" style="font-size:10px; opacity:0.9">Behavioral videos</text>
+              <text x="105" y="266" text-anchor="middle" class="pl-meta">Behavioral videos</text>
             </g>
 
             <!-- Arrows to secure -->
@@ -318,16 +197,16 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
             <!-- SECURE node -->
             <g class="pl-node" data-key="secure">
               <rect x="265" y="120" width="150" height="70" rx="8" fill="#1a1a1a"/>
-              <text x="340" y="147" text-anchor="middle" style="font-weight:600">USC Secure Server</text>
-              <text x="340" y="162" text-anchor="middle" style="font-size:10px; opacity:0.85">HIPAA-encrypted</text>
-              <text x="340" y="176" text-anchor="middle" style="font-size:10px; opacity:0.85">${NANO_DATA_ROOT}</text>
+              <text x="340" y="147" text-anchor="middle" class="pl-strong">USC Secure Server</text>
+              <text x="340" y="162" text-anchor="middle" class="pl-meta muted">HIPAA-encrypted</text>
+              <text x="340" y="176" text-anchor="middle" class="pl-meta muted">${NANO_DATA_ROOT}</text>
             </g>
 
             <!-- REDCap node -->
             <g class="pl-node" data-key="redcap">
               <rect x="265" y="210" width="150" height="46" rx="6" fill="#4c72b0"/>
               <text x="340" y="232" text-anchor="middle">REDCap Database</text>
-              <text x="340" y="246" text-anchor="middle" style="font-size:10px; opacity:0.9">Demographics · Scores</text>
+              <text x="340" y="246" text-anchor="middle" class="pl-meta">Demographics · Scores</text>
             </g>
             <path d="M415 155 L 475 155" stroke="#888" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
             <path d="M415 232 C 450 232 450 170 475 170" stroke="#888" stroke-width="1.5" fill="none"/>
@@ -365,17 +244,17 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
             <g class="pl-node" data-key="manuscripts">
               <rect x="730" y="60" width="150" height="56" rx="6" fill="#937860"/>
               <text x="805" y="82" text-anchor="middle">Manuscripts</text>
-              <text x="805" y="100" text-anchor="middle" style="font-size:10px; opacity:0.9">reports/manuscripts</text>
+              <text x="805" y="100" text-anchor="middle" class="pl-meta">reports/manuscripts</text>
             </g>
             <g class="pl-node" data-key="dashboard">
               <rect x="730" y="130" width="150" height="56" rx="6" fill="#937860"/>
               <text x="805" y="152" text-anchor="middle">This Dashboard</text>
-              <text x="805" y="170" text-anchor="middle" style="font-size:10px; opacity:0.9">JSON payload</text>
+              <text x="805" y="170" text-anchor="middle" class="pl-meta">JSON payload</text>
             </g>
             <g class="pl-node" data-key="deident">
               <rect x="730" y="200" width="150" height="56" rx="6" fill="#937860"/>
               <text x="805" y="222" text-anchor="middle">De-identified Export</text>
-              <text x="805" y="240" text-anchor="middle" style="font-size:10px; opacity:0.9">NDAR / SRA submission</text>
+              <text x="805" y="240" text-anchor="middle" class="pl-meta">NDAR / SRA submission</text>
             </g>
 
             <defs>
@@ -392,7 +271,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
     </section>
 
     <!-- ─── Section: Data Quality ─── -->
-    <section id="quality" class="hide">
+    <section id="quality">
       <div class="section">
         <h2><span class="num">4</span>Data Quality &amp; REDCap Audit</h2>
         <div class="grid kpis">
@@ -404,7 +283,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           <div class="card kpi"><div class="label">Pending PI review</div><div class="value" id="dq-pi">—</div><div class="delta">awaiting sign-off</div></div>
         </div>
 
-        <div class="grid two" style="margin-top: 16px;">
+        <div class="grid two stack-top">
           <div class="card">
             <span class="hint">i</span>
             <div class="hint-popup"><b>What:</b> % missingness per REDCap instrument. Status is MCAR/MAR/MNAR per Little-Rubin heuristics.<br><br><b>Action:</b> Instruments flagged High feed the MICE m=20 imputation pipeline.</div>
@@ -423,7 +302,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           </div>
         </div>
 
-        <div class="card" style="margin-top: 16px;">
+        <div class="card table-card stack-top">
           <span class="hint">i</span>
           <div class="hint-popup">Last 8 data-team actions (synthetic for demo). In production this reads the audit log at <code class="code">logs/data_access_audit.log</code>.</div>
           <h3>Recent audit activity</h3>
@@ -436,10 +315,10 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
     </section>
 
     <!-- ─── Section: ML Performance ─── -->
-    <section id="ml" class="hide">
+    <section id="ml">
       <div class="section">
         <h2><span class="num">5</span>Machine Learning Performance</h2>
-        <p class="page-sub" style="margin-bottom: 14px;">Predicting ADOS-2 positive screen at 12 months from NICU + infant biomarkers. Stratified 5-fold CV, 2000 bootstrap samples for CI.</p>
+        <p class="page-sub section-subhead-large">Predicting ADOS-2 positive screen at 12 months from NICU + infant biomarkers. Stratified 5-fold CV, 2000 bootstrap samples for CI.</p>
 
         <div class="grid two">
           <div class="card">
@@ -456,14 +335,14 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           </div>
         </div>
 
-        <div class="grid two" style="margin-top: 16px;">
+        <div class="grid two stack-top">
           <div class="card">
             <span class="hint">i</span>
             <div class="hint-popup">AUROC with 95% bootstrap CI. Error bars show ± 1.96·SD.</div>
             <h3>AUROC by model (95% CI)</h3>
             <div class="chart-wrap"><canvas id="chart-auroc"></canvas></div>
           </div>
-          <div class="card">
+          <div class="card table-card">
             <span class="hint">i</span>
             <div class="hint-popup"><b>Subgroup sensitivity:</b> re-fit best model within each subgroup (GA bin, sex). Stable results across subgroups → generalizable.</div>
             <h3>Subgroup sensitivity</h3>
@@ -474,7 +353,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           </div>
         </div>
 
-        <div class="card" style="margin-top: 16px;">
+        <div class="card table-card stack-top">
           <span class="hint">i</span>
           <div class="hint-popup">Full metric summary, sortable. Click column headers to sort.</div>
           <h3>Full model metrics</h3>
@@ -493,13 +372,13 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
     </section>
 
     <!-- ─── Section: Trajectories ─── -->
-    <section id="trajectories" class="hide">
+    <section id="trajectories">
       <div class="section">
         <h2><span class="num">6</span>Participant Trajectories</h2>
-        <div class="filters" style="margin-bottom: 12px;">
+        <div class="filters filters-spaced">
           <div class="filter">
             <label>Biomarker</label>
-            <select id="filter-biomarker">
+            <select id="filter-biomarker" title="Select biomarker trajectory">
               <option value="RSA">RSA (parasympathetic tone)</option>
               <option value="RMSSD">RMSSD</option>
               <option value="SDNN">SDNN</option>
@@ -508,7 +387,7 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           </div>
           <div class="filter">
             <label>Show CI</label>
-            <select id="filter-ci"><option value="1">Yes</option><option value="0">No</option></select>
+            <select id="filter-ci" title="Toggle confidence interval bands"><option value="1">Yes</option><option value="0">No</option></select>
           </div>
         </div>
 
@@ -524,14 +403,14 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
           </div>
         </div>
 
-        <div class="grid two" style="margin-top: 16px;">
+        <div class="grid two stack-top">
           <div class="card">
             <span class="hint">i</span>
             <div class="hint-popup">Visit completion rate per event, stratified by group. Drops at 24m reflect the questionnaire-only protocol.</div>
             <h3>Visit completion by group</h3>
             <div class="chart-wrap"><canvas id="chart-completion"></canvas></div>
           </div>
-          <div class="card">
+          <div class="card table-card">
             <span class="hint">i</span>
             <div class="hint-popup">Per-group intercepts and linear slopes estimated from the lme4 random-intercept-slope model.</div>
             <h3>Group intercepts &amp; slopes</h3>
@@ -545,21 +424,21 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
     </section>
 
     <!-- ─── Section: Cohort ─── -->
-    <section id="cohort" class="hide">
+    <section id="cohort">
       <div class="section">
         <h2><span class="num">7</span>Cohort Snapshot</h2>
-        <div class="filters" style="margin-bottom: 12px;">
+        <div class="filters filters-spaced">
           <div class="filter">
             <label>Group</label>
-            <select id="filter-group"><option value="all">All groups</option><option>ASIB</option><option>PT</option><option>TD</option></select>
+            <select id="filter-group" title="Filter cohort by group"><option value="all">All groups</option><option>ASIB</option><option>PT</option><option>TD</option></select>
           </div>
           <div class="filter">
             <label>QC Status</label>
-            <select id="filter-qc"><option value="all">All</option><option>OK</option><option>Review</option></select>
+            <select id="filter-qc" title="Filter cohort by QC status"><option value="all">All</option><option>OK</option><option>Review</option></select>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card table-card">
           <h3>First 40 participants (sortable)</h3>
           <table class="data" id="table-cohort">
             <thead>
@@ -580,479 +459,103 @@ footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border
       </div>
     </section>
 
+    <section id="readings">
+      <div class="section">
+        <h2><span class="num">8</span>Reading Library</h2>
+        <div class="grid three">
+          <div class="card kpi">
+            <div class="label">Indexed readings</div>
+            <div class="value" id="readings-total">—</div>
+            <div class="delta" id="readings-total-note">Watching ESD Lab readings/</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Latest update</div>
+            <div class="value small" id="readings-latest">—</div>
+            <div class="delta" id="readings-latest-note">Most recent file modification</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Top category</div>
+            <div class="value small" id="readings-category">—</div>
+            <div class="delta" id="readings-category-note">Auto-grouped from titles and PDF text</div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top readings-overview-grid">
+          <div class="card reading-spotlight">
+            <span class="eyebrow">Featured reading</span>
+            <div class="reading-meta reading-spotlight-meta" id="reading-featured-meta"></div>
+            <h3 id="reading-featured-title">Reading spotlight</h3>
+            <p id="reading-featured-excerpt" class="reading-excerpt">Open the reading library below to explore indexed PDFs and supporting materials.</p>
+            <div id="reading-featured-tags" class="reading-tags"></div>
+            <div class="reading-actions reading-spotlight-actions">
+              <a class="reading-link" id="reading-featured-link" href="../ESD%20Lab%20readings/" target="_blank" rel="noreferrer">Open featured reading</a>
+              <span id="reading-featured-path">ESD Lab readings/</span>
+            </div>
+          </div>
+
+          <div class="card reading-insights">
+            <h3>Library signals</h3>
+            <div class="reading-insight-grid">
+              <div class="mini-stat">
+                <span class="label">Pages indexed</span>
+                <strong id="readings-pages">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Distinct sources</span>
+                <strong id="readings-sources">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Most active year</span>
+                <strong id="readings-year">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Featured set</span>
+                <strong id="readings-featured-count">—</strong>
+              </div>
+            </div>
+            <div class="reading-source-stack" id="reading-source-stack"></div>
+            <div class="chip-bar year-chip-bar" id="reading-year-chip-bar"></div>
+          </div>
+        </div>
+
+        <div class="card stack-top">
+          <div class="filters readings-filters">
+            <div class="filter search-filter">
+              <label for="filter-reading-search">Search</label>
+              <input id="filter-reading-search" class="search-input" type="search" placeholder="Search titles, authors, excerpts, keywords">
+            </div>
+            <div class="filter">
+              <label for="filter-reading-category">Category</label>
+              <select id="filter-reading-category">
+                <option value="all">All categories</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="filter-reading-sort">Sort</label>
+              <select id="filter-reading-sort">
+                <option value="recent">Newest first</option>
+                <option value="relevance">Search relevance</option>
+                <option value="title">Title A-Z</option>
+                <option value="year">Year</option>
+                <option value="pages">Most pages</option>
+                <option value="size">Largest file</option>
+              </select>
+            </div>
+            <button id="reading-clear-filters" class="ghost-button" type="button">Clear filters</button>
+          </div>
+          <div id="reading-chip-bar" class="chip-bar"></div>
+          <div id="readings-grid" class="reading-grid"></div>
+        </div>
+      </div>
+    </section>
+
     <footer>
-      <span id="footer-left">Synthetic demo data · no PHI · NANO repo <code>dashboard/</code></span>
+      <span id="footer-left">Live dashboard initialized · awaiting data sync</span>
       <span>ESD Lab · University of South Carolina · R01 NIH</span>
     </footer>
   </main>
 </div>
 
-<script>
-// ═══════════════════════════════════════════════════════════════════════════
-// NANO Dashboard — Client-side logic
-// Loads dashboard/data/dashboard_data.json (produced by the Python or R
-// pipeline) and renders all charts/tables with Chart.js.
-// ═══════════════════════════════════════════════════════════════════════════
-
-const COLORS = {
-  ASIB: "#c44e52", PT: "#4c72b0", TD: "#55a868",
-  accent: "#73000a", accentSoft: "#a23a44",
-  models: ["#4c72b0","#c44e52","#55a868","#dd8452","#8172b3","#937860"],
-  ok: "#2f7a3a", warn: "#a87e00", bad: "#a8321a", grid: "#eceae4",
-};
-
-Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif';
-Chart.defaults.font.size = 12;
-Chart.defaults.color = "#555";
-
-let DATA = null;
-let CHARTS = {};
-
-// ─── Navigation ────────────────────────────────────────────────────────────
-const NAV_TITLES = {
-  overview: ["NANO Study · Research Dashboard", "R01 longitudinal cohort · VPT infants from NICU admission through 36 months"],
-  pipeline: ["Data Flow Pipeline", "Click any stage to learn what it does and which files implement it"],
-  quality:  ["Data Quality & REDCap Audit", "Missingness, QC flags, query backlog, and audit trail"],
-  ml:       ["Machine Learning Performance", "Predict ADOS-2 positive screen at 12mo · stratified 5-fold CV"],
-  trajectories: ["Participant Trajectories", "Group-level biomarker trajectories from mixed-effects models"],
-  cohort:   ["Cohort Snapshot", "Synthetic participant-level summary (no PHI)"],
-};
-document.querySelectorAll(".nav a[data-target]").forEach(el => {
-  el.addEventListener("click", e => {
-    e.preventDefault();
-    const target = el.dataset.target;
-    document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
-    el.classList.add("active");
-    document.querySelectorAll("main section").forEach(s => s.classList.add("hide"));
-    document.getElementById(target).classList.remove("hide");
-    const [t, s] = NAV_TITLES[target] || ["—", ""];
-    document.getElementById("page-title").textContent = t;
-    document.getElementById("page-sub").textContent = s;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-});
-
-// ─── Utilities ──────────────────────────────────────────────────────────────
-const fmtPct = v => (v == null ? "—" : v.toFixed(1) + "%");
-const fmtInt = v => (v == null ? "—" : v.toLocaleString());
-
-function kpi(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
-
-// ─── Pipeline explainer content ────────────────────────────────────────────
-const PIPELINE_EXPLAINERS = {
-  hero: `<b>HeRO NICU Monitor</b><br>Records continuous ECG during NICU admission at 1024 Hz. Output feeds <span class="code">src/data_ingestion/ecg_loader.py</span> → <span class="code">src/preprocessing/ecg_preprocessing.py</span>. <br><br>Primary data for <b>Aim 1</b>: characterizing autonomic maturation in VPT infants.`,
-  actiheart: `<b>Actiheart-5</b><br>Ambulatory chest-patch device capturing R-R intervals during home visits. IBI time series is cleaned (Malik-like filter, 20% change threshold) then HRV features computed in <span class="code">src/preprocessing/hrv_features.py</span>.`,
-  squirrel: `<b>Squirrel Datalogger</b><br>Twin probes (abdominal + peripheral) record skin temperature at 1-min intervals. Derived feature: central-peripheral temperature difference (CPTd) via <span class="code">src/preprocessing/temperature_preprocessing.py</span>. <br><br>CPTd is an early marker of autonomic thermoregulation in NICU infants.`,
-  datavyu: `<b>DataVyu behavioral coding</b><br>Frame-by-frame human coding of attention, affect, and caregiver interaction from video. Parser at <span class="code">src/data_ingestion/behavioral_coding_loader.py</span> syncs coding timestamps with ECG segments (<span class="code">src/preprocessing/behavioral_sync.py</span>).`,
-  secure: `<b>USC Secure Server</b><br>Encrypted mount at <span class="code">$NANO_DATA_ROOT</span>. HIPAA-compliant; raw PHI never enters this repo. Access gated by CITI training + IRB data-use agreement. Audit log at <span class="code">logs/data_access_audit.log</span>.`,
-  redcap: `<b>REDCap (primary longitudinal DB)</b><br>Demographics, NICU morbidity, questionnaires, clinician-administered assessments (Bayley-4, ADOS-2, NNNS-II, M-CHAT-R/F). API pull at <span class="code">redcap/api/redcap_pull.py</span>. Nightly sync: <span class="code">scripts/redcap_daily_sync.py</span>.`,
-  ecgpp: `<b>ECG Preprocessing → HRV</b><br>Steps: bandpass 0.5–40 Hz → R-peak detection (Pan-Tompkins / neurokit2) → ectopic filtering (Malik-like) → time-domain + Poincaré + sample entropy + RSA via CWT. Per-phase HDA (heart rate deceleration during attention) phases extracted via <span class="code">src/models/markov_chain_models.py</span>.`,
-  impute: `<b>MICE Multiple Imputation</b><br>Missingness mechanism assessed first (Little's MCAR-like test, logistic missingness model). m=20 imputations generated with R <span class="code">mice</span> or Python <span class="code">IterativeImputer</span>. Rubin's rules used to pool downstream estimates. Documented in <span class="code">src/imputation/python_imputation.py</span>.`,
-  features: `<b>Feature Matrix</b><br>Per-participant × per-visit tidy table combining HRV, CPTd, behavioral, demographic, and trajectory features. Built in <span class="code">src/feature_engineering/</span>. This is the input to all ML and mixed-effects models.`,
-  ml: `<b>ML / Deep Learning Models</b><br>Random Forest, XGBoost, SVM baseline classifiers + 1D-CNN+LSTM and Transformer deep models on raw IBI series. Stratified 5-fold CV, RFECV feature selection, 2000-sample bootstrap CI. SHAP values stored to <span class="code">$NANO_DATA_ROOT/models/shap_values/</span>.`,
-  mixed: `<b>Mixed-Effects + LGCM</b><br>Random-intercept-and-slope lme4/nlme models for each biomarker. Latent Growth Curve Models (lavaan) partition between- vs within-person variance. Used for Aim 2 (trajectory divergence) and to generate publication-ready figures (<span class="code">src/visualization/trajectory_plots.R</span>).`,
-  manuscripts: `<b>Manuscripts & reports</b><br>LaTeX/RMarkdown sources in <span class="code">reports/manuscripts/</span>; methods boilerplate in <span class="code">reports/templates/methods_section_template.md</span>; results tables from <span class="code">reports/templates/results_table_template.R</span>.`,
-  dashboard: `<b>This dashboard</b><br>Loads <span class="code">dashboard/data/dashboard_data.json</span> produced by either the Python pipeline (<span class="code">dashboard/pipelines/build_dashboard_data.py</span>) or the R pipeline (<span class="code">dashboard/pipelines/build_dashboard_data.R</span>). Cron-driven; see <span class="code">docs/auto_update_pipeline.md</span>.`,
-  deident: `<b>De-identified export</b><br>Shifts dates to ages, drops PHI fields per <span class="code">src/preprocessing/deidentification.py</span>. Output submitted to <b>NDAR</b> / <b>SRA</b> for data-sharing compliance with NIH.`,
-};
-
-document.querySelectorAll(".pl-node").forEach(n => {
-  n.addEventListener("click", () => {
-    const k = n.dataset.key;
-    const msg = PIPELINE_EXPLAINERS[k] || "No explanation available.";
-    document.getElementById("pipeline-explainer").innerHTML = msg;
-  });
-});
-
-// ─── Load data and render ──────────────────────────────────────────────────
-fetch("data/dashboard_data.json")
-  .then(r => r.json())
-  .then(data => {
-    DATA = data;
-    document.getElementById("updated-at").textContent = data.meta.generated_at.replace("T", " ");
-    document.getElementById("data-source-chip").textContent = data.meta.data_source;
-    document.getElementById("side-meta").innerHTML =
-      `<b>${data.meta.study.pi}</b><br>${data.meta.study.institution}<br><br>` +
-      `Data source: <br><code>${data.meta.data_source}</code>`;
-    renderAll();
-  })
-  .catch(err => {
-    document.getElementById("main").innerHTML = `<div class="card"><h3>Failed to load data</h3><p>${err}</p><p>Expected: <code>dashboard/data/dashboard_data.json</code></p></div>`;
-  });
-
-function renderAll() {
-  renderOverview();
-  renderEnrollment();
-  renderProgress();
-  renderQuality();
-  renderML();
-  renderTrajectories();
-  renderCompletion();
-  renderCohort();
-}
-
-// ─── Overview KPIs ─────────────────────────────────────────────────────────
-function renderOverview() {
-  const e = DATA.enrollment.by_group;
-  const total = e.ASIB.current + e.PT.current + e.TD.current;
-  const target = e.ASIB.target + e.PT.target + e.TD.target;
-  const pct = (total / target * 100).toFixed(1);
-  kpi("kpi-enroll", `${total} / ${target}`);
-  document.getElementById("kpi-enroll-delta").textContent = `${pct}% of R01 target`;
-
-  const aud = DATA.redcap_audit.summary;
-  kpi("kpi-active", fmtInt(aud.active_participants));
-  document.getElementById("kpi-active-delta").textContent = `${aud.withdrawn} withdrawn · ${aud.total_participants_enrolled} enrolled`;
-  kpi("kpi-queries", fmtInt(aud.open_queries));
-
-  const bestModel = DATA.ml_performance.models.reduce((a, b) => a.auroc > b.auroc ? a : b);
-  kpi("kpi-auroc", bestModel.auroc.toFixed(3));
-  document.getElementById("kpi-auroc-sub").textContent = `${bestModel.name} · 95% CI [${bestModel.auroc_ci[0]}–${bestModel.auroc_ci[1]}]`;
-
-  // Mean completeness from missingness
-  const meanMissing = DATA.data_quality.missingness.reduce((s, r) => s + r.pct_missing, 0) / DATA.data_quality.missingness.length;
-  kpi("kpi-completeness", fmtPct(100 - meanMissing));
-}
-
-// ─── Enrollment chart (cumulative) ─────────────────────────────────────────
-function renderEnrollment() {
-  const e = DATA.enrollment;
-  const datasets = ["ASIB", "PT", "TD"].map(g => ({
-    label: e.by_group[g].label,
-    data: e.by_group[g].monthly,
-    borderColor: e.by_group[g].color,
-    backgroundColor: e.by_group[g].color + "22",
-    tension: 0.25, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, fill: false,
-  }));
-  CHARTS.enroll = new Chart(document.getElementById("chart-enrollment"), {
-    type: "line",
-    data: { labels: e.months, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8 } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
-        y: { beginAtZero: true, grid: { color: COLORS.grid } },
-      },
-    },
-  });
-}
-
-// ─── Progress vs target (horizontal bars) ──────────────────────────────────
-function renderProgress() {
-  const g = DATA.enrollment.by_group;
-  const labels = ["ASIB", "PT", "TD"];
-  const current = labels.map(l => g[l].current);
-  const remaining = labels.map(l => g[l].target - g[l].current);
-  CHARTS.progress = new Chart(document.getElementById("chart-progress"), {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [
-        { label: "Enrolled",  data: current,   backgroundColor: labels.map(l => g[l].color) },
-        { label: "Remaining", data: remaining, backgroundColor: "#dcd8cf" },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: { legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8 } } },
-      scales: {
-        x: { stacked: true, beginAtZero: true, grid: { color: COLORS.grid } },
-        y: { stacked: true, grid: { display: false } },
-      },
-    },
-  });
-}
-
-// ─── Data Quality section ─────────────────────────────────────────────────
-function renderQuality() {
-  const q = DATA.data_quality;
-  const a = DATA.redcap_audit;
-
-  kpi("dq-records",  fmtInt(q.qc_flags.total_records));
-  kpi("dq-double",   fmtInt(q.qc_flags.double_entry_discrepancies));
-  kpi("dq-oor",      fmtInt(q.qc_flags.out_of_range_values));
-  kpi("dq-missing",  fmtInt(q.qc_flags.missing_required_fields));
-  kpi("dq-ecg-late", fmtInt(q.qc_flags.ecg_transfer_late));
-  kpi("dq-pi",       fmtInt(a.summary.records_pending_pi_review));
-
-  // Missingness bar chart
-  const sorted = [...q.missingness].sort((a, b) => b.pct_missing - a.pct_missing);
-  const colorFor = v => v > 25 ? COLORS.bad : v > 10 ? COLORS.warn : COLORS.ok;
-  CHARTS.missing = new Chart(document.getElementById("chart-missing"), {
-    type: "bar",
-    data: {
-      labels: sorted.map(r => r.instrument),
-      datasets: [{
-        label: "% missing",
-        data: sorted.map(r => r.pct_missing),
-        backgroundColor: sorted.map(r => colorFor(r.pct_missing)),
-      }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: c => `${c.parsed.x.toFixed(1)}% · ${sorted[c.dataIndex].status}` } },
-      },
-      scales: { x: { beginAtZero: true, max: 40, grid: { color: COLORS.grid }, ticks: { callback: v => v + "%" } },
-                y: { grid: { display: false } } },
-    },
-  });
-
-  // Queries by event
-  CHARTS.queries = new Chart(document.getElementById("chart-queries"), {
-    type: "bar",
-    data: {
-      labels: a.queries_by_event.map(r => r.event),
-      datasets: [{ label: "Open queries", data: a.queries_by_event.map(r => r.open), backgroundColor: COLORS.accent + "CC" }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45 } },
-        y: { beginAtZero: true, grid: { color: COLORS.grid } },
-      },
-    },
-  });
-
-  // Audit table
-  const tbody = document.querySelector("#table-audit tbody");
-  tbody.innerHTML = a.recent_activity.map(r =>
-    `<tr><td>${r.date}</td><td>${r.action}</td><td><code>${r.record_id}</code></td><td>${r.user}</td></tr>`
-  ).join("");
-}
-
-// ─── ML Performance ───────────────────────────────────────────────────────
-function renderML() {
-  const m = DATA.ml_performance;
-
-  // ROC curves
-  CHARTS.roc = new Chart(document.getElementById("chart-roc"), {
-    type: "line",
-    data: {
-      datasets: m.models.map((md, i) => ({
-        label: `${md.name} (AUROC ${md.auroc})`,
-        data: md.roc.fpr.map((f, k) => ({ x: f, y: md.roc.tpr[k] })),
-        borderColor: COLORS.models[i % COLORS.models.length],
-        backgroundColor: COLORS.models[i % COLORS.models.length] + "22",
-        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, tension: 0.1, fill: false,
-      })).concat([{
-        label: "Chance (AUROC 0.5)",
-        data: [{x:0,y:0},{x:1,y:1}],
-        borderColor: "#bbb", borderDash: [4,4], borderWidth: 1, pointRadius: 0, fill: false,
-      }]),
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8, font: { size: 10 } } } },
-      scales: {
-        x: { type: "linear", min: 0, max: 1, title: { display: true, text: "False Positive Rate" }, grid: { color: COLORS.grid } },
-        y: { type: "linear", min: 0, max: 1, title: { display: true, text: "True Positive Rate"  }, grid: { color: COLORS.grid } },
-      },
-    },
-  });
-
-  // SHAP bar chart (horizontal)
-  CHARTS.shap = new Chart(document.getElementById("chart-shap"), {
-    type: "bar",
-    data: {
-      labels: m.shap.map(f => f.label),
-      datasets: [{ label: "SHAP importance", data: m.shap.map(f => f.importance), backgroundColor: COLORS.accent + "CC" }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: { legend: { display: false } },
-      scales: { x: { beginAtZero: true, grid: { color: COLORS.grid } }, y: { grid: { display: false } } },
-    },
-  });
-
-  // AUROC with error bars (custom: use bar with error-like plugin)
-  CHARTS.auroc = new Chart(document.getElementById("chart-auroc"), {
-    type: "bar",
-    data: {
-      labels: m.models.map(md => md.name),
-      datasets: [
-        { label: "AUROC", data: m.models.map(md => md.auroc), backgroundColor: m.models.map((_, i) => COLORS.models[i % COLORS.models.length]) },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => {
-          const md = m.models[c.dataIndex];
-          return `AUROC ${md.auroc}  [${md.auroc_ci[0]} – ${md.auroc_ci[1]}]`;
-        } } },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 20, minRotation: 20 } },
-        y: { min: 0.5, max: 1.0, grid: { color: COLORS.grid } },
-      },
-    },
-  });
-
-  // Subgroup table
-  document.querySelector("#table-subgroup tbody").innerHTML =
-    m.subgroup.map(r => `<tr><td>${r.subgroup}</td><td>${r.n}</td><td>${r.mean_auroc.toFixed(3)}</td><td>±${r.sd.toFixed(3)}</td></tr>`).join("");
-
-  // Full metrics table (sortable)
-  renderMetricsTable(m.models);
-}
-
-function renderMetricsTable(models) {
-  const tbody = document.querySelector("#table-metrics tbody");
-  const render = (rows) => {
-    tbody.innerHTML = rows.map(r => `
-      <tr>
-        <td><b>${r.name}</b></td>
-        <td>${r.auroc.toFixed(3)}</td>
-        <td>[${r.auroc_ci[0]}–${r.auroc_ci[1]}]</td>
-        <td>${r.sensitivity.toFixed(3)}</td>
-        <td>${r.specificity.toFixed(3)}</td>
-        <td>${r.f1.toFixed(3)}</td>
-      </tr>`).join("");
-  };
-  render([...models].sort((a,b) => b.auroc - a.auroc));
-}
-
-// ─── Trajectories ─────────────────────────────────────────────────────────
-function renderTrajectories() {
-  drawTrajectory("RSA", true);
-  document.getElementById("filter-biomarker").addEventListener("change", () => {
-    const bm = document.getElementById("filter-biomarker").value;
-    const ci = document.getElementById("filter-ci").value === "1";
-    drawTrajectory(bm, ci);
-  });
-  document.getElementById("filter-ci").addEventListener("change", () => {
-    const bm = document.getElementById("filter-biomarker").value;
-    const ci = document.getElementById("filter-ci").value === "1";
-    drawTrajectory(bm, ci);
-  });
-  renderTrajectoriesTable();
-}
-
-function drawTrajectory(bm, showCI) {
-  const t = DATA.trajectories;
-  const months = t.months;
-  if (CHARTS.traj) CHARTS.traj.destroy();
-  const datasets = [];
-  Object.entries(t.by_group).forEach(([g, gd]) => {
-    datasets.push({
-      label: `${g} · mean`,
-      data: gd.mean[bm],
-      borderColor: gd.color,
-      backgroundColor: gd.color + "33",
-      borderWidth: 2.5, pointRadius: 3, pointHoverRadius: 5, tension: 0.25, fill: false,
-    });
-    if (showCI) {
-      datasets.push({
-        label: `${g} · CI high`, data: gd.ci[bm].high, borderColor: gd.color + "55",
-        borderWidth: 0, pointRadius: 0, fill: "+1", backgroundColor: gd.color + "1A", tension: 0.25,
-      });
-      datasets.push({
-        label: `${g} · CI low`, data: gd.ci[bm].low, borderColor: gd.color + "55",
-        borderWidth: 0, pointRadius: 0, fill: false, tension: 0.25,
-      });
-    }
-  });
-  const units = { RSA: "ln(ms²)", RMSSD: "ms", SDNN: "ms", HDA_SA: "ms (latency)" };
-  document.getElementById("traj-title").textContent = `Biomarker trajectory · ${bm}`;
-  CHARTS.traj = new Chart(document.getElementById("chart-traj"), {
-    type: "line",
-    data: { labels: months, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8, filter: i => !i.text.includes("CI ") } },
-        tooltip: { mode: "index", intersect: false },
-      },
-      scales: {
-        x: { title: { display: true, text: "Age (months CGA)" }, grid: { color: COLORS.grid } },
-        y: { title: { display: true, text: `${bm} (${units[bm] || ""})` }, grid: { color: COLORS.grid } },
-      },
-    },
-  });
-}
-
-function renderTrajectoriesTable() {
-  const t = DATA.trajectories;
-  const rows = [];
-  Object.entries(t.by_group).forEach(([g, gd]) => {
-    t.biomarkers.forEach(bm => {
-      const mean = gd.mean[bm];
-      const slope = (mean[mean.length - 1] - mean[0]) / t.months[t.months.length - 1];
-      rows.push({ group: g, bm, intercept: mean[0], slope });
-    });
-  });
-  document.querySelector("#table-trajectories tbody").innerHTML =
-    rows.map(r => `<tr><td><span class="badge ${r.group.toLowerCase()}">${r.group}</span></td><td>${r.bm}</td><td>${r.intercept.toFixed(2)}</td><td>${r.slope.toFixed(3)}</td></tr>`).join("");
-}
-
-// ─── Visit completion ─────────────────────────────────────────────────────
-function renderCompletion() {
-  const v = DATA.visit_completion;
-  const datasets = ["ASIB", "PT", "TD"].map(g => ({
-    label: g, data: v.by_group[g],
-    backgroundColor: COLORS[g] + "CC",
-  }));
-  CHARTS.completion = new Chart(document.getElementById("chart-completion"), {
-    type: "bar",
-    data: { labels: v.labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "top", labels: { usePointStyle: true, boxWidth: 8 } } },
-      scales: {
-        x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45 } },
-        y: { beginAtZero: false, min: 50, max: 100, grid: { color: COLORS.grid }, ticks: { callback: v => v + "%" } },
-      },
-    },
-  });
-}
-
-// ─── Cohort table ─────────────────────────────────────────────────────────
-let COHORT_SORT = { col: "nano_id", dir: "asc" };
-function renderCohort() {
-  const rows = DATA.cohort_table;
-  document.getElementById("filter-group").addEventListener("change", drawCohort);
-  document.getElementById("filter-qc").addEventListener("change", drawCohort);
-  document.querySelectorAll("#table-cohort th[data-sort]").forEach(th => {
-    th.addEventListener("click", () => {
-      const col = th.dataset.sort;
-      COHORT_SORT = { col, dir: COHORT_SORT.col === col && COHORT_SORT.dir === "asc" ? "desc" : "asc" };
-      drawCohort();
-    });
-  });
-  drawCohort();
-}
-
-function drawCohort() {
-  let rows = [...DATA.cohort_table];
-  const g = document.getElementById("filter-group").value;
-  const qc = document.getElementById("filter-qc").value;
-  if (g !== "all") rows = rows.filter(r => r.group === g);
-  if (qc !== "all") rows = rows.filter(r => r.qc_status === qc);
-  rows.sort((a, b) => {
-    const av = a[COHORT_SORT.col], bv = b[COHORT_SORT.col];
-    const cmp = typeof av === "string" ? av.localeCompare(bv) : av - bv;
-    return COHORT_SORT.dir === "asc" ? cmp : -cmp;
-  });
-  document.querySelector("#table-cohort tbody").innerHTML = rows.map(r => `
-    <tr>
-      <td><code>${r.nano_id}</code></td>
-      <td><span class="badge ${r.group.toLowerCase()}">${r.group}</span></td>
-      <td>${r.ga_weeks}</td>
-      <td>${r.birth_weight_g.toLocaleString()}</td>
-      <td>${r.sex}</td>
-      <td>${r.last_visit}</td>
-      <td>${r.completeness_pct.toFixed(1)}%</td>
-      <td><span class="badge ${r.qc_status === 'OK' ? 'ok' : 'warn'}">${r.qc_status}</span></td>
-    </tr>`).join("");
-}
-</script>
+<script src="app.js" defer></script>
 </body>
 </html>

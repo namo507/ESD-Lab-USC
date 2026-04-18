@@ -96,6 +96,14 @@ FEATURES = [
 ]
 
 
+def _atomic_write_json(output_path: Path, payload: dict) -> None:
+    """Write JSON atomically so browser refreshes never see partial content."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    temp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    temp_path.replace(output_path)
+
+
 def _noisy_logistic(x: np.ndarray, k: float = 1.0, x0: float = 0.0) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-k * (x - x0)))
 
@@ -324,9 +332,8 @@ def build_payload() -> dict:
 
 def main() -> None:
     out_path = Path(__file__).resolve().parents[1] / "data" / "dashboard_data.json"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = build_payload()
-    out_path.write_text(json.dumps(payload, indent=2))
+    _atomic_write_json(out_path, payload)
     print(f"✓ Wrote synthetic dashboard payload → {out_path}")
     print(f"  generated_at: {payload['meta']['generated_at']}")
     print(f"  keys: {list(payload.keys())}")

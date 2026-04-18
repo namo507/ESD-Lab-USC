@@ -178,6 +178,31 @@ cp .env.example .env
 #   REDCAP_API_URL=https://redcap.sc.edu/api/
 ```
 
+## Live Dashboard
+
+The repository now includes a live dashboard runtime that serves the repo,
+rebuilds `dashboard/data/dashboard_data.json` when source inputs change, and
+automatically indexes new PDFs added under `ESD Lab readings/`.
+
+```bash
+# Start the live dashboard
+docker compose up --build dashboard
+
+# Open it locally
+open http://localhost:8080/dashboard/
+```
+
+Useful shortcuts:
+
+```bash
+make dashboard-refresh
+make dashboard-up
+make dashboard-logs
+```
+
+If the secure data mount is unavailable, the runtime falls back to synthetic
+dashboard data so the UI and the readings library still render cleanly.
+
 ---
 
 ## Contributing

@@ -145,3 +145,5 @@ temp/
 *.tmp
 *.bak
 *.orig
+dashboard/data/.readings_cache.json
+models/_metrics.json
