@@ -5,6 +5,12 @@ const DATA_URLS = {
   runtime: "data/runtime_status.json",
 };
 
+const THEME_STORAGE_KEY = "nano-dashboard-theme-preference";
+const AUTO_THEME_HOURS = {
+  lightStart: 7,
+  darkStart: 18,
+};
+
 const COLORS = {
   ASIB: "#c44e52",
   PT: "#4c72b0",
@@ -16,6 +22,17 @@ const COLORS = {
   warn: "#8b6916",
   bad: "#9f3424",
   grid: "rgba(95, 72, 53, 0.12)",
+};
+
+const THEME_CHART_TOKENS = {
+  light: {
+    text: "#5f554e",
+    grid: "rgba(95, 72, 53, 0.12)",
+  },
+  dark: {
+    text: "#d6dde5",
+    grid: "rgba(214, 221, 229, 0.14)",
+  },
 };
 
 const SECTION_TITLES = {
@@ -169,7 +186,7 @@ const ERROR_BAR_PLUGIN = {
 
     const ctx = chart.ctx;
     ctx.save();
-    ctx.strokeStyle = "#6b564a";
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue("--chart-ink").trim() || Chart.defaults.color || "#6b564a";
     ctx.lineWidth = 1.4;
 
     datasetMeta.data.forEach((element, index) => {
@@ -197,7 +214,7 @@ const ERROR_BAR_PLUGIN = {
 Chart.register(ERROR_BAR_PLUGIN);
 Chart.defaults.font.family = 'Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 Chart.defaults.font.size = 12;
-Chart.defaults.color = "#5f554e";
+Chart.defaults.color = THEME_CHART_TOKENS.light.text;
 Chart.defaults.animation.duration = 700;
 Chart.defaults.animation.easing = "easeOutQuart";
 
@@ -205,6 +222,13 @@ const STATE = {
   dashboard: null,
   readings: emptyReadingsPayload(),
   runtime: {},
+  ui: {
+    activeSection: "overview",
+    themePreference: "auto",
+    themeMode: "light",
+    viewPanelOpen: false,
+    navigationLockUntil: 0,
+  },
   tokens: {
     dashboard: null,
     readings: null,
@@ -228,8 +252,10 @@ let ML_EXPLAINER = {
 document.addEventListener("DOMContentLoaded", bootstrap);
 
 async function bootstrap() {
+  initializeTheme();
   decorateRevealTargets();
   setupNavigation();
+  setupViewPanel();
   setupPipelineExplainers();
   setupControls();
   await syncData({ force: true });
@@ -242,6 +268,111 @@ async function bootstrap() {
     syncData();
   }, REFRESH_INTERVAL_MS);
   window.setInterval(updateRefreshCountdown, 1000);
+}
+
+function initializeTheme() {
+  const savedPreference = window.localStorage
+    ? window.localStorage.getItem(THEME_STORAGE_KEY)
+    : null;
+  const preference = ["auto", "light", "dark"].includes(savedPreference)
+    ? savedPreference
+    : "auto";
+
+  applyThemePreference(preference, { persist: false, rerender: false });
+  setupThemeToggle();
+
+  window.setInterval(() => {
+    if (STATE.ui.themePreference === "auto") {
+      refreshAutomaticTheme();
+    }
+  }, 60000);
+}
+
+function setupThemeToggle() {
+  const toggle = document.getElementById("theme-toggle");
+  if (!toggle || toggle.dataset.bound === "true") {
+    return;
+  }
+
+  toggle.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-theme-preference]");
+    if (!button) {
+      return;
+    }
+    applyThemePreference(button.dataset.themePreference);
+  });
+
+  toggle.dataset.bound = "true";
+}
+
+function refreshAutomaticTheme() {
+  const nextMode = resolveThemeMode("auto");
+  if (nextMode !== STATE.ui.themeMode) {
+    applyThemePreference("auto", { persist: false });
+  }
+}
+
+function resolveThemeMode(preference) {
+  return preference === "auto" ? getAutomaticThemeMode() : preference;
+}
+
+function getAutomaticThemeMode(date = new Date()) {
+  const hour = date.getHours();
+  return hour >= AUTO_THEME_HOURS.darkStart || hour < AUTO_THEME_HOURS.lightStart
+    ? "dark"
+    : "light";
+}
+
+function applyThemePreference(preference, { persist = true, rerender = true } = {}) {
+  const safePreference = ["auto", "light", "dark"].includes(preference)
+    ? preference
+    : "auto";
+  const mode = resolveThemeMode(safePreference);
+
+  STATE.ui.themePreference = safePreference;
+  STATE.ui.themeMode = mode;
+
+  document.body.dataset.theme = mode;
+  document.body.dataset.themePreference = safePreference;
+
+  updateThemeToggleUI(safePreference, mode);
+  applyChartTheme(mode);
+
+  if (persist && window.localStorage) {
+    window.localStorage.setItem(THEME_STORAGE_KEY, safePreference);
+  }
+
+  if (rerender && STATE.dashboard) {
+    renderChrome();
+    renderDashboard();
+    renderReadings();
+    renderFooter();
+  }
+}
+
+function updateThemeToggleUI(preference, mode) {
+  const toggle = document.getElementById("theme-toggle");
+  if (!toggle) {
+    return;
+  }
+
+  toggle.dataset.mode = mode;
+  toggle.title = preference === "auto"
+    ? `Automatic theme based on local time. Current mode: ${mode}.`
+    : `Manual ${mode} theme active.`;
+
+  toggle.querySelectorAll("[data-theme-preference]").forEach((button) => {
+    const isActive = button.dataset.themePreference === preference;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function applyChartTheme(mode) {
+  const tokens = THEME_CHART_TOKENS[mode] || THEME_CHART_TOKENS.light;
+  COLORS.grid = tokens.grid;
+  Chart.defaults.color = tokens.text;
+  Chart.defaults.borderColor = tokens.grid;
 }
 
 function emptyReadingsPayload() {
@@ -289,16 +420,15 @@ function setupNavigation() {
   navLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      const target = document.getElementById(link.dataset.target);
-      if (!target) {
-        return;
-      }
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollToTarget(`#${link.dataset.target}`);
     });
   });
 
   const observer = new IntersectionObserver(
     (entries) => {
+      if (Date.now() < STATE.ui.navigationLockUntil) {
+        return;
+      }
       const visible = entries
         .filter((entry) => entry.isIntersecting)
         .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
@@ -314,13 +444,112 @@ function setupNavigation() {
   setActiveSection("overview");
 }
 
+function setupViewPanel() {
+  const shell = document.getElementById("view-panel-shell");
+  const panel = document.getElementById("view-panel");
+  const toggle = document.getElementById("view-panel-toggle");
+  const close = document.getElementById("view-panel-close");
+  const scrim = document.getElementById("view-panel-scrim");
+  if (!shell || !panel || !toggle || shell.dataset.bound === "true") {
+    return;
+  }
+
+  toggle.addEventListener("click", () => {
+    if (STATE.ui.viewPanelOpen) {
+      closeViewPanel();
+      return;
+    }
+    openViewPanel();
+  });
+
+  [close, scrim].forEach((element) => {
+    element.addEventListener("click", () => {
+      closeViewPanel();
+    });
+  });
+
+  panel.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-jump-target]");
+    if (!button) {
+      return;
+    }
+    const jumpTarget = button.dataset.jumpTarget;
+    closeViewPanel();
+    window.requestAnimationFrame(() => {
+      scrollToTarget(jumpTarget);
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && STATE.ui.viewPanelOpen) {
+      closeViewPanel();
+    }
+  });
+
+  shell.dataset.bound = "true";
+  updateViewPanelStatus(STATE.ui.activeSection);
+}
+
+function openViewPanel() {
+  const shell = document.getElementById("view-panel-shell");
+  const toggle = document.getElementById("view-panel-toggle");
+  if (!shell || !toggle) {
+    return;
+  }
+  STATE.ui.viewPanelOpen = true;
+  document.body.classList.add("view-panel-open");
+  shell.setAttribute("aria-hidden", "false");
+  toggle.setAttribute("aria-expanded", "true");
+}
+
+function closeViewPanel() {
+  const shell = document.getElementById("view-panel-shell");
+  const toggle = document.getElementById("view-panel-toggle");
+  if (!shell || !toggle) {
+    return;
+  }
+  STATE.ui.viewPanelOpen = false;
+  document.body.classList.remove("view-panel-open");
+  shell.setAttribute("aria-hidden", "true");
+  toggle.setAttribute("aria-expanded", "false");
+}
+
+function scrollToTarget(selector) {
+  const target = document.querySelector(selector);
+  if (!target) {
+    return;
+  }
+
+  const owningSection = target.closest("section[id]");
+  if (owningSection) {
+    STATE.ui.navigationLockUntil = Date.now() + 1400;
+    setActiveSection(owningSection.id);
+  }
+
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (selector.startsWith("#")) {
+    window.history.replaceState(null, "", selector);
+  }
+}
+
 function setActiveSection(sectionId) {
+  STATE.ui.activeSection = sectionId;
   document.querySelectorAll(".nav a[data-target]").forEach((link) => {
     link.classList.toggle("active", link.dataset.target === sectionId);
   });
   const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
   document.getElementById("page-title").textContent = title[0];
   document.getElementById("page-sub").textContent = title[1];
+  updateViewPanelStatus(sectionId);
+}
+
+function updateViewPanelStatus(sectionId) {
+  const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
+  setText("view-panel-current-title", title[0]);
+  setText("view-panel-current-sub", title[1]);
+  document.querySelectorAll(".view-link[data-section]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.section === sectionId);
+  });
 }
 
 function setupPipelineExplainers() {

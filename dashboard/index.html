@@ -55,10 +55,113 @@
         <span class="status-pill soft">Updated <span id="updated-at">—</span></span>
         <span class="status-pill soft">Refresh in <span id="next-refresh">—</span></span>
         <span id="data-source-chip" class="status-pill soft">synthetic_demo</span>
+        <div class="theme-toggle status-pill soft" id="theme-toggle" role="group" aria-label="Theme mode selector">
+          <span class="theme-toggle-label">Theme</span>
+          <div class="theme-toggle-options">
+            <button type="button" class="theme-option" data-theme-preference="auto" aria-pressed="true">Auto</button>
+            <button type="button" class="theme-option" data-theme-preference="light" aria-pressed="false">Light</button>
+            <button type="button" class="theme-option" data-theme-preference="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+        <button type="button" class="status-pill soft view-panel-trigger" id="view-panel-toggle" aria-controls="view-panel-shell" aria-expanded="false">View Panel</button>
       </div>
     </div>
 
     <div id="error-banner" class="error-banner hide"></div>
+
+    <div class="view-panel-shell" id="view-panel-shell" aria-hidden="true">
+      <button type="button" class="view-panel-scrim" id="view-panel-scrim" aria-label="Close view panel"></button>
+      <aside class="view-panel" id="view-panel" aria-label="Dashboard view panel">
+        <div class="view-panel-header">
+          <div>
+            <span class="eyebrow">View panel</span>
+            <h2 class="view-panel-title">Jump straight to the live view you need</h2>
+            <p class="view-panel-copy">Move between major sections, embedded analysis views, and the teaching panels without losing the current page context.</p>
+          </div>
+          <button type="button" class="view-panel-close" id="view-panel-close" aria-label="Close view panel">Close</button>
+        </div>
+
+        <div class="view-panel-status">
+          <span class="view-panel-status-label">Current section</span>
+          <strong id="view-panel-current-title">Overview</strong>
+          <span id="view-panel-current-sub">Study overview and operational summary</span>
+        </div>
+
+        <div class="view-panel-groups">
+          <section class="view-panel-group">
+            <h3>Study status</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-jump-target="#overview-kpis" data-section="overview">
+                <strong>KPI snapshot</strong>
+                <span>Enrollment, active records, model AUROC, and completeness.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#overview-enrollment" data-section="overview">
+                <strong>Enrollment trends</strong>
+                <span>Cumulative recruitment curves and progress vs target.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#cohort-table-card" data-section="cohort">
+                <strong>Cohort snapshot</strong>
+                <span>Sortable surrogate participant table with QC filters.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Methods and quality</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-jump-target="#pipeline-map" data-section="pipeline">
+                <strong>Pipeline map</strong>
+                <span>Clickable methods SVG from collection through sharing.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#quality-missingness" data-section="quality">
+                <strong>Missingness review</strong>
+                <span>Instrument missingness and imputation follow-through.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#quality-audit" data-section="quality">
+                <strong>Audit activity</strong>
+                <span>Recent data-team actions and open query context.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Modeling views</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-jump-target="#ml-explainer" data-section="ml">
+                <strong>Model explainer</strong>
+                <span>Animated architecture walkthrough with methods citations.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#ml-roc" data-section="ml">
+                <strong>ROC comparison</strong>
+                <span>Full model discrimination curves across candidate models.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#ml-metrics" data-section="ml">
+                <strong>Metrics table</strong>
+                <span>AUROC, CI, sensitivity, specificity, and F1 in one place.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#trajectories-chart" data-section="trajectories">
+                <strong>Trajectory view</strong>
+                <span>Longitudinal biomarker patterns and visit completion context.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Library and outputs</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-jump-target="#readings-spotlight" data-section="readings">
+                <strong>Featured reading</strong>
+                <span>Current spotlight paper and library metadata highlights.</span>
+              </button>
+              <button type="button" class="view-link" data-jump-target="#readings-library" data-section="readings">
+                <strong>Search archive</strong>
+                <span>Filterable reading library with category and keyword search.</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
 
     <section class="sync-banner" id="sync-banner">
       <div class="sync-copy">

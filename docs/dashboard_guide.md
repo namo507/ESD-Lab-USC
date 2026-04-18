@@ -18,6 +18,9 @@ source folders, and refreshes the generated JSON outputs automatically.
 The page also now includes a compact jump atlas near the top and smaller
 local jump chips inside each section so team members can hop directly to
 specific panels instead of scrolling through the full dashboard in one pass.
+There is also a topbar view panel for deeper jumps across the page plus a
+small theme control that can stay on automatic day/night mode or be forced
+into light or dark mode for presentations.
 
 ## 2. Opening the dashboard
 
@@ -79,9 +82,17 @@ For navigation, the quickest options are:
 
 * **Jump atlas:** the card strip near the top of the page for fast entry
    into major dashboard areas.
+* **View panel:** the topbar drawer for jumping into specific embedded
+   views such as the ML explainer, quality panels, trajectory chart, or
+   reading library.
 * **Local jump chips:** the small embedded links inside each section for
    moving directly to a chart, table, or explainer within that section.
 * **Sidebar:** the persistent left navigation for the main sections only.
+
+For visual comfort, use the topbar theme selector:
+
+* **Auto:** switches between light and dark based on local time.
+* **Light / Dark:** locks the dashboard into one theme until you change it.
 
 ## 5. How the numbers get there
 
