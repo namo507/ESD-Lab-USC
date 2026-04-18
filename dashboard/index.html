@@ -85,10 +85,71 @@
       </div>
     </section>
 
+    <section class="section-atlas card">
+      <div class="section-atlas-header">
+        <div>
+          <span class="eyebrow">Jump by task</span>
+          <h2 class="section-atlas-title">Move through the dashboard without one long scroll</h2>
+          <p class="section-atlas-copy">Use the quick-entry cards below and the local jump bars inside each section to land directly on the chart, table, or explainer you need.</p>
+        </div>
+      </div>
+      <div class="section-atlas-grid">
+        <a class="atlas-card" href="#overview-kpis">
+          <strong>Study status</strong>
+          <span>KPI snapshot and operational health</span>
+          <small>Overview</small>
+        </a>
+        <a class="atlas-card" href="#overview-enrollment">
+          <strong>Recruitment curves</strong>
+          <span>Enrollment and target progress</span>
+          <small>Overview</small>
+        </a>
+        <a class="atlas-card" href="#pipeline-map">
+          <strong>Methods pipeline</strong>
+          <span>Collection to modeling to sharing</span>
+          <small>Pipeline</small>
+        </a>
+        <a class="atlas-card" href="#quality-missingness">
+          <strong>QC signals</strong>
+          <span>Missingness, queries, and audit actions</span>
+          <small>Data quality</small>
+        </a>
+        <a class="atlas-card" href="#ml-explainer">
+          <strong>Model explainer</strong>
+          <span>Architecture animation and methods links</span>
+          <small>ML performance</small>
+        </a>
+        <a class="atlas-card" href="#trajectories-chart">
+          <strong>Developmental trajectories</strong>
+          <span>Biomarker slopes and visit completion</span>
+          <small>Trajectories</small>
+        </a>
+        <a class="atlas-card" href="#cohort-table-card">
+          <strong>Cohort table</strong>
+          <span>Sortable participant snapshot</span>
+          <small>Cohort</small>
+        </a>
+        <a class="atlas-card" href="#readings-library">
+          <strong>Reading library</strong>
+          <span>Featured papers and searchable archive</span>
+          <small>Readings</small>
+        </a>
+      </div>
+    </section>
+
     <!-- ─── Section: Overview ─── -->
     <section id="overview">
-      <div class="section">
+      <div class="section jump-target" id="overview-kpis">
         <h2><span class="num">1</span>Study Overview</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within overview</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#overview-kpis">KPI snapshot</a>
+            <a class="section-jump-pill" href="#overview-enrollment">Enrollment trends</a>
+            <a class="section-jump-pill" href="#quality-kpis">Quality checks</a>
+            <a class="section-jump-pill" href="#ml-explainer">Best model explainer</a>
+          </div>
+        </div>
         <div class="grid kpis">
           <div class="card kpi">
             <span class="hint">i</span>
@@ -128,7 +189,7 @@
         </div>
       </div>
 
-      <div class="section">
+      <div class="section jump-target" id="overview-enrollment">
         <h2><span class="num">2</span>Enrollment by Group</h2>
         <div class="grid two">
           <div class="card">
@@ -153,11 +214,20 @@
 
     <!-- ─── Section: Pipeline ─── -->
     <section id="pipeline">
-      <div class="section">
+      <div class="section jump-target" id="pipeline-map">
         <h2><span class="num">3</span>Data Flow Pipeline</h2>
         <p class="page-sub section-subhead">
           Click any stage for a plain-language explanation of what it does. Each stage maps to a folder in this repo.
         </p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump from methods to outputs</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#pipeline-map">Pipeline map</a>
+            <a class="section-jump-pill" href="#quality-missingness">QC follow-up</a>
+            <a class="section-jump-pill" href="#ml-explainer">Model architecture</a>
+            <a class="section-jump-pill" href="#readings-library">Reading library</a>
+          </div>
+        </div>
         <div class="pipeline">
           <svg viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet" id="pipeline-svg">
             <!-- Stage labels -->
@@ -272,8 +342,17 @@
 
     <!-- ─── Section: Data Quality ─── -->
     <section id="quality">
-      <div class="section">
+      <div class="section jump-target" id="quality-kpis">
         <h2><span class="num">4</span>Data Quality &amp; REDCap Audit</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within quality</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#quality-kpis">QC overview</a>
+            <a class="section-jump-pill" href="#quality-missingness">Missingness</a>
+            <a class="section-jump-pill" href="#quality-audit">Audit activity</a>
+            <a class="section-jump-pill" href="#ml-explainer">Model follow-through</a>
+          </div>
+        </div>
         <div class="grid kpis">
           <div class="card kpi"><div class="label">Records</div><div class="value" id="dq-records">—</div><div class="delta">in REDCap</div></div>
           <div class="card kpi"><div class="label">Double-entry diff</div><div class="value" id="dq-double">—</div><div class="delta warn">needs review</div></div>
@@ -284,7 +363,7 @@
         </div>
 
         <div class="grid two stack-top">
-          <div class="card">
+          <div class="card jump-target" id="quality-missingness">
             <span class="hint">i</span>
             <div class="hint-popup"><b>What:</b> % missingness per REDCap instrument. Status is MCAR/MAR/MNAR per Little-Rubin heuristics.<br><br><b>Action:</b> Instruments flagged High feed the MICE m=20 imputation pipeline.</div>
             <h3>Missingness by instrument</h3>
@@ -294,7 +373,7 @@
               <a href="../src/imputation/python_imputation.py" target="_blank">python_imputation.py</a>
             </div>
           </div>
-          <div class="card">
+          <div class="card jump-target" id="quality-queries">
             <span class="hint">i</span>
             <div class="hint-popup"><b>What:</b> Open REDCap queries awaiting RA response, by visit event.<br><br><b>Workflow:</b> <code class="code">redcap/quality_control/redcap_qc_pipeline.py</code> runs nightly and assigns queries to the RA team.</div>
             <h3>Open queries by event</h3>
@@ -302,7 +381,7 @@
           </div>
         </div>
 
-        <div class="card table-card stack-top">
+        <div class="card table-card stack-top jump-target" id="quality-audit">
           <span class="hint">i</span>
           <div class="hint-popup">Last 8 data-team actions (synthetic for demo). In production this reads the audit log at <code class="code">logs/data_access_audit.log</code>.</div>
           <h3>Recent audit activity</h3>
@@ -316,18 +395,98 @@
 
     <!-- ─── Section: ML Performance ─── -->
     <section id="ml">
-      <div class="section">
+      <div class="section jump-target" id="ml-overview">
         <h2><span class="num">5</span>Machine Learning Performance</h2>
         <p class="page-sub section-subhead-large">Predicting ADOS-2 positive screen at 12 months from NICU + infant biomarkers. Stratified 5-fold CV, 2000 bootstrap samples for CI.</p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within machine learning</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#ml-explainer">Architecture explainer</a>
+            <a class="section-jump-pill" href="#ml-roc">ROC curves</a>
+            <a class="section-jump-pill" href="#ml-subgroup">Subgroup sensitivity</a>
+            <a class="section-jump-pill" href="#ml-metrics">Model table</a>
+            <a class="section-jump-pill" href="#trajectories-chart">Trajectories</a>
+          </div>
+        </div>
+
+        <div class="card ml-explainer-card" id="ml-explainer">
+          <span class="hint">i</span>
+          <div class="hint-popup"><b>Architecture explainer:</b> this animated schematic turns the current best-performing model into a teaching view. It uses the ranked model results plus SHAP feature importance already loaded into the dashboard and is intended to explain the workflow, not to depict a single participant.</div>
+
+          <div class="ml-explainer-header">
+            <div>
+              <span class="eyebrow">Model explainer</span>
+              <h3>How the best model extracts features and reaches a prediction</h3>
+              <p class="ml-explainer-summary" id="ml-explainer-summary">Waiting for model metrics...</p>
+            </div>
+            <div class="ml-explainer-badges">
+              <span class="badge ok" id="ml-explainer-model">Model pending</span>
+              <span class="badge" id="ml-explainer-auroc">AUROC —</span>
+            </div>
+          </div>
+
+          <div class="ml-explainer-layout">
+            <div class="ml-input-bank">
+              <div class="ml-mini-title">Evidence streams entering the model</div>
+              <div class="ml-domain-grid" id="ml-domain-grid"></div>
+
+              <div class="ml-mini-title">Most influential extracted features</div>
+              <div class="ml-feature-cloud" id="ml-feature-cloud"></div>
+            </div>
+
+            <div class="ml-explainer-main">
+              <div class="ml-stage-board">
+                <div class="ml-stage-board-scroll">
+                  <div class="ml-stage-rail" aria-hidden="true">
+                    <svg class="ml-signal-svg" id="ml-signal-svg" viewBox="0 0 660 82" preserveAspectRatio="none"></svg>
+                  </div>
+                  <div class="ml-stage-track" id="ml-stage-track"></div>
+                </div>
+                <p class="ml-stage-caption">Auto-advances through the analysis steps; hover to pause or click a stage to inspect it.</p>
+              </div>
+
+              <div class="ml-stage-detail" id="ml-stage-detail">
+                <div>
+                  <span class="eyebrow ml-stage-kicker" id="ml-stage-kicker">Stage 1 of 5</span>
+                  <h4 id="ml-stage-title">Waiting for model metrics...</h4>
+                  <p id="ml-stage-body">The explainer fills in once the dashboard loads the ML performance payload.</p>
+                </div>
+                <div class="ml-stage-evidence" id="ml-stage-evidence"></div>
+
+                <div class="ml-diagram-card">
+                  <div class="ml-output-heading">Model schematic</div>
+                  <p class="ml-diagram-caption" id="ml-architecture-caption">Architecture-specific schematic loads with the best-performing model.</p>
+                  <div class="ml-diagram-shell">
+                    <div class="ml-model-diagram" id="ml-model-diagram"></div>
+                  </div>
+                </div>
+
+                <div class="ml-methods-card">
+                  <div class="ml-output-heading">Methods linkage</div>
+                  <p class="ml-methods-summary" id="ml-methods-summary">Stage-specific script and methods references appear here so lab members can connect the explainer to the actual repo implementation.</p>
+                  <div class="ml-methods-links" id="ml-methods-links"></div>
+                </div>
+
+                <div class="ml-output-summary">
+                  <div class="ml-output-heading">Prediction target</div>
+                  <div class="ml-output-target">12-month ADOS-2 positive screen</div>
+                  <div class="ml-score-track"><span id="ml-score-fill" class="ml-score-fill"></span></div>
+                  <div class="ml-output-metrics" id="ml-output-metrics"></div>
+                  <p class="ml-output-note">This is a conceptual teaching view of the trained workflow. It summarizes how the model family processes inputs; it is not a replay of any one participant or a clinical decision aid.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="grid two">
-          <div class="card">
+          <div class="card jump-target" id="ml-roc">
             <span class="hint">i</span>
             <div class="hint-popup"><b>ROC curves</b> for all models. Area under the curve (AUROC) measures discrimination; 1.0 = perfect, 0.5 = chance.<br><br>Hover a curve to see per-model FPR/TPR at each threshold.</div>
             <h3>ROC curves (all models)</h3>
             <div class="chart-wrap tall"><canvas id="chart-roc"></canvas></div>
           </div>
-          <div class="card">
+          <div class="card jump-target" id="ml-shap">
             <span class="hint">i</span>
             <div class="hint-popup"><b>Feature importance</b> from SHAP values averaged across CV folds for the best-performing model.</div>
             <h3>Top predictors (SHAP)</h3>
@@ -336,13 +495,13 @@
         </div>
 
         <div class="grid two stack-top">
-          <div class="card">
+          <div class="card jump-target" id="ml-auroc">
             <span class="hint">i</span>
             <div class="hint-popup">AUROC with 95% bootstrap CI. Error bars show ± 1.96·SD.</div>
             <h3>AUROC by model (95% CI)</h3>
             <div class="chart-wrap"><canvas id="chart-auroc"></canvas></div>
           </div>
-          <div class="card table-card">
+          <div class="card table-card jump-target" id="ml-subgroup">
             <span class="hint">i</span>
             <div class="hint-popup"><b>Subgroup sensitivity:</b> re-fit best model within each subgroup (GA bin, sex). Stable results across subgroups → generalizable.</div>
             <h3>Subgroup sensitivity</h3>
@@ -353,7 +512,7 @@
           </div>
         </div>
 
-        <div class="card table-card stack-top">
+        <div class="card table-card stack-top jump-target" id="ml-metrics">
           <span class="hint">i</span>
           <div class="hint-popup">Full metric summary, sortable. Click column headers to sort.</div>
           <h3>Full model metrics</h3>
@@ -373,8 +532,17 @@
 
     <!-- ─── Section: Trajectories ─── -->
     <section id="trajectories">
-      <div class="section">
+      <div class="section jump-target" id="trajectories-overview">
         <h2><span class="num">6</span>Participant Trajectories</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within trajectories</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#trajectories-chart">Biomarker chart</a>
+            <a class="section-jump-pill" href="#trajectories-completion">Visit completion</a>
+            <a class="section-jump-pill" href="#trajectories-slopes">Intercepts and slopes</a>
+            <a class="section-jump-pill" href="#cohort-table-card">Cohort table</a>
+          </div>
+        </div>
         <div class="filters filters-spaced">
           <div class="filter">
             <label>Biomarker</label>
@@ -391,7 +559,7 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card jump-target" id="trajectories-chart">
           <span class="hint">i</span>
           <div class="hint-popup"><b>What:</b> Group-mean trajectories with 95% bootstrapped CI bands across the 0–36 month follow-up window.<br><br><b>Interpretation:</b> Divergence between ASIB and TD slopes over infancy aligns with developmental cascade theory (Bradshaw et al., 2025).</div>
           <h3 id="traj-title">Biomarker trajectory · RSA</h3>
@@ -404,13 +572,13 @@
         </div>
 
         <div class="grid two stack-top">
-          <div class="card">
+          <div class="card jump-target" id="trajectories-completion">
             <span class="hint">i</span>
             <div class="hint-popup">Visit completion rate per event, stratified by group. Drops at 24m reflect the questionnaire-only protocol.</div>
             <h3>Visit completion by group</h3>
             <div class="chart-wrap"><canvas id="chart-completion"></canvas></div>
           </div>
-          <div class="card table-card">
+          <div class="card table-card jump-target" id="trajectories-slopes">
             <span class="hint">i</span>
             <div class="hint-popup">Per-group intercepts and linear slopes estimated from the lme4 random-intercept-slope model.</div>
             <h3>Group intercepts &amp; slopes</h3>
@@ -425,9 +593,18 @@
 
     <!-- ─── Section: Cohort ─── -->
     <section id="cohort">
-      <div class="section">
+      <div class="section jump-target" id="cohort-overview">
         <h2><span class="num">7</span>Cohort Snapshot</h2>
-        <div class="filters filters-spaced">
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within cohort</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#cohort-filters">Cohort filters</a>
+            <a class="section-jump-pill" href="#cohort-table-card">Participant table</a>
+            <a class="section-jump-pill" href="#readings-library">Reading archive</a>
+            <a class="section-jump-pill" href="#overview-kpis">Return to overview</a>
+          </div>
+        </div>
+        <div class="filters filters-spaced jump-target" id="cohort-filters">
           <div class="filter">
             <label>Group</label>
             <select id="filter-group" title="Filter cohort by group"><option value="all">All groups</option><option>ASIB</option><option>PT</option><option>TD</option></select>
@@ -438,7 +615,7 @@
           </div>
         </div>
 
-        <div class="card table-card">
+        <div class="card table-card jump-target" id="cohort-table-card">
           <h3>First 40 participants (sortable)</h3>
           <table class="data" id="table-cohort">
             <thead>
@@ -460,9 +637,18 @@
     </section>
 
     <section id="readings">
-      <div class="section">
+      <div class="section jump-target" id="readings-overview">
         <h2><span class="num">8</span>Reading Library</h2>
-        <div class="grid three">
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within readings</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#readings-spotlight">Featured reading</a>
+            <a class="section-jump-pill" href="#readings-insights">Library signals</a>
+            <a class="section-jump-pill" href="#readings-library">Search archive</a>
+            <a class="section-jump-pill" href="#pipeline-map">Methods pipeline</a>
+          </div>
+        </div>
+        <div class="grid three jump-target" id="readings-kpis">
           <div class="card kpi">
             <div class="label">Indexed readings</div>
             <div class="value" id="readings-total">—</div>
@@ -481,7 +667,7 @@
         </div>
 
         <div class="grid two stack-top readings-overview-grid">
-          <div class="card reading-spotlight">
+          <div class="card reading-spotlight jump-target" id="readings-spotlight">
             <span class="eyebrow">Featured reading</span>
             <div class="reading-meta reading-spotlight-meta" id="reading-featured-meta"></div>
             <h3 id="reading-featured-title">Reading spotlight</h3>
@@ -493,7 +679,7 @@
             </div>
           </div>
 
-          <div class="card reading-insights">
+          <div class="card reading-insights jump-target" id="readings-insights">
             <h3>Library signals</h3>
             <div class="reading-insight-grid">
               <div class="mini-stat">
@@ -518,7 +704,7 @@
           </div>
         </div>
 
-        <div class="card stack-top">
+        <div class="card stack-top jump-target" id="readings-library">
           <div class="filters readings-filters">
             <div class="filter search-filter">
               <label for="filter-reading-search">Search</label>

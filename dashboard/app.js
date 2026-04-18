@@ -66,6 +66,93 @@ const PIPELINE_EXPLAINERS = {
   deident: '<b>De-identified export</b><br>Date-shifted, PHI-stripped data products for sharing and compliance workflows.',
 };
 
+const ML_STAGE_ROTATE_MS = 3400;
+const FEATURE_DOMAIN_RULES = [
+  {
+    key: "physiology",
+    label: "Autonomic physiology",
+    accent: COLORS.PT,
+    description: "ECG-derived HRV and autonomic regulation biomarkers.",
+    pattern: /(rsa|rmssd|sdnn|ecg|hrv|heart|ibi|r\s*-?\s*r|autonomic|vagal|entropy|poincare|lf|hf)/i,
+  },
+  {
+    key: "behavior",
+    label: "Attention and behavior",
+    accent: COLORS.TD,
+    description: "Behavioral coding, attention, and social engagement signals.",
+    pattern: /(attention|behavior|behaviour|social|affect|engagement|gaze|datavyu|hda|sustained)/i,
+  },
+  {
+    key: "clinical",
+    label: "NICU and perinatal course",
+    accent: COLORS.ASIB,
+    description: "Gestational age, NICU morbidity, and early clinical course.",
+    pattern: /(nicu|ga_|gestational|birth|weight|morbidity|oxygen|ventilation|apgar|sepsis|ivh|bpd)/i,
+  },
+  {
+    key: "development",
+    label: "Developmental assessments",
+    accent: COLORS.models[4],
+    description: "ADOS, Bayley, milestones, and neurodevelopmental assessment features.",
+    pattern: /(ados|bayley|mchat|asq|nnns|csbs|development|language|motor|cognitive)/i,
+  },
+  {
+    key: "context",
+    label: "Family and context",
+    accent: COLORS.models[3],
+    description: "SDoH, caregiver, and maternal-context covariates.",
+    pattern: /(prapare|sdoh|maternal|caregiver|epds|family|income|housing|context)/i,
+  },
+];
+
+const ML_METHOD_LIBRARY = {
+  payload: {
+    label: "Payload builder",
+    href: "pipelines/build_dashboard_data.py",
+    note: "Feature assembly + dashboard schema",
+  },
+  baseline: {
+    label: "ML pipeline",
+    href: "../src/models/ml_pipeline.py",
+    note: "Tabular baselines and feature selection",
+  },
+  deep: {
+    label: "CNN-LSTM implementation",
+    href: "../src/models/deep_learning_ecg.py",
+    note: "Sequence model for temporal biomarker patterns",
+  },
+  transformer: {
+    label: "Transformer implementation",
+    href: "../src/models/transformer_ecg.py",
+    note: "Token embeddings and self-attention",
+  },
+  evaluation: {
+    label: "Model evaluation",
+    href: "../src/models/model_evaluation.py",
+    note: "AUROC, sensitivity, specificity, and diagnostics",
+  },
+  config: {
+    label: "Model configuration",
+    href: "../config/model_config.yml",
+    note: "Training settings and experiment knobs",
+  },
+  protocol: {
+    label: "ECG processing protocol",
+    href: "../docs/ecg_processing_protocol.md",
+    note: "Acquisition and preprocessing rationale",
+  },
+  flow: {
+    label: "Methods flow diagram",
+    href: "../docs/data_flow_diagram.md",
+    note: "End-to-end repo methods map",
+  },
+  guide: {
+    label: "Dashboard guide",
+    href: "../docs/dashboard_guide.md",
+    note: "Plain-language interpretation layer",
+  },
+};
+
 const ERROR_BAR_PLUGIN = {
   id: "errorBars",
   afterDatasetsDraw(chart, _args, pluginOptions) {
@@ -129,6 +216,14 @@ let CHARTS = {};
 let nextRefreshAt = 0;
 let controlsInitialized = false;
 let COHORT_SORT = { col: "nano_id", dir: "asc" };
+let ML_EXPLAINER = {
+  timer: null,
+  stages: [],
+  index: 0,
+  architecture: "tabular",
+  modelName: null,
+  context: null,
+};
 
 document.addEventListener("DOMContentLoaded", bootstrap);
 
@@ -167,7 +262,7 @@ function emptyReadingsPayload() {
 }
 
 function decorateRevealTargets() {
-  document.querySelectorAll(".card, .pipeline, .sync-card").forEach((element) => {
+  document.querySelectorAll(".card, .pipeline, .sync-card, .section-jumpbar, .atlas-card").forEach((element) => {
     element.classList.add("reveal");
   });
 
@@ -591,6 +686,8 @@ function renderMlSection() {
   const ml = STATE.dashboard.ml_performance || {};
   const models = ml.models || [];
 
+  renderMlExplainer(ml);
+
   upsertChart("roc", "chart-roc", {
     type: "line",
     data: {
@@ -712,6 +809,792 @@ function renderMlSection() {
         </tr>`
     )
     .join("");
+}
+
+function renderMlExplainer(ml) {
+  const root = document.getElementById("ml-explainer");
+  if (!root) {
+    return;
+  }
+
+  const bestModel = getBestModel(ml);
+  if (!bestModel) {
+    root.classList.add("hide");
+    stopMlExplainerTimer();
+    return;
+  }
+
+  const architecture = inferModelArchitecture(bestModel);
+  const modelChanged = ML_EXPLAINER.modelName !== bestModel.name || ML_EXPLAINER.architecture !== architecture;
+
+  root.classList.remove("hide");
+  setupMlExplainerInteractions(root);
+
+  const topFeatures = getTopShapFeatures(ml.shap || []);
+  const featureDomains = summarizeFeatureDomains(topFeatures);
+  const stages = buildMlExplainerStages({
+    bestModel,
+    featureDomains,
+    topFeatures,
+    confusion: ml.confusion || {},
+  });
+  if (modelChanged) {
+    ML_EXPLAINER.index = 0;
+  }
+  ML_EXPLAINER.stages = stages;
+  ML_EXPLAINER.index = Math.min(ML_EXPLAINER.index, Math.max(0, stages.length - 1));
+  ML_EXPLAINER.architecture = architecture;
+  ML_EXPLAINER.modelName = bestModel.name;
+  ML_EXPLAINER.context = {
+    bestModel,
+    topFeatures,
+    featureDomains,
+    confusion: ml.confusion || {},
+  };
+
+  setText("ml-explainer-model", bestModel.name);
+  setText("ml-explainer-auroc", `AUROC ${Number(bestModel.auroc).toFixed(3)}`);
+
+  const architectureLabel = getArchitectureDisplayName(architecture).toLowerCase();
+  const domainSummary = featureDomains.length
+    ? humanJoin(featureDomains.slice(0, 3).map((domain) => domain.label.toLowerCase()))
+    : "multimodal developmental predictors";
+  setText(
+    "ml-explainer-summary",
+    `${bestModel.name} currently leads the model comparison. This ${architectureLabel} view shows how ${domainSummary} are aligned, transformed into model-ready features, and converted into the 12-month prediction target.`
+  );
+
+  document.getElementById("ml-domain-grid").innerHTML = featureDomains.length
+    ? featureDomains
+        .map(
+          (domain) => `
+            <article class="ml-domain-card" style="--domain-color: ${domain.accent};">
+              <div class="ml-domain-count">${domain.features.length} signals represented</div>
+              <strong>${escapeHtml(domain.label)}</strong>
+              <div class="ml-domain-copy">${escapeHtml(domain.description)}</div>
+            </article>`
+        )
+        .join("")
+    : '<div class="ml-empty-note">Feature group summaries appear when SHAP importance values are available.</div>';
+
+  document.getElementById("ml-feature-cloud").innerHTML = topFeatures.length
+    ? topFeatures
+        .map(
+          (feature, index) => `
+            <span class="ml-feature-pill" style="--feature-delay: ${index * 0.08}s;">
+              ${escapeHtml(feature.label)}
+            </span>`
+        )
+        .join("")
+    : '<div class="ml-empty-note">No feature-attribution values were provided for this model run.</div>';
+
+  document.getElementById("ml-stage-track").innerHTML = stages
+    .map(
+      (stage, index) => `
+        <button class="ml-stage-node" type="button" data-ml-stage-index="${index}">
+          <span class="ml-stage-index">${String(index + 1).padStart(2, "0")}</span>
+          <span class="ml-stage-copy">
+            <strong>${escapeHtml(stage.title)}</strong>
+            <small>${escapeHtml(stage.subtitle)}</small>
+          </span>
+        </button>`
+    )
+    .join("");
+
+  renderMlOutputMetrics(bestModel, ml.confusion || {});
+  document.getElementById("ml-score-fill").style.width = `${Math.max(16, Number(bestModel.auroc) * 100)}%`;
+
+  setMlExplainerStage(ML_EXPLAINER.index);
+  startMlExplainerTimer();
+}
+
+function renderMlOutputMetrics(bestModel, confusion) {
+  const metrics = [
+    { label: "Sensitivity", value: formatMetric(bestModel.sensitivity) },
+    { label: "Specificity", value: formatMetric(bestModel.specificity) },
+    {
+      label: "95% CI",
+      value: Array.isArray(bestModel.auroc_ci)
+        ? `${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}`
+        : "—",
+    },
+  ];
+
+  const confusionParts = ["tp", "fp", "tn", "fn"]
+    .filter((key) => Number.isFinite(Number(confusion[key])))
+    .map((key) => `${key.toUpperCase()} ${confusion[key]}`);
+  if (confusionParts.length) {
+    metrics.push({ label: "Confusion", value: confusionParts.join(" · ") });
+  }
+
+  document.getElementById("ml-output-metrics").innerHTML = metrics
+    .map(
+      (metric) => `
+        <div class="ml-output-metric">
+          <span>${escapeHtml(metric.label)}</span>
+          <strong>${escapeHtml(metric.value)}</strong>
+        </div>`
+    )
+    .join("");
+}
+
+function setupMlExplainerInteractions(root) {
+  if (root.dataset.bound === "true") {
+    return;
+  }
+
+  root.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-ml-stage-index]");
+    if (!button) {
+      return;
+    }
+    const index = Number(button.dataset.mlStageIndex);
+    if (!Number.isFinite(index)) {
+      return;
+    }
+    setMlExplainerStage(index);
+    startMlExplainerTimer();
+  });
+
+  root.addEventListener("mouseenter", () => {
+    stopMlExplainerTimer();
+  });
+
+  root.addEventListener("mouseleave", () => {
+    startMlExplainerTimer();
+  });
+
+  root.dataset.bound = "true";
+}
+
+function startMlExplainerTimer() {
+  stopMlExplainerTimer();
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || ML_EXPLAINER.stages.length < 2) {
+    return;
+  }
+
+  ML_EXPLAINER.timer = window.setInterval(() => {
+    setMlExplainerStage((ML_EXPLAINER.index + 1) % ML_EXPLAINER.stages.length);
+  }, ML_STAGE_ROTATE_MS);
+}
+
+function stopMlExplainerTimer() {
+  if (ML_EXPLAINER.timer) {
+    window.clearInterval(ML_EXPLAINER.timer);
+    ML_EXPLAINER.timer = null;
+  }
+}
+
+function setMlExplainerStage(index) {
+  const root = document.getElementById("ml-explainer");
+  if (!root || !ML_EXPLAINER.stages.length) {
+    return;
+  }
+
+  const safeIndex = Math.max(0, Math.min(index, ML_EXPLAINER.stages.length - 1));
+  const stage = ML_EXPLAINER.stages[safeIndex];
+  ML_EXPLAINER.index = safeIndex;
+
+  root.style.setProperty(
+    "--ml-progress",
+    `${Math.max(10, ((safeIndex + 1) / ML_EXPLAINER.stages.length) * 100)}%`
+  );
+
+  document.querySelectorAll("#ml-stage-track .ml-stage-node").forEach((node, nodeIndex) => {
+    node.classList.toggle("is-active", nodeIndex === safeIndex);
+    node.classList.toggle("is-complete", nodeIndex < safeIndex);
+  });
+
+  setText("ml-stage-kicker", `Stage ${safeIndex + 1} of ${ML_EXPLAINER.stages.length}`);
+  setText("ml-stage-title", stage.title);
+  setText("ml-stage-body", stage.body);
+  document.getElementById("ml-stage-evidence").innerHTML = (stage.evidence || [])
+    .map((item) => `<span class="chip">${escapeHtml(item)}</span>`)
+    .join("");
+
+  renderMlSignalRail(ML_EXPLAINER.architecture, safeIndex, ML_EXPLAINER.stages.length);
+  renderMlArchitectureDiagram({
+    architecture: ML_EXPLAINER.architecture,
+    stageIndex: safeIndex,
+    bestModel: ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel,
+    topFeatures: ML_EXPLAINER.context && ML_EXPLAINER.context.topFeatures,
+    featureDomains: ML_EXPLAINER.context && ML_EXPLAINER.context.featureDomains,
+  });
+  renderMlMethods(stage, ML_EXPLAINER.architecture, ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel);
+}
+
+function getBestModel(ml) {
+  const models = (ml && ml.models) || [];
+  if (!models.length) {
+    return null;
+  }
+
+  const preferred = String(ml && ml.confusion && ml.confusion.best_model ? ml.confusion.best_model : "").toLowerCase();
+  if (preferred) {
+    const named = models.find((model) => String(model.name || "").toLowerCase() === preferred);
+    if (named) {
+      return named;
+    }
+  }
+
+  return models
+    .slice()
+    .sort((left, right) => Number(right.auroc || 0) - Number(left.auroc || 0))[0];
+}
+
+function getTopShapFeatures(shapRows) {
+  return (shapRows || [])
+    .slice()
+    .sort((left, right) => Number(right.importance || 0) - Number(left.importance || 0))
+    .slice(0, 6)
+    .map((feature) => ({
+      feature: feature.feature || feature.label || "Feature",
+      label: feature.label || humanizeFeatureKey(feature.feature || "Feature"),
+      importance: Number(feature.importance || 0),
+    }));
+}
+
+function summarizeFeatureDomains(features) {
+  const groups = new Map();
+
+  features.forEach((feature) => {
+    const haystack = `${feature.feature} ${feature.label}`;
+    const match = FEATURE_DOMAIN_RULES.find((rule) => rule.pattern.test(haystack)) || {
+      key: "combined",
+      label: "Combined predictors",
+      accent: COLORS.accentSoft,
+      description: "Mixed predictors spanning multiple developmental domains.",
+    };
+
+    if (!groups.has(match.key)) {
+      groups.set(match.key, { ...match, features: [], importance: 0 });
+    }
+
+    const entry = groups.get(match.key);
+    entry.features.push(feature);
+    entry.importance += feature.importance;
+  });
+
+  return Array.from(groups.values())
+    .sort((left, right) => right.importance - left.importance || right.features.length - left.features.length)
+    .slice(0, 4);
+}
+
+function buildMlExplainerStages({ bestModel, featureDomains, topFeatures, confusion }) {
+  const modelKind = inferModelArchitecture(bestModel);
+  const topFeatureText = topFeatures.length
+    ? humanJoin(topFeatures.slice(0, 3).map((feature) => feature.label))
+    : "quality-controlled biomarkers and developmental covariates";
+  const domainText = featureDomains.length
+    ? humanJoin(featureDomains.slice(0, 3).map((domain) => domain.label))
+    : "multimodal study predictors";
+  const ciText = Array.isArray(bestModel.auroc_ci)
+    ? `${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}`
+    : "not reported";
+  const confusionEvidence = ["tp", "fp", "tn", "fn"]
+    .filter((key) => Number.isFinite(Number(confusion[key])))
+    .map((key) => `${key.toUpperCase()} ${confusion[key]}`);
+
+  const sharedStart = [
+    {
+      title: "Inputs aligned by developmental visit",
+      subtitle: "Physiology, clinical context, and assessments share a common timeline.",
+      body: `Signals from ${domainText.toLowerCase()} are aligned to the same study visits before the model sees them. This keeps developmental timing consistent across participants and prevents the learner from comparing mismatched windows.`,
+      evidence: [
+        "Visits: NICU, 1, 2, 3, 6, 9, 12, 24, 36 months",
+        `Best model: ${bestModel.name}`,
+        featureDomains.length ? `${featureDomains[0].label} is the strongest evidence stream` : "Multimodal fusion",
+      ],
+      methods: ["payload", "protocol", "flow"],
+      methodNote: "This alignment step maps to the payload assembly and protocol documentation that determine how visit-level signals are prepared before training.",
+    },
+    {
+      title: "Feature extraction and normalization",
+      subtitle: "Raw study signals are converted into stable predictors.",
+      body: `The pipeline transforms raw recordings and forms into model-ready variables such as ${topFeatureText}. Standardization and quality control keep large-magnitude variables from overwhelming subtler developmental signals.`,
+      evidence: topFeatures.length
+        ? topFeatures.slice(0, 4).map((feature) => feature.label)
+        : ["Feature engineering pending SHAP output"],
+      methods: ["payload", "config", "guide"],
+      methodNote: "These transformed features correspond to the variables assembled in the dashboard payload and the configuration choices that govern model training.",
+    },
+  ];
+
+  const sharedEnd = [
+    {
+      title: "Prediction head and calibration",
+      subtitle: "The fused representation becomes an estimated 12-month risk score.",
+      body: `The final layer converts the learned representation into an estimated probability of a positive ADOS-2 screen at 12 months. Model performance is summarized with AUROC ${Number(bestModel.auroc).toFixed(3)} and bootstrap CI ${ciText} so the explanation stays anchored to measured generalization.`,
+      evidence: confusionEvidence.length
+        ? confusionEvidence.concat([`95% CI ${ciText}`])
+        : [`AUROC ${Number(bestModel.auroc).toFixed(3)}`, `95% CI ${ciText}`, "Cross-validated evaluation"],
+      methods: ["evaluation", "guide", "flow"],
+      methodNote: "This final stage ties the explainer back to the evaluation code and the plain-language dashboard interpretation used in lab presentations.",
+    },
+  ];
+
+  if (modelKind === "cnn_lstm") {
+    return sharedStart.concat([
+      {
+        title: "1D convolutions learn local motifs",
+        subtitle: "Short kernels scan for compact patterns in the feature sequence.",
+        body: "Convolutional filters move across the ordered feature sequence and capture short-range motifs, such as abrupt autonomic shifts or neighboring-visit changes that are too local for a hand-built summary to express well.",
+        evidence: [
+          "Local receptive fields",
+          featureDomains.length ? `${featureDomains[0].label} dominates early filters` : "Multichannel features",
+          "Shared weights across the sequence",
+        ],
+        methods: ["deep", "config", "protocol"],
+        methodNote: "This stage corresponds to the convolutional front end in the deep-learning implementation and the physiology protocol that motivates short-range pattern extraction.",
+      },
+      {
+        title: "LSTM integrates longitudinal context",
+        subtitle: "Memory cells retain what earlier visits mean for later ones.",
+        body: "The LSTM updates an internal state as visits unfold, allowing early NICU physiology to influence how later developmental signals are interpreted. This is the stage that turns isolated measurements into a developmental trajectory.",
+        evidence: [
+          "Temporal ordering preserved",
+          "Longitudinal dependencies retained",
+          "Sequence-to-risk mapping",
+        ],
+        methods: ["deep", "evaluation", "flow"],
+        methodNote: "The recurrent memory stage lives in the same deep-learning codepath, and its output is what the evaluation scripts summarize as longitudinal predictive performance.",
+      },
+    ]).concat(sharedEnd);
+  }
+
+  if (modelKind === "transformer") {
+    return sharedStart.concat([
+      {
+        title: "Feature tokens are embedded",
+        subtitle: "Each predictor becomes a comparable token in latent space.",
+        body: "The model maps each visit-level feature bundle into an embedding so physiology, assessment, and clinical context can be compared on a common latent scale before attention is applied.",
+        evidence: ["Shared embedding space", "Visit-aware encoding", "Multimodal tokens"],
+        methods: ["transformer", "config", "payload"],
+        methodNote: "This embedding stage maps directly to the Transformer implementation, where visit-level inputs become tokens before self-attention is applied.",
+      },
+      {
+        title: "Self-attention weights informative interactions",
+        subtitle: "The model learns which features should attend to one another.",
+        body: "Attention scores tell the network which measurements matter together. This lets the model connect, for example, autonomic regulation with later social-attention measures without forcing a fixed neighborhood structure.",
+        evidence: [
+          "Adaptive weighting",
+          featureDomains.length ? `${featureDomains[0].label} often anchors high-attention paths` : "Cross-feature interaction",
+          "Global context across visits",
+        ],
+        methods: ["transformer", "evaluation", "flow"],
+        methodNote: "This attention block corresponds to the encoder logic in the Transformer script and the downstream evaluation code that checks whether those learned interactions generalize.",
+      },
+    ]).concat(sharedEnd);
+  }
+
+  if (modelKind === "tree") {
+    return sharedStart.concat([
+      {
+        title: "Recursive decision splits partition the cohort",
+        subtitle: "The model asks a sequence of feature-threshold questions.",
+        body: "Tree-based learners repeatedly split the sample on informative predictors, isolating regions of the feature space with different outcome prevalence. This is where nonlinear combinations of developmental variables become useful.",
+        evidence: [
+          topFeatures.length ? `First split candidates: ${topFeatures.slice(0, 2).map((feature) => feature.label).join(" / ")}` : "Threshold-based branching",
+          "Nonlinear partitioning",
+          "Interaction effects captured",
+        ],
+        methods: ["baseline", "config", "payload"],
+        methodNote: "These split rules correspond to the tabular ML pipeline, where the feature matrix is queried repeatedly to isolate informative developmental subgroups.",
+      },
+      {
+        title: "Ensemble aggregation stabilizes the decision surface",
+        subtitle: "Many trees vote so one unstable split does not dominate.",
+        body: "Random forest and boosting variants average across many trees or staged learners. The ensemble reduces sensitivity to any one noisy split and improves generalization relative to a single hand-built rule set.",
+        evidence: ["Ensemble voting", "Variance reduction", "Fold-stable feature ranking"],
+        methods: ["baseline", "evaluation", "flow"],
+        methodNote: "This stage maps to the ensemble training and evaluation code used to compare forest- and boosting-based models against the rest of the candidate set.",
+      },
+    ]).concat(sharedEnd);
+  }
+
+  return sharedStart.concat([
+    {
+      title: "The decision function learns weighted feature combinations",
+      subtitle: "Scaled predictors are combined into a discriminative boundary.",
+      body: "For linear, kernel, or regularized models, the feature vector is transformed into a decision function that separates likely positive and negative screens. Regularization prevents unstable coefficients from overfitting small developmental samples.",
+      evidence: ["Feature scaling", "Regularization", "Decision boundary learned"],
+      methods: ["baseline", "config", "payload"],
+      methodNote: "This stage corresponds to the tabular baseline pipeline and the configuration that keeps the decision function stable for small longitudinal cohorts.",
+    },
+    {
+      title: "Interpretation checks which predictors move the score",
+      subtitle: "Post-hoc importance keeps the model academically interpretable.",
+      body: "Once the model is fit, attribution summaries identify which predictors consistently push risk upward or downward. That link between architecture and interpretability is what makes the dashboard suitable for lab meetings and teaching.",
+      evidence: topFeatures.length
+        ? topFeatures.slice(0, 3).map((feature) => feature.label)
+        : ["Attribution summaries", "Coefficient or SHAP review", "Model audit"],
+      methods: ["evaluation", "guide", "flow"],
+      methodNote: "This interpretation step ties the trained model back to the evaluation and teaching materials that explain why specific predictors matter.",
+    },
+  ]).concat(sharedEnd);
+}
+
+function getArchitectureDisplayName(kind) {
+  if (kind === "cnn_lstm") {
+    return "CNN-LSTM sequence model";
+  }
+  if (kind === "transformer") {
+    return "Transformer attention model";
+  }
+  if (kind === "tree") {
+    return "tree ensemble";
+  }
+  return "tabular decision model";
+}
+
+function renderMlSignalRail(architecture, activeIndex, stageCount) {
+  const svg = document.getElementById("ml-signal-svg");
+  if (!svg) {
+    return;
+  }
+  svg.innerHTML = buildMlSignalRailSvg({
+    architecture,
+    activeIndex,
+    stageCount,
+    reducedMotion: prefersReducedMotion(),
+  });
+}
+
+function buildMlSignalRailSvg({ architecture, activeIndex, stageCount, reducedMotion }) {
+  const positions = [52, 180, 310, 440, 568];
+  const labels = architecture === "transformer"
+    ? ["Inputs", "Tokens", "Attention", "Encoder", "Risk"]
+    : architecture === "tree"
+      ? ["Inputs", "Features", "Split", "Forest", "Vote"]
+      : architecture === "cnn_lstm"
+        ? ["Inputs", "Features", "Conv", "LSTM", "Risk"]
+        : ["Inputs", "Scale", "Model", "Audit", "Risk"];
+
+  const basePath = architecture === "transformer"
+    ? "M52 24 C108 6 138 6 180 24 S264 42 310 24 S394 6 440 24 S520 40 568 24"
+    : "M52 24 C104 24 132 24 180 24 S264 24 310 24 S394 24 440 24 S520 24 568 24";
+  const transformerBranchA = "M180 24 C228 48 264 48 310 24 C354 0 396 0 440 24";
+  const transformerBranchB = "M180 24 C228 0 264 0 310 24 C354 48 396 48 440 24";
+  const treeBranchTop = "M310 24 C360 24 392 10 440 10 C492 10 520 24 568 24";
+  const treeBranchBottom = "M310 24 C360 24 392 38 440 38 C492 38 520 24 568 24";
+
+  const packets = reducedMotion
+    ? `
+        <circle class="ml-signal-packet-primary" cx="${positions[Math.min(activeIndex, positions.length - 1)]}" cy="24" r="6"></circle>
+        <circle class="ml-signal-packet-secondary" cx="${positions[Math.max(1, Math.min(activeIndex + 1, positions.length - 1))]}" cy="24" r="4"></circle>
+        <circle class="ml-signal-packet-accent" cx="${positions[Math.max(0, activeIndex - 1)]}" cy="24" r="3"></circle>`
+    : architecture === "tree"
+      ? `
+          <circle class="ml-signal-packet-primary" r="6"><animateMotion dur="4.8s" repeatCount="indefinite" path="M52 24 C104 24 132 24 180 24 S264 24 310 24"></animateMotion></circle>
+          <circle class="ml-signal-packet-secondary" r="5"><animateMotion dur="4.2s" begin="0.35s" repeatCount="indefinite" path="${treeBranchTop}"></animateMotion></circle>
+          <circle class="ml-signal-packet-accent" r="4"><animateMotion dur="4.4s" begin="0.7s" repeatCount="indefinite" path="${treeBranchBottom}"></animateMotion></circle>`
+      : architecture === "transformer"
+        ? `
+            <circle class="ml-signal-packet-primary" r="6"><animateMotion dur="4.8s" repeatCount="indefinite" path="${basePath}"></animateMotion></circle>
+            <circle class="ml-signal-packet-secondary" r="5"><animateMotion dur="4.1s" begin="0.3s" repeatCount="indefinite" path="${transformerBranchA}"></animateMotion></circle>
+            <circle class="ml-signal-packet-accent" r="4"><animateMotion dur="4.4s" begin="0.7s" repeatCount="indefinite" path="${transformerBranchB}"></animateMotion></circle>`
+        : `
+            <circle class="ml-signal-packet-primary" r="6"><animateMotion dur="4.6s" repeatCount="indefinite" path="${basePath}"></animateMotion></circle>
+            <circle class="ml-signal-packet-secondary" r="5"><animateMotion dur="4.0s" begin="0.35s" repeatCount="indefinite" path="${basePath}"></animateMotion></circle>
+            <circle class="ml-signal-packet-accent" r="4"><animateMotion dur="4.3s" begin="0.8s" repeatCount="indefinite" path="${basePath}"></animateMotion></circle>`;
+
+  return `
+    ${architecture === "transformer" ? `<path class="ml-signal-branch" d="${transformerBranchA}"></path><path class="ml-signal-branch" d="${transformerBranchB}"></path>` : ""}
+    ${architecture === "tree" ? `<path class="ml-signal-branch" d="${treeBranchTop}"></path><path class="ml-signal-branch" d="${treeBranchBottom}"></path>` : ""}
+    <path class="ml-signal-track" d="${basePath}"></path>
+    ${positions.slice(0, stageCount).map((position, index) => `
+      <g>
+        <circle class="ml-signal-stop ${index < activeIndex ? "is-complete" : ""} ${index === activeIndex ? "is-active" : ""}" cx="${position}" cy="24" r="${index === activeIndex ? 12 : 10}"></circle>
+        <text class="ml-signal-caption" x="${position}" y="68" text-anchor="middle">${escapeHtml(labels[index] || `Stage ${index + 1}`)}</text>
+      </g>`).join("")}
+    ${packets}`;
+}
+
+function renderMlArchitectureDiagram({ architecture, stageIndex, bestModel, topFeatures, featureDomains }) {
+  const container = document.getElementById("ml-model-diagram");
+  if (!container || !bestModel) {
+    return;
+  }
+
+  const caption = architecture === "transformer"
+    ? `${bestModel.name} converts visit-level predictors into tokens, reweights them with self-attention, and then reads out a risk estimate.`
+    : architecture === "tree"
+      ? `${bestModel.name} repeatedly splits the feature space across many trees, then aggregates those votes into a more stable prediction.`
+      : architecture === "cnn_lstm"
+        ? `${bestModel.name} combines short-range convolutional motif detectors with recurrent memory across visits.`
+        : `${bestModel.name} learns a stable decision function over scaled feature vectors and then audits which predictors drive the score.`;
+  setText("ml-architecture-caption", caption);
+
+  container.innerHTML = buildMlArchitectureDiagram({
+    architecture,
+    stageIndex,
+    topFeatures,
+    featureDomains,
+  });
+}
+
+function buildMlArchitectureDiagram({ architecture, stageIndex, topFeatures, featureDomains }) {
+  if (architecture === "transformer") {
+    return buildTransformerDiagram({ stageIndex, topFeatures, featureDomains });
+  }
+  if (architecture === "tree") {
+    return buildTreeDiagram({ stageIndex, topFeatures, featureDomains });
+  }
+  if (architecture === "cnn_lstm") {
+    return buildCnnLstmDiagram({ stageIndex, topFeatures, featureDomains });
+  }
+  return buildTabularDiagram({ stageIndex, topFeatures, featureDomains });
+}
+
+function buildCnnLstmDiagram({ stageIndex, topFeatures, featureDomains }) {
+  const inputs = [
+    shortText(topFeatures[0] && topFeatures[0].label, 20) || "ECG + HRV",
+    shortText(topFeatures[1] && topFeatures[1].label, 20) || "Behavioral coding",
+    shortText(topFeatures[2] && topFeatures[2].label, 20) || "NICU context",
+  ];
+  const domainLabel = shortText(featureDomains[0] && featureDomains[0].label, 20) || "Feature bundle";
+  return `
+    <svg viewBox="0 0 640 220" role="img" aria-label="CNN-LSTM model schematic">
+      <path class="ml-svg-line" d="M154 56 C178 56 190 80 208 98"></path>
+      <path class="ml-svg-line" d="M154 102 L208 110"></path>
+      <path class="ml-svg-line" d="M154 148 C178 148 190 126 208 118"></path>
+      <path class="ml-svg-line" d="M304 110 L336 110"></path>
+      <path class="ml-svg-line" d="M452 110 L492 110"></path>
+
+      <rect x="22" y="38" width="132" height="36" rx="16" class="ml-svg-block blue${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <rect x="22" y="84" width="132" height="36" rx="16" class="ml-svg-block green${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <rect x="22" y="130" width="132" height="36" rx="16" class="ml-svg-block red${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <text x="88" y="60" text-anchor="middle" class="ml-svg-label">${escapeHtml(inputs[0])}</text>
+      <text x="88" y="106" text-anchor="middle" class="ml-svg-label">${escapeHtml(inputs[1])}</text>
+      <text x="88" y="152" text-anchor="middle" class="ml-svg-label">${escapeHtml(inputs[2])}</text>
+
+      <rect x="208" y="72" width="96" height="76" rx="22" class="ml-svg-block gold${stageIndex === 1 ? " is-active" : ""}"></rect>
+      <text x="256" y="102" text-anchor="middle" class="ml-svg-label">Feature</text>
+      <text x="256" y="120" text-anchor="middle" class="ml-svg-meta">${escapeHtml(domainLabel)}</text>
+
+      <rect x="336" y="54" width="116" height="112" rx="24" class="ml-svg-block blue${stageIndex === 2 ? " is-active" : ""}"></rect>
+      <text x="394" y="92" text-anchor="middle" class="ml-svg-label">1D convolutions</text>
+      <text x="394" y="112" text-anchor="middle" class="ml-svg-meta">kernel scan</text>
+      <rect x="352" y="126" width="22" height="14" rx="7" class="ml-svg-chip"></rect>
+      <rect x="382" y="126" width="28" height="14" rx="7" class="ml-svg-chip"></rect>
+      <rect x="418" y="126" width="18" height="14" rx="7" class="ml-svg-chip"></rect>
+
+      <rect x="492" y="54" width="96" height="112" rx="24" class="ml-svg-block purple${stageIndex === 3 ? " is-active" : ""}"></rect>
+      <path class="ml-svg-loop" d="M516 142 C502 96 520 70 560 70 C594 70 604 122 572 144"></path>
+      <text x="540" y="96" text-anchor="middle" class="ml-svg-label">LSTM memory</text>
+      <text x="540" y="116" text-anchor="middle" class="ml-svg-meta">visit sequence state</text>
+
+      <rect x="556" y="176" width="64" height="28" rx="14" class="ml-svg-block red${stageIndex === 4 ? " is-active" : ""}"></rect>
+      <text x="588" y="194" text-anchor="middle" class="ml-svg-label">Risk</text>
+      <path class="ml-svg-line soft" d="M572 166 L588 176"></path>
+    </svg>`;
+}
+
+function buildTransformerDiagram({ stageIndex, topFeatures, featureDomains }) {
+  const tokenA = shortText(topFeatures[0] && topFeatures[0].label, 18) || "RSA token";
+  const tokenB = shortText(topFeatures[1] && topFeatures[1].label, 18) || "Behavior token";
+  const tokenC = shortText(featureDomains[0] && featureDomains[0].label, 18) || "Clinical token";
+  return `
+    <svg viewBox="0 0 640 220" role="img" aria-label="Transformer model schematic">
+      <path class="ml-svg-line" d="M132 60 L184 96"></path>
+      <path class="ml-svg-line" d="M132 102 L184 110"></path>
+      <path class="ml-svg-line" d="M132 144 L184 124"></path>
+      <path class="ml-svg-line" d="M272 110 L320 110"></path>
+      <path class="ml-svg-line" d="M460 82 L500 82"></path>
+      <path class="ml-svg-line" d="M460 136 L500 136"></path>
+
+      <rect x="24" y="42" width="108" height="32" rx="14" class="ml-svg-block blue${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <rect x="24" y="86" width="108" height="32" rx="14" class="ml-svg-block green${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <rect x="24" y="130" width="108" height="32" rx="14" class="ml-svg-block red${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <text x="78" y="62" text-anchor="middle" class="ml-svg-label">${escapeHtml(tokenA)}</text>
+      <text x="78" y="106" text-anchor="middle" class="ml-svg-label">${escapeHtml(tokenB)}</text>
+      <text x="78" y="150" text-anchor="middle" class="ml-svg-label">${escapeHtml(tokenC)}</text>
+
+      <rect x="184" y="60" width="88" height="100" rx="22" class="ml-svg-block gold${stageIndex === 1 ? " is-active" : ""}"></rect>
+      <text x="228" y="96" text-anchor="middle" class="ml-svg-label">Embedding</text>
+      <text x="228" y="116" text-anchor="middle" class="ml-svg-meta">visit-aware tokens</text>
+
+      <rect x="320" y="38" width="140" height="144" rx="26" class="ml-svg-block purple${stageIndex === 2 ? " is-active" : ""}"></rect>
+      <text x="390" y="70" text-anchor="middle" class="ml-svg-label">Self-attention</text>
+      <text x="390" y="90" text-anchor="middle" class="ml-svg-meta">multi-head weighting</text>
+      <path class="ml-svg-line soft" d="M346 120 L434 72"></path>
+      <path class="ml-svg-line soft" d="M346 82 L434 146"></path>
+      <path class="ml-svg-line soft" d="M350 148 L430 112"></path>
+      <circle cx="354" cy="120" r="5" class="ml-svg-chip"></circle>
+      <circle cx="390" cy="98" r="5" class="ml-svg-chip"></circle>
+      <circle cx="426" cy="136" r="5" class="ml-svg-chip"></circle>
+
+      <rect x="500" y="54" width="108" height="48" rx="18" class="ml-svg-block blue${stageIndex === 3 ? " is-active" : ""}"></rect>
+      <rect x="500" y="118" width="108" height="48" rx="18" class="ml-svg-block blue${stageIndex === 3 ? " is-active" : ""}"></rect>
+      <text x="554" y="82" text-anchor="middle" class="ml-svg-label">Encoder stack</text>
+      <text x="554" y="146" text-anchor="middle" class="ml-svg-label">Context head</text>
+
+      <rect x="528" y="178" width="72" height="26" rx="13" class="ml-svg-block red${stageIndex === 4 ? " is-active" : ""}"></rect>
+      <text x="564" y="195" text-anchor="middle" class="ml-svg-label">Risk</text>
+    </svg>`;
+}
+
+function buildTreeDiagram({ stageIndex, topFeatures, featureDomains }) {
+  const splitLabel = shortText(topFeatures[0] && topFeatures[0].label, 18) || "Primary split";
+  const featureLabel = shortText(featureDomains[0] && featureDomains[0].label, 18) || "Feature bag";
+  return `
+    <svg viewBox="0 0 640 220" role="img" aria-label="Tree ensemble schematic">
+      <path class="ml-svg-line" d="M140 110 L186 110"></path>
+      <path class="ml-svg-line" d="M286 110 L322 110"></path>
+      <path class="ml-svg-line" d="M358 64 L428 90"></path>
+      <path class="ml-svg-line" d="M358 110 L428 110"></path>
+      <path class="ml-svg-line" d="M358 156 L428 130"></path>
+      <path class="ml-svg-line" d="M504 110 L548 110"></path>
+
+      <rect x="22" y="82" width="118" height="56" rx="20" class="ml-svg-block blue${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <text x="81" y="104" text-anchor="middle" class="ml-svg-label">Input matrix</text>
+      <text x="81" y="124" text-anchor="middle" class="ml-svg-meta">visit-level predictors</text>
+
+      <rect x="186" y="82" width="100" height="56" rx="20" class="ml-svg-block gold${stageIndex === 1 ? " is-active" : ""}"></rect>
+      <text x="236" y="104" text-anchor="middle" class="ml-svg-label">${escapeHtml(featureLabel)}</text>
+      <text x="236" y="124" text-anchor="middle" class="ml-svg-meta">candidate splits</text>
+
+      <rect x="322" y="84" width="82" height="52" rx="18" class="ml-svg-block red${stageIndex === 2 ? " is-active" : ""}"></rect>
+      <text x="363" y="104" text-anchor="middle" class="ml-svg-label">Split rule</text>
+      <text x="363" y="122" text-anchor="middle" class="ml-svg-meta">${escapeHtml(splitLabel)}</text>
+
+      <g>
+        <circle cx="444" cy="74" r="14" class="ml-svg-block green${stageIndex === 3 ? " is-active" : ""}"></circle>
+        <circle cx="444" cy="110" r="14" class="ml-svg-block green${stageIndex === 3 ? " is-active" : ""}"></circle>
+        <circle cx="444" cy="146" r="14" class="ml-svg-block green${stageIndex === 3 ? " is-active" : ""}"></circle>
+        <path class="ml-svg-line soft" d="M444 74 L470 56 L494 70"></path>
+        <path class="ml-svg-line soft" d="M444 74 L470 88 L494 102"></path>
+        <path class="ml-svg-line soft" d="M444 110 L470 98 L494 86"></path>
+        <path class="ml-svg-line soft" d="M444 110 L470 122 L494 136"></path>
+        <path class="ml-svg-line soft" d="M444 146 L470 134 L494 118"></path>
+        <path class="ml-svg-line soft" d="M444 146 L470 158 L494 172"></path>
+      </g>
+
+      <rect x="496" y="82" width="92" height="56" rx="20" class="ml-svg-block purple${stageIndex === 4 ? " is-active" : ""}"></rect>
+      <text x="542" y="104" text-anchor="middle" class="ml-svg-label">Vote / risk</text>
+      <text x="542" y="124" text-anchor="middle" class="ml-svg-meta">ensemble average</text>
+    </svg>`;
+}
+
+function buildTabularDiagram({ stageIndex, topFeatures, featureDomains }) {
+  const keyFeature = shortText(topFeatures[0] && topFeatures[0].label, 18) || "Top predictor";
+  const domainLabel = shortText(featureDomains[0] && featureDomains[0].label, 18) || "Feature set";
+  return `
+    <svg viewBox="0 0 640 220" role="img" aria-label="Tabular model schematic">
+      <path class="ml-svg-line" d="M138 110 L186 110"></path>
+      <path class="ml-svg-line" d="M286 110 L332 110"></path>
+      <path class="ml-svg-line" d="M456 110 L506 110"></path>
+
+      <rect x="24" y="82" width="114" height="56" rx="20" class="ml-svg-block blue${stageIndex === 0 ? " is-active" : ""}"></rect>
+      <text x="81" y="104" text-anchor="middle" class="ml-svg-label">Input matrix</text>
+      <text x="81" y="124" text-anchor="middle" class="ml-svg-meta">${escapeHtml(domainLabel)}</text>
+
+      <rect x="186" y="82" width="100" height="56" rx="20" class="ml-svg-block gold${stageIndex === 1 ? " is-active" : ""}"></rect>
+      <text x="236" y="104" text-anchor="middle" class="ml-svg-label">Scaler</text>
+      <text x="236" y="124" text-anchor="middle" class="ml-svg-meta">standardized features</text>
+
+      <rect x="332" y="62" width="124" height="96" rx="24" class="ml-svg-block purple${stageIndex === 2 ? " is-active" : ""}"></rect>
+      <text x="394" y="96" text-anchor="middle" class="ml-svg-label">Decision function</text>
+      <text x="394" y="116" text-anchor="middle" class="ml-svg-meta">weighted boundary</text>
+
+      <rect x="506" y="68" width="92" height="42" rx="18" class="ml-svg-block green${stageIndex === 3 ? " is-active" : ""}"></rect>
+      <rect x="506" y="120" width="92" height="42" rx="18" class="ml-svg-block green${stageIndex === 3 ? " is-active" : ""}"></rect>
+      <text x="552" y="92" text-anchor="middle" class="ml-svg-label">Audit</text>
+      <text x="552" y="144" text-anchor="middle" class="ml-svg-meta">${escapeHtml(keyFeature)}</text>
+
+      <rect x="532" y="178" width="56" height="24" rx="12" class="ml-svg-block red${stageIndex === 4 ? " is-active" : ""}"></rect>
+      <text x="560" y="194" text-anchor="middle" class="ml-svg-label">Risk</text>
+    </svg>`;
+}
+
+function renderMlMethods(stage, architecture, bestModel) {
+  const refs = getMethodDefinitions((stage && stage.methods) || getDefaultMethodKeys(architecture));
+  setText(
+    "ml-methods-summary",
+    stage && stage.methodNote
+      ? stage.methodNote
+      : `${bestModel ? bestModel.name : "This model"} maps to the scripts and methods references below.`
+  );
+  document.getElementById("ml-methods-links").innerHTML = refs
+    .map(
+      (ref) => `
+        <a class="ml-method-link" href="${ref.href}" target="_blank" rel="noreferrer">
+          <span>${escapeHtml(ref.label)}</span>
+          <em>${escapeHtml(ref.note)}</em>
+        </a>`
+    )
+    .join("");
+}
+
+function getMethodDefinitions(keys) {
+  return Array.from(new Set(keys || []))
+    .map((key) => ML_METHOD_LIBRARY[key])
+    .filter(Boolean);
+}
+
+function getDefaultMethodKeys(architecture) {
+  if (architecture === "cnn_lstm") {
+    return ["deep", "payload", "evaluation", "protocol", "flow"];
+  }
+  if (architecture === "transformer") {
+    return ["transformer", "payload", "evaluation", "config", "flow"];
+  }
+  if (architecture === "tree") {
+    return ["baseline", "payload", "evaluation", "config", "flow"];
+  }
+  return ["baseline", "payload", "evaluation", "guide", "flow"];
+}
+
+function shortText(value, maxLength = 22) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function inferModelArchitecture(model) {
+  const descriptor = `${model && model.slug ? model.slug : ""} ${model && model.name ? model.name : ""}`.toLowerCase();
+  if (/(cnn|lstm|gru|rnn)/.test(descriptor)) {
+    return "cnn_lstm";
+  }
+  if (/(transformer|attention)/.test(descriptor)) {
+    return "transformer";
+  }
+  if (/(forest|boost|xgb|tree)/.test(descriptor)) {
+    return "tree";
+  }
+  return "tabular";
+}
+
+function humanizeFeatureKey(value) {
+  return String(value || "Feature")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function humanJoin(items) {
+  const values = Array.from(new Set((items || []).filter(Boolean)));
+  if (!values.length) {
+    return "";
+  }
+  if (values.length === 1) {
+    return values[0];
+  }
+  if (values.length === 2) {
+    return `${values[0]} and ${values[1]}`;
+  }
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+}
+
+function formatMetric(value) {
+  return Number.isFinite(Number(value)) ? Number(value).toFixed(3) : "—";
 }
 
 function renderTrajectoryChart() {

@@ -15,6 +15,10 @@ The dashboard can still be hosted as static files, but the repository now
 also includes a lightweight live runtime that serves the site, watches the
 source folders, and refreshes the generated JSON outputs automatically.
 
+The page also now includes a compact jump atlas near the top and smaller
+local jump chips inside each section so team members can hop directly to
+specific panels instead of scrolling through the full dashboard in one pass.
+
 ## 2. Opening the dashboard
 
 ### Option A — Double-click (easiest)
@@ -54,7 +58,7 @@ If the reading library is empty, make sure
 | **Overview** | Where are we vs. the R01 plan? | Enrollment line chart, progress stacked bar, 5 KPI cards |
 | **Pipeline** | How does raw data become a finding? | Clickable SVG with 13 step explainers |
 | **Data Quality** | Are we clean enough to analyze? | Missingness bar, QC flag cards, queries-per-event chart, audit table |
-| **ML Performance** | Are our models any good? | ROC curves, AUROC with CI, SHAP, subgroup sensitivity, confusion summary |
+| **ML Performance** | Are our models any good, and how do they work? | Architecture explainer animation, model-specific schematics, methods citation links, ROC curves, AUROC with CI, SHAP, subgroup sensitivity, confusion summary |
 | **Trajectories** | Are the groups diverging over time? | Biomarker trajectory with CI bands, visit completion bars, intercept/slope table |
 | **Cohort Table** | Who's in the sample right now? | Sortable, filterable participant table (surrogate IDs only) |
 | **Reading Library** | What new papers and materials have landed in the repo? | Searchable PDF cards, category chips, latest-update stats |
@@ -71,6 +75,14 @@ see:
 The same plain-language information is the canonical truth in
 `dashboard/context_skill/references/`.
 
+For navigation, the quickest options are:
+
+* **Jump atlas:** the card strip near the top of the page for fast entry
+   into major dashboard areas.
+* **Local jump chips:** the small embedded links inside each section for
+   moving directly to a chart, table, or explainer within that section.
+* **Sidebar:** the persistent left navigation for the main sections only.
+
 ## 5. How the numbers get there
 
 ```
@@ -85,7 +97,9 @@ The same plain-language information is the canonical truth in
 3. **Readings index** (`dashboard/pipelines/build_readings_index.py`)
    scans `ESD Lab readings/` and writes the searchable reading library.
 4. **Dashboard** (`dashboard/index.html`) reads both JSON files in the
-   browser, animates updates, and redraws the charts with Chart.js.
+   browser, animates updates, redraws the charts with Chart.js, and
+   derives the ML architecture explainer from the best model and SHAP
+   fields already present in `dashboard_data.json`.
 
 ## 6. Something looks wrong — who do I ask?
 
