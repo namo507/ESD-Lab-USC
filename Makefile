@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -107,6 +107,13 @@ dashboard-down:  ## Stop the live dashboard container
 
 dashboard-logs:  ## Tail live dashboard logs
 	docker compose logs -f dashboard
+
+dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild loop
+	$(PYTHON) scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
+	@echo "✓ Dashboard Docker runtime passed smoke checks."
+
+dashboard-share:  ## Start a public share tunnel and print the shareable URL
+	bash scripts/share_dashboard.sh
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
 

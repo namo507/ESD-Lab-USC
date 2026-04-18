@@ -29,6 +29,14 @@ docker compose up --build dashboard
 
 Then open `http://localhost:8080/dashboard/`.
 
+If you need to share the dashboard with someone outside your machine, run:
+
+```bash
+bash scripts/share_dashboard.sh
+```
+
+That prints a temporary public URL backed by the live Docker runtime.
+
 ### Option C — From a URL (if you host it)
 ```
 https://<lab-server>/nano/dashboard/

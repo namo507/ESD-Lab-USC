@@ -48,6 +48,21 @@ What that does:
 3. Polls dashboard inputs and `ESD Lab readings/` every 20 seconds.
 4. Rebuilds `dashboard_data.json`, `readings_data.json`, and `runtime_status.json` when an input changes.
 
+To verify the running container is healthy and the watcher is still triggering rebuilds:
+
+```bash
+python scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
+```
+
+For a public share link from a local machine, start the optional share profile:
+
+```bash
+bash scripts/share_dashboard.sh
+```
+
+That launches a Cloudflare quick tunnel and prints a temporary public URL while
+the Docker services remain up.
+
 ## 4. Running it manually
 
 ```bash

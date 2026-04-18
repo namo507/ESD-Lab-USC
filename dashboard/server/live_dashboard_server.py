@@ -10,6 +10,7 @@ The server has two responsibilities:
 The watch loop is polling-based on purpose. It keeps the runtime dependency
 surface small so the Docker image can stay lightweight and reproducible.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +48,16 @@ def atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
     temp_path.replace(output_path)
 
 
+def is_runtime_healthy(state: dict[str, Any]) -> bool:
+    """Return whether the runtime is healthy enough for external checks."""
+    return (
+        state.get("status") == "ok"
+        and bool(state.get("dashboard"))
+        and bool(state.get("readings"))
+        and not state.get("errors")
+    )
+
+
 def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
     """Assemble the small set of inputs that should trigger a rebuild."""
     watched = [
@@ -55,7 +66,10 @@ def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
         PROJECT_ROOT / "config" / "study_parameters.yml",
         PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_dashboard_data.py",
-        PROJECT_ROOT / "dashboard" / "pipelines" / "generate_synthetic_dashboard_data.py",
+        PROJECT_ROOT
+        / "dashboard"
+        / "pipelines"
+        / "generate_synthetic_dashboard_data.py",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_readings_index.py",
     ]
 
@@ -72,14 +86,19 @@ def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
             path = resolved.get(key)
             if path is not None:
                 watched.append(path)
-        watched.extend([
-            build_dashboard_data.DEFAULT_REDCAP_PATH,
-            build_dashboard_data.DEFAULT_REDCAP_PATH.with_suffix(".csv"),
-            build_dashboard_data.DEFAULT_FEATURE_PATH,
-            build_dashboard_data.DEFAULT_FEATURE_PATH.with_suffix(".csv"),
-            build_dashboard_data.DEFAULT_METRICS_PATH,
-            PROJECT_ROOT / "dashboard" / "pipelines" / "bootstrap_dashboard_demo_inputs.py",
-        ])
+        watched.extend(
+            [
+                build_dashboard_data.DEFAULT_REDCAP_PATH,
+                build_dashboard_data.DEFAULT_REDCAP_PATH.with_suffix(".csv"),
+                build_dashboard_data.DEFAULT_FEATURE_PATH,
+                build_dashboard_data.DEFAULT_FEATURE_PATH.with_suffix(".csv"),
+                build_dashboard_data.DEFAULT_METRICS_PATH,
+                PROJECT_ROOT
+                / "dashboard"
+                / "pipelines"
+                / "bootstrap_dashboard_demo_inputs.py",
+            ]
+        )
     except Exception as exc:  # pragma: no cover - best effort only
         logger.warning("Unable to resolve configured watch paths: %s", exc)
 
@@ -101,7 +120,11 @@ def snapshot_path(path: Path) -> str:
         return hasher.hexdigest()
 
     if path.is_file():
-        stat = path.stat()
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            hasher.update(f"missing:{path}".encode("utf-8"))
+            return hasher.hexdigest()
         hasher.update(f"file:{path}:{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8"))
         return hasher.hexdigest()
 
@@ -110,9 +133,14 @@ def snapshot_path(path: Path) -> str:
             continue
         if child.suffix.lower() not in WATCHABLE_SUFFIXES:
             continue
-        stat = child.stat()
+        try:
+            stat = child.stat()
+        except FileNotFoundError:
+            continue
         relative = child.relative_to(path)
-        hasher.update(f"dir:{relative}:{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8"))
+        hasher.update(
+            f"dir:{relative}:{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8")
+        )
     return hasher.hexdigest()
 
 
@@ -148,11 +176,19 @@ class DashboardRuntime:
             "last_build_reason": "startup",
             "last_build_started_at": None,
             "last_build_finished_at": None,
+            "last_successful_build_finished_at": None,
             "watch_interval_seconds": interval_seconds,
             "fallback_synthetic": fallback_synthetic,
             "dashboard": {},
             "readings": {},
-            "watched_inputs": [str(path.relative_to(PROJECT_ROOT)) if path.is_relative_to(PROJECT_ROOT) else str(path) for path in self.watch_list],
+            "watched_inputs": [
+                (
+                    str(path.relative_to(PROJECT_ROOT))
+                    if path.is_relative_to(PROJECT_ROOT)
+                    else str(path)
+                )
+                for path in self.watch_list
+            ],
             "errors": [],
         }
 
@@ -171,6 +207,20 @@ class DashboardRuntime:
             self.state["generated_at"] = datetime.now().isoformat(timespec="seconds")
             atomic_write_json(RUNTIME_STATUS_PATH, self.state)
 
+    def _persist_state(self) -> None:
+        with self.state_lock:
+            self.state["generated_at"] = datetime.now().isoformat(timespec="seconds")
+            atomic_write_json(RUNTIME_STATUS_PATH, self.state)
+
+    def _mark_degraded(self, message: str) -> None:
+        with self.state_lock:
+            existing_errors = [
+                error for error in self.state.get("errors", []) if error != message
+            ]
+            self.state["status"] = "degraded"
+            self.state["errors"] = [message, *existing_errors][:5]
+        self._persist_state()
+
     def _run_pipeline_command(self, script_path: Path, args: list[str]) -> int:
         command = [sys.executable, str(script_path), *args]
         logger.info("Running rebuild command: %s", " ".join(command))
@@ -183,29 +233,42 @@ class DashboardRuntime:
         errors: list[str] = []
 
         logger.info("Rebuilding dashboard assets (%s)", reason)
-        dashboard_args = [
-            "--config", str(self.config_path),
-            "--output", str(DATA_DIR / "dashboard_data.json"),
-            "--bootstrap-demo-inputs",
-        ]
-        if self.fallback_synthetic:
-            dashboard_args.append("--fallback-synthetic")
-        dashboard_code = self._run_pipeline_command(
-            PROJECT_ROOT / "dashboard" / "pipelines" / "build_dashboard_data.py",
-            dashboard_args,
-        )
-        if dashboard_code != 0:
-            errors.append(f"dashboard build exited with code {dashboard_code}")
+        try:
+            dashboard_args = [
+                "--config",
+                str(self.config_path),
+                "--output",
+                str(DATA_DIR / "dashboard_data.json"),
+                "--bootstrap-demo-inputs",
+            ]
+            if self.fallback_synthetic:
+                dashboard_args.append("--fallback-synthetic")
+            dashboard_code = self._run_pipeline_command(
+                PROJECT_ROOT / "dashboard" / "pipelines" / "build_dashboard_data.py",
+                dashboard_args,
+            )
+            if dashboard_code != 0:
+                errors.append(f"dashboard build exited with code {dashboard_code}")
 
-        readings_code = self._run_pipeline_command(
-            PROJECT_ROOT / "dashboard" / "pipelines" / "build_readings_index.py",
-            [
-            "--readings-dir", str(self.readings_dir),
-            "--output", str(DATA_DIR / "readings_data.json"),
-            ],
-        )
-        if readings_code != 0:
-            errors.append(f"readings build exited with code {readings_code}")
+            readings_code = self._run_pipeline_command(
+                PROJECT_ROOT / "dashboard" / "pipelines" / "build_readings_index.py",
+                [
+                    "--readings-dir",
+                    str(self.readings_dir),
+                    "--output",
+                    str(DATA_DIR / "readings_data.json"),
+                ],
+            )
+            if readings_code != 0:
+                errors.append(f"readings build exited with code {readings_code}")
+        except Exception as exc:  # pragma: no cover - runtime hardening path
+            logger.exception("Unexpected rebuild failure")
+            errors.append(f"unexpected rebuild failure: {exc}")
+
+        if not (DATA_DIR / "dashboard_data.json").exists():
+            errors.append("dashboard_data.json was not created")
+        if not (DATA_DIR / "readings_data.json").exists():
+            errors.append("readings_data.json was not created")
 
         finished_at = datetime.now().isoformat(timespec="seconds")
         with self.state_lock:
@@ -215,6 +278,8 @@ class DashboardRuntime:
             self.state["last_build_started_at"] = started_at
             self.state["last_build_finished_at"] = finished_at
             self.state["errors"] = errors
+            if not errors:
+                self.state["last_successful_build_finished_at"] = finished_at
         self._refresh_state_from_outputs()
 
     def start(self) -> None:
@@ -222,7 +287,9 @@ class DashboardRuntime:
         if self.interval_seconds <= 0:
             return
 
-        self.watch_thread = threading.Thread(target=self._watch_loop, name="dashboard-watch", daemon=True)
+        self.watch_thread = threading.Thread(
+            target=self._watch_loop, name="dashboard-watch", daemon=True
+        )
         self.watch_thread.start()
 
     def stop(self) -> None:
@@ -236,17 +303,23 @@ class DashboardRuntime:
 
     def _watch_loop(self) -> None:
         while not self.stop_event.wait(self.interval_seconds):
-            latest = self._take_snapshot()
-            if latest == self.snapshot:
-                continue
-            self.snapshot = latest
-            self.rebuild("source-change")
+            try:
+                latest = self._take_snapshot()
+                if latest == self.snapshot:
+                    continue
+                self.snapshot = latest
+                self.rebuild("source-change")
+            except Exception as exc:  # pragma: no cover - defensive runtime path
+                logger.exception("Watch loop iteration failed")
+                self._mark_degraded(f"watch loop failure: {exc}")
 
 
 class RepoRequestHandler(SimpleHTTPRequestHandler):
     """Serve the repository root and expose a tiny health endpoint."""
 
-    def __init__(self, *args: Any, runtime: DashboardRuntime, directory: str, **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, runtime: DashboardRuntime, directory: str, **kwargs: Any
+    ) -> None:
         self.runtime = runtime
         super().__init__(*args, directory=directory, **kwargs)
 
@@ -259,7 +332,11 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/healthz":
             payload = self.runtime.read_state()
-            status = HTTPStatus.OK if payload.get("dashboard") else HTTPStatus.SERVICE_UNAVAILABLE
+            status = (
+                HTTPStatus.OK
+                if is_runtime_healthy(payload)
+                else HTTPStatus.SERVICE_UNAVAILABLE
+            )
             body = json.dumps(payload, indent=2).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -280,10 +357,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Serve the live NANO dashboard with auto-rebuilds.")
+    parser = argparse.ArgumentParser(
+        description="Serve the live NANO dashboard with auto-rebuilds."
+    )
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--interval", type=int, default=20, help="Polling interval in seconds.")
+    parser.add_argument(
+        "--interval", type=int, default=20, help="Polling interval in seconds."
+    )
     parser.add_argument(
         "--readings-dir",
         type=Path,

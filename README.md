@@ -197,11 +197,31 @@ Useful shortcuts:
 ```bash
 make dashboard-refresh
 make dashboard-up
+make dashboard-smoke
 make dashboard-logs
 ```
 
 If the secure data mount is unavailable, the runtime falls back to synthetic
 dashboard data so the UI and the readings library still render cleanly.
+
+### Shareable Public Link
+
+You can expose the live dashboard with a temporary public URL using a Dockerized
+Cloudflare quick tunnel:
+
+```bash
+make dashboard-share
+```
+
+That command starts the dashboard, starts a tunnel sidecar, and prints a public
+`https://...trycloudflare.com` link you can share immediately. The link stays
+live while the Docker services keep running.
+
+To verify the runtime is still healthy and auto-rebuilding continuously:
+
+```bash
+make dashboard-smoke
+```
 
 ---
 
