@@ -33,7 +33,9 @@ NANO_ID_*
 participant_*
 
 # ─── Directories with raw/sensitive data ────────────────────
-raw/
+# Ignore raw data contents but allow .gitkeep tracker
+raw/**
+!raw/.gitkeep
 secure_data/
 credentials/
 
