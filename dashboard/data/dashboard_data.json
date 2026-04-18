@@ -1,0 +1,2091 @@
+{
+  "meta": {
+    "generated_at": "2026-04-17T21:08:58",
+    "data_source": "synthetic_demo",
+    "seed": 42,
+    "study": {
+      "name": "NANO Study",
+      "long_name": "Neurodevelopment of Autonomic and Neural Organization",
+      "pi": "Jessica Bradshaw, PhD",
+      "institution": "Early Social Development Lab \u00b7 University of South Carolina",
+      "funder": "NIH R01",
+      "duration_years": 5,
+      "n_target": 260
+    }
+  },
+  "enrollment": {
+    "months": [
+      "2023-10",
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03"
+    ],
+    "by_group": {
+      "ASIB": {
+        "target": 65,
+        "current": 52,
+        "percent": 80.0,
+        "monthly": [
+          1,
+          4,
+          4,
+          4,
+          5,
+          8,
+          8,
+          11,
+          11,
+          13,
+          16,
+          20,
+          23,
+          26,
+          29,
+          32,
+          34,
+          36,
+          40,
+          41,
+          43,
+          45,
+          46,
+          49,
+          50,
+          50,
+          50,
+          52,
+          52,
+          52
+        ],
+        "color": "#C44E52",
+        "label": "ASIB (VPT + ASD traits)"
+      },
+      "PT": {
+        "target": 130,
+        "current": 105,
+        "percent": 80.8,
+        "monthly": [
+          5,
+          5,
+          6,
+          9,
+          12,
+          12,
+          17,
+          21,
+          23,
+          28,
+          32,
+          39,
+          45,
+          50,
+          55,
+          63,
+          68,
+          74,
+          79,
+          84,
+          88,
+          89,
+          93,
+          96,
+          98,
+          98,
+          101,
+          101,
+          104,
+          105
+        ],
+        "color": "#4C72B0",
+        "label": "PT (VPT typical)"
+      },
+      "TD": {
+        "target": 65,
+        "current": 53,
+        "percent": 81.5,
+        "monthly": [
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          9,
+          10,
+          11,
+          14,
+          17,
+          18,
+          22,
+          24,
+          29,
+          31,
+          33,
+          36,
+          39,
+          42,
+          44,
+          45,
+          46,
+          49,
+          49,
+          51,
+          51,
+          51,
+          52,
+          53
+        ],
+        "color": "#55A868",
+        "label": "TD (Term-born typical)"
+      }
+    }
+  },
+  "visit_completion": {
+    "events": [
+      "nicu_admission",
+      "month_1",
+      "month_2",
+      "month_3",
+      "month_6",
+      "month_9",
+      "month_12",
+      "month_24",
+      "month_36"
+    ],
+    "labels": [
+      "NICU Admission",
+      "1 Month CGA",
+      "2 Months CGA",
+      "3 Months CGA",
+      "6 Months",
+      "9 Months",
+      "12 Months",
+      "24 Months",
+      "36 Months"
+    ],
+    "by_group": {
+      "ASIB": [
+        91.3,
+        90.2,
+        89.3,
+        89.3,
+        85.3,
+        83.0,
+        79.1,
+        63.4,
+        55.9
+      ],
+      "PT": [
+        91.8,
+        92.5,
+        91.3,
+        90.0,
+        87.6,
+        87.2,
+        80.7,
+        67.5,
+        55.5
+      ],
+      "TD": [
+        97.5,
+        97.2,
+        96.9,
+        96.1,
+        93.2,
+        88.5,
+        85.3,
+        71.3,
+        61.7
+      ]
+    }
+  },
+  "data_quality": {
+    "missingness": [
+      {
+        "instrument": "demographics",
+        "pct_missing": 15.7,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "nicu_morbidity",
+        "pct_missing": 5.7,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "nnns_attention_1_3m",
+        "pct_missing": 2.9,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "ecg_recording_log",
+        "pct_missing": 6.5,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "temperature_recording_log",
+        "pct_missing": 6.7,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "behavioral_coding_log",
+        "pct_missing": 20.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "csbs_social_communication",
+        "pct_missing": 10.9,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "bayley4_scores",
+        "pct_missing": 14.5,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "ados2_scores",
+        "pct_missing": 12.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "mchat_r_tf",
+        "pct_missing": 8.5,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "asq3_milestones",
+        "pct_missing": 15.0,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "prapare_sdoh",
+        "pct_missing": 4.7,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "epds_maternal_depression",
+        "pct_missing": 2.4,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "hmet_recording_log",
+        "pct_missing": 11.4,
+        "status": "Moderate \u2014 MAR candidate"
+      }
+    ],
+    "qc_flags": {
+      "total_records": 1840,
+      "double_entry_discrepancies": 23,
+      "out_of_range_values": 41,
+      "missing_required_fields": 112,
+      "ecg_transfer_late": 14,
+      "temp_quality_rejected": 9
+    }
+  },
+  "ml_performance": {
+    "models": [
+      {
+        "name": "Random Forest",
+        "slug": "rf",
+        "auroc": 0.813,
+        "auroc_ci": [
+          0.761,
+          0.879
+        ],
+        "auroc_sd": 0.03,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.796,
+        "specificity": 0.877,
+        "f1": 0.667
+      },
+      {
+        "name": "XGBoost",
+        "slug": "xgb",
+        "auroc": 0.853,
+        "auroc_ci": [
+          0.811,
+          0.909
+        ],
+        "auroc_sd": 0.025,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.725,
+        "specificity": 0.886,
+        "f1": 0.681
+      },
+      {
+        "name": "Logistic Regression",
+        "slug": "logreg",
+        "auroc": 0.731,
+        "auroc_ci": [
+          0.662,
+          0.818
+        ],
+        "auroc_sd": 0.04,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.791,
+        "specificity": 0.77,
+        "f1": 0.697
+      },
+      {
+        "name": "SVM (RBF)",
+        "slug": "svm",
+        "auroc": 0.781,
+        "auroc_ci": [
+          0.711,
+          0.849
+        ],
+        "auroc_sd": 0.035,
+        "roc": {
+          "fpr": [
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.002,
+            0.002
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.728,
+        "specificity": 0.816,
+        "f1": 0.733
+      },
+      {
+        "name": "1D-CNN + LSTM",
+        "slug": "cnn_lstm",
+        "auroc": 0.892,
+        "auroc_ci": [
+          0.831,
+          0.949
+        ],
+        "auroc_sd": 0.03,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.015
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.784,
+        "specificity": 0.875,
+        "f1": 0.784
+      },
+      {
+        "name": "Transformer",
+        "slug": "transformer",
+        "auroc": 0.873,
+        "auroc_ci": [
+          0.807,
+          0.933
+        ],
+        "auroc_sd": 0.032,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.707,
+        "specificity": 0.721,
+        "f1": 0.66
+      }
+    ],
+    "shap": [
+      {
+        "feature": "rmssd_mean_m6",
+        "label": "RMSSD mean @ 6mo",
+        "importance": 0.17
+      },
+      {
+        "feature": "rsa_slope_0_12",
+        "label": "RSA slope 0\u219212mo",
+        "importance": 0.144
+      },
+      {
+        "feature": "hda_sa_latency_m3",
+        "label": "HDA sust. attention latency @ 3mo",
+        "importance": 0.106
+      },
+      {
+        "feature": "sdnn_mean_m9",
+        "label": "SDNN mean @ 9mo",
+        "importance": 0.074
+      },
+      {
+        "feature": "cptd_nicu",
+        "label": "Central-Peripheral Temp \u0394 (NICU)",
+        "importance": 0.073
+      },
+      {
+        "feature": "ga_weeks",
+        "label": "Gestational age (weeks)",
+        "importance": 0.071
+      },
+      {
+        "feature": "birth_weight_g",
+        "label": "Birth weight (g)",
+        "importance": 0.052
+      },
+      {
+        "feature": "nnns_attention_m1",
+        "label": "NNNS attention @ 1mo",
+        "importance": 0.05
+      },
+      {
+        "feature": "mchat_total_m9",
+        "label": "M-CHAT total @ 9mo",
+        "importance": 0.05
+      },
+      {
+        "feature": "bayley_cog_m6",
+        "label": "Bayley-4 cognitive @ 6mo",
+        "importance": 0.05
+      },
+      {
+        "feature": "sample_entropy_m6",
+        "label": "Sample entropy @ 6mo",
+        "importance": 0.039
+      },
+      {
+        "feature": "hr_decel_magnitude",
+        "label": "HR deceleration magnitude",
+        "importance": 0.032
+      }
+    ],
+    "confusion": {
+      "tp": 47,
+      "fp": 13,
+      "tn": 71,
+      "fn": 9,
+      "best_model": "1D-CNN + LSTM"
+    },
+    "subgroup": [
+      {
+        "subgroup": "24-26w GA",
+        "n": 28,
+        "mean_auroc": 0.81,
+        "sd": 0.06
+      },
+      {
+        "subgroup": "27-29w GA",
+        "n": 52,
+        "mean_auroc": 0.87,
+        "sd": 0.04
+      },
+      {
+        "subgroup": "30-32w GA",
+        "n": 61,
+        "mean_auroc": 0.89,
+        "sd": 0.03
+      },
+      {
+        "subgroup": "Male",
+        "n": 73,
+        "mean_auroc": 0.86,
+        "sd": 0.04
+      },
+      {
+        "subgroup": "Female",
+        "n": 68,
+        "mean_auroc": 0.88,
+        "sd": 0.04
+      }
+    ]
+  },
+  "trajectories": {
+    "months": [
+      0,
+      1,
+      2,
+      3,
+      6,
+      9,
+      12,
+      24,
+      36
+    ],
+    "by_group": {
+      "ASIB": {
+        "mean": {
+          "RSA": [
+            3.2,
+            3.21,
+            3.26,
+            3.26,
+            3.41,
+            3.55,
+            3.71,
+            4.22,
+            4.59
+          ],
+          "RMSSD": [
+            28.2,
+            28.08,
+            29.44,
+            29.73,
+            30.68,
+            33.86,
+            34.9,
+            42.13,
+            49.07
+          ],
+          "SDNN": [
+            35.59,
+            36.97,
+            37.28,
+            38.31,
+            40.43,
+            43.13,
+            44.19,
+            51.88,
+            61.87
+          ],
+          "HDA_SA": [
+            447.68,
+            456.3,
+            449.68,
+            444.58,
+            443.44,
+            450.16,
+            446.54,
+            414.49,
+            397.12
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.1,
+              3.1,
+              3.15,
+              3.15,
+              3.31,
+              3.44,
+              3.6,
+              4.11,
+              4.48
+            ],
+            "high": [
+              3.31,
+              3.31,
+              3.36,
+              3.36,
+              3.52,
+              3.65,
+              3.81,
+              4.33,
+              4.7
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              26.8,
+              26.68,
+              28.04,
+              28.33,
+              29.28,
+              32.46,
+              33.5,
+              40.73,
+              47.67
+            ],
+            "high": [
+              29.6,
+              29.48,
+              30.84,
+              31.13,
+              32.08,
+              35.26,
+              36.3,
+              43.53,
+              50.47
+            ]
+          },
+          "SDNN": {
+            "low": [
+              33.84,
+              35.22,
+              35.53,
+              36.56,
+              38.68,
+              41.38,
+              42.44,
+              50.13,
+              60.12
+            ],
+            "high": [
+              37.34,
+              38.72,
+              39.03,
+              40.06,
+              42.18,
+              44.88,
+              45.94,
+              53.63,
+              63.62
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              428.08,
+              436.7,
+              430.08,
+              424.98,
+              423.84,
+              430.56,
+              426.94,
+              394.89,
+              377.52
+            ],
+            "high": [
+              467.28,
+              475.9,
+              469.28,
+              464.18,
+              463.04,
+              469.76,
+              466.14,
+              434.09,
+              416.72
+            ]
+          }
+        },
+        "color": "#C44E52"
+      },
+      "PT": {
+        "mean": {
+          "RSA": [
+            3.24,
+            3.25,
+            3.37,
+            3.44,
+            3.69,
+            3.89,
+            4.1,
+            5.04,
+            6.04
+          ],
+          "RMSSD": [
+            27.77,
+            28.95,
+            31.17,
+            31.85,
+            34.12,
+            38.07,
+            41.0,
+            54.26,
+            67.69
+          ],
+          "SDNN": [
+            36.39,
+            36.99,
+            39.06,
+            38.89,
+            43.2,
+            48.42,
+            50.54,
+            65.7,
+            79.26
+          ],
+          "HDA_SA": [
+            454.07,
+            445.6,
+            440.81,
+            432.54,
+            429.01,
+            408.04,
+            406.66,
+            361.6,
+            308.57
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.14,
+              3.15,
+              3.27,
+              3.33,
+              3.58,
+              3.79,
+              3.99,
+              4.93,
+              5.93
+            ],
+            "high": [
+              3.35,
+              3.35,
+              3.48,
+              3.54,
+              3.79,
+              4.0,
+              4.21,
+              5.15,
+              6.15
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              26.37,
+              27.55,
+              29.77,
+              30.45,
+              32.72,
+              36.67,
+              39.6,
+              52.86,
+              66.29
+            ],
+            "high": [
+              29.17,
+              30.35,
+              32.57,
+              33.25,
+              35.52,
+              39.47,
+              42.4,
+              55.66,
+              69.09
+            ]
+          },
+          "SDNN": {
+            "low": [
+              34.64,
+              35.24,
+              37.31,
+              37.14,
+              41.45,
+              46.67,
+              48.79,
+              63.95,
+              77.51
+            ],
+            "high": [
+              38.14,
+              38.74,
+              40.81,
+              40.64,
+              44.95,
+              50.17,
+              52.29,
+              67.45,
+              81.01
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              434.47,
+              426.0,
+              421.21,
+              412.94,
+              409.41,
+              388.44,
+              387.06,
+              342.0,
+              288.97
+            ],
+            "high": [
+              473.67,
+              465.2,
+              460.41,
+              452.14,
+              448.61,
+              427.64,
+              426.26,
+              381.2,
+              328.17
+            ]
+          }
+        },
+        "color": "#4C72B0"
+      },
+      "TD": {
+        "mean": {
+          "RSA": [
+            3.19,
+            3.33,
+            3.41,
+            3.57,
+            3.79,
+            4.18,
+            4.45,
+            5.78,
+            7.21
+          ],
+          "RMSSD": [
+            28.45,
+            29.04,
+            30.05,
+            30.72,
+            36.13,
+            41.81,
+            45.02,
+            61.32,
+            78.63
+          ],
+          "SDNN": [
+            35.02,
+            37.31,
+            39.06,
+            40.45,
+            45.49,
+            49.72,
+            54.42,
+            71.57,
+            90.56
+          ],
+          "HDA_SA": [
+            461.4,
+            437.71,
+            432.79,
+            442.85,
+            415.66,
+            410.33,
+            380.9,
+            328.19,
+            252.92
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.08,
+              3.23,
+              3.31,
+              3.46,
+              3.69,
+              4.07,
+              4.34,
+              5.67,
+              7.1
+            ],
+            "high": [
+              3.29,
+              3.44,
+              3.52,
+              3.67,
+              3.9,
+              4.29,
+              4.56,
+              5.89,
+              7.32
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              27.05,
+              27.64,
+              28.65,
+              29.32,
+              34.73,
+              40.41,
+              43.62,
+              59.92,
+              77.23
+            ],
+            "high": [
+              29.85,
+              30.44,
+              31.45,
+              32.12,
+              37.53,
+              43.21,
+              46.42,
+              62.72,
+              80.03
+            ]
+          },
+          "SDNN": {
+            "low": [
+              33.27,
+              35.56,
+              37.31,
+              38.7,
+              43.74,
+              47.97,
+              52.67,
+              69.82,
+              88.81
+            ],
+            "high": [
+              36.77,
+              39.06,
+              40.81,
+              42.2,
+              47.24,
+              51.47,
+              56.17,
+              73.32,
+              92.31
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              441.8,
+              418.11,
+              413.19,
+              423.25,
+              396.06,
+              390.73,
+              361.3,
+              308.59,
+              233.32
+            ],
+            "high": [
+              481.0,
+              457.31,
+              452.39,
+              462.45,
+              435.26,
+              429.93,
+              400.5,
+              347.79,
+              272.52
+            ]
+          }
+        },
+        "color": "#55A868"
+      }
+    },
+    "biomarkers": [
+      "RSA",
+      "RMSSD",
+      "SDNN",
+      "HDA_SA"
+    ]
+  },
+  "redcap_audit": {
+    "summary": {
+      "total_participants_enrolled": 213,
+      "active_participants": 198,
+      "withdrawn": 15,
+      "open_queries": 37,
+      "records_pending_pi_review": 12,
+      "double_entry_pending": 6
+    },
+    "queries_by_event": [
+      {
+        "event": "NICU Admission",
+        "open": 2
+      },
+      {
+        "event": "1 Month CGA",
+        "open": 5
+      },
+      {
+        "event": "2 Months CGA",
+        "open": 5
+      },
+      {
+        "event": "3 Months CGA",
+        "open": 5
+      },
+      {
+        "event": "6 Months",
+        "open": 8
+      },
+      {
+        "event": "9 Months",
+        "open": 3
+      },
+      {
+        "event": "12 Months",
+        "open": 4
+      },
+      {
+        "event": "24 Months",
+        "open": 3
+      },
+      {
+        "event": "36 Months",
+        "open": 3
+      }
+    ],
+    "recent_activity": [
+      {
+        "date": "2026-04-17",
+        "action": "QC pipeline run",
+        "record_id": "NANO-9163",
+        "user": "pipeline_bot"
+      },
+      {
+        "date": "2026-04-17",
+        "action": "Double-entry check",
+        "record_id": "NANO-9465",
+        "user": "ra_emma"
+      },
+      {
+        "date": "2026-04-16",
+        "action": "Imputation diagnostics",
+        "record_id": "NANO-1401",
+        "user": "research_prog"
+      },
+      {
+        "date": "2026-04-16",
+        "action": "Field mapping update",
+        "record_id": "NANO-6688",
+        "user": "pi_bradshaw"
+      },
+      {
+        "date": "2026-04-15",
+        "action": "Bayley-4 score entered",
+        "record_id": "NANO-3095",
+        "user": "ra_sam"
+      },
+      {
+        "date": "2026-04-15",
+        "action": "ADOS-2 module coded",
+        "record_id": "NANO-2732",
+        "user": "ra_julia"
+      },
+      {
+        "date": "2026-04-14",
+        "action": "Temperature data pushed",
+        "record_id": "NANO-3628",
+        "user": "pipeline_bot"
+      },
+      {
+        "date": "2026-04-13",
+        "action": "ECG batch processed",
+        "record_id": "NANO-2749",
+        "user": "research_prog"
+      }
+    ]
+  },
+  "cohort_table": [
+    {
+      "nano_id": "NANO-1000",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1285,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 73.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1001",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1498,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 92.0,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1002",
+      "group": "PT",
+      "ga_weeks": 30,
+      "birth_weight_g": 1754,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 95.6,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1003",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 3177,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 79.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1004",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1244,
+      "sex": "F",
+      "last_visit": "36 Months",
+      "completeness_pct": 89.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1005",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 1960,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 88.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1006",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1020,
+      "sex": "M",
+      "last_visit": "6 Months",
+      "completeness_pct": 89.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1007",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1018,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 100,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1008",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 2837,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 87.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1009",
+      "group": "ASIB",
+      "ga_weeks": 28,
+      "birth_weight_g": 1129,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 92.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1010",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 4028,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 73.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1011",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 3625,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 72.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1012",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 3048,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 83.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1013",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 2625,
+      "sex": "F",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 79.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1014",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 1277,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 77.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1015",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 2180,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 90.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1016",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1386,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 85.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1017",
+      "group": "ASIB",
+      "ga_weeks": 27,
+      "birth_weight_g": 2244,
+      "sex": "F",
+      "last_visit": "36 Months",
+      "completeness_pct": 85.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1018",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1524,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 78.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1019",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1879,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 91.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1020",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 907,
+      "sex": "F",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 91.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1021",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 2267,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 95.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1022",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 2085,
+      "sex": "F",
+      "last_visit": "36 Months",
+      "completeness_pct": 86.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1023",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 3163,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 72.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1024",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 2274,
+      "sex": "F",
+      "last_visit": "3 Months CGA",
+      "completeness_pct": 97.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1025",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1934,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 100,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1026",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3626,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 96.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1027",
+      "group": "PT",
+      "ga_weeks": 26,
+      "birth_weight_g": 1399,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 85.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1028",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 1430,
+      "sex": "F",
+      "last_visit": "6 Months",
+      "completeness_pct": 93.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1029",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1269,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 66.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1030",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 2045,
+      "sex": "F",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 87.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1031",
+      "group": "PT",
+      "ga_weeks": 30,
+      "birth_weight_g": 1209,
+      "sex": "M",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 95.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1032",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1880,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 79.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1033",
+      "group": "PT",
+      "ga_weeks": 26,
+      "birth_weight_g": 974,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 86.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1034",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 687,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 75.0,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1035",
+      "group": "ASIB",
+      "ga_weeks": 30,
+      "birth_weight_g": 1906,
+      "sex": "M",
+      "last_visit": "3 Months CGA",
+      "completeness_pct": 78.8,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1036",
+      "group": "ASIB",
+      "ga_weeks": 24,
+      "birth_weight_g": 1524,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 92.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1037",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 952,
+      "sex": "F",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 100,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1038",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1639,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 99.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1039",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1242,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 87.0,
+      "qc_status": "OK"
+    }
+  ]
+}
