@@ -206,15 +206,24 @@ dashboard data so the UI and the readings library still render cleanly.
 
 ### Shareable Public Link
 
-You can expose the live dashboard publicly in two ways:
+You can expose the live dashboard publicly with:
 
 ```bash
 make dashboard-share
 ```
 
-By default, that command starts the dashboard, starts a tunnel sidecar, and
-prints a temporary `https://...trycloudflare.com/dashboard/` link you can share
-immediately. Quick tunnels always get random hostnames.
+That command starts the dashboard, starts the tunnel sidecar, and prints the
+active public dashboard URL.
+
+The public link will be one of these forms:
+
+- Quick share URL: `https://<random-subdomain>.trycloudflare.com/dashboard/`
+- Stable branded URL: `https://esd-lab-usc-dashboard.yourdomain.org/dashboard/`
+
+By default, the runtime uses a Cloudflare quick tunnel, so the printed public
+URL is temporary and the hostname is random. Do not document or bookmark a
+previous quick-tunnel URL as a permanent dashboard address, because it changes
+when the tunnel is recreated.
 
 If you want a stable branded hostname such as
 `https://esd-lab-usc-dashboard.yourdomain.org/dashboard/`, create a named
@@ -225,6 +234,9 @@ variables in `.env` before running the same command:
 CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=esd-lab-usc-dashboard.yourdomain.org
 ```
+
+After that, `make dashboard-share` prints the branded public link instead of a
+random `trycloudflare.com` URL.
 
 The share link stays live while the Docker services keep running.
 
