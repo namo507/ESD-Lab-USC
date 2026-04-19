@@ -1986,9 +1986,12 @@ main section {
 }
 
 .pipeline svg {
-  width: 100%;
-  min-width: 860px;
-  height: 360px;
+  display: block;
+  width: min(100%, 900px);
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  margin: 0 auto;
 }
 
 .pl-node {
@@ -2898,8 +2901,28 @@ body.is-loading .topbar {
     height: 280px;
   }
 
-  .pipeline svg {
-    min-width: 760px;
+  .pipeline {
+    padding: 16px;
+  }
+
+  .readings-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .readings-filters .search-filter {
+    grid-column: 1 / -1;
+  }
+
+  .readings-filters .filter,
+  .readings-filters .ghost-button {
+    min-width: 0;
+  }
+
+  .readings-filters .ghost-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .grid.two,
@@ -3001,6 +3024,10 @@ body.is-loading .topbar {
     grid-template-columns: 1fr;
   }
 
+  .readings-filters {
+    grid-template-columns: 1fr;
+  }
+
   .section-atlas,
   .section-atlas.card {
     padding: 18px;
@@ -3023,6 +3050,34 @@ body.is-loading .topbar {
 
   .ml-output-target {
     font-size: 20px;
+  }
+}
+
+@media (max-width: 860px) {
+  .filters.readings-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .filters.readings-filters .search-filter {
+    grid-column: 1 / -1;
+  }
+
+  .filters.readings-filters .filter,
+  .filters.readings-filters .ghost-button {
+    min-width: 0;
+  }
+
+  .filters.readings-filters .ghost-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .filters.readings-filters {
+    grid-template-columns: 1fr;
   }
 }
 
