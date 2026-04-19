@@ -204,7 +204,12 @@ make dashboard-logs
 If the secure data mount is unavailable, the runtime falls back to synthetic
 dashboard data so the UI and the readings library still render cleanly.
 
-### Shareable Public Link
+Current stable public entrypoints:
+
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Direct dashboard origin: [https://esd-lab-namo.namit507.workers.dev/dashboard/](https://esd-lab-namo.namit507.workers.dev/dashboard/)
+
+### Shareable Public Links
 
 You can expose the live dashboard publicly with:
 
@@ -213,24 +218,29 @@ make dashboard-share
 ```
 
 That command starts the dashboard, starts the tunnel sidecar, and prints the
-active public dashboard URL.
+active public dashboard URL for the current session.
 
-The public link will be one of these forms:
+The Cloudflare-hosted links currently used for sharing this repository are:
 
-- Quick share URL: `https://<random-subdomain>.trycloudflare.com/dashboard/`
-- Stable branded URL: `https://dashboard.esdlabsc.com/dashboard/`
+- Stable public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Stable direct dashboard: [https://esd-lab-namo.namit507.workers.dev/dashboard/](https://esd-lab-namo.namit507.workers.dev/dashboard/)
+- Temporary quick-share URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
 
-By default, the runtime uses a Cloudflare quick tunnel, so the printed public
-URL is temporary and the hostname is random. Do not document or bookmark a
-previous quick-tunnel URL as a permanent dashboard address, because it changes
-when the tunnel is recreated.
+The Pages wrapper is the preferred public link. It embeds the stable
+`workers.dev` dashboard origin and does not depend on the temporary quick-tunnel
+hostname.
+
+By default, `make dashboard-share` still uses a Cloudflare quick tunnel, so the
+printed public URL is temporary and the hostname is random. Do not document or
+bookmark a previous quick-tunnel URL as a permanent dashboard address, because
+it changes when the tunnel is recreated.
 
 For temporary sharing, always rerun `make dashboard-share` and send only the
 latest quick-share URL printed by the script.
 
-If you want a stable branded hostname such as
-`https://dashboard.esdlabsc.com/dashboard/`, create a named
-Cloudflare Tunnel, configure its public hostname in Cloudflare, and set these
+If you later want to move from the current Cloudflare-hosted links to a custom
+domain such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS zone
+to the Cloudflare account, create a named public hostname, and set these
 variables in `.env` before running the same command:
 
 ```bash
@@ -238,7 +248,7 @@ CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, `make dashboard-share` prints the branded public link instead of a
+After that, `make dashboard-share` can print the custom-domain link instead of a
 random `trycloudflare.com` URL.
 
 The share link stays live while the Docker services keep running.
