@@ -66,6 +66,7 @@ def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
         PROJECT_ROOT / "config" / "study_parameters.yml",
         PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_dashboard_data.py",
+        PROJECT_ROOT / "dashboard" / "pipelines" / "build_org_site_data.py",
         PROJECT_ROOT
         / "dashboard"
         / "pipelines"

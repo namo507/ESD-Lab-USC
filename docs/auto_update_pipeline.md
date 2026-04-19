@@ -13,12 +13,18 @@ indifferent to which one was used:
 | `dashboard/pipelines/generate_synthetic_dashboard_data.py` | Python | Demos, onboarding, smoke tests. No real data needed. |
 | `dashboard/pipelines/build_dashboard_data.py`             | Python | Nightly cron on the analysis server. |
 | `dashboard/pipelines/build_dashboard_data.R`              | R      | Ad-hoc rebuilds from R (analysts working in RStudio). |
+| `dashboard/pipelines/build_org_site_data.py`              | Python | Refresh the ESD Lab public-site metadata block and impact feed. |
 | `dashboard/pipelines/build_readings_index.py`             | Python | Re-index the `ESD Lab readings/` library. |
 
 The first three write `dashboard/data/dashboard_data.json`. The readings
 pipeline writes `dashboard/data/readings_data.json`. The dashboard
 (`dashboard/index.html`) reloads them automatically in live mode and on
 page refresh in static mode.
+
+`build_dashboard_data.py` now calls the organization-site builder logic
+internally, so `dashboard/data/dashboard_data.json` includes the
+`organization_site` block used by the ESD Lab organization snapshot and
+impact explorer.
 
 ## 2. Nightly schedule
 
@@ -64,18 +70,20 @@ That launches a Cloudflare tunnel and prints a public dashboard URL while the
 Docker services remain up.
 
 By default it uses a quick tunnel, which means the hostname will be a random
-`trycloudflare.com` subdomain. Those quick-tunnel names cannot be customized.
+`trycloudflare.com` subdomain. Those quick-tunnel names cannot be customized,
+and each quick-share URL should be treated as temporary for the current runtime
+session only.
 
 To use a stable branded hostname instead, configure a named tunnel in
 Cloudflare and set these values in `.env`:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
-DASHBOARD_PUBLIC_HOSTNAME=esd-lab-usc-dashboard.yourdomain.org
+DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
 After that, the same `bash scripts/share_dashboard.sh` command will print
-`https://esd-lab-usc-dashboard.yourdomain.org/dashboard/` instead of a random
+`https://dashboard.esdlabsc.com/dashboard/` instead of a random
 quick-tunnel URL.
 
 ## 4. Running it manually
@@ -88,6 +96,9 @@ python dashboard/pipelines/generate_synthetic_dashboard_data.py
 
 # (A2) Re-index the readings library
 python dashboard/pipelines/build_readings_index.py
+
+# (A3) Inspect or refresh the public-site organization payload only
+python dashboard/pipelines/build_org_site_data.py
 
 # (B) Full run against the real secure mount
 python dashboard/pipelines/build_dashboard_data.py
@@ -111,6 +122,7 @@ the Docker service for automatic refreshes.
 | Data dictionary | `data/data_dictionary/NANO_master_data_dictionary.csv` | Recommended | PHI scrub is skipped (unsafe) |
 | Model metrics  | `${NANO_DATA_ROOT}/models/_metrics.json`             | Optional | `ml_performance` is empty; the ML tab says "no model run yet" |
 | ESD Lab readings | `ESD Lab readings/` | Optional | Reading library renders empty state |
+| ESD Lab public site | `https://www.esdlabsc.com/` | Optional | `organization_site` falls back to the bundled snapshot |
 
 ## 6. Outputs
 
@@ -120,6 +132,13 @@ the Docker service for automatic refreshes.
 | `dashboard/data/readings_data.json` | Reading metadata summary + searchable cards | `dashboard/index.html` |
 | `dashboard/data/runtime_status.json` | Last rebuild state + watcher health | Live dashboard runtime + operators |
 | `logs/dashboard_build_<date>.log`    | plain text | Research Programmer when debugging |
+
+The dashboard JSON now also contains an `organization_site` block with:
+
+* organization summary KPIs,
+* mission and study metadata,
+* family pathway and contact links,
+* a unified `impact_feed` for publications, news mentions, and participant stories.
 
 ## 7. Safety & privacy
 
@@ -144,18 +163,20 @@ does not extract PDF contents or transmit documents anywhere.
 | Trajectories chart is empty | `feature_matrix.parquet` missing `month` column | Re-run feature engineering |
 | ML tab is empty | `_metrics.json` missing or older than 30 days | Re-run `src/models/train_all.py` |
 | Reading library did not update | `build_readings_index.py` did not run or file extension is unsupported | Re-run the readings index or check the live service logs |
+| ESD Lab organization section looks stale | The public site fetch failed during the last build | Re-run the build with network access and inspect `organization_site.meta.errors` |
 | Nightly cron failed silently | Check `logs/dashboard_build_<date>.log` | If missing, check cron mail or `scripts/redcap_daily_sync.py` |
 
 ## 9. Adding a new section to the dashboard
 
-1. Add the data to `build_payload` (both Python and R) so the JSON gets
-   a new key.
-2. Mirror the same key in
+1. Add the data to `build_payload` so the JSON gets a new key.
+2. If the section depends on public or external metadata, isolate the fetch
+   and parse logic in a helper module similar to `build_org_site_data.py`.
+3. Mirror the same key in
    `dashboard/pipelines/generate_synthetic_dashboard_data.py`.
-3. Add a new section + Chart.js block to `dashboard/index.html`.
-4. Document the key in
+4. Add a new section + Chart.js block to `dashboard/index.html`.
+5. Document the key in
    `dashboard/context_skill/references/dashboard_schema.md`.
-5. Run `python dashboard/context_skill/extract_context.py --check` to
+6. Run `python dashboard/context_skill/extract_context.py --check` to
    make sure the three stay in sync.
 
 ## 10. Rolling back

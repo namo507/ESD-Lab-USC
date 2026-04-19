@@ -40,6 +40,14 @@ const SECTION_TITLES = {
     "NANO Study · Research Dashboard",
     "R01 longitudinal cohort · VPT infants from NICU admission through 36 months",
   ],
+  labsite: [
+    "ESD Lab Organization Snapshot",
+    "Mission, studies, community resources, and public-facing recruitment context from esdlabsc.com",
+  ],
+  impact: [
+    "ESD Lab Dissemination & Stories",
+    "Filter publications, news mentions, and participant stories sourced from the public organization site",
+  ],
   pipeline: [
     "Data Flow Pipeline",
     "Interactive map of how study signals move from collection through sharing",
@@ -68,6 +76,8 @@ const SECTION_TITLES = {
 
 const SECTION_DEFAULT_TARGETS = {
   overview: "#overview-kpis",
+  labsite: "#labsite-summary",
+  impact: "#impact-overview",
   pipeline: "#pipeline-map",
   quality: "#quality-missingness",
   ml: "#ml-explainer",
@@ -405,6 +415,86 @@ function emptyReadingsPayload() {
     },
     featured: [],
     readings: [],
+  };
+}
+
+function emptyOrganizationSitePayload() {
+  return {
+    meta: {
+      generated_at: null,
+      source_mode: "unavailable",
+      source_url: "https://www.esdlabsc.com/",
+      pages_crawled: 0,
+      errors: [],
+    },
+    summary: {
+      current_public_studies: 0,
+      featured_stories: 0,
+      partner_count: 0,
+      publication_items: 0,
+      news_mentions: 0,
+      impact_item_count: 0,
+      available_years: [],
+      phone: "",
+      emails: [],
+      address: "",
+      signup_url: "https://www.esdlabsc.com/newborn-sign-up",
+      contact_url: "https://www.esdlabsc.com/contact-us",
+      main_site_url: "https://www.esdlabsc.com/",
+    },
+    mission: {
+      headline: "",
+      summary: "",
+      mission_text: "",
+      details: [],
+    },
+    studies: [],
+    family_pathway: [],
+    team_highlights: [],
+    resources: [],
+    partners: [],
+    contact: {
+      phone: "",
+      emails: [],
+      address: "",
+      signup_url: "https://www.esdlabsc.com/newborn-sign-up",
+      contact_url: "https://www.esdlabsc.com/contact-us",
+      parking_url: "",
+      undergraduate_application_url: "",
+      instagram_url: "",
+      spanish_email: "",
+    },
+    publications: [],
+    news: [],
+    stories: [],
+    impact_feed: [],
+    impact_summary: {
+      types: [],
+      years: [],
+    },
+  };
+}
+
+function getOrganizationSitePayload() {
+  const fallback = emptyOrganizationSitePayload();
+  const payload = (STATE.dashboard && STATE.dashboard.organization_site) || {};
+  return {
+    ...fallback,
+    ...payload,
+    meta: { ...fallback.meta, ...(payload.meta || {}) },
+    summary: { ...fallback.summary, ...(payload.summary || {}) },
+    mission: { ...fallback.mission, ...(payload.mission || {}) },
+    contact: { ...fallback.contact, ...(payload.contact || {}) },
+    impact_summary: { ...fallback.impact_summary, ...(payload.impact_summary || {}) },
+    studies: payload.studies || [],
+    family_pathway: payload.family_pathway || [],
+    team_highlights: payload.team_highlights || [],
+    resources: payload.resources || [],
+    partners: payload.partners || [],
+    publications: payload.publications || [],
+    news: payload.news || [],
+    stories: payload.stories || [],
+    impact_feed: payload.impact_feed || [],
   };
 }
 
@@ -794,6 +884,12 @@ function setupControls() {
   document.getElementById("filter-reading-sort").addEventListener("change", renderReadings);
   document.getElementById("reading-clear-filters").addEventListener("click", resetReadingFilters);
   document.getElementById("reading-chip-bar").addEventListener("click", handleReadingChipClick);
+  document.getElementById("filter-impact-search").addEventListener("input", renderImpactExplorer);
+  document.getElementById("filter-impact-kind").addEventListener("change", renderImpactExplorer);
+  document.getElementById("filter-impact-year").addEventListener("change", renderImpactExplorer);
+  document.getElementById("filter-impact-sort").addEventListener("change", renderImpactExplorer);
+  document.getElementById("impact-clear-filters").addEventListener("click", resetImpactFilters);
+  document.getElementById("impact-type-chip-bar").addEventListener("click", handleImpactChipClick);
 
   document.querySelectorAll("#table-cohort th[data-sort]").forEach((header) => {
     header.addEventListener("click", () => {
@@ -932,6 +1028,7 @@ function renderChrome() {
 }
 
 function renderDashboard() {
+  renderOrganizationSections();
   renderOverview();
   renderEnrollmentChart();
   renderProgressChart();
@@ -948,7 +1045,8 @@ function renderOverview() {
   const audit = STATE.dashboard.redcap_audit.summary;
   const total = enrollment.ASIB.current + enrollment.PT.current + enrollment.TD.current;
   const target = enrollment.ASIB.target + enrollment.PT.target + enrollment.TD.target;
-  const pct = target ? ((total / target) * 100).toFixed(1) : "0.0";
+  const pctValue = target ? (total / target) * 100 : 0;
+  const pct = pctValue.toFixed(1);
 
   setText("kpi-enroll", `${formatInt(total)} / ${formatInt(target)}`);
   setText("kpi-enroll-delta", `${pct}% of R01 target`);
@@ -969,7 +1067,494 @@ function renderOverview() {
   const meanMissing = missingness.length
     ? missingness.reduce((sum, item) => sum + item.pct_missing, 0) / missingness.length
     : 0;
-  animateNumber("kpi-completeness", 100 - meanMissing, (value) => `${value.toFixed(1)}%`);
+  const completeness = 100 - meanMissing;
+  animateNumber("kpi-completeness", completeness, (value) => `${value.toFixed(1)}%`);
+
+  animateNumber("home-progress-total", pctValue, (value) => `${value.toFixed(1)}%`);
+  setText("home-progress-note", `${formatInt(total)} enrolled of ${formatInt(target)} planned across ASIB, PT, and TD.`);
+  animateNumber("home-active-total", audit.active_participants, (value) => formatInt(Math.round(value)));
+  setText("home-active-note", `${formatInt(audit.total_participants_enrolled)} total enrolled · ${formatInt(audit.withdrawn)} withdrawn.`);
+  animateNumber("home-completeness-total", completeness, (value) => `${value.toFixed(1)}%`);
+  setText(
+    "home-completeness-note",
+    `${formatInt(audit.open_queries)} open REDCap quer${audit.open_queries === 1 ? "y" : "ies"} currently assigned for follow-up.`
+  );
+
+  if (bestModel) {
+    setText("home-best-model", `${bestModel.auroc.toFixed(3)} AUROC`);
+    setText(
+      "home-best-model-note",
+      `${bestModel.name} with 95% CI [${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}].`
+    );
+  } else {
+    setText("home-best-model", "Pending");
+    setText("home-best-model-note", "Model evaluation will populate after the next dashboard refresh.");
+  }
+
+  animateNumber("runtime-query-count", audit.open_queries, (value) => formatInt(Math.round(value)));
+  setText(
+    "runtime-query-status",
+    audit.open_queries
+      ? `${formatInt(audit.open_queries)} item${audit.open_queries === 1 ? " needs" : "s need"} REDCap review.`
+      : "All current REDCap queries are resolved."
+  );
+
+  const homeArmGrid = document.getElementById("home-arm-grid");
+  if (homeArmGrid) {
+    homeArmGrid.innerHTML = Object.entries(enrollment).map(([groupCode, group]) => {
+      const progress = Math.max(0, Math.min(100, Number(group.percent || 0)));
+      const label = escapeHtml(group.label || groupCode);
+      const color = escapeHtml(group.color || "#7f241c");
+      const note = `${formatInt(group.current || 0)} of ${formatInt(group.target || 0)} participants enrolled`;
+      return `
+        <a class="sync-arm-card" href="#overview-enrollment">
+          <div class="sync-arm-head">
+            <span class="sync-arm-label">${escapeHtml(groupCode)}</span>
+            <strong class="sync-arm-value">${progress.toFixed(0)}%</strong>
+          </div>
+          <span>${label}</span>
+          <div class="sync-arm-bar" aria-hidden="true"><span style="width:${progress.toFixed(1)}%; background: linear-gradient(90deg, ${color}, rgba(216, 121, 90, 0.95));"></span></div>
+          <span class="sync-arm-note">${escapeHtml(note)}</span>
+        </a>
+      `;
+    }).join("");
+  }
+}
+
+function renderOrganizationSections() {
+  const organizationSite = getOrganizationSitePayload();
+  renderLabsiteSection(organizationSite);
+  renderImpactExplorer();
+}
+
+function renderLabsiteSection(site) {
+  const summary = site.summary || {};
+  const mission = site.mission || {};
+  const contact = site.contact || {};
+  const years = (summary.available_years || []).filter((year) => Number.isFinite(Number(year))).map(Number).sort((left, right) => right - left);
+  const yearsLabel = years.length ? `${years[years.length - 1]}-${years[0]}` : "—";
+  const leadStudy = (site.studies || []).find((study) => study.compensation) || (site.studies || [])[0] || null;
+
+  setText(
+    "labsite-summary-copy",
+    mission.summary
+      || "Derived from the public organization site: mission, current studies, family pathway, partner links, and public-facing outreach signals that complement the internal NANO dashboard views."
+  );
+
+  animateNumber("labsite-kpi-studies", Number(summary.current_public_studies || (site.studies || []).length), (value) => formatInt(Math.round(value)));
+  animateNumber("labsite-kpi-stories", Number(summary.featured_stories || (site.stories || []).length), (value) => formatInt(Math.round(value)));
+  animateNumber("labsite-kpi-partners", Number(summary.partner_count || (site.partners || []).length), (value) => formatInt(Math.round(value)));
+  setText("labsite-kpi-years", yearsLabel);
+  setText("labsite-kpi-compensation", leadStudy && leadStudy.compensation ? leadStudy.compensation : "See study page");
+  setText("labsite-kpi-studies-note", `${formatInt((site.studies || []).length)} structured study card${(site.studies || []).length === 1 ? "" : "s"} from the public site`);
+  setText("labsite-kpi-stories-note", `${formatInt((site.stories || []).length)} participant stor${(site.stories || []).length === 1 ? "y" : "ies"} currently indexed`);
+  setText("labsite-kpi-partners-note", `${formatInt((site.resources || []).length)} family resource link${(site.resources || []).length === 1 ? "" : "s"} plus partner organizations`);
+  setText("labsite-kpi-years-note", `${formatInt(summary.publication_items || (site.publications || []).length)} publication item${(summary.publication_items || (site.publications || []).length) === 1 ? "" : "s"} and ${formatInt(summary.news_mentions || (site.news || []).length)} news mention${(summary.news_mentions || (site.news || []).length) === 1 ? "" : "s"}`);
+  setText("labsite-kpi-compensation-note", leadStudy && leadStudy.title ? `${leadStudy.title} participation incentive surfaced on the site` : "Public study compensation details when available");
+
+  setText(
+    "labsite-mission-title",
+    mission.headline || "Clinical infant research translated for families and community partners"
+  );
+  setText(
+    "labsite-mission-copy",
+    mission.mission_text
+      || mission.summary
+      || "The organization site positions the ESD Lab as a USC clinical research lab translating infant development science into earlier autism identification and practical family support."
+  );
+  document.getElementById("labsite-mission-list").innerHTML = (mission.details || [])
+    .map((detail) => `<li>${escapeHtml(detail)}</li>`)
+    .join("");
+  document.getElementById("labsite-team-grid").innerHTML = (site.team_highlights || [])
+    .slice(0, 4)
+    .map(
+      (person) => `
+        <a class="lab-link-card" href="${escapeHtml(person.href || "https://www.esdlabsc.com/our-team")}" target="_blank" rel="noreferrer noopener">
+          <strong>${escapeHtml(person.name)}</strong>
+          <span>${escapeHtml(person.role || "Team member")}</span>
+          <span>${escapeHtml(person.summary || "")}</span>
+        </a>`
+    )
+    .join("");
+  document.getElementById("labsite-mission-links").innerHTML = [
+    { label: "About the lab", href: "https://www.esdlabsc.com/about" },
+    { label: "Our team", href: "https://www.esdlabsc.com/our-team" },
+    { label: "Main website", href: summary.main_site_url || "https://www.esdlabsc.com/" },
+    { label: "Contact page", href: contact.contact_url || summary.contact_url || "https://www.esdlabsc.com/contact-us" },
+  ]
+    .map((item) => `<a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer noopener">${escapeHtml(item.label)}</a>`)
+    .join("");
+
+  setText("labsite-studies-title", `Recruitment and participation details surfaced on the public site${site.meta && site.meta.source_mode === "fallback" ? " (fallback snapshot)" : ""}`);
+  document.getElementById("labsite-study-stack").innerHTML = (site.studies || [])
+    .map(
+      (study) => `
+        <article class="lab-study-card">
+          <div class="lab-study-kicker">${escapeHtml(study.title)}</div>
+          <h4>${escapeHtml(study.summary || study.audience || "Study details")}</h4>
+          <p class="lab-copy">${escapeHtml((study.details || []).slice(0, 2).join(" ") || study.summary || "")}</p>
+          <div class="lab-chip-row">
+            ${(study.eligibility || []).slice(0, 3).map((item) => `<span class="lab-chip">${escapeHtml(item)}</span>`).join("")}
+            ${study.compensation ? `<span class="lab-chip">${escapeHtml(study.compensation)}</span>` : ""}
+          </div>
+          <div class="reading-actions impact-actions">
+            <a class="reading-link" href="${escapeHtml(study.href || summary.signup_url || "https://www.esdlabsc.com/our-studies")}" target="_blank" rel="noreferrer noopener">${escapeHtml(study.cta_label || "Open study page")}</a>
+            <span>${escapeHtml(study.audience || "Public recruitment path")}</span>
+          </div>
+        </article>`
+    )
+    .join("");
+  document.getElementById("labsite-study-links").innerHTML = [
+    { label: "Current studies page", href: "https://www.esdlabsc.com/our-studies" },
+    { label: "Newborn sign-up", href: contact.signup_url || summary.signup_url || "https://www.esdlabsc.com/newborn-sign-up" },
+    { label: "Contact the lab", href: contact.contact_url || summary.contact_url || "https://www.esdlabsc.com/contact-us" },
+  ]
+    .map((item) => `<a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer noopener">${escapeHtml(item.label)}</a>`)
+    .join("");
+
+  setText("labsite-pathway-title", "What the public site asks families to do, and what they get back");
+  document.getElementById("labsite-pathway-grid").innerHTML = (site.family_pathway || [])
+    .map(
+      (step, index) => `
+        <div class="lab-step">
+          <span class="lab-step-index">${index + 1}</span>
+          <div>
+            <strong>${escapeHtml(step.title || `Step ${index + 1}`)}</strong>
+            <p class="lab-copy">${escapeHtml(step.description || "")}</p>
+          </div>
+        </div>`
+    )
+    .join("");
+  document.getElementById("labsite-pathway-links").innerHTML = (site.family_pathway || [])
+    .slice(0, 3)
+    .map((step) => `<a href="${escapeHtml(step.href || "https://www.esdlabsc.com/")}" target="_blank" rel="noreferrer noopener">${escapeHtml(step.link_label || step.title || "Open link")}</a>`)
+    .join("");
+
+  setText("labsite-impact-title", "How the organization presents dissemination, credibility, and family outcomes");
+  document.getElementById("labsite-impact-list").innerHTML = [
+    `${formatInt((site.publications || []).length)} publication or presentation item${(site.publications || []).length === 1 ? "" : "s"} indexed from the public archive.`,
+    `${formatInt((site.news || []).length)} news mention${(site.news || []).length === 1 ? "" : "s"} currently captured across university and external coverage.`,
+    `${formatInt((site.stories || []).length)} participant stor${(site.stories || []).length === 1 ? "y" : "ies"} surfaced as family-centered outcome narratives.`,
+  ]
+    .map((detail) => `<li>${escapeHtml(detail)}</li>`)
+    .join("");
+  document.getElementById("labsite-impact-links").innerHTML = [
+    { label: "Open impact explorer", href: "#impact-overview", external: false, copy: "Filter the combined publication, news, and story feed inside the dashboard." },
+    { label: "Publications & posters", href: "https://www.esdlabsc.com/publications-presentations", external: true, copy: "Browse talks, posters, and publication groupings from the public site." },
+    { label: "News archive", href: "https://www.esdlabsc.com/news", external: true, copy: "Review external press and university coverage tied to the lab." },
+    { label: "Participant stories", href: "https://www.esdlabsc.com/participant-stories", external: true, copy: "Read family narratives that translate study participation into concrete outcomes." },
+  ]
+    .map((item) => item.external
+      ? `<a class="lab-link-card" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer noopener"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.copy)}</span></a>`
+      : `<a class="lab-link-card" href="${escapeHtml(item.href)}"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.copy)}</span></a>`)
+    .join("");
+
+  setText("labsite-connect-title", "Important outbound links for families, providers, and collaborators");
+  setText(
+    "labsite-connect-copy",
+    `Source mode: ${(site.meta && site.meta.source_mode) || "unavailable"}. Contact, outreach, and support links are rendered from the organization payload so the dashboard can stay aligned with the public website.`
+  );
+  document.getElementById("labsite-contact-grid").innerHTML = [
+    { label: "Phone", value: contact.phone || summary.phone || "Not listed", note: "General participant and family questions" },
+    { label: "Email", value: (contact.emails && contact.emails[0]) || (summary.emails && summary.emails[0]) || "Not listed", note: "Primary public contact" },
+    { label: "Spanish outreach", value: contact.spanish_email || (contact.emails || []).find((email) => email.includes("espanol")) || "See contact page", note: "Bilingual family contact route" },
+    { label: "Visit location", value: contact.address || summary.address || "See contact page", note: "Publicly listed visit location" },
+    { label: "Partner network", value: `${formatInt((site.partners || []).length)} organizations`, note: "Community and support partners linked from the public site" },
+    { label: "Resource library", value: `${formatInt((site.resources || []).length)} links`, note: "Autism, EI, special education, and family support resources" },
+  ]
+    .map(
+      (item) => `
+        <div class="lab-contact-card">
+          <span class="lab-contact-label">${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+          <span>${escapeHtml(item.note)}</span>
+        </div>`
+    )
+    .join("");
+  document.getElementById("labsite-resource-grid").innerHTML = [
+    ...(site.resources || []).slice(0, 4).map((resource) => ({
+      label: resource.title,
+      href: resource.href,
+      copy: `${resource.category || "Resource"} link from the public site.`,
+    })),
+    ...(site.partners || []).slice(0, 2).map((partner) => ({
+      label: partner.name,
+      href: partner.href,
+      copy: "Partner organization linked from the ESD Lab site.",
+    })),
+  ]
+    .slice(0, 6)
+    .map(
+      (item) => `<a class="lab-link-card" href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer noopener"><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.copy)}</span></a>`
+    )
+    .join("");
+  document.getElementById("labsite-connect-links").innerHTML = [
+    { label: "Contact the lab", href: contact.contact_url || summary.contact_url || "https://www.esdlabsc.com/contact-us" },
+    { label: "Sign up for a study", href: contact.signup_url || summary.signup_url || "https://www.esdlabsc.com/newborn-sign-up" },
+    contact.parking_url ? { label: "Parking instructions", href: contact.parking_url } : null,
+    contact.undergraduate_application_url ? { label: "Undergraduate RA application", href: contact.undergraduate_application_url } : null,
+    contact.instagram_url ? { label: "Instagram", href: contact.instagram_url } : null,
+  ]
+    .filter(Boolean)
+    .map((item) => `<a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer noopener">${escapeHtml(item.label)}</a>`)
+    .join("");
+}
+
+function renderImpactExplorer() {
+  const site = getOrganizationSitePayload();
+  const impactSummary = site.impact_summary || {};
+  const searchTerm = document.getElementById("filter-impact-search").value.trim().toLowerCase();
+  const selectedKind = document.getElementById("filter-impact-kind").value;
+  const selectedYear = document.getElementById("filter-impact-year").value;
+  const sortMode = document.getElementById("filter-impact-sort").value;
+  const allItems = (site.impact_feed || []).map((item) => ({
+    ...item,
+    _score: scoreImpactMatch(item, searchTerm),
+  }));
+  const years = (impactSummary.years || site.summary.available_years || []).filter(Boolean).map(Number).sort((left, right) => right - left);
+
+  syncImpactYearOptions(years);
+
+  let items = allItems.slice();
+  if (selectedKind !== "all") {
+    items = items.filter((item) => item.kind === selectedKind);
+  }
+  if (selectedYear !== "all") {
+    items = items.filter((item) => String(item.year || "") === selectedYear);
+  }
+  if (searchTerm) {
+    items = items.filter((item) => item._score > 0);
+  }
+  items.sort((left, right) => sortImpactItems(left, right, sortMode, searchTerm));
+
+  setText(
+    "impact-summary-copy",
+    site.meta && site.meta.source_mode === "fallback"
+      ? "The impact explorer is currently using the bundled fallback snapshot because the public-site fetch was unavailable during the last build."
+      : "Filter publications, news mentions, and participant stories sourced from esdlabsc.com."
+  );
+
+  animateNumber("impact-kpi-total", allItems.length, (value) => formatInt(Math.round(value)));
+  animateNumber("impact-kpi-publications", (site.publications || []).length, (value) => formatInt(Math.round(value)));
+  setText("impact-kpi-years", years.length ? `${years[years.length - 1]}-${years[0]}` : "—");
+  setText("impact-kpi-total-note", `${formatInt(items.length)} item${items.length === 1 ? "" : "s"} in the current filtered view`);
+  setText("impact-kpi-publications-note", `${formatInt((site.news || []).length)} news mention${(site.news || []).length === 1 ? "" : "s"} · ${formatInt((site.stories || []).length)} stor${(site.stories || []).length === 1 ? "y" : "ies"}`);
+  setText("impact-kpi-years-note", `${formatInt(years.length)} year bucket${years.length === 1 ? "" : "s"} represented in the current site payload`);
+  animateNumber("impact-signal-filtered", items.length, (value) => formatInt(Math.round(value)));
+  setText("impact-signal-year", years[0] ? String(years[0]) : "—");
+  setText("impact-signal-mode", formatImpactSourceMode(site.meta && site.meta.source_mode));
+  setText("impact-signal-types", `${formatInt((impactSummary.types || []).length || 3)} kinds`);
+
+  document.getElementById("impact-type-stack").innerHTML = (impactSummary.types || [
+    { label: "Publications", value: "publication", count: (site.publications || []).length },
+    { label: "News", value: "news", count: (site.news || []).length },
+    { label: "Stories", value: "story", count: (site.stories || []).length },
+  ])
+    .map(
+      (item) => `
+        <div class="reading-source-row">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${formatInt(item.count || 0)}</strong>
+        </div>`
+    )
+    .join("");
+  document.getElementById("impact-year-chip-bar").innerHTML = years
+    .slice(0, 6)
+    .map((year) => `<span class="chip">${escapeHtml(String(year))}</span>`)
+    .join("");
+  document.getElementById("impact-type-chip-bar").innerHTML = (impactSummary.types || [
+    { label: "Publications", value: "publication", count: (site.publications || []).length },
+    { label: "News", value: "news", count: (site.news || []).length },
+    { label: "Stories", value: "story", count: (site.stories || []).length },
+  ])
+    .map(
+      (item) => `
+        <button class="chip ${selectedKind === item.value ? "is-active" : ""}" type="button" data-kind="${escapeHtml(item.value)}">
+          ${escapeHtml(item.label)} <strong>${formatInt(item.count || 0)}</strong>
+        </button>`
+    )
+    .join("");
+
+  renderImpactSpotlight({ allItems, filteredItems: items, searchTerm });
+
+  const grid = document.getElementById("impact-grid");
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state impact-empty">No public-site impact items match the current filters. Clear the search or broaden the type/year filters to restore the full feed.</div>';
+    return;
+  }
+
+  grid.innerHTML = items
+    .map(
+      (item) => `
+        <article class="reading-card impact-card reveal is-visible impact-card-${escapeHtml(item.kind || "item")}">
+          <div>
+            <div class="impact-meta">
+              <span class="impact-badge impact-badge-${escapeHtml(item.kind || "item")}">${escapeHtml(formatImpactKind(item.kind))}</span>
+              <span>${escapeHtml(item.source || formatImpactKind(item.kind))}</span>
+              <span>${item.year || "Undated"}</span>
+            </div>
+            <h3>${escapeHtml(item.title || "Untitled item")}</h3>
+            <p class="reading-excerpt impact-summary">${escapeHtml(item.summary || "No public summary captured for this item yet.")}</p>
+          </div>
+          <div class="reading-tags impact-tags">
+            ${(item.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
+          </div>
+          <div class="reading-actions impact-actions">
+            <a class="reading-link" href="${escapeHtml(item.href || "https://www.esdlabsc.com/")}" target="_blank" rel="noreferrer noopener">Open source</a>
+            <span>${escapeHtml(item.href || "esdlabsc.com")}</span>
+          </div>
+        </article>`
+    )
+    .join("");
+}
+
+function renderImpactSpotlight({ allItems, filteredItems, searchTerm }) {
+  const spotlight = chooseImpactSpotlight({ allItems, filteredItems, searchTerm });
+  setText("impact-featured-title", spotlight ? spotlight.title : "Impact spotlight");
+  setText(
+    "impact-featured-summary",
+    spotlight
+      ? (spotlight.summary || "No summary captured for this item yet.")
+      : "Use the search, type, and year filters below to browse the public dissemination feed."
+  );
+  document.getElementById("impact-featured-meta").innerHTML = spotlight
+    ? [
+        `<span class="impact-badge impact-badge-${escapeHtml(spotlight.kind || "item")}">${escapeHtml(formatImpactKind(spotlight.kind))}</span>`,
+        `<span>${escapeHtml(spotlight.source || formatImpactKind(spotlight.kind))}</span>`,
+        `<span>${spotlight.year || "Undated"}</span>`,
+      ].join("")
+    : "";
+  document.getElementById("impact-featured-tags").innerHTML = spotlight
+    ? (spotlight.tags || []).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")
+    : "";
+  const link = document.getElementById("impact-featured-link");
+  link.href = spotlight ? spotlight.href || "https://www.esdlabsc.com/" : "https://www.esdlabsc.com/";
+  link.textContent = searchTerm ? "Open top match" : "Open spotlight item";
+  setText("impact-featured-source", spotlight ? (spotlight.href || spotlight.source || "esdlabsc.com") : "esdlabsc.com");
+}
+
+function chooseImpactSpotlight({ allItems, filteredItems, searchTerm }) {
+  if (searchTerm && filteredItems.length) {
+    return filteredItems.slice().sort((left, right) => (right._score || 0) - (left._score || 0))[0];
+  }
+  const preferredStory = (allItems || []).find((item) => item.kind === "story");
+  return filteredItems[0] || preferredStory || allItems[0] || null;
+}
+
+function syncImpactYearOptions(years) {
+  const select = document.getElementById("filter-impact-year");
+  const currentValue = select.value || "all";
+  const nextOptions = [
+    '<option value="all">All years</option>',
+    ...years.map((year) => `<option value="${escapeHtml(String(year))}">${escapeHtml(String(year))}</option>`),
+  ].join("");
+  if (select.innerHTML !== nextOptions) {
+    select.innerHTML = nextOptions;
+  }
+  if (["all", ...years.map((year) => String(year))].includes(currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function scoreImpactMatch(item, searchTerm) {
+  if (!searchTerm) {
+    return 1;
+  }
+  const terms = searchTerm.split(/\s+/).filter(Boolean);
+  const title = String(item.title || "").toLowerCase();
+  const summary = String(item.summary || "").toLowerCase();
+  const source = String(item.source || "").toLowerCase();
+  const kind = String(item.kind || "").toLowerCase();
+  const tags = String((item.tags || []).join(" ")).toLowerCase();
+  const href = String(item.href || "").toLowerCase();
+
+  return terms.reduce((score, term) => {
+    let next = score;
+    if (title.includes(term)) {
+      next += 90;
+    }
+    if (summary.includes(term)) {
+      next += 45;
+    }
+    if (source.includes(term)) {
+      next += 30;
+    }
+    if (tags.includes(term)) {
+      next += 25;
+    }
+    if (kind.includes(term)) {
+      next += 18;
+    }
+    if (href.includes(term)) {
+      next += 8;
+    }
+    return next;
+  }, 0);
+}
+
+function sortImpactItems(left, right, mode, searchTerm) {
+  const kindOrder = { publication: 0, news: 1, story: 2 };
+  if (mode === "relevance") {
+    return (right._score || 0) - (left._score || 0)
+      || (right.year || 0) - (left.year || 0)
+      || String(left.title || "").localeCompare(String(right.title || ""));
+  }
+  if (mode === "title") {
+    return String(left.title || "").localeCompare(String(right.title || "")) || (right.year || 0) - (left.year || 0);
+  }
+  if (mode === "type") {
+    return (kindOrder[left.kind] ?? 99) - (kindOrder[right.kind] ?? 99)
+      || (right.year || 0) - (left.year || 0)
+      || String(left.title || "").localeCompare(String(right.title || ""));
+  }
+  if (searchTerm) {
+    return (right._score || 0) - (left._score || 0)
+      || (right.year || 0) - (left.year || 0)
+      || String(left.title || "").localeCompare(String(right.title || ""));
+  }
+  return (right.year || 0) - (left.year || 0)
+    || (kindOrder[left.kind] ?? 99) - (kindOrder[right.kind] ?? 99)
+    || String(left.title || "").localeCompare(String(right.title || ""));
+}
+
+function formatImpactKind(kind) {
+  if (kind === "publication") {
+    return "Publication";
+  }
+  if (kind === "news") {
+    return "News";
+  }
+  if (kind === "story") {
+    return "Story";
+  }
+  return "Impact item";
+}
+
+function formatImpactSourceMode(mode) {
+  if (mode === "live_fetch") {
+    return "Live fetch";
+  }
+  if (mode === "fallback") {
+    return "Fallback";
+  }
+  return "Unavailable";
+}
+
+function resetImpactFilters() {
+  document.getElementById("filter-impact-search").value = "";
+  document.getElementById("filter-impact-kind").value = "all";
+  document.getElementById("filter-impact-year").value = "all";
+  document.getElementById("filter-impact-sort").value = "recent";
+  renderImpactExplorer();
+}
+
+function handleImpactChipClick(event) {
+  const chip = event.target.closest("button[data-kind]");
+  if (!chip) {
+    return;
+  }
+  document.getElementById("filter-impact-kind").value = chip.dataset.kind || "all";
+  renderImpactExplorer();
 }
 
 function renderEnrollmentChart() {

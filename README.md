@@ -218,21 +218,24 @@ active public dashboard URL.
 The public link will be one of these forms:
 
 - Quick share URL: `https://<random-subdomain>.trycloudflare.com/dashboard/`
-- Stable branded URL: `https://esd-lab-usc-dashboard.yourdomain.org/dashboard/`
+- Stable branded URL: `https://dashboard.esdlabsc.com/dashboard/`
 
 By default, the runtime uses a Cloudflare quick tunnel, so the printed public
 URL is temporary and the hostname is random. Do not document or bookmark a
 previous quick-tunnel URL as a permanent dashboard address, because it changes
 when the tunnel is recreated.
 
+For temporary sharing, always rerun `make dashboard-share` and send only the
+latest quick-share URL printed by the script.
+
 If you want a stable branded hostname such as
-`https://esd-lab-usc-dashboard.yourdomain.org/dashboard/`, create a named
+`https://dashboard.esdlabsc.com/dashboard/`, create a named
 Cloudflare Tunnel, configure its public hostname in Cloudflare, and set these
 variables in `.env` before running the same command:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
-DASHBOARD_PUBLIC_HOSTNAME=esd-lab-usc-dashboard.yourdomain.org
+DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
 After that, `make dashboard-share` prints the branded public link instead of a

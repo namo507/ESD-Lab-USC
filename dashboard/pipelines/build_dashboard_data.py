@@ -37,7 +37,8 @@ Output schema
 -------------
 Identical to ``generate_synthetic_dashboard_data.py``:
 ``meta``, ``enrollment``, ``visit_completion``, ``data_quality``,
-``ml_performance``, ``trajectories``, ``redcap_audit``, ``cohort_table``.
+``ml_performance``, ``trajectories``, ``redcap_audit``, ``cohort_table``,
+``organization_site``.
 
 Reproducibility
 ---------------
@@ -474,6 +475,7 @@ def build_payload(
     metrics: Optional[dict],
     salt: str = "nano_default_salt",
     data_source: str = "redcap_live + feature_matrix",
+    organization_site: Optional[dict[str, Any]] = None,
 ) -> dict:
     """Assemble the full dashboard payload (same schema as the synthetic gen)."""
     if redcap is None or features is None:
@@ -505,6 +507,7 @@ def build_payload(
         "trajectories":     build_trajectories(features),
         "redcap_audit":     build_redcap_audit(redcap),
         "cohort_table":     build_cohort_table(redcap, salt),
+        "organization_site": organization_site or {},
     }
     return _make_json_safe(payload)
 
@@ -563,13 +566,26 @@ def main(argv: Optional[list[str]] = None) -> int:
     metrics = load_model_metrics(metrics_path)
     data_source = _infer_data_source(redcap)
 
+    from dashboard.pipelines import build_org_site_data
+
+    organization_site = build_org_site_data.build_payload()
+
     try:
-        payload = build_payload(redcap, features, dd, metrics, salt=args.salt, data_source=data_source)
+        payload = build_payload(
+            redcap,
+            features,
+            dd,
+            metrics,
+            salt=args.salt,
+            data_source=data_source,
+            organization_site=organization_site,
+        )
     except FileNotFoundError as exc:
         if args.fallback_synthetic:
             logger.warning("%s — falling back to synthetic generator.", exc)
             from dashboard.pipelines import generate_synthetic_dashboard_data as syn
             payload = syn.build_payload()
+            payload["organization_site"] = organization_site
         else:
             logger.error("%s  (pass --fallback-synthetic to emit demo data)", exc)
             return 2

@@ -30,7 +30,7 @@
 #  -------------
 #  Identical to the Python version:
 #  meta / enrollment / visit_completion / data_quality / ml_performance /
-#  trajectories / redcap_audit / cohort_table.
+#  trajectories / redcap_audit / cohort_table / organization_site.
 #
 #  Performance
 #  -----------
@@ -315,8 +315,80 @@ build_cohort_table <- function(redcap, salt, n = 60) {
   })
 }
 
+build_organization_site <- function(root) {
+  dashboard_path <- file.path(root, "dashboard/data/dashboard_data.json")
+  if (file.exists(dashboard_path)) {
+    existing <- tryCatch(
+      jsonlite::read_json(dashboard_path, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (!is.null(existing$organization_site)) {
+      return(existing$organization_site)
+    }
+  }
+
+  list(
+    meta = list(
+      generated_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S"),
+      source_mode = "r_fallback",
+      source_url = "https://www.esdlabsc.com/",
+      pages_crawled = 0,
+      errors = list("R pipeline used fallback organization_site payload")
+    ),
+    summary = list(
+      current_public_studies = 2,
+      featured_stories = 3,
+      partner_count = 3,
+      publication_items = 2,
+      news_mentions = 3,
+      impact_item_count = 8,
+      available_years = list(2026, 2025, 2024, 2022, 2021, 2020),
+      phone = "(803) 993-8356",
+      emails = list("esdlab@sc.edu", "esdlab.espanol@sc.edu"),
+      address = "1800 Gervais Street, Columbia, SC 29201",
+      signup_url = "https://www.esdlabsc.com/newborn-sign-up",
+      contact_url = "https://www.esdlabsc.com/contact-us",
+      main_site_url = "https://www.esdlabsc.com/"
+    ),
+    mission = list(
+      headline = "Early identification and intervention of autism spectrum disorder in infancy.",
+      summary = "Fallback organization-site payload preserved for the R pipeline.",
+      mission_text = "Use the Python build for live public-site ingestion; the R mirror keeps the same shape for dashboard compatibility.",
+      details = list(
+        "Led by Dr. Jessica Bradshaw at the University of South Carolina.",
+        "Focused on infant development, autism, and family-facing support.",
+        "Use the Python pipeline when you need the latest public-site scrape."
+      )
+    ),
+    studies = list(),
+    family_pathway = list(),
+    team_highlights = list(),
+    resources = list(),
+    partners = list(),
+    contact = list(
+      phone = "(803) 993-8356",
+      emails = list("esdlab@sc.edu", "esdlab.espanol@sc.edu"),
+      address = "1800 Gervais Street, Columbia, SC 29201",
+      signup_url = "https://www.esdlabsc.com/newborn-sign-up",
+      contact_url = "https://www.esdlabsc.com/contact-us",
+      parking_url = "https://www.esdlabsc.com/s/imb_directions_and_map.pdf",
+      undergraduate_application_url = "https://forms.gle/TMyAsqF3kGh217jg9",
+      instagram_url = "https://www.instagram.com/uofsc_esdlab/",
+      spanish_email = "esdlab.espanol@sc.edu"
+    ),
+    publications = list(),
+    news = list(),
+    stories = list(),
+    impact_feed = list(),
+    impact_summary = list(
+      types = list(),
+      years = list(2026, 2025, 2024, 2022, 2021, 2020)
+    )
+  )
+}
+
 # ---- Main orchestrator ----------------------------------------------------
-build_payload <- function(redcap, features, dd, metrics, salt) {
+build_payload <- function(redcap, features, dd, metrics, salt, organization_site) {
   if (is.null(redcap) || is.null(features))
     stop("Missing REDCap mirror or feature matrix.")
 
@@ -343,7 +415,8 @@ build_payload <- function(redcap, features, dd, metrics, salt) {
     ml_performance   = build_ml_performance(metrics),
     trajectories     = build_trajectories(features),
     redcap_audit     = build_redcap_audit(redcap),
-    cohort_table     = build_cohort_table(redcap, salt)
+    cohort_table     = build_cohort_table(redcap, salt),
+    organization_site = organization_site
   )
 }
 
@@ -365,9 +438,10 @@ main <- function() {
   features <- load_parquet_safe(features_path)
   dd       <- load_dd(dd_path)
   metrics  <- load_metrics(metrics_path)
+  organization_site <- build_organization_site(root)
 
   payload <- tryCatch(
-    build_payload(redcap, features, dd, metrics, args$salt),
+    build_payload(redcap, features, dd, metrics, args$salt, organization_site),
     error = function(e) {
       if (isTRUE(args$`fallback-synthetic`)) {
         log_info("Falling back to synthetic: %s", e$message)

@@ -49,7 +49,7 @@ while (( SECONDS < deadline )); do
   registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
   if [[ -n "$named_tunnel_token" && -n "$registered" ]]; then
     echo
-    echo "Shareable dashboard URL:"
+    echo "Stable dashboard URL:"
     echo "https://${public_hostname}/dashboard/"
     echo
     echo "The tunnel stays live while the Docker services are running."
@@ -58,9 +58,10 @@ while (( SECONDS < deadline )); do
 
   if [[ -z "$named_tunnel_token" && -n "$url" && -n "$registered" ]]; then
     echo
-    echo "Shareable dashboard URL:"
+    echo "Temporary quick-share dashboard URL:"
     echo "${url}/dashboard/"
     echo
+    echo "This quick-tunnel hostname is temporary and changes when the share service restarts."
     echo "The tunnel stays live while the Docker services are running."
     exit 0
   fi

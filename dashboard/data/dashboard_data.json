@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-04-19T18:30:50",
+    "generated_at": "2026-04-19T17:28:51",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2233,5 +2233,1031 @@
       "completeness_pct": 60.2,
       "qc_status": "OK"
     }
-  ]
+  ],
+  "organization_site": {
+    "meta": {
+      "generated_at": "2026-04-19T17:28:51",
+      "source_mode": "live_fetch",
+      "source_url": "https://www.esdlabsc.com",
+      "pages_crawled": 11,
+      "errors": []
+    },
+    "summary": {
+      "current_public_studies": 2,
+      "featured_stories": 3,
+      "partner_count": 17,
+      "publication_items": 12,
+      "news_mentions": 12,
+      "impact_item_count": 27,
+      "available_years": [
+        2026,
+        2025,
+        2024,
+        2023,
+        2022,
+        2021,
+        2020
+      ],
+      "phone": "(803) 993-8356",
+      "emails": [],
+      "address": "1800 Gervais Street Columbia, SC 29201",
+      "signup_url": "https://www.esdlabsc.com/newborn-sign-up",
+      "contact_url": "https://www.esdlabsc.com/contact-us",
+      "main_site_url": "https://www.esdlabsc.com/"
+    },
+    "mission": {
+      "headline": "We study early identification of autism spectrum disorder (ASD) in the first year of life, which paves the way for earlier interventions and improved outcomes for individuals and families affected by ASD.",
+      "summary": "We study early identification of autism spectrum disorder (ASD) in the first year of life, which paves the way for earlier interventions and improved outcomes for individuals and families affected by ASD. More broadly, our goal is to serve as a resource for South Carolina families by supporting the needs of our local autism and infant community!",
+      "mission_text": "Our mission is to make scientific discoveries about infant development and autism spectrum disorder to improve the lives of neurodiverse children and their families. We accomplish this mission by connecting with our community and providing a positive, fulfilling research experience for families while conducting rigorous research on infant behavior.",
+      "details": [
+        "Our mission is to make scientific discoveries about infant development and autism spectrum disorder to improve the lives of neurodiverse children and their families. We accomplish this mission by connecting with our community and providing a positive, fulfilling research experience for families while conducting rigorous research on infant behavior."
+      ]
+    },
+    "studies": [
+      {
+        "slug": "nano-study",
+        "title": "NANO Study",
+        "summary": "Our newborn study follows the development of newborns through the first 3 years of life. Our team tracks early social, motor, and language skills as infants grow, and provide parents with feedback and tips on supporting their child\u2019s development. Families can earn up to $250 for full participation. We currently have openings for infants who are:",
+        "details": [
+          "Our newborn study follows the development of newborns through the first 3 years of life.",
+          "Our team tracks early social, motor, and language skills as infants grow, and provide parents with feedback and tips on supporting their child\u2019s development. Families can earn up to $250 for full participation. We currently have openings for infants who are:",
+          "1) Under 1 month and born preterm (between 24-32 weeks gestation)",
+          "2) Under 3 months and have an older full biological sibling diagnosed with autism",
+          "3) Under 1 month and have an older sibling who is typically developing with no family history of autism"
+        ],
+        "href": "https://www.esdlabsc.com/newborn-sign-up",
+        "cta_label": "Sign up for NANO",
+        "audience": "Infants followed through 3 years",
+        "compensation": "up to $250",
+        "eligibility": [
+          "Under 1 month and born preterm (between 24-32 weeks gestation) 2) Under 3 months and have an older full biological sibling diagnosed with autism 3) Under 1 month and have an older sibling who is typically developing with no family history of autism"
+        ],
+        "source_page": "https://www.esdlabsc.com/our-studies"
+      },
+      {
+        "slug": "nicu-exit-study",
+        "title": "NICU Exit Study",
+        "summary": "In partnership with the UofSC College of Nursing, the ESD Lab is enrolling preterm infants from the PRISMA-Richland NICU. Babies participate in 3-4 study visits for the first year following NICU discharge. Families receive free feedback, connections to local resources, and $40 per study visit.",
+        "details": [
+          "In partnership with the UofSC College of Nursing, the ESD Lab is enrolling preterm infants from the PRISMA-Richland NICU. Babies participate in 3-4 study visits for the first year following NICU discharge. Families receive free feedback, connections to local resources, and $40 per study visit."
+        ],
+        "href": "https://www.esdlabsc.com/our-studies",
+        "cta_label": "Learn about NICU Exit",
+        "audience": "Preterm infants after NICU discharge",
+        "compensation": "$40 per study visit",
+        "eligibility": [],
+        "source_page": "https://www.esdlabsc.com/our-studies"
+      }
+    ],
+    "family_pathway": [
+      {
+        "title": "Sign Up",
+        "description": "Fill out our interest form to learn more about our studies. Complete Visits Our clinical team will facilitate study visits at different time points through your child\u2019s first 2-3 years of life.",
+        "href": "https://www.esdlabsc.com/newborn-sign-up",
+        "link_label": "Interest form"
+      },
+      {
+        "title": "Complete Visits",
+        "description": "Our clinical team will facilitate study visits at different time points through your child\u2019s first 2-3 years of life. Get Feedback Receive feedback and support along the way, as well as referrals to therapists, childcare, and much more!",
+        "href": "https://www.esdlabsc.com/our-studies",
+        "link_label": "Study visits"
+      },
+      {
+        "title": "Get Feedback",
+        "description": "Receive feedback and support along the way, as well as referrals to therapists, childcare, and much more!",
+        "href": "https://www.esdlabsc.com/resources",
+        "link_label": "Resources and support"
+      }
+    ],
+    "team_highlights": [
+      {
+        "name": "Jessica Bradshaw, PhD",
+        "role": "LAB DIRECTOR | [email protected]",
+        "summary": "Dr. Bradshaw is the Lab Director at the Early Social Development Lab and an Associate Professor of Psychology at the University of South Carolina.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Ellen E. Spiller, MPH, DPT",
+        "role": "RESEARCH SCIENTIST | [email protected]",
+        "summary": "Dr. Spiller is the Research and Grants Manager at the Early Social Development Lab at USC. She supports NIH- and foundation-funded studies focused on infant behavior, physiological development, and autism.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Samuel Harding, PhD",
+        "role": "ASSOCIATE SCIENTIST | [email protected]",
+        "summary": "Dr. Harding is an Associate Scientist at the Early Social Development Lab and an Instructor in Psychology at the University of South Carolina.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Julia Yurkovic-Harding, PhD",
+        "role": "POST-DOCTORAL FELLOW | [email protected]",
+        "summary": "Dr. Yurkovic-Harding is a Postdoctoral Researcher in the Early Social Development Lab at USC.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Megan Streetman, LMSW",
+        "role": "RECRUITMENT & OUTREACH | [email protected]",
+        "summary": "Megan is the Recruitment and Outreach Coordinator at the Early Social Development Lab at USC. Megan is a Licensed Master Social Worker with a degree from Winthrop University, earned in 2017.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Alexis Federico, MA",
+        "role": "PhD CANDIDATE | [email protected]",
+        "summary": "Alexis is a PhD Candidate in Clinical-Communicty Psychology at USC, currently completing her internship year at Kennedy Krieger Institute in Baltimore, Maryland.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      }
+    ],
+    "resources": [
+      {
+        "title": "Autism Spectrum Disorder - National Institute of Mental Health (NIMH)",
+        "href": "https://www.nimh.nih.gov/health/topics/autism-spectrum-disorders-asd",
+        "category": "General",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "American Academy of Pediatrics | Patient Care - Autism",
+        "href": "https://www.aap.org/en/patient-care/autism/",
+        "category": "General",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Autism Society South Carolina",
+        "href": "https://scautism.org/",
+        "category": "Autism Resources",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Family Connection of South Carolina",
+        "href": "https://www.familyconnectionsc.org/",
+        "category": "Autism Resources",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "The Unumb Center for Neurodevelopment",
+        "href": "https://www.unumbcenter.org/",
+        "category": "Autism Resources",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "BabyNet | Early Intervention System",
+        "href": "https://www.scdhhs.gov/resources/programs-and-initiatives/babynet",
+        "category": "Early Intervention",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "First Steps | South Carolina",
+        "href": "https://www.scfirststeps.org/",
+        "category": "Early Intervention",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Bright Start | Early Intervention",
+        "href": "https://www.brightstartsc.com/",
+        "category": "Early Intervention",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Baby Navigator",
+        "href": "https://babynavigator.com/",
+        "category": "Early Intervention",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Individuals with Disabilities Education Act (IDEA) | U.S. Department of Education",
+        "href": "https://www.ed.gov/laws-and-policy/individuals-disabilities/idea",
+        "category": "Special Education",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Children with Disabilities | HeadStart.gov",
+        "href": "https://headstart.gov/children-disabilities?redirect=eclkc",
+        "category": "Special Education",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "South Carolina Child Care Inclusion Collaborative",
+        "href": "https://www.scinclusion.org/about/",
+        "category": "Special Education",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Collaborative for Academic, Social, and Emotional Learning (CASEL)",
+        "href": "https://casel.org/about-us/",
+        "category": "Special Education",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Kelly Helms, LISW-CP | Women\u2019s Mental Health",
+        "href": "https://www.kellyhelmstherapy.com/",
+        "category": "Family Support",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Parents as Teachers | SC First Steps",
+        "href": "https://www.scfirststeps.org/what-we-do/programs/parents-as-teachers/",
+        "category": "Family Support",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Therapists in West Columbia",
+        "href": "https://www.psychologytoday.com/us/therapists/sc/west-columbia",
+        "category": "Family Support",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Advice By Age | Baby Sleep Advice for Parents & Kids",
+        "href": "https://www.babysleep.com/advice/by-child-age/",
+        "category": "Learn More",
+        "source_page": "https://www.esdlabsc.com/resources"
+      }
+    ],
+    "partners": [
+      {
+        "name": "About Play",
+        "href": "https://aboutplaysc.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Team Therapy",
+        "href": "https://teamtherapysc.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "The Developmental Pediatric Clinic",
+        "href": "https://prismahealthchildrens.org/locations/practices/developmental-pediatrics-columbia",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Palmetto Pediatric and Adolescent Clinic",
+        "href": "https://palmettopediatric.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Project Hope",
+        "href": "https://www.projecthopesc.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "The Therapy Place\u2019",
+        "href": "https://www.thetherapyplace.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Behaviors A Go-Go",
+        "href": "https://www.facebook.com/bhagogo.biz",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "The South Carolina Program for Infant/Toddler Care",
+        "href": "https://scpitc.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Bright Start",
+        "href": "https://www.brightstartsc.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Family Connection of South Carolin",
+        "href": "https://www.familyconnectionsc.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "The Unumb Center",
+        "href": "https://www.unumbcenter.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Beyond Early Intervention",
+        "href": "https://beyondearlyintervention.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Meaningful Milestones",
+        "href": "https://www.facebook.com/mstonesaba/",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Beautiful Gate",
+        "href": "https://www.beautifulgatecenter.org",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Play2Learn",
+        "href": "https://www.facebook.com/earlyinterventionprovider/",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Aging with Flair",
+        "href": "https://agingwithflair.org/AgingWithFlair/About_Us.html",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Anna Wippold Studio",
+        "href": "https://annawippoldstudio.com",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      }
+    ],
+    "contact": {
+      "phone": "(803) 993-8356",
+      "emails": [],
+      "address": "1800 Gervais Street Columbia, SC 29201",
+      "signup_url": "https://www.esdlabsc.com/newborn-sign-up",
+      "contact_url": "https://www.esdlabsc.com/contact-us",
+      "parking_url": "https://www.esdlabsc.com/s/imb_directions_and_map.pdf",
+      "undergraduate_application_url": "https://forms.gle/TMyAsqF3kGh217jg9",
+      "instagram_url": "https://www.instagram.com/uofsc_esdlab/",
+      "spanish_email": ""
+    },
+    "publications": [
+      {
+        "kind": "publication",
+        "title": "Publications 2026",
+        "summary": "We are currently writing! Publications 2025 1. Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . 2. Bradshaw, J., Richards, J. E., Yurkovic\u2010Harding, J., & McLaughlin, E. (2025). Development of Respiratory Sinus Arrhythmia in Young Infants With Autism Spectrum Disorder, Preterm Birth, and Typical Development. Autism Research . 3. Edmunds, S., Renaud, M., Goodrum, N., Bradshaw, J., Cooper, D., Ingersoll, B. \"Caregiver Self-Regulation as a Key Factor in the Implementation Potential of Caregiver-Mediated Interventions.\" Behavioral Sciences 15.10 (2025): 1336. 4. Federico, A., & Bradshaw, J. (2025). Characterization of early skill profiles for infants across varying genetic likelihoods for neurodevelopmental disorders. Infant Behavior and Development , 79, 102039. 5. Yurkovic\u2010Harding, J., & Bradshaw, J. (2025). The Dynamics of Looking and Smiling Differ for Young Infants at Elevated Likelihood for ASD. Infancy , 30(1), e12646.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2025",
+        "summary": "1. Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . 2. Bradshaw, J., Richards, J. E., Yurkovic\u2010Harding, J., & McLaughlin, E. (2025). Development of Respiratory Sinus Arrhythmia in Young Infants With Autism Spectrum Disorder, Preterm Birth, and Typical Development. Autism Research .",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2024",
+        "summary": "1. Fu, X., Franchak, J.M., MacNeill, L., Gunther, K.E., Borjon, J.I., Yurkovic-Harding, J., Harding, S., Bradshaw, J., P\u00e9rez-Edgar, K.E. (2024). Implementing mobile eye tracking in psychological research: A practical guide. Behavior Research Methods. Fu, X., Franchak, J.M., MacNeill, L., Gunther, K.E., Borjon, J.I., Yurkovic-Harding, J., Harding, S., Bradshaw, J., P\u00e9rez-Edgar, K.E. (2024). Implementing mobile eye tracking in psychological research: A practical guide. Behavior Research Methods. 2. Ozonoff, S.l, Young, G., Bradshaw, J., Charman, T., Chawarska, K., Iverson, J.M., Klaiman, C., Landa, R., McDonald, N., Messinger, D., Schmidt, R., Wilkinson, C., Zwaigenbaum, L. (2024). Familial Recurrence of Autism: Updates From the Baby Siblings Research Consortium. e2023065297. Pediatrics . 154 (2): e2023065297. https://doi.org/10.1542/peds.2023-065297,",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2024,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2023",
+        "summary": "1. Bradshaw, J., Fu., J., Abney, D. (2023). Infant Embodied Attention in the Natural Environment: The Use of a Home-Based Head-Mounted Eye Tracking System in Four- and Eight-Month-Olds. Developmental Cognitive Neuroscience Bradshaw, J., Fu., J., Abney, D. (2023). Infant Embodied Attention in the Natural Environment: The Use of a Home-Based Head-Mounted Eye Tracking System in Four- and Eight-Month-Olds. Developmental Cognitive Neuroscience 2. Federico, A.*, Zgodic, A., Flory, K., Hantman, R., Eberth, J., Mclain, A., Bradshaw, J. (2023). Predictors of Autism Spectrum Disorder and ADHD: Results from the National Survey of Children\u2019s Health. Disability and Health.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2023,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2022",
+        "summary": "\u200d1. Bradshaw, J., Shi, D., Federico, A., Klaiman, C., Saulnier, C. (2022). The Pull-to-Sit Task: Examining Infant Postural Development in Autism Spectrum Disorder. Journal of Pediatrics. doi.org/10.1016/j.jpeds.2022.09.047 2. Bradshaw, J., Wolfe, K., Hock, R., & Scopano, L. (2022). Advances in Supporting Parents in Interventions for Autism Spectrum Disorder. Pediatric Clinics , 69(4), 645-656. Bradshaw, J., Wolfe, K., Hock, R., & Scopano, L. (2022). Advances in Supporting Parents in Interventions for Autism Spectrum Disorder. Pediatric Clinics , 69(4), 645-656.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2022,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2021",
+        "summary": "1. Bradshaw, J., McCracken, C., Lewis, M., Bran, N., Delehanty, A., Day, T., Federico, A., Klaiman, C., Saulnier, C., Klin, A., Wetherby, A. (2021). Early Social Communication Development in Infants with Autism Spectrum Disorder. Child Development. doi.org/10.1111/cdev.13683. Bradshaw, J., McCracken, C., Lewis, M., Bran, N., Delehanty, A., Day, T., Federico, A., Klaiman, C., Saulnier, C., Klin, A., Wetherby, A. (2021). Early Social Communication Development in Infants with Autism Spectrum Disorder. Child Development. doi.org/10.1111/cdev.13683. 2. Bradshaw, J., Abney, D. (2021). Infant Physiological Activity and the Early Emergence of Social Communication. Developmental Psychobiology. doi.org/10.1002/dev.22145.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2021,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2020",
+        "summary": "1. Kaliukhovich, D., Manyakov, N., Bangerter, S., Skalkin, A., Goodwin, M., Dawson, G., Hendren, R., Leventhal, B., Hudac, C., Bradshaw, J., Shic, F., Pandina, G. (2020). Social Attention to Activities in Children and Adults with Autism Spectrum Disorder: Effects of Context and Age. Molecular Autism. Kaliukhovich, D., Manyakov, N., Bangerter, S., Skalkin, A., Goodwin, M., Dawson, G., Hendren, R., Leventhal, B., Hudac, C., Bradshaw, J., Shic, F., Pandina, G. (2020). Social Attention to Activities in Children and Adults with Autism Spectrum Disorder: Effects of Context and Age. Molecular Autism. 2. Roberts, J., Bradshaw, J., Will, E., Hogan, A., McQuillin, S., Hills, K. (2020). Prevalence and Emergence of Autism in Fragile X Syndrome Across the First Years of Life. Development and Psychopathology.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2020,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2026",
+        "summary": "Soto, M. , Djiko, T., Bradshaw, J. (February 2026). Summary Scores of the NICU Network Neurobehavioral Scale as predictors of ASD- Specific Behaviors at 12-months. Poster presented at the South Carolina Autism and Neurodevelopmental Consortium Annual Meeting: Columbia, SC Research Talk | ISDP 2025 Christianson C. , Djiko T., Thomas J., Patel P., Yurkovic-Harding J., Bradshaw J., (November 2025) Infant RSA Predicts Emerging Social Communication In Children Later Diagnosed with Autism Spectrum Disorder, presented at the Annual Meeting of the International Society for Developmental Psychobiology: San Diego, CA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | ISDP 2025",
+        "summary": "Christianson C. , Djiko T., Thomas J., Patel P., Yurkovic-Harding J., Bradshaw J., (November 2025) Infant RSA Predicts Emerging Social Communication In Children Later Diagnosed with Autism Spectrum Disorder, presented at the Annual Meeting of the International Society for Developmental Psychobiology: San Diego, CA. Poster Presentation | SCAND 2025 Thomas J., Thomas C. , Bradshaw J., (March 2025) Atypical Attention in Early Infancy and Restricted and Repetitive behaviors for Infants with Autism Spectrum Disorder, Poster presented at South Carolina Autism and Neurodevelopmental Disorders (SCAND) Symposium: Columbia, SC.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2025",
+        "summary": "Thomas J., Thomas C. , Bradshaw J., (March 2025) Atypical Attention in Early Infancy and Restricted and Repetitive behaviors for Infants with Autism Spectrum Disorder, Poster presented at South Carolina Autism and Neurodevelopmental Disorders (SCAND) Symposium: Columbia, SC. Research Talk | INSAR 2025 Yurkovic-Harding, J ., Narayanan, V., Richards, J.E., Bradshaw, J. (May 2025). Social Behaviors Forecast Physiological Regulation for Infants with ASD and TD Infants. Talk at the International Society for Autism Research 2025 Annual Meeting: Seattle, WA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | INSAR 2025",
+        "summary": "Yurkovic-Harding, J ., Narayanan, V., Richards, J.E., Bradshaw, J. (May 2025). Social Behaviors Forecast Physiological Regulation for Infants with ASD and TD Infants. Talk at the International Society for Autism Research 2025 Annual Meeting: Seattle, WA. Poster Presentation | Discover USC 2025 Puttock L. , Platt E., Bradshaw J., (2025) Sex Differences in Social Communication and Restricted Repetitive Behaviors in Early Life Autism Spectrum Disorder. Poster Presented at Discover USC Annual Symposium: University of South Carolina - Columbia, SC",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | Discover USC 2025",
+        "summary": "Puttock L. , Platt E., Bradshaw J., (2025) Sex Differences in Social Communication and Restricted Repetitive Behaviors in Early Life Autism Spectrum Disorder. Poster Presented at Discover USC Annual Symposium: University of South Carolina - Columbia, SC Poster Presentation | ICIS 2025 Djiko, T. , Dixon, E., Platt, E., Bradshaw, J. (April 2025). Infant Neurobehavioral Development and Autism Emergence Across the First Two Years of Life. Poster presented at International Society for Autism Research, 2025, Seattle, WA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      }
+    ],
+    "news": [
+      {
+        "kind": "news",
+        "title": "\u201c AutismConnect Serves More Than 1,000 People in its Third Year\u201d",
+        "summary": "McCausland College of Arts and Sciences USC | April 2026 \u00b7 \u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d Third-year doctoral student at the ESD Lab! University of South Carolina | Jan 2026 \u00b7 \u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d",
+        "source": "McCausland College of Arts and Sciences USC",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2026/autismconnect-usc-autism-conference-south-carolina.php",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d",
+        "summary": "Third-year doctoral student at the ESD Lab! \u00b7 University of South Carolina | Jan 2026 \u00b7 \u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d South Carolina Public Radio interview | September 2025 \u00b7 \u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d",
+        "source": "Third-year doctoral student at the ESD Lab! \u00b7 University of South Carolina",
+        "href": "https://sc.edu/uofsc/posts/2026/01/01-social-justice-awards-2026.php#0",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d",
+        "summary": "South Carolina Public Radio interview | September 2025 \u00b7 \u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d translating current autism science for a general audience Op-Ed for The Post and Courier | July 2025 \u00b7 \u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d translating current autism science for a general audience",
+        "source": "South Carolina Public Radio interview",
+        "href": "https://www.southcarolinapublicradio.org/sc-news/2025-09-05/early-detection-helped-hayden-why-2-usc-researchers-are-studying-links-between-premature-birth-autism",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d",
+        "summary": "Op-Ed for The Post and Courier | July 2025 \u00b7 \u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d Fox Carolina Televised Interview | July 2025 \u00b7 \u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d",
+        "source": "Op-Ed for The Post and Courier",
+        "href": "https://www.postandcourier.com/opinion/commentary/kennedy-autism-quest-steers-away-real-progress/article_8e399cc6-502d-4f98-8666-3ee585bd2371.html",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d",
+        "summary": "Fox Carolina Televised Interview | July 2025 \u00b7 \u201cWhat Happens to Premature Infants as They Get Older?\u201d \u2014 public dissemination of developmental science findings. Autism Science Foundation - Podcast | May 6, 2024 \u00b7 \u201cWhat Happens to Premature Infants as They Get Older?\u201d \u2014 public dissemination of developmental science findings.",
+        "source": "Fox Carolina Televised Interview",
+        "href": "https://www.foxcarolina.com/video/2025/07/16/usc-studying-preterm-birth-cause-autism/",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cWhat Happens to Premature Infants as They Get Older?\u201d",
+        "summary": "Autism Science Foundation - Podcast | May 6, 2024 \u00b7 \u201cThe Riddle of Autism\u201d UofSC Today | October 2022 \u00b7 \u201cThe Riddle of Autism\u201d",
+        "source": "Autism Science Foundation - Podcast",
+        "href": "https://asfpodcast.org/archives/1689",
+        "year": 2024,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cThe Riddle of Autism\u201d",
+        "summary": "UofSC Today | October 2022 \u00b7 \u201cEarly Autism Detection Research at USC\u201d WIS News | April 10, 2022 \u00b7 \u201cEarly Autism Detection Research at USC\u201d",
+        "source": "UofSC Today",
+        "href": "https://www.sc.edu/uofsc/posts/2022/10/autism-multifaceted-research.php#.Y1aqQvzMKF4",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cEarly Autism Detection Research at USC\u201d",
+        "summary": "WIS News | April 10, 2022 \u00b7 \u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d UofSC College of Arts and Sciences | January 2022 \u00b7 \u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d",
+        "source": "WIS News",
+        "href": "https://www.wistv.com/2022/04/06/early-autism-detection-u-sc-offers-help-hope-families/",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d",
+        "summary": "UofSC College of Arts and Sciences | January 2022 \u00b7 One of our Research Assistants, Layne Scopano, featured in UofSC News South Carolina Honors College | November 2021 \u00b7 One of our Research Assistants, Layne Scopano, featured in UofSC News",
+        "source": "UofSC College of Arts and Sciences",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2022/autism_research.php",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "One of our Research Assistants, Layne Scopano, featured in UofSC News",
+        "summary": "South Carolina Honors College | November 2021 \u00b7 \u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d Forbes | December 2021 \u00b7 \u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d",
+        "source": "South Carolina Honors College",
+        "href": "https://www.sc.edu/study/colleges_schools/honors_college/about/news/2021/no_boxes_for_her.php#.Yt7zO-nMJhG",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d",
+        "summary": "Forbes | December 2021 \u00b7 Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC UofSC | June 2021 \u00b7 Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC",
+        "source": "Forbes",
+        "href": "https://www.forbes.com/sites/jenniferpalumbo/2021/12/31/how-a-new-study-shows-the-importance-of-early-diagnosis-of-autistic-infants/?sh=49c2475e34b4",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC",
+        "summary": "UofSC | June 2021 \u00b7 Interview with SC Public Radio December 2021 \u00b7 Interview with SC Public Radio",
+        "source": "UofSC",
+        "href": "https://www.sc.edu/uofsc/posts/2021/05/breakthrough_star_jessica_bradshaw.php#.Yt727unMJhF",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      }
+    ],
+    "stories": [
+      {
+        "kind": "story",
+        "title": "Wrenley\u2019s Story",
+        "summary": "\u201cWhen people think of autism research they assume that researchers are trying to find ways to change these kids. Your study is not about trying to change kids, it\u2019s about getting them the help and support they need as early as possible so they have the best shot at reaching their full potential.\u201d Wrenley enrolled in the ESDLab infant study in October 2021 when she was 1 month old. Her parents, Justin and Megan, drove from Spartanburg to attend this first visit after hearing about the study through a post-card in the mail.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/wrenleys-story",
+        "year": 2021,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Brandon and Bryanna",
+        "summary": "Bryson and her family enrolled in our Infant Study in July 2021, after hearing about the opportunity through her children\u2019s pediatrician. At the time, Bryson\u2019s 2-year-old daughter, Bryanna, showed early signs of autism that had not been diagnosed. Bryson also had a newborn and was interested in hearing about the different resources The Early Social Development Lab could offer for her family. Bryson noticed that something was \u201cdifferent\u201d about Bryanna from the start. She observed certain characteristics and behaviors that seemed similar to Bryanna\u2019s older half-brother who was diagnosed with autism. Despite being told that Bryanna was \u201cfine\u201d and that she would \u201csnap out of it,\u201d Bryson knew something else was going on. Like many parents, Bryson was hesitant at first to pursue an autism evaluation. She was concerned for Bryanna but was worried about what an autism diagnosis might mean for her. She soon realized, however, that autism \u201cdoesn\u2019t have to be debilitating,\u201d especially when early intervention is in place. She explained, \u201cas a parent, if you notice certain signs and see what\u2019s going on you\u2019ve got to just embrace it and see what you can do to help.\u201d Soon after, Bryson came to us with questions about Bryanna\u2019s behaviors and expressed interest in the research opportunity for Bryanna\u2019s newborn brother, Brandon. The ESD Lab started by providing a free comprehensive autism evaluation for Bryanna within 2 weeks of the referral, which indicated that Bryanna did meet criteria for autism spectrum disorder. Bryson felt \u201crelieved\u201d after receiving this diagnosis because it validated her own observations. The diagnosis also unlocked further services for Bryanna and allowed her to receive more help. Now, Bryson doesn\u2019t see the autism diagnosis as something to be afraid of. She stated, \u201cit doesn\u2019t mean anything is wrong with your child\u2026 honestly I think my child is pretty cool\u2026 Bryanna is the most interesting person in the world\u2026 the diagnosis just means to go ahead and get the help that you need.\" Nicely said, Bryson! We couldn\u2019t have said it better ourselves. Bryanna IS a really cool kid! \u200bFollowing the assessment, the team also enrolled baby Brandon into the infant study. Over the last 6 months, Dr. Bradshaw and the research coordinators have followed Brandon\u2019s development while providing feedback along the way. About 20% of infants with an older sibling with autism also develop autism themselves. Therefore, it is important to closely monitor their development and make referrals to early intervention as needed. Since starting the study, Bryson expressed becoming more mindful of Brandon\u2019s developmental needs and what to be looking out for. Bryson stated how valuable this study is for parents, as it provides valuable information about their child\u2019s development, even if they don\u2019t necessarily have concerns about autism. She explained, \u201cI feel like there is a definite reason just to do the study because you never know. It's one of those things where it's better to know earlier if there are any developmental aspects\u2026 or just anything that may be neurodivergent\u2026 it\u2019s definitely something you want to get ahold of sooner rather than later because then you know where to go with things\u2026\u201d Bryson expressed a deep appreciation for this study and the resources it provided her, stating, \u201cI don't know where Bryanna would be right now and I don't know where I would be right now if we did not find you guys.\u201d Thank YOU, Bryson, for your continued participation in our study. We appreciate all you do to support this research and the community!",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/brandon-and-bryanna-embracing-the-diagnosis",
+        "year": 2021,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Charlie's Story",
+        "summary": "Charlie came to his first appointment with the The Early Social Development Lab when he was 6 weeks old, after his mom, Megan, learned about the study through her OBGYN provider. Already involved in research with UofSC, Megan was enthusiastic about getting her son involved too. She contacted the ESD Lab and we enrolled Charlie in the study shortly after. At the time, little did Megan know the extent to which this study would shed light on Charlie\u2019s unique developmental needs. Nor did she realize how it would pave the way for him to receive helpful resources for his language and communication. Because of the close monitoring and feedback from the study, Megan learned how to promote Charlie\u2019s developmental milestones and gained access early intervention services when he needed them most. Charlie\u2019s younger brother, Rory, is now enrolled in the study and he, too, is benefiting from the close monitoring and support. We had the chance to interview Megan as she shared her experience of participating in the research with her children. Here\u2019s what she shared: \u201cI've loved it with both of my children. I look forward to it every time we come into the lab because it's just so fun to see the changes every time we come in. With Charlie, I had no baseline of his development because he was my first kid. I had no idea what to pay attention to or how to encourage his development. During our lab visits I saw the tasks that they were having him practice in the lab, and I was like OK, I see what you're trying to get him to do.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/charlies-story-the-role-of-early-intervention",
+        "year": null,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      }
+    ],
+    "impact_feed": [
+      {
+        "kind": "news",
+        "title": "\u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d",
+        "summary": "Third-year doctoral student at the ESD Lab! \u00b7 University of South Carolina | Jan 2026 \u00b7 \u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d South Carolina Public Radio interview | September 2025 \u00b7 \u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d",
+        "source": "Third-year doctoral student at the ESD Lab! \u00b7 University of South Carolina",
+        "href": "https://sc.edu/uofsc/posts/2026/01/01-social-justice-awards-2026.php#0",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201c AutismConnect Serves More Than 1,000 People in its Third Year\u201d",
+        "summary": "McCausland College of Arts and Sciences USC | April 2026 \u00b7 \u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d Third-year doctoral student at the ESD Lab! University of South Carolina | Jan 2026 \u00b7 \u201c USC\u2019s MLK Social Justice Award 2026 Recipient: Kim Tena\u201d",
+        "source": "McCausland College of Arts and Sciences USC",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2026/autismconnect-usc-autism-conference-south-carolina.php",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2026",
+        "summary": "We are currently writing! Publications 2025 1. Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . 2. Bradshaw, J., Richards, J. E., Yurkovic\u2010Harding, J., & McLaughlin, E. (2025). Development of Respiratory Sinus Arrhythmia in Young Infants With Autism Spectrum Disorder, Preterm Birth, and Typical Development. Autism Research . 3. Edmunds, S., Renaud, M., Goodrum, N., Bradshaw, J., Cooper, D., Ingersoll, B. \"Caregiver Self-Regulation as a Key Factor in the Implementation Potential of Caregiver-Mediated Interventions.\" Behavioral Sciences 15.10 (2025): 1336. 4. Federico, A., & Bradshaw, J. (2025). Characterization of early skill profiles for infants across varying genetic likelihoods for neurodevelopmental disorders. Infant Behavior and Development , 79, 102039. 5. Yurkovic\u2010Harding, J., & Bradshaw, J. (2025). The Dynamics of Looking and Smiling Differ for Young Infants at Elevated Likelihood for ASD. Infancy , 30(1), e12646.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2026",
+        "summary": "Soto, M. , Djiko, T., Bradshaw, J. (February 2026). Summary Scores of the NICU Network Neurobehavioral Scale as predictors of ASD- Specific Behaviors at 12-months. Poster presented at the South Carolina Autism and Neurodevelopmental Consortium Annual Meeting: Columbia, SC Research Talk | ISDP 2025 Christianson C. , Djiko T., Thomas J., Patel P., Yurkovic-Harding J., Bradshaw J., (November 2025) Infant RSA Predicts Emerging Social Communication In Children Later Diagnosed with Autism Spectrum Disorder, presented at the Annual Meeting of the International Society for Developmental Psychobiology: San Diego, CA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d",
+        "summary": "Fox Carolina Televised Interview | July 2025 \u00b7 \u201cWhat Happens to Premature Infants as They Get Older?\u201d \u2014 public dissemination of developmental science findings. Autism Science Foundation - Podcast | May 6, 2024 \u00b7 \u201cWhat Happens to Premature Infants as They Get Older?\u201d \u2014 public dissemination of developmental science findings.",
+        "source": "Fox Carolina Televised Interview",
+        "href": "https://www.foxcarolina.com/video/2025/07/16/usc-studying-preterm-birth-cause-autism/",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cEarly Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism\u201d",
+        "summary": "South Carolina Public Radio interview | September 2025 \u00b7 \u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d translating current autism science for a general audience Op-Ed for The Post and Courier | July 2025 \u00b7 \u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d translating current autism science for a general audience",
+        "source": "South Carolina Public Radio interview",
+        "href": "https://www.southcarolinapublicradio.org/sc-news/2025-09-05/early-detection-helped-hayden-why-2-usc-researchers-are-studying-links-between-premature-birth-autism",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cCommentary: There\u2019s a lot of things we don\u2019t know about autism. This isn\u2019t one of them,\u201d",
+        "summary": "Op-Ed for The Post and Courier | July 2025 \u00b7 \u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d Fox Carolina Televised Interview | July 2025 \u00b7 \u201cExpert Commentary on South Carolina\u2013Based Research Examining Premature Birth and Autism Risk.\u201d",
+        "source": "Op-Ed for The Post and Courier",
+        "href": "https://www.postandcourier.com/opinion/commentary/kennedy-autism-quest-steers-away-real-progress/article_8e399cc6-502d-4f98-8666-3ee585bd2371.html",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | ISDP 2025",
+        "summary": "Christianson C. , Djiko T., Thomas J., Patel P., Yurkovic-Harding J., Bradshaw J., (November 2025) Infant RSA Predicts Emerging Social Communication In Children Later Diagnosed with Autism Spectrum Disorder, presented at the Annual Meeting of the International Society for Developmental Psychobiology: San Diego, CA. Poster Presentation | SCAND 2025 Thomas J., Thomas C. , Bradshaw J., (March 2025) Atypical Attention in Early Infancy and Restricted and Repetitive behaviors for Infants with Autism Spectrum Disorder, Poster presented at South Carolina Autism and Neurodevelopmental Disorders (SCAND) Symposium: Columbia, SC.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | INSAR 2025",
+        "summary": "Yurkovic-Harding, J ., Narayanan, V., Richards, J.E., Bradshaw, J. (May 2025). Social Behaviors Forecast Physiological Regulation for Infants with ASD and TD Infants. Talk at the International Society for Autism Research 2025 Annual Meeting: Seattle, WA. Poster Presentation | Discover USC 2025 Puttock L. , Platt E., Bradshaw J., (2025) Sex Differences in Social Communication and Restricted Repetitive Behaviors in Early Life Autism Spectrum Disorder. Poster Presented at Discover USC Annual Symposium: University of South Carolina - Columbia, SC",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2025",
+        "summary": "1. Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . Bradshaw, J., Platt, E., Yurkovic-Harding, J., Harding, S., Fu, X (2025). Autonomic and Attentional Pathways in the Emergence of Autism: Bridging Mechanisms and Real-World Contexts in Infancy. Advances in Child Behavior and Development . 2. Bradshaw, J., Richards, J. E., Yurkovic\u2010Harding, J., & McLaughlin, E. (2025). Development of Respiratory Sinus Arrhythmia in Young Infants With Autism Spectrum Disorder, Preterm Birth, and Typical Development. Autism Research .",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2025",
+        "summary": "Thomas J., Thomas C. , Bradshaw J., (March 2025) Atypical Attention in Early Infancy and Restricted and Repetitive behaviors for Infants with Autism Spectrum Disorder, Poster presented at South Carolina Autism and Neurodevelopmental Disorders (SCAND) Symposium: Columbia, SC. Research Talk | INSAR 2025 Yurkovic-Harding, J ., Narayanan, V., Richards, J.E., Bradshaw, J. (May 2025). Social Behaviors Forecast Physiological Regulation for Infants with ASD and TD Infants. Talk at the International Society for Autism Research 2025 Annual Meeting: Seattle, WA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | Discover USC 2025",
+        "summary": "Puttock L. , Platt E., Bradshaw J., (2025) Sex Differences in Social Communication and Restricted Repetitive Behaviors in Early Life Autism Spectrum Disorder. Poster Presented at Discover USC Annual Symposium: University of South Carolina - Columbia, SC Poster Presentation | ICIS 2025 Djiko, T. , Dixon, E., Platt, E., Bradshaw, J. (April 2025). Infant Neurobehavioral Development and Autism Emergence Across the First Two Years of Life. Poster presented at International Society for Autism Research, 2025, Seattle, WA.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cWhat Happens to Premature Infants as They Get Older?\u201d",
+        "summary": "Autism Science Foundation - Podcast | May 6, 2024 \u00b7 \u201cThe Riddle of Autism\u201d UofSC Today | October 2022 \u00b7 \u201cThe Riddle of Autism\u201d",
+        "source": "Autism Science Foundation - Podcast",
+        "href": "https://asfpodcast.org/archives/1689",
+        "year": 2024,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2024",
+        "summary": "1. Fu, X., Franchak, J.M., MacNeill, L., Gunther, K.E., Borjon, J.I., Yurkovic-Harding, J., Harding, S., Bradshaw, J., P\u00e9rez-Edgar, K.E. (2024). Implementing mobile eye tracking in psychological research: A practical guide. Behavior Research Methods. Fu, X., Franchak, J.M., MacNeill, L., Gunther, K.E., Borjon, J.I., Yurkovic-Harding, J., Harding, S., Bradshaw, J., P\u00e9rez-Edgar, K.E. (2024). Implementing mobile eye tracking in psychological research: A practical guide. Behavior Research Methods. 2. Ozonoff, S.l, Young, G., Bradshaw, J., Charman, T., Chawarska, K., Iverson, J.M., Klaiman, C., Landa, R., McDonald, N., Messinger, D., Schmidt, R., Wilkinson, C., Zwaigenbaum, L. (2024). Familial Recurrence of Autism: Updates From the Baby Siblings Research Consortium. e2023065297. Pediatrics . 154 (2): e2023065297. https://doi.org/10.1542/peds.2023-065297,",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2024,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2023",
+        "summary": "1. Bradshaw, J., Fu., J., Abney, D. (2023). Infant Embodied Attention in the Natural Environment: The Use of a Home-Based Head-Mounted Eye Tracking System in Four- and Eight-Month-Olds. Developmental Cognitive Neuroscience Bradshaw, J., Fu., J., Abney, D. (2023). Infant Embodied Attention in the Natural Environment: The Use of a Home-Based Head-Mounted Eye Tracking System in Four- and Eight-Month-Olds. Developmental Cognitive Neuroscience 2. Federico, A.*, Zgodic, A., Flory, K., Hantman, R., Eberth, J., Mclain, A., Bradshaw, J. (2023). Predictors of Autism Spectrum Disorder and ADHD: Results from the National Survey of Children\u2019s Health. Disability and Health.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2023,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d",
+        "summary": "UofSC College of Arts and Sciences | January 2022 \u00b7 One of our Research Assistants, Layne Scopano, featured in UofSC News South Carolina Honors College | November 2021 \u00b7 One of our Research Assistants, Layne Scopano, featured in UofSC News",
+        "source": "UofSC College of Arts and Sciences",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2022/autism_research.php",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cThe Riddle of Autism\u201d",
+        "summary": "UofSC Today | October 2022 \u00b7 \u201cEarly Autism Detection Research at USC\u201d WIS News | April 10, 2022 \u00b7 \u201cEarly Autism Detection Research at USC\u201d",
+        "source": "UofSC Today",
+        "href": "https://www.sc.edu/uofsc/posts/2022/10/autism-multifaceted-research.php#.Y1aqQvzMKF4",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cEarly Autism Detection Research at USC\u201d",
+        "summary": "WIS News | April 10, 2022 \u00b7 \u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d UofSC College of Arts and Sciences | January 2022 \u00b7 \u201cUofSC Researchers Work Toward Earlier Autism Diagnoses\u201d",
+        "source": "WIS News",
+        "href": "https://www.wistv.com/2022/04/06/early-autism-detection-u-sc-offers-help-hope-families/",
+        "year": 2022,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2022",
+        "summary": "\u200d1. Bradshaw, J., Shi, D., Federico, A., Klaiman, C., Saulnier, C. (2022). The Pull-to-Sit Task: Examining Infant Postural Development in Autism Spectrum Disorder. Journal of Pediatrics. doi.org/10.1016/j.jpeds.2022.09.047 2. Bradshaw, J., Wolfe, K., Hock, R., & Scopano, L. (2022). Advances in Supporting Parents in Interventions for Autism Spectrum Disorder. Pediatric Clinics , 69(4), 645-656. Bradshaw, J., Wolfe, K., Hock, R., & Scopano, L. (2022). Advances in Supporting Parents in Interventions for Autism Spectrum Disorder. Pediatric Clinics , 69(4), 645-656.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2022,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Wrenley\u2019s Story",
+        "summary": "\u201cWhen people think of autism research they assume that researchers are trying to find ways to change these kids. Your study is not about trying to change kids, it\u2019s about getting them the help and support they need as early as possible so they have the best shot at reaching their full potential.\u201d Wrenley enrolled in the ESDLab infant study in October 2021 when she was 1 month old. Her parents, Justin and Megan, drove from Spartanburg to attend this first visit after hearing about the study through a post-card in the mail.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/wrenleys-story",
+        "year": 2021,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Brandon and Bryanna",
+        "summary": "Bryson and her family enrolled in our Infant Study in July 2021, after hearing about the opportunity through her children\u2019s pediatrician. At the time, Bryson\u2019s 2-year-old daughter, Bryanna, showed early signs of autism that had not been diagnosed. Bryson also had a newborn and was interested in hearing about the different resources The Early Social Development Lab could offer for her family. Bryson noticed that something was \u201cdifferent\u201d about Bryanna from the start. She observed certain characteristics and behaviors that seemed similar to Bryanna\u2019s older half-brother who was diagnosed with autism. Despite being told that Bryanna was \u201cfine\u201d and that she would \u201csnap out of it,\u201d Bryson knew something else was going on. Like many parents, Bryson was hesitant at first to pursue an autism evaluation. She was concerned for Bryanna but was worried about what an autism diagnosis might mean for her. She soon realized, however, that autism \u201cdoesn\u2019t have to be debilitating,\u201d especially when early intervention is in place. She explained, \u201cas a parent, if you notice certain signs and see what\u2019s going on you\u2019ve got to just embrace it and see what you can do to help.\u201d Soon after, Bryson came to us with questions about Bryanna\u2019s behaviors and expressed interest in the research opportunity for Bryanna\u2019s newborn brother, Brandon. The ESD Lab started by providing a free comprehensive autism evaluation for Bryanna within 2 weeks of the referral, which indicated that Bryanna did meet criteria for autism spectrum disorder. Bryson felt \u201crelieved\u201d after receiving this diagnosis because it validated her own observations. The diagnosis also unlocked further services for Bryanna and allowed her to receive more help. Now, Bryson doesn\u2019t see the autism diagnosis as something to be afraid of. She stated, \u201cit doesn\u2019t mean anything is wrong with your child\u2026 honestly I think my child is pretty cool\u2026 Bryanna is the most interesting person in the world\u2026 the diagnosis just means to go ahead and get the help that you need.\" Nicely said, Bryson! We couldn\u2019t have said it better ourselves. Bryanna IS a really cool kid! \u200bFollowing the assessment, the team also enrolled baby Brandon into the infant study. Over the last 6 months, Dr. Bradshaw and the research coordinators have followed Brandon\u2019s development while providing feedback along the way. About 20% of infants with an older sibling with autism also develop autism themselves. Therefore, it is important to closely monitor their development and make referrals to early intervention as needed. Since starting the study, Bryson expressed becoming more mindful of Brandon\u2019s developmental needs and what to be looking out for. Bryson stated how valuable this study is for parents, as it provides valuable information about their child\u2019s development, even if they don\u2019t necessarily have concerns about autism. She explained, \u201cI feel like there is a definite reason just to do the study because you never know. It's one of those things where it's better to know earlier if there are any developmental aspects\u2026 or just anything that may be neurodivergent\u2026 it\u2019s definitely something you want to get ahold of sooner rather than later because then you know where to go with things\u2026\u201d Bryson expressed a deep appreciation for this study and the resources it provided her, stating, \u201cI don't know where Bryanna would be right now and I don't know where I would be right now if we did not find you guys.\u201d Thank YOU, Bryson, for your continued participation in our study. We appreciate all you do to support this research and the community!",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/brandon-and-bryanna-embracing-the-diagnosis",
+        "year": 2021,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "\u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d",
+        "summary": "Forbes | December 2021 \u00b7 Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC UofSC | June 2021 \u00b7 Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC",
+        "source": "Forbes",
+        "href": "https://www.forbes.com/sites/jenniferpalumbo/2021/12/31/how-a-new-study-shows-the-importance-of-early-diagnosis-of-autistic-infants/?sh=49c2475e34b4",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2021",
+        "summary": "1. Bradshaw, J., McCracken, C., Lewis, M., Bran, N., Delehanty, A., Day, T., Federico, A., Klaiman, C., Saulnier, C., Klin, A., Wetherby, A. (2021). Early Social Communication Development in Infants with Autism Spectrum Disorder. Child Development. doi.org/10.1111/cdev.13683. Bradshaw, J., McCracken, C., Lewis, M., Bran, N., Delehanty, A., Day, T., Federico, A., Klaiman, C., Saulnier, C., Klin, A., Wetherby, A. (2021). Early Social Communication Development in Infants with Autism Spectrum Disorder. Child Development. doi.org/10.1111/cdev.13683. 2. Bradshaw, J., Abney, D. (2021). Infant Physiological Activity and the Early Emergence of Social Communication. Developmental Psychobiology. doi.org/10.1002/dev.22145.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2021,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "One of our Research Assistants, Layne Scopano, featured in UofSC News",
+        "summary": "South Carolina Honors College | November 2021 \u00b7 \u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d Forbes | December 2021 \u00b7 \u201cA New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder\u201d",
+        "source": "South Carolina Honors College",
+        "href": "https://www.sc.edu/study/colleges_schools/honors_college/about/news/2021/no_boxes_for_her.php#.Yt7zO-nMJhG",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "Dr. Jessica Bradshaw announced \"Breakthrough Star\" at UofSC",
+        "summary": "UofSC | June 2021 \u00b7 Interview with SC Public Radio December 2021 \u00b7 Interview with SC Public Radio",
+        "source": "UofSC",
+        "href": "https://www.sc.edu/uofsc/posts/2021/05/breakthrough_star_jessica_bradshaw.php#.Yt727unMJhF",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Publications 2020",
+        "summary": "1. Kaliukhovich, D., Manyakov, N., Bangerter, S., Skalkin, A., Goodwin, M., Dawson, G., Hendren, R., Leventhal, B., Hudac, C., Bradshaw, J., Shic, F., Pandina, G. (2020). Social Attention to Activities in Children and Adults with Autism Spectrum Disorder: Effects of Context and Age. Molecular Autism. Kaliukhovich, D., Manyakov, N., Bangerter, S., Skalkin, A., Goodwin, M., Dawson, G., Hendren, R., Leventhal, B., Hudac, C., Bradshaw, J., Shic, F., Pandina, G. (2020). Social Attention to Activities in Children and Adults with Autism Spectrum Disorder: Effects of Context and Age. Molecular Autism. 2. Roberts, J., Bradshaw, J., Will, E., Hogan, A., McQuillin, S., Hills, K. (2020). Prevalence and Emergence of Autism in Fragile X Syndrome Across the First Years of Life. Development and Psychopathology.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2020,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Charlie's Story",
+        "summary": "Charlie came to his first appointment with the The Early Social Development Lab when he was 6 weeks old, after his mom, Megan, learned about the study through her OBGYN provider. Already involved in research with UofSC, Megan was enthusiastic about getting her son involved too. She contacted the ESD Lab and we enrolled Charlie in the study shortly after. At the time, little did Megan know the extent to which this study would shed light on Charlie\u2019s unique developmental needs. Nor did she realize how it would pave the way for him to receive helpful resources for his language and communication. Because of the close monitoring and feedback from the study, Megan learned how to promote Charlie\u2019s developmental milestones and gained access early intervention services when he needed them most. Charlie\u2019s younger brother, Rory, is now enrolled in the study and he, too, is benefiting from the close monitoring and support. We had the chance to interview Megan as she shared her experience of participating in the research with her children. Here\u2019s what she shared: \u201cI've loved it with both of my children. I look forward to it every time we come into the lab because it's just so fun to see the changes every time we come in. With Charlie, I had no baseline of his development because he was my first kid. I had no idea what to pay attention to or how to encourage his development. During our lab visits I saw the tasks that they were having him practice in the lab, and I was like OK, I see what you're trying to get him to do.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/charlies-story-the-role-of-early-intervention",
+        "year": null,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      }
+    ],
+    "impact_summary": {
+      "types": [
+        {
+          "label": "Publications",
+          "value": "publication",
+          "count": 12
+        },
+        {
+          "label": "News",
+          "value": "news",
+          "count": 12
+        },
+        {
+          "label": "Stories",
+          "value": "story",
+          "count": 3
+        }
+      ],
+      "years": [
+        2026,
+        2025,
+        2024,
+        2023,
+        2022,
+        2021,
+        2020
+      ]
+    }
+  }
 }

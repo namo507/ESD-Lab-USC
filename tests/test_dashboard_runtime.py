@@ -7,6 +7,7 @@ import json
 import pandas as pd
 
 from dashboard.pipelines import build_dashboard_data
+from dashboard.pipelines import build_org_site_data
 from dashboard.pipelines import build_readings_index
 from dashboard.pipelines import bootstrap_dashboard_demo_inputs
 from dashboard.server.live_dashboard_server import is_runtime_healthy
@@ -213,7 +214,9 @@ def test_build_payload_serializes_sparse_trajectory_values_as_null(tmp_path):
         metrics=metrics,
         salt="test_salt",
         data_source="repo_demo_inputs",
+        organization_site=build_org_site_data.build_payload(allow_network=False),
     )
 
     assert payload["trajectories"]["by_group"]["ASIB"]["mean"]["RSA"][-1] is None
+    assert payload["organization_site"]["impact_feed"]
     json.loads(json.dumps(payload, allow_nan=False))

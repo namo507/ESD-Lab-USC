@@ -7,7 +7,8 @@
 ## 1. What is the dashboard?
 
 A single web page (`dashboard/index.html`) that shows, at a glance,
-**the current state of the NANO Study**. It is generated from a small
+**the current state of the NANO Study** plus a public-facing view of the
+ESD Lab organization site. It is generated from a small
 JSON file (`dashboard/data/dashboard_data.json`) that the nightly
 pipeline rebuilds from REDCap and the feature matrix.
 
@@ -47,6 +48,14 @@ bash scripts/share_dashboard.sh
 
 That prints a temporary public URL backed by the live Docker runtime.
 
+For a stable branded hostname under the real domain, configure a named
+Cloudflare tunnel and set:
+
+```bash
+CLOUDFLARE_TUNNEL_TOKEN=...
+DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
+```
+
 ### Option C — From a URL (if you host it)
 ```
 https://<lab-server>/nano/dashboard/
@@ -57,11 +66,13 @@ If the charts look blank, make sure the file
 If the reading library is empty, make sure
 `dashboard/data/readings_data.json` has been generated.
 
-## 3. Seven sections on one continuous page
+## 3. Nine sections on one continuous page
 
 | Tab | What it answers | Key widgets |
 |-----|------------------|-------------|
 | **Overview** | Where are we vs. the R01 plan? | Enrollment line chart, progress stacked bar, 5 KPI cards |
+| **ESD Lab Site** | How is the organization presented publicly to families and collaborators? | Mission snapshot, current studies, family pathway, resources, and contact cards |
+| **ESD Impact** | What public dissemination and participant-facing impact is visible on the website? | Filterable publications/news/stories explorer, spotlight card, year and type controls |
 | **Pipeline** | How does raw data become a finding? | Clickable SVG with 13 step explainers |
 | **Data Quality** | Are we clean enough to analyze? | Missingness bar, QC flag cards, queries-per-event chart, audit table |
 | **ML Performance** | Are our models any good, and how do they work? | Architecture explainer animation, model-specific schematics, methods citation links, ROC curves, AUROC with CI, SHAP, subgroup sensitivity, confusion summary |
@@ -101,14 +112,16 @@ For visual comfort, use the topbar theme selector:
 ## 5. How the numbers get there
 
 ```
- REDCap / Features / Models ──► build_dashboard_data.{py, R} ──► dashboard_data.json ──► index.html
- ESD Lab readings/           ──► build_readings_index.py       ──► readings_data.json  ──► index.html
+ REDCap / Features / Models ──► build_dashboard_data.{py, R} ───────────► dashboard_data.json ──► index.html
+ ESD Lab public site        ──► build_org_site_data.py (via Python build) ─┘
+ ESD Lab readings/          ──► build_readings_index.py                  ─► readings_data.json  ──► index.html
 ```
 
 1. **Nightly cron** (`scripts/redcap_daily_sync.py`) pulls REDCap and
    runs QC.
 2. **Pipeline** (`dashboard/pipelines/build_dashboard_data.py`) joins
-   REDCap + features + model metrics, strips PHI, and writes the JSON.
+   REDCap + features + model metrics, calls the public-site organization
+   builder, strips PHI, and writes the JSON.
 3. **Readings index** (`dashboard/pipelines/build_readings_index.py`)
    scans `ESD Lab readings/` and writes the searchable reading library.
 4. **Dashboard** (`dashboard/index.html`) reads both JSON files in the

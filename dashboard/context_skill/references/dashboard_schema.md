@@ -22,6 +22,7 @@ populates it in the production pipeline.
 | `redcap_audit.queries_by_event[]` | Quality *Queries* bar chart | same | same | yes |
 | `redcap_audit.recent_activity[]` | Quality audit table | `redcap_audit.py` activity log | — (R leaves empty) | yes |
 | `cohort_table[]` | Cohort section table | `build_cohort_table()` with surrogate IDs | `build_cohort_table` | yes |
+| `organization_site.summary / mission / studies / impact_feed[]` | ESD Lab organization + impact sections | `build_org_site_data.build_payload()` | same schema target via R wrapper | yes |
 
 ## Invariants the UI assumes
 

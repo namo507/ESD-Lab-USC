@@ -25,6 +25,7 @@ Writes ``dashboard/data/dashboard_data.json`` with the following keys:
 - ``trajectories``     : RSA / RMSSD / HRV trajectories by group over 0-36m
 - ``redcap_audit``     : open queries, incomplete records, double-entry errors
 - ``cohort_table``     : per-participant summary rows (synthetic IDs)
+- ``organization_site``: fallback public-site metadata for organization views
 
 Usage
 -----
@@ -305,6 +306,8 @@ def generate_cohort_table(n: int = 40) -> list[dict]:
 
 def build_payload() -> dict:
     """Assemble the full dashboard JSON payload."""
+    from dashboard.pipelines import build_org_site_data
+
     return {
         "meta": {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -327,6 +330,7 @@ def build_payload() -> dict:
         "trajectories": generate_trajectories(),
         "redcap_audit": generate_redcap_audit(),
         "cohort_table": generate_cohort_table(),
+        "organization_site": build_org_site_data.build_payload(allow_network=False),
     }
 
 

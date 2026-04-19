@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-04-19T18:30:54",
+  "generated_at": "2026-04-19T17:28:53",
   "status": "ok",
   "build_count": 1,
   "last_build_reason": "startup",
-  "last_build_started_at": "2026-04-19T18:30:48",
-  "last_build_finished_at": "2026-04-19T18:30:54",
-  "last_successful_build_finished_at": "2026-04-19T18:30:54",
-  "watch_interval_seconds": 20,
+  "last_build_started_at": "2026-04-19T17:28:46",
+  "last_build_finished_at": "2026-04-19T17:28:53",
+  "last_successful_build_finished_at": "2026-04-19T17:28:53",
+  "watch_interval_seconds": 0,
   "fallback_synthetic": true,
   "dashboard": {
-    "generated_at": "2026-04-19T18:30:50",
+    "generated_at": "2026-04-19T17:28:51",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -23,10 +23,10 @@
     }
   },
   "readings": {
-    "generated_at": "2026-04-19T18:30:53",
+    "generated_at": "2026-04-19T17:28:53",
     "source_dir": "ESD Lab readings",
     "total_readings": 20,
-    "latest_modified_at": "2026-04-18T01:12:08",
+    "latest_modified_at": "2026-04-17T21:12:08",
     "pdf_metadata_enabled": true,
     "total_size_mb": 24.24,
     "total_pages": 634,
@@ -77,6 +77,7 @@
     "config/study_parameters.yml",
     "data/data_dictionary/NANO_master_data_dictionary.csv",
     "dashboard/pipelines/build_dashboard_data.py",
+    "dashboard/pipelines/build_org_site_data.py",
     "dashboard/pipelines/generate_synthetic_dashboard_data.py",
     "dashboard/pipelines/build_readings_index.py",
     "data/data_dictionary/NANO_master_data_dictionary.csv",
