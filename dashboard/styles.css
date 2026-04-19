@@ -318,6 +318,20 @@ code {
   outline: none;
 }
 
+.home-view-trigger {
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.home-view-trigger:hover,
+.home-view-trigger:focus-visible {
+  background: rgba(109, 31, 26, 0.1);
+  color: var(--accent);
+  border-color: rgba(109, 31, 26, 0.16);
+  transform: translateY(-1px);
+  outline: none;
+}
+
 .view-panel-shell {
   position: fixed;
   inset: 0;
@@ -440,6 +454,48 @@ body.view-panel-open .view-panel {
   color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.view-panel-modes {
+  display: grid;
+  gap: 10px;
+}
+
+.view-mode-card {
+  appearance: none;
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px 15px;
+  border: 1px solid rgba(95, 72, 53, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(140deg, rgba(109, 31, 26, 0.06), rgba(76, 114, 176, 0.05));
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-mode-card strong {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.18;
+}
+
+.view-mode-card span {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.view-mode-card:hover,
+.view-mode-card:focus-visible,
+.view-mode-card.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(109, 31, 26, 0.18);
+  background: linear-gradient(140deg, rgba(109, 31, 26, 0.1), rgba(76, 114, 176, 0.08));
+  box-shadow: 0 16px 28px rgba(43, 29, 18, 0.08);
+  outline: none;
 }
 
 .view-panel-groups {
@@ -700,6 +756,26 @@ body.view-panel-open .view-panel {
   margin-top: 34px;
 }
 
+body[data-dashboard-view="section"] .section,
+body[data-dashboard-view="all"] .section {
+  margin-top: 24px;
+}
+
+body[data-dashboard-view="section"] main > section[data-active-view="true"] {
+  animation: focusedSectionIn 0.34s ease;
+}
+
+@keyframes focusedSectionIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 main section {
   scroll-margin-top: 120px;
 }
@@ -780,6 +856,10 @@ main section {
 }
 
 .hide {
+  display: none !important;
+}
+
+[hidden] {
   display: none !important;
 }
 
@@ -2010,12 +2090,15 @@ body[data-theme="dark"] .section-label,
 body[data-theme="dark"] .nav a,
 body[data-theme="dark"] .page-sub,
 body[data-theme="dark"] .eyebrow,
-body[data-theme="dark"] .section-atlas-description,
+body[data-theme="dark"] .section-atlas-copy,
 body[data-theme="dark"] .section-jump-title,
 body[data-theme="dark"] .card .hint,
 body[data-theme="dark"] .theme-toggle-label,
 body[data-theme="dark"] .view-panel-status-label,
 body[data-theme="dark"] .view-panel-group h3,
+body[data-theme="dark"] .sync-label,
+body[data-theme="dark"] .sync-copy p,
+body[data-theme="dark"] .sync-card span:last-child,
 body[data-theme="dark"] .footer,
 body[data-theme="dark"] .reading-meta,
 body[data-theme="dark"] .reading-source-row,
@@ -2038,6 +2121,7 @@ body[data-theme="dark"] .nav a.active {
 
 body[data-theme="dark"] .topbar,
 body[data-theme="dark"] .sync-banner,
+body[data-theme="dark"] .sync-card,
 body[data-theme="dark"] .card,
 body[data-theme="dark"] .pipeline,
 body[data-theme="dark"] .section-atlas,
@@ -2046,6 +2130,7 @@ body[data-theme="dark"] .section-jump-pill,
 body[data-theme="dark"] .status-pill,
 body[data-theme="dark"] .view-panel,
 body[data-theme="dark"] .view-link,
+body[data-theme="dark"] .view-mode-card,
 body[data-theme="dark"] .view-panel-status,
 body[data-theme="dark"] .theme-toggle-options,
 body[data-theme="dark"] .ml-input-bank,
@@ -2083,6 +2168,9 @@ body[data-theme="dark"] .reading-spotlight,
 body[data-theme="dark"] .view-link:hover,
 body[data-theme="dark"] .view-link:focus-visible,
 body[data-theme="dark"] .view-link.active,
+body[data-theme="dark"] .view-mode-card:hover,
+body[data-theme="dark"] .view-mode-card:focus-visible,
+body[data-theme="dark"] .view-mode-card.is-active,
 body[data-theme="dark"] .section-jump-pill:hover,
 body[data-theme="dark"] .section-jump-pill:focus-visible,
 body[data-theme="dark"] .atlas-card:hover,
@@ -2104,9 +2192,11 @@ body[data-theme="dark"] .filter select,
 body[data-theme="dark"] .search-input,
 body[data-theme="dark"] .deeplinks a,
 body[data-theme="dark"] .view-panel-close,
+body[data-theme="dark"] .home-view-trigger,
 body[data-theme="dark"] .ml-method-link,
 body[data-theme="dark"] .theme-option,
-body[data-theme="dark"] .view-link {
+body[data-theme="dark"] .view-link,
+body[data-theme="dark"] .view-mode-card {
   color: var(--ink);
 }
 
@@ -2199,6 +2289,9 @@ body[data-theme="dark"] .ml-method-link:focus-visible {
 }
 
 body[data-theme="dark"] .ml-output-metric strong,
+body[data-theme="dark"] .sync-copy h1,
+body[data-theme="dark"] .sync-card strong,
+body[data-theme="dark"] .section h2,
 body[data-theme="dark"] .reading-source-row strong,
 body[data-theme="dark"] .view-panel-title,
 body[data-theme="dark"] .view-panel-status strong,
@@ -2213,6 +2306,12 @@ body[data-theme="dark"] .reading-card h3 {
 body[data-theme="dark"] footer {
   border-top-color: rgba(214, 221, 229, 0.1);
   color: var(--ink-mute);
+}
+
+body[data-theme="dark"] .section-jump-label,
+body[data-theme="dark"] .sync-label,
+body[data-theme="dark"] .section h2 {
+  color: #b8c4d0;
 }
 
 footer {

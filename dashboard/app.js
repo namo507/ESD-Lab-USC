@@ -66,6 +66,16 @@ const SECTION_TITLES = {
   ],
 };
 
+const SECTION_DEFAULT_TARGETS = {
+  overview: "#overview-kpis",
+  pipeline: "#pipeline-map",
+  quality: "#quality-missingness",
+  ml: "#ml-explainer",
+  trajectories: "#trajectories-chart",
+  cohort: "#cohort-table-card",
+  readings: "#readings-spotlight",
+};
+
 const PIPELINE_EXPLAINERS = {
   hero: '<b>HeRO NICU Monitor</b><br>Records continuous ECG during NICU admission at 1024 Hz. Output feeds <span class="code">src/data_ingestion/ecg_loader.py</span> to <span class="code">src/preprocessing/ecg_preprocessing.py</span>.<br><br>Primary data stream for Aim 1: characterizing autonomic maturation in VPT infants.',
   actiheart: '<b>Actiheart-5</b><br>Ambulatory chest-patch device capturing R-R intervals during home visits. IBI time series is cleaned with Malik-like filtering and converted into HRV features in <span class="code">src/preprocessing/hrv_features.py</span>.',
@@ -224,6 +234,8 @@ const STATE = {
   runtime: {},
   ui: {
     activeSection: "overview",
+    viewMode: "home",
+    focusedSection: "overview",
     themePreference: "auto",
     themeMode: "light",
     viewPanelOpen: false,
@@ -255,10 +267,14 @@ async function bootstrap() {
   initializeTheme();
   decorateRevealTargets();
   setupNavigation();
+  setupAnchorRouting();
   setupViewPanel();
   setupPipelineExplainers();
   setupControls();
   await syncData({ force: true });
+  if (window.location.hash && document.querySelector(window.location.hash)) {
+    scrollToTarget(window.location.hash);
+  }
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       syncData();
@@ -415,18 +431,22 @@ function decorateRevealTargets() {
 
 function setupNavigation() {
   const navLinks = Array.from(document.querySelectorAll(".nav a[data-target]"));
-  const sections = Array.from(document.querySelectorAll("main section[id]"));
+  const sections = Array.from(document.querySelectorAll("main > section[id]:not(#sync-banner)"));
 
   navLinks.forEach((link) => {
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      scrollToTarget(`#${link.dataset.target}`);
+      if (link.dataset.target === "overview") {
+        showHomeView({ target: SECTION_DEFAULT_TARGETS.overview });
+        return;
+      }
+      showSectionView(link.dataset.target, { target: SECTION_DEFAULT_TARGETS[link.dataset.target] });
     });
   });
 
   const observer = new IntersectionObserver(
     (entries) => {
-      if (Date.now() < STATE.ui.navigationLockUntil) {
+      if (STATE.ui.viewMode !== "all" || Date.now() < STATE.ui.navigationLockUntil) {
         return;
       }
       const visible = entries
@@ -444,12 +464,32 @@ function setupNavigation() {
   setActiveSection("overview");
 }
 
+function setupAnchorRouting() {
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    if (link.dataset.anchorBound === "true") {
+      return;
+    }
+
+    link.addEventListener("click", (event) => {
+      const hash = link.getAttribute("href");
+      if (!hash || hash === "#") {
+        return;
+      }
+      event.preventDefault();
+      scrollToTarget(hash);
+    });
+
+    link.dataset.anchorBound = "true";
+  });
+}
+
 function setupViewPanel() {
   const shell = document.getElementById("view-panel-shell");
   const panel = document.getElementById("view-panel");
   const toggle = document.getElementById("view-panel-toggle");
   const close = document.getElementById("view-panel-close");
   const scrim = document.getElementById("view-panel-scrim");
+  const homeToggle = document.getElementById("home-view-toggle");
   if (!shell || !panel || !toggle || shell.dataset.bound === "true") {
     return;
   }
@@ -469,16 +509,19 @@ function setupViewPanel() {
   });
 
   panel.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-jump-target]");
+    const button = event.target.closest("[data-dashboard-view], [data-jump-target]");
     if (!button) {
       return;
     }
-    const jumpTarget = button.dataset.jumpTarget;
-    closeViewPanel();
-    window.requestAnimationFrame(() => {
-      scrollToTarget(jumpTarget);
-    });
+    handleDashboardSelection(button, { closePanelAfter: true });
   });
+
+  if (homeToggle && homeToggle.dataset.bound !== "true") {
+    homeToggle.addEventListener("click", () => {
+      showHomeView({ target: SECTION_DEFAULT_TARGETS.overview });
+    });
+    homeToggle.dataset.bound = "true";
+  }
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && STATE.ui.viewPanelOpen) {
@@ -488,6 +531,161 @@ function setupViewPanel() {
 
   shell.dataset.bound = "true";
   updateViewPanelStatus(STATE.ui.activeSection);
+}
+
+function handleDashboardSelection(button, { closePanelAfter = false } = {}) {
+  const preferredMode = button.dataset.dashboardView || "section";
+  const target = button.dataset.jumpTarget || SECTION_DEFAULT_TARGETS[button.dataset.section] || SECTION_DEFAULT_TARGETS.overview;
+  const sectionId = button.dataset.section || deriveSectionIdFromTarget(target) || STATE.ui.activeSection || "overview";
+
+  if (closePanelAfter) {
+    closeViewPanel();
+  }
+
+  window.requestAnimationFrame(() => {
+    if (preferredMode === "all") {
+      showFullDashboard({ sectionId, target });
+      return;
+    }
+
+    if (preferredMode === "home" || sectionId === "overview") {
+      showHomeView({ target });
+      return;
+    }
+
+    showSectionView(sectionId, { target });
+  });
+}
+
+function deriveSectionIdFromTarget(selector) {
+  const target = selector ? document.querySelector(selector) : null;
+  const owner = target ? target.closest("section[id]") : null;
+  return owner ? owner.id : null;
+}
+
+function showHomeView({ target = SECTION_DEFAULT_TARGETS.overview } = {}) {
+  STATE.ui.viewMode = "home";
+  STATE.ui.focusedSection = "overview";
+  STATE.ui.navigationLockUntil = Date.now() + 1400;
+  setActiveSection("overview");
+  applyDashboardView();
+  queueViewScroll(target);
+}
+
+function showSectionView(sectionId, { target = SECTION_DEFAULT_TARGETS[sectionId] || SECTION_DEFAULT_TARGETS.overview } = {}) {
+  const safeSectionId = sectionId || "overview";
+  STATE.ui.viewMode = safeSectionId === "overview" ? "home" : "section";
+  STATE.ui.focusedSection = safeSectionId;
+  STATE.ui.navigationLockUntil = Date.now() + 1400;
+  setActiveSection(safeSectionId);
+  applyDashboardView();
+  queueViewScroll(target || SECTION_DEFAULT_TARGETS[safeSectionId] || SECTION_DEFAULT_TARGETS.overview);
+}
+
+function showFullDashboard({ sectionId = STATE.ui.activeSection || "overview", target = null } = {}) {
+  STATE.ui.viewMode = "all";
+  STATE.ui.focusedSection = null;
+  STATE.ui.navigationLockUntil = Date.now() + 1400;
+  setActiveSection(sectionId || "overview");
+  applyDashboardView();
+  if (target) {
+    queueViewScroll(target);
+    return;
+  }
+  queueVisibleChartResize();
+}
+
+function applyDashboardView() {
+  const showHomepageShell = STATE.ui.viewMode === "home";
+  const syncBanner = document.getElementById("sync-banner");
+  const atlas = document.querySelector(".section-atlas");
+
+  if (syncBanner) {
+    syncBanner.hidden = !showHomepageShell;
+  }
+  if (atlas) {
+    atlas.hidden = !showHomepageShell;
+  }
+
+  document.querySelectorAll("main > section[id]:not(#sync-banner)").forEach((section) => {
+    let visible = STATE.ui.viewMode === "all";
+    if (STATE.ui.viewMode === "home") {
+      visible = section.id === "overview";
+    }
+    if (STATE.ui.viewMode === "section") {
+      visible = section.id === STATE.ui.focusedSection;
+    }
+    section.hidden = !visible;
+    section.dataset.activeView = String(visible);
+  });
+
+  document.body.dataset.dashboardView = STATE.ui.viewMode;
+  document.body.dataset.focusSection = STATE.ui.focusedSection || "";
+  updateDashboardViewControls();
+}
+
+function updateDashboardViewControls() {
+  const homeToggle = document.getElementById("home-view-toggle");
+  if (homeToggle) {
+    homeToggle.hidden = STATE.ui.viewMode === "home";
+    homeToggle.textContent = STATE.ui.viewMode === "all" ? "Homepage" : "Back to Homepage";
+  }
+
+  document.querySelectorAll(".view-mode-card[data-dashboard-view]").forEach((button) => {
+    let isActive = false;
+    if (button.dataset.dashboardView === "all") {
+      isActive = STATE.ui.viewMode === "all";
+    } else if (button.dataset.dashboardView === "home") {
+      isActive = STATE.ui.viewMode === "home";
+    }
+
+    button.classList.toggle("active", isActive);
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  const currentHash = window.location.hash;
+  document.querySelectorAll(".view-link[data-section]").forEach((button) => {
+    let isActive = false;
+    if (currentHash && button.dataset.jumpTarget) {
+      isActive = button.dataset.jumpTarget === currentHash;
+    } else if (STATE.ui.viewMode === "section") {
+      isActive = button.dataset.section === STATE.ui.focusedSection;
+    } else if (STATE.ui.viewMode === "home") {
+      isActive = button.dataset.jumpTarget === SECTION_DEFAULT_TARGETS.overview;
+    }
+
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function queueViewScroll(selector) {
+  if (!selector) {
+    queueVisibleChartResize();
+    return;
+  }
+
+  if (selector.startsWith("#")) {
+    window.history.replaceState(null, "", selector);
+  }
+
+  window.requestAnimationFrame(() => {
+    scrollToTarget(selector, { preserveView: true });
+    queueVisibleChartResize();
+  });
+}
+
+function queueVisibleChartResize() {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      Object.values(CHARTS).forEach((chart) => {
+        if (chart && typeof chart.resize === "function") {
+          chart.resize();
+        }
+      });
+    });
+  });
 }
 
 function openViewPanel() {
@@ -514,7 +712,7 @@ function closeViewPanel() {
   toggle.setAttribute("aria-expanded", "false");
 }
 
-function scrollToTarget(selector) {
+function scrollToTarget(selector, { preserveView = false } = {}) {
   const target = document.querySelector(selector);
   if (!target) {
     return;
@@ -523,6 +721,16 @@ function scrollToTarget(selector) {
   const owningSection = target.closest("section[id]");
   if (owningSection) {
     STATE.ui.navigationLockUntil = Date.now() + 1400;
+    if (!preserveView) {
+      if (STATE.ui.viewMode === "home" && owningSection.id !== "overview") {
+        showSectionView(owningSection.id, { target: selector });
+        return;
+      }
+      if (STATE.ui.viewMode === "section" && STATE.ui.focusedSection !== owningSection.id) {
+        showSectionView(owningSection.id, { target: selector });
+        return;
+      }
+    }
     setActiveSection(owningSection.id);
   }
 
@@ -544,12 +752,22 @@ function setActiveSection(sectionId) {
 }
 
 function updateViewPanelStatus(sectionId) {
-  const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
+  let title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
+  if (STATE.ui.viewMode === "home") {
+    title = [
+      "Homepage snapshot",
+      "Operational metrics, overview KPIs, and quick-entry cards.",
+    ];
+  } else if (STATE.ui.viewMode === "all") {
+    title = [
+      "Full dashboard browse",
+      "Every section is visible for long-form review and cross-section scanning.",
+    ];
+  }
+
   setText("view-panel-current-title", title[0]);
   setText("view-panel-current-sub", title[1]);
-  document.querySelectorAll(".view-link[data-section]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.section === sectionId);
-  });
+  updateDashboardViewControls();
 }
 
 function setupPipelineExplainers() {
@@ -654,6 +872,8 @@ async function syncData({ force = false } = {}) {
       document.body.classList.add("is-syncing");
       window.setTimeout(() => document.body.classList.remove("is-syncing"), 700);
     }
+
+    applyDashboardView();
 
     setError("");
   } catch (error) {

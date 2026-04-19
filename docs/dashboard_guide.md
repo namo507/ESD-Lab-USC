@@ -21,6 +21,9 @@ specific panels instead of scrolling through the full dashboard in one pass.
 There is also a topbar view panel for deeper jumps across the page plus a
 small theme control that can stay on automatic day/night mode or be forced
 into light or dark mode for presentations.
+The landing page now defaults to a homepage snapshot so the most important
+operational metrics appear first, while the view panel can open dedicated
+section views or restore the full long-form dashboard when needed.
 
 ## 2. Opening the dashboard
 
@@ -84,7 +87,8 @@ For navigation, the quickest options are:
    into major dashboard areas.
 * **View panel:** the topbar drawer for jumping into specific embedded
    views such as the ML explainer, quality panels, trajectory chart, or
-   reading library.
+   reading library. It also switches between the homepage snapshot,
+   focused section views, and the full dashboard browse mode.
 * **Local jump chips:** the small embedded links inside each section for
    moving directly to a chart, table, or explainer within that section.
 * **Sidebar:** the persistent left navigation for the main sections only.

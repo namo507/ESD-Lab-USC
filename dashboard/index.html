@@ -63,6 +63,7 @@
             <button type="button" class="theme-option" data-theme-preference="dark" aria-pressed="false">Dark</button>
           </div>
         </div>
+        <button type="button" class="status-pill soft home-view-trigger" id="home-view-toggle" hidden>Homepage</button>
         <button type="button" class="status-pill soft view-panel-trigger" id="view-panel-toggle" aria-controls="view-panel-shell" aria-expanded="false">View Panel</button>
       </div>
     </div>
@@ -75,31 +76,42 @@
         <div class="view-panel-header">
           <div>
             <span class="eyebrow">View panel</span>
-            <h2 class="view-panel-title">Jump straight to the live view you need</h2>
-            <p class="view-panel-copy">Move between major sections, embedded analysis views, and the teaching panels without losing the current page context.</p>
+            <h2 class="view-panel-title">Open a focused dashboard view instead of one long page</h2>
+            <p class="view-panel-copy">Keep the homepage centered on key metrics, then switch into dedicated section views or expand the full dashboard only when you need the long-form browse.</p>
           </div>
           <button type="button" class="view-panel-close" id="view-panel-close" aria-label="Close view panel">Close</button>
         </div>
 
         <div class="view-panel-status">
-          <span class="view-panel-status-label">Current section</span>
-          <strong id="view-panel-current-title">Overview</strong>
-          <span id="view-panel-current-sub">Study overview and operational summary</span>
+          <span class="view-panel-status-label">Current view</span>
+          <strong id="view-panel-current-title">Homepage snapshot</strong>
+          <span id="view-panel-current-sub">Operational metrics, overview KPIs, and quick-entry cards.</span>
+        </div>
+
+        <div class="view-panel-modes">
+          <button type="button" class="view-mode-card" data-dashboard-view="home" data-section="overview" data-jump-target="#overview-kpis">
+            <strong>Homepage snapshot</strong>
+            <span>Keep the landing page focused on operational metrics, KPI cards, and overview quick links.</span>
+          </button>
+          <button type="button" class="view-mode-card" data-dashboard-view="all" data-section="overview" data-jump-target="#overview-kpis">
+            <strong>Full dashboard browse</strong>
+            <span>Show every section at once for full-page review, scrolling, and broad comparison.</span>
+          </button>
         </div>
 
         <div class="view-panel-groups">
           <section class="view-panel-group">
             <h3>Study status</h3>
             <div class="view-link-grid">
-              <button type="button" class="view-link" data-jump-target="#overview-kpis" data-section="overview">
+              <button type="button" class="view-link" data-dashboard-view="home" data-jump-target="#overview-kpis" data-section="overview">
                 <strong>KPI snapshot</strong>
                 <span>Enrollment, active records, model AUROC, and completeness.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#overview-enrollment" data-section="overview">
+              <button type="button" class="view-link" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
                 <strong>Enrollment trends</strong>
                 <span>Cumulative recruitment curves and progress vs target.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#cohort-table-card" data-section="cohort">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#cohort-table-card" data-section="cohort">
                 <strong>Cohort snapshot</strong>
                 <span>Sortable surrogate participant table with QC filters.</span>
               </button>
@@ -109,15 +121,15 @@
           <section class="view-panel-group">
             <h3>Methods and quality</h3>
             <div class="view-link-grid">
-              <button type="button" class="view-link" data-jump-target="#pipeline-map" data-section="pipeline">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#pipeline-map" data-section="pipeline">
                 <strong>Pipeline map</strong>
                 <span>Clickable methods SVG from collection through sharing.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#quality-missingness" data-section="quality">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
                 <strong>Missingness review</strong>
                 <span>Instrument missingness and imputation follow-through.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#quality-audit" data-section="quality">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#quality-audit" data-section="quality">
                 <strong>Audit activity</strong>
                 <span>Recent data-team actions and open query context.</span>
               </button>
@@ -127,19 +139,19 @@
           <section class="view-panel-group">
             <h3>Modeling views</h3>
             <div class="view-link-grid">
-              <button type="button" class="view-link" data-jump-target="#ml-explainer" data-section="ml">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-explainer" data-section="ml">
                 <strong>Model explainer</strong>
                 <span>Animated architecture walkthrough with methods citations.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#ml-roc" data-section="ml">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
                 <strong>ROC comparison</strong>
                 <span>Full model discrimination curves across candidate models.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#ml-metrics" data-section="ml">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-metrics" data-section="ml">
                 <strong>Metrics table</strong>
                 <span>AUROC, CI, sensitivity, specificity, and F1 in one place.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#trajectories-chart" data-section="trajectories">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#trajectories-chart" data-section="trajectories">
                 <strong>Trajectory view</strong>
                 <span>Longitudinal biomarker patterns and visit completion context.</span>
               </button>
@@ -149,11 +161,11 @@
           <section class="view-panel-group">
             <h3>Library and outputs</h3>
             <div class="view-link-grid">
-              <button type="button" class="view-link" data-jump-target="#readings-spotlight" data-section="readings">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#readings-spotlight" data-section="readings">
                 <strong>Featured reading</strong>
                 <span>Current spotlight paper and library metadata highlights.</span>
               </button>
-              <button type="button" class="view-link" data-jump-target="#readings-library" data-section="readings">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
                 <strong>Search archive</strong>
                 <span>Filterable reading library with category and keyword search.</span>
               </button>
