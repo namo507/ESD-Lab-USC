@@ -60,8 +60,23 @@ For a public share link from a local machine, start the optional share profile:
 bash scripts/share_dashboard.sh
 ```
 
-That launches a Cloudflare quick tunnel and prints a temporary public URL while
-the Docker services remain up.
+That launches a Cloudflare tunnel and prints a public dashboard URL while the
+Docker services remain up.
+
+By default it uses a quick tunnel, which means the hostname will be a random
+`trycloudflare.com` subdomain. Those quick-tunnel names cannot be customized.
+
+To use a stable branded hostname instead, configure a named tunnel in
+Cloudflare and set these values in `.env`:
+
+```bash
+CLOUDFLARE_TUNNEL_TOKEN=...
+DASHBOARD_PUBLIC_HOSTNAME=esd-lab-usc-dashboard.yourdomain.org
+```
+
+After that, the same `bash scripts/share_dashboard.sh` command will print
+`https://esd-lab-usc-dashboard.yourdomain.org/dashboard/` instead of a random
+quick-tunnel URL.
 
 ## 4. Running it manually
 
