@@ -191,6 +191,33 @@ def _atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
     temp_path.replace(output_path)
 
 
+def _load_cached_organization_site(output_path: Path) -> dict[str, Any]:
+    """Reuse the last good organization-site payload when a live scrape fails."""
+    if not output_path.exists():
+        return {}
+    try:
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Unable to read cached dashboard payload: %s", exc)
+        return {}
+    organization_site = payload.get("organization_site")
+    if isinstance(organization_site, dict):
+        logger.info("Using cached organization-site payload from %s", output_path)
+        return organization_site
+    return {}
+
+
+def _resolve_organization_site(output_path: Path) -> dict[str, Any]:
+    """Fetch live site metadata, but never fail the whole dashboard build on it."""
+    try:
+        from dashboard.pipelines import build_org_site_data
+
+        return build_org_site_data.build_payload()
+    except Exception as exc:
+        logger.warning("Organization-site refresh failed: %s", exc)
+        return _load_cached_organization_site(output_path)
+
+
 # ─── ID anonymization ───────────────────────────────────────────────────────
 def _surrogate_id(real_id: str, salt: str) -> str:
     """Deterministic 4-digit surrogate ``NANO-####`` per participant."""
@@ -566,9 +593,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     metrics = load_model_metrics(metrics_path)
     data_source = _infer_data_source(redcap)
 
-    from dashboard.pipelines import build_org_site_data
-
-    organization_site = build_org_site_data.build_payload()
+    organization_site = _resolve_organization_site(args.output)
 
     try:
         payload = build_payload(
