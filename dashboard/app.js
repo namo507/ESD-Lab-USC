@@ -3,6 +3,29 @@ const DATA_URLS = {
   dashboard: "data/dashboard_data.json",
   readings: "data/readings_data.json",
   runtime: "data/runtime_status.json",
+  research: "research_questions/research_questions.json",
+};
+
+const RQ_STATUS_META = {
+  open: { label: "Open", color: "#8b6916" },
+  in_progress: { label: "In progress", color: "#4c72b0" },
+  blocked: { label: "Blocked", color: "#9f3424" },
+  resolved: { label: "Resolved", color: "#23633a" },
+};
+
+const RQ_PRIORITY_META = {
+  critical: { label: "Critical", rank: 0 },
+  high: { label: "High", rank: 1 },
+  medium: { label: "Medium", rank: 2 },
+  low: { label: "Low", rank: 3 },
+};
+
+const RQ_FILTERS = {
+  search: "",
+  category: "all",
+  type_tag: "all",
+  status: "all",
+  priority: "all",
 };
 
 const THEME_STORAGE_KEY = "nano-dashboard-theme-preference";
@@ -68,6 +91,10 @@ const SECTION_TITLES = {
     "Cohort Snapshot",
     "Sortable surrogate participant summary without PHI exposure",
   ],
+  research: [
+    "Research Questions",
+    "Living SOP of 40 methods, engineering, and reporting decisions tracked across the R01",
+  ],
   readings: [
     "Reading Library",
     "Automatically indexed lab PDFs and materials from the ESD Lab readings folder",
@@ -83,6 +110,7 @@ const SECTION_DEFAULT_TARGETS = {
   ml: "#ml-explainer",
   trajectories: "#trajectories-chart",
   cohort: "#cohort-table-card",
+  research: "#research-kpis",
   readings: "#readings-spotlight",
 };
 
@@ -241,6 +269,7 @@ Chart.defaults.animation.easing = "easeOutQuart";
 const STATE = {
   dashboard: null,
   readings: emptyReadingsPayload(),
+  research: null,
   runtime: {},
   ui: {
     activeSection: "overview",
@@ -254,6 +283,7 @@ const STATE = {
   tokens: {
     dashboard: null,
     readings: null,
+    research: null,
     buildCount: 0,
   },
 };
@@ -901,6 +931,64 @@ function setupControls() {
       drawCohort();
     });
   });
+
+  setupResearchQuestionsControls();
+}
+
+function setupResearchQuestionsControls() {
+  const search = document.getElementById("rq-search");
+  if (!search) {
+    return;
+  }
+  const onChange = () => {
+    RQ_FILTERS.search = (document.getElementById("rq-search").value || "").trim();
+    RQ_FILTERS.category = document.getElementById("rq-filter-category").value;
+    RQ_FILTERS.type_tag = document.getElementById("rq-filter-type").value;
+    RQ_FILTERS.status = document.getElementById("rq-filter-status").value;
+    RQ_FILTERS.priority = document.getElementById("rq-filter-priority").value;
+    renderResearchQuestions();
+  };
+
+  search.addEventListener("input", onChange);
+  document.getElementById("rq-filter-category").addEventListener("change", onChange);
+  document.getElementById("rq-filter-type").addEventListener("change", onChange);
+  document.getElementById("rq-filter-status").addEventListener("change", onChange);
+  document.getElementById("rq-filter-priority").addEventListener("change", onChange);
+
+  document.getElementById("rq-clear-filters").addEventListener("click", () => {
+    document.getElementById("rq-search").value = "";
+    document.getElementById("rq-filter-category").value = "all";
+    document.getElementById("rq-filter-type").value = "all";
+    document.getElementById("rq-filter-status").value = "all";
+    document.getElementById("rq-filter-priority").value = "all";
+    Object.assign(RQ_FILTERS, {
+      search: "",
+      category: "all",
+      type_tag: "all",
+      status: "all",
+      priority: "all",
+    });
+    renderResearchQuestions();
+  });
+
+  const heatmap = document.getElementById("rq-heatmap");
+  if (heatmap) {
+    heatmap.addEventListener("click", (event) => {
+      const cell = event.target.closest("[data-category][data-type]");
+      if (!cell) {
+        return;
+      }
+      document.getElementById("rq-filter-category").value = cell.dataset.category;
+      document.getElementById("rq-filter-type").value = cell.dataset.type;
+      RQ_FILTERS.category = cell.dataset.category;
+      RQ_FILTERS.type_tag = cell.dataset.type;
+      renderResearchQuestions();
+      const grid = document.getElementById("research-grid");
+      if (grid && typeof grid.scrollIntoView === "function") {
+        grid.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
 }
 
 async function syncData({ force = false } = {}) {
@@ -954,6 +1042,20 @@ async function syncData({ force = false } = {}) {
       STATE.tokens.readings = readings && readings.meta ? readings.meta.generated_at : null;
       dashboardChanged = true;
       readingsChanged = true;
+    }
+
+    // Research questions: always try to load; cheap and static.
+    try {
+      const research = await loadJson(DATA_URLS.research, null);
+      if (research) {
+        const nextResearchToken = (research.meta && research.meta.last_updated) || null;
+        if (force || nextResearchToken !== STATE.tokens.research) {
+          STATE.research = research;
+          STATE.tokens.research = nextResearchToken;
+        }
+      }
+    } catch (_err) {
+      /* swallow — dashboard renders gracefully without RQ payload */
     }
 
     renderChrome();
@@ -1038,6 +1140,7 @@ function renderDashboard() {
   renderTrajectoriesTable();
   renderCompletionChart();
   drawCohort();
+  renderResearchQuestions();
 }
 
 function renderOverview() {
@@ -2907,6 +3010,226 @@ function renderReadings() {
         </article>`
     )
     .join("");
+}
+
+function renderResearchQuestions() {
+  const grid = document.getElementById("rq-grid");
+  if (!grid) {
+    return;
+  }
+  const payload = STATE.research;
+  if (!payload || !Array.isArray(payload.questions) || !payload.questions.length) {
+    setText("rq-kpi-total", "—");
+    setText("rq-kpi-inprogress", "—");
+    setText("rq-kpi-resolved", "—");
+    setText("rq-kpi-critical", "—");
+    grid.innerHTML = '<div class="empty-state">Research-questions catalog not loaded. Run <code>python dashboard/research_questions/build_research_questions_data.py</code> to generate it.</div>';
+    return;
+  }
+
+  const questions = payload.questions.slice();
+  const categories = payload.meta && payload.meta.categories
+    ? payload.meta.categories.slice()
+    : Array.from(new Set(questions.map((q) => q.category))).sort();
+  const tags = payload.meta && payload.meta.type_tags
+    ? payload.meta.type_tags.slice()
+    : Array.from(new Set(questions.map((q) => q.type_tag))).sort();
+
+  populateRqSelect("rq-filter-category", categories, RQ_FILTERS.category);
+  populateRqSelect("rq-filter-type", tags, RQ_FILTERS.type_tag);
+
+  // KPI strip
+  const rollups = payload.rollups || {};
+  const byStatus = rollups.by_status || {};
+  const byPriority = rollups.by_priority || {};
+  const criticalOpen = questions.filter((q) =>
+    (q.priority === "critical" || q.priority === "high") &&
+    q.status !== "resolved"
+  ).length;
+
+  animateNumber("rq-kpi-total", questions.length, (v) => formatInt(Math.round(v)));
+  animateNumber("rq-kpi-inprogress", byStatus.in_progress || 0, (v) => formatInt(Math.round(v)));
+  animateNumber("rq-kpi-resolved", byStatus.resolved || 0, (v) => formatInt(Math.round(v)));
+  animateNumber("rq-kpi-critical", criticalOpen, (v) => formatInt(Math.round(v)));
+  setText(
+    "rq-kpi-inprogress-note",
+    `${byStatus.open || 0} open · ${byStatus.blocked || 0} blocked`
+  );
+  setText(
+    "rq-kpi-resolved-note",
+    `${byPriority.critical || 0} critical · ${byPriority.high || 0} high overall`
+  );
+  setText(
+    "rq-kpi-critical-note",
+    `Unresolved critical + high of ${questions.length}`
+  );
+
+  // Heatmap: Category × Type-tag
+  renderResearchHeatmap(questions, categories, tags);
+
+  // Chip bar: quick category chips
+  const chipBar = document.getElementById("rq-chip-bar");
+  const categoryCounts = categories.map((cat) => ({
+    category: cat,
+    count: questions.filter((q) => q.category === cat).length,
+  }));
+  chipBar.innerHTML = categoryCounts
+    .map(
+      (entry) => `
+      <button type="button" class="chip ${
+        RQ_FILTERS.category === entry.category ? "is-active" : ""
+      }" data-rq-category="${escapeHtml(entry.category)}">
+        ${escapeHtml(entry.category)} <strong>${entry.count}</strong>
+      </button>`
+    )
+    .join("");
+  chipBar.querySelectorAll("[data-rq-category]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const cat = btn.getAttribute("data-rq-category");
+      RQ_FILTERS.category = RQ_FILTERS.category === cat ? "all" : cat;
+      const sel = document.getElementById("rq-filter-category");
+      if (sel) sel.value = RQ_FILTERS.category;
+      renderResearchQuestions();
+    });
+  });
+
+  // Filter + sort cards
+  const filtered = questions.filter((q) => {
+    if (RQ_FILTERS.category !== "all" && q.category !== RQ_FILTERS.category) return false;
+    if (RQ_FILTERS.type_tag !== "all" && q.type_tag !== RQ_FILTERS.type_tag) return false;
+    if (RQ_FILTERS.status !== "all" && q.status !== RQ_FILTERS.status) return false;
+    if (RQ_FILTERS.priority !== "all" && q.priority !== RQ_FILTERS.priority) return false;
+    if (RQ_FILTERS.search) {
+      const hay = [
+        q.id,
+        q.question,
+        q.summary,
+        q.implementation,
+        (q.assets || []).join(" "),
+        (q.widgets || []).join(" "),
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(RQ_FILTERS.search.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    const pa = RQ_PRIORITY_META[a.priority] ? RQ_PRIORITY_META[a.priority].rank : 9;
+    const pb = RQ_PRIORITY_META[b.priority] ? RQ_PRIORITY_META[b.priority].rank : 9;
+    if (pa !== pb) return pa - pb;
+    return a.id.localeCompare(b.id);
+  });
+
+  const empty = document.getElementById("rq-empty");
+  if (!filtered.length) {
+    grid.innerHTML = "";
+    if (empty) empty.classList.remove("hide");
+    return;
+  }
+  if (empty) empty.classList.add("hide");
+
+  grid.innerHTML = filtered.map(renderResearchCard).join("");
+}
+
+function populateRqSelect(id, values, current) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const existing = Array.from(el.options).map((o) => o.value);
+  if (existing.length > 1 + values.length) {
+    // already populated
+    return;
+  }
+  const head = el.options[0] ? el.options[0].outerHTML : "";
+  el.innerHTML =
+    head +
+    values
+      .map(
+        (v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`
+      )
+      .join("");
+  if (current && values.includes(current)) {
+    el.value = current;
+  }
+}
+
+function renderResearchHeatmap(questions, categories, tags) {
+  const table = document.getElementById("rq-heatmap");
+  if (!table) return;
+
+  const counts = {};
+  questions.forEach((q) => {
+    const key = `${q.category}||${q.type_tag}`;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
+  const head = table.querySelector("thead");
+  head.innerHTML =
+    '<tr><th scope="col">Category</th>' +
+    tags
+      .map(
+        (t) =>
+          `<th scope="col" class="rq-head-tag" title="${escapeHtml(t)}">${escapeHtml(t)}</th>`
+      )
+      .join("") +
+    "</tr>";
+
+  const body = table.querySelector("tbody");
+  body.innerHTML = categories
+    .map((cat) => {
+      const cells = tags
+        .map((t) => {
+          const n = counts[`${cat}||${t}`] || 0;
+          const cls =
+            n === 0 ? "rq-cell-zero" : n === 1 ? "rq-cell-lo" : n === 2 ? "rq-cell-mid" : "rq-cell-hi";
+          return `<td class="rq-cell ${cls}" data-category="${escapeHtml(cat)}" data-type="${escapeHtml(t)}" title="${escapeHtml(cat)} × ${escapeHtml(t)}: ${n}">${n || ""}</td>`;
+        })
+        .join("");
+      return `<tr><th scope="row" class="rq-row-cat">${escapeHtml(cat)}</th>${cells}</tr>`;
+    })
+    .join("");
+}
+
+function renderResearchCard(q) {
+  const statusMeta = RQ_STATUS_META[q.status] || { label: q.status, color: "#6c757d" };
+  const priorityMeta = RQ_PRIORITY_META[q.priority] || { label: q.priority };
+  const assets = (q.assets || [])
+    .map(
+      (a) =>
+        `<li><code>${escapeHtml(a)}</code></li>`
+    )
+    .join("");
+  const widgets = (q.widgets || [])
+    .map((w) => `<span class="rq-widget-chip">${escapeHtml(w)}</span>`)
+    .join("");
+  const metrics = (q.metrics || [])
+    .map((m) => `<span class="rq-metric-chip">${escapeHtml(m)}</span>`)
+    .join("");
+
+  return `
+    <article class="research-card reveal is-visible" data-status="${escapeHtml(q.status)}" data-priority="${escapeHtml(q.priority)}">
+      <header class="research-card-head">
+        <div class="research-card-ids">
+          <span class="research-id">${escapeHtml(q.id)}</span>
+          <span class="research-category">${escapeHtml(q.category)}</span>
+          <span class="research-type">${escapeHtml(q.type_tag)}</span>
+        </div>
+        <div class="research-card-flags">
+          <span class="research-status" style="background:${statusMeta.color}">${escapeHtml(statusMeta.label)}</span>
+          <span class="research-priority research-priority-${escapeHtml(q.priority)}">${escapeHtml(priorityMeta.label)}</span>
+        </div>
+      </header>
+      <h3 class="research-question">${escapeHtml(q.question)}</h3>
+      <p class="research-summary">${escapeHtml(q.summary)}</p>
+      <details class="research-details">
+        <summary>Implementation plan &amp; linked assets</summary>
+        <p class="research-implementation">${escapeHtml(q.implementation)}</p>
+        ${assets ? `<div class="research-subhead">Linked assets</div><ul class="research-assets">${assets}</ul>` : ""}
+        ${widgets ? `<div class="research-subhead">Dashboard widgets</div><div class="research-widgets">${widgets}</div>` : ""}
+        ${metrics ? `<div class="research-subhead">Success metrics</div><div class="research-widgets">${metrics}</div>` : ""}
+      </details>
+    </article>`;
 }
 
 function renderFooter() {

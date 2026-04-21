@@ -30,6 +30,7 @@
       <a href="#ml" data-target="ml"><span class="dot"></span>ML Performance</a>
       <a href="#trajectories" data-target="trajectories"><span class="dot"></span>Trajectories</a>
       <a href="#cohort" data-target="cohort"><span class="dot"></span>Cohort Table</a>
+      <a href="#research" data-target="research"><span class="dot"></span>Research Questions</a>
       <a href="#readings" data-target="readings"><span class="dot"></span>Reading Library</a>
 
       <span class="section-label">ESD Lab Site</span>
@@ -47,6 +48,7 @@
       <a href="../docs/hipaa_compliance_checklist.md" target="_blank"><span class="dot"></span>HIPAA Checklist</a>
       <a href="../docs/dashboard_guide.md" target="_blank"><span class="dot"></span>Dashboard Guide</a>
       <a href="../docs/auto_update_pipeline.md" target="_blank"><span class="dot"></span>Auto-Update Docs</a>
+      <a href="../docs/research_questions_process.md" target="_blank"><span class="dot"></span>Research Questions SOP</a>
     </nav>
 
     <div class="side-meta" id="side-meta">&nbsp;</div>
@@ -1033,9 +1035,122 @@
       </div>
     </section>
 
+    <section id="research">
+      <div class="section jump-target" id="research-overview">
+        <h2><span class="num">10</span>Research Questions</h2>
+        <p class="section-lede">
+          Living SOP of the 40 research, methods, and engineering questions that
+          sit between a raw REDCap event and a publishable figure. Every row is
+          categorized, tagged, prioritized, and linked back to code + docs so the
+          team can track how a decision becomes a reproducible answer.
+        </p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within research</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#research-kpis">Status snapshot</a>
+            <a class="section-jump-pill" href="#research-heatmap">Category × Type map</a>
+            <a class="section-jump-pill" href="#research-grid">Question cards</a>
+            <a class="section-jump-pill" href="../docs/research_questions_process.md" target="_blank" rel="noreferrer noopener">SOP doc</a>
+          </div>
+        </div>
+
+        <div class="grid four jump-target" id="research-kpis">
+          <div class="card kpi">
+            <div class="label">Total questions</div>
+            <div class="value" id="rq-kpi-total">—</div>
+            <div class="delta" id="rq-kpi-total-note">Across 8 categories</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">In progress</div>
+            <div class="value" id="rq-kpi-inprogress">—</div>
+            <div class="delta" id="rq-kpi-inprogress-note">Active analyst workload</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Resolved</div>
+            <div class="value" id="rq-kpi-resolved">—</div>
+            <div class="delta" id="rq-kpi-resolved-note">Closed with test + link</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Critical + High open</div>
+            <div class="value" id="rq-kpi-critical">—</div>
+            <div class="delta" id="rq-kpi-critical-note">Unresolved high-priority work</div>
+          </div>
+        </div>
+
+        <div class="card jump-target" id="research-heatmap">
+          <div class="card-header">
+            <div>
+              <h3>Category × Type-tag map</h3>
+              <p class="card-sub">Cells show how many questions sit in each (category, type-tag) pair. Click to filter the grid below.</p>
+            </div>
+            <div class="card-actions">
+              <span class="legend-item"><span class="legend-swatch legend-lo"></span>0–1</span>
+              <span class="legend-item"><span class="legend-swatch legend-mid"></span>2</span>
+              <span class="legend-item"><span class="legend-swatch legend-hi"></span>3+</span>
+            </div>
+          </div>
+          <div class="research-heatmap-wrap">
+            <table class="research-heatmap" id="rq-heatmap">
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card jump-target" id="research-grid">
+          <div class="filters research-filters">
+            <div class="filter search-filter">
+              <label for="rq-search">Search</label>
+              <input id="rq-search" class="search-input" type="search" placeholder="Search questions, summaries, assets">
+            </div>
+            <div class="filter">
+              <label for="rq-filter-category">Category</label>
+              <select id="rq-filter-category">
+                <option value="all">All categories</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-type">Type tag</label>
+              <select id="rq-filter-type">
+                <option value="all">All types</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-status">Status</label>
+              <select id="rq-filter-status">
+                <option value="all">All statuses</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In progress</option>
+                <option value="blocked">Blocked</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-priority">Priority</label>
+              <select id="rq-filter-priority">
+                <option value="all">All priorities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <button id="rq-clear-filters" class="ghost-button" type="button">Clear filters</button>
+          </div>
+          <div id="rq-chip-bar" class="chip-bar"></div>
+          <div id="rq-grid" class="research-grid"></div>
+          <div id="rq-empty" class="research-empty hide">No questions match these filters.</div>
+        </div>
+      </div>
+    </section>
+
     <section id="readings">
       <div class="section jump-target" id="readings-overview">
-        <h2><span class="num">10</span>Reading Library</h2>
+        <h2><span class="num">11</span>Reading Library</h2>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within readings</span>
           <div class="section-jump-links">

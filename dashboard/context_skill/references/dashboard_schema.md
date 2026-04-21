@@ -23,6 +23,7 @@ populates it in the production pipeline.
 | `redcap_audit.recent_activity[]` | Quality audit table | `redcap_audit.py` activity log | — (R leaves empty) | yes |
 | `cohort_table[]` | Cohort section table | `build_cohort_table()` with surrogate IDs | `build_cohort_table` | yes |
 | `organization_site.summary / mission / studies / impact_feed[]` | ESD Lab organization + impact sections | `build_org_site_data.build_payload()` | same schema target via R wrapper | yes |
+| `research_questions.meta / questions[] / rollups / matrix[]` | Research Questions section (KPIs, heatmap, card grid, filters) | `build_research_questions_data.py` over `research_questions.json` | — (Python only) | yes (static catalog) |
 
 ## Invariants the UI assumes
 
@@ -31,6 +32,10 @@ populates it in the production pipeline.
 3. Every `by_group` dict has keys `ASIB`, `PT`, `TD` (in that order).
 4. `ml_performance.models[].roc.fpr/tpr` are length 50.
 5. All percentages are already rounded to one decimal.
+6. `research_questions.questions[]` uses the controlled vocabulary of 8
+   categories and 8 type-tags declared in
+   `dashboard/research_questions/research_questions.md`. The UI's
+   Category × Type-tag heatmap iterates over `meta.categories` × `meta.type_tags`.
 
 If you change any of these, also update:
 * `dashboard/index.html` (where Chart.js assumes the shape)
