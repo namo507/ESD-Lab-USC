@@ -115,6 +115,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+.devcontainer/.venv/
 
 # ─── Compiled / Binary ──────────────────────────────────────
 *.pyc

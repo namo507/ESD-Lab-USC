@@ -4,7 +4,7 @@
 
 .DEFAULT_GOAL := help
 PYTHON := python3
-VENV := .venv
+VENV ?= .venv
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black

@@ -1,5 +1,10 @@
 .git
 .github
+.env
+.env.local
+.env.*.local
+config/redcap_config_local.yml
+credentials/
 .mypy_cache
 .pytest_cache
 .venv
@@ -10,5 +15,8 @@ data/deidentified/
 data/interim/
 data/processed/
 data/raw/
+.devcontainer/.venv/
 logs/
 notebooks/
+raw/
+secure_data/

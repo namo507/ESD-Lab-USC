@@ -204,10 +204,20 @@ make dashboard-logs
 If the secure data mount is unavailable, the runtime falls back to synthetic
 dashboard data so the UI and the readings library still render cleanly.
 
+### Dev Container
+
+This repository can also be opened in a VS Code dev container. The dev container:
+
+- uses Python 3.11 plus R so the main Python, notebook, and R bridge workflows work in one environment
+- keeps its virtualenv under `.devcontainer/.venv` so it does not overwrite a host-side `.venv`
+- runs `.devcontainer/post-create.sh` on first create to install Python dependencies and bootstrap `renv`
+
+To reopen the current workspace in the container, use the VS Code command palette and run `Dev Containers: Reopen in Container` after Docker Desktop is running.
+
 Current stable public entrypoints:
 
 - Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
-- Direct dashboard origin: [https://esd-lab-namo.namit507.workers.dev/dashboard/](https://esd-lab-namo.namit507.workers.dev/dashboard/)
+- Direct dashboard origin: the current `make dashboard-share` URL printed for the active Cloudflare quick tunnel session
 
 ### Shareable Public Links
 
@@ -222,25 +232,25 @@ active public dashboard URL for the current session.
 
 The Cloudflare-hosted links currently used for sharing this repository are:
 
-- Stable public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
-- Stable direct dashboard: [https://esd-lab-namo.namit507.workers.dev/dashboard/](https://esd-lab-namo.namit507.workers.dev/dashboard/)
-- Temporary quick-share URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Active direct dashboard URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
 
-The Pages wrapper is the preferred public link. It embeds the stable
-`workers.dev` dashboard origin and does not depend on the temporary quick-tunnel
-hostname.
+The Pages wrapper is the preferred public link, but on this machine it still
+depends on the currently active Cloudflare quick tunnel because no local named
+tunnel token/hostname pair is configured.
 
-By default, `make dashboard-share` still uses a Cloudflare quick tunnel, so the
+By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or
 bookmark a previous quick-tunnel URL as a permanent dashboard address, because
-it changes when the tunnel is recreated.
+it changes when the tunnel is recreated, and update the Pages wrapper if you
+need the embedded public page to keep working after a tunnel restart.
 
 For temporary sharing, always rerun `make dashboard-share` and send only the
 latest quick-share URL printed by the script.
 
-If you later want to move from the current Cloudflare-hosted links to a custom
-domain such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS zone
-to the Cloudflare account, create a named public hostname, and set these
+To move from the current quick-tunnel-backed wrapper to a stable branded
+hostname such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS
+zone to the Cloudflare account, create a named public hostname, and set these
 variables in `.env` before running the same command:
 
 ```bash
@@ -248,8 +258,9 @@ CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, `make dashboard-share` can print the custom-domain link instead of a
-random `trycloudflare.com` URL.
+After that, `make dashboard-share` switches to the `dashboard-share-named`
+service and can print the custom-domain link instead of a random
+`trycloudflare.com` URL.
 
 The share link stays live while the Docker services keep running.
 
