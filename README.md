@@ -270,6 +270,24 @@ To verify the runtime is still healthy and auto-rebuilding continuously:
 make dashboard-smoke
 ```
 
+### Local Dashboard Assistant
+
+The live dashboard now includes a collapsible chat assistant wired to a local
+GGUF model backend. The default target is
+`bartowski/Qwen2.5-1.5B-Instruct-GGUF` with the
+`Qwen2.5-1.5B-Instruct-Q3_K_S.gguf` file, which is still small enough to run in
+this dev container with the tuned assistant settings.
+
+Use these commands to install the runtime and fetch the model locally:
+
+```bash
+pip install -r dashboard/requirements-assistant.txt
+make assistant-status
+make assistant-prepare
+```
+
+Detailed setup notes are in [docs/dashboard_ai_assistant.md](docs/dashboard_ai_assistant.md).
+
 ---
 
 ## Contributing

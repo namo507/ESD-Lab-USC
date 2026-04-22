@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -114,6 +114,12 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	bash scripts/share_dashboard.sh
+
+assistant-status:  ## Check local dashboard assistant readiness
+	$(PYTHON) scripts/prepare_dashboard_assistant.py
+
+assistant-prepare:  ## Download local GGUF assets for the dashboard assistant
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --download
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
 

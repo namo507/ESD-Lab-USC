@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import posixpath
 import subprocess
 import sys
 import threading
@@ -25,12 +26,14 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dashboard.pipelines import build_dashboard_data, build_readings_index
+from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
 from src.utils.logging_utils import get_pipeline_logger
 
 
@@ -319,19 +322,27 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     """Serve the repository root and expose a tiny health endpoint."""
 
     def __init__(
-        self, *args: Any, runtime: DashboardRuntime, directory: str, **kwargs: Any
+        self,
+        *args: Any,
+        runtime: DashboardRuntime,
+        assistant: DashboardChatAssistant,
+        directory: str,
+        **kwargs: Any,
     ) -> None:
         self.runtime = runtime
+        self.assistant = assistant
         super().__init__(*args, directory=directory, **kwargs)
 
     def do_GET(self) -> None:
-        if self.path in {"/", ""}:
+        request_path = urlparse(self.path).path
+
+        if request_path in {"/", ""}:
             self.send_response(HTTPStatus.FOUND)
             self.send_header("Location", "/dashboard/")
             self.end_headers()
             return
 
-        if self.path == "/api/healthz":
+        if request_path == "/api/healthz":
             payload = self.runtime.read_state()
             status = (
                 HTTPStatus.OK
@@ -347,7 +358,44 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.write(body)
             return
 
+        if request_path == "/api/chat/status":
+            self._send_json(self.assistant.get_status())
+            return
+
         super().do_GET()
+
+    def do_POST(self) -> None:
+        request_path = urlparse(self.path).path
+        if request_path != "/api/chat":
+            self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
+            return
+
+        try:
+            payload = self._read_json_body()
+            message = (payload.get("message") or "").strip()
+            history = payload.get("history") or []
+            result = self.assistant.answer(message, history=history)
+            self._send_json(result)
+        except AssistantUnavailable as exc:
+            self._send_json(
+                {
+                    "error": str(exc),
+                    "status": exc.status,
+                },
+                status=exc.http_status,
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive API path
+            logger.exception("Chat request failed")
+            self._send_json(
+                {"error": f"Unexpected chat failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def translate_path(self, path: str) -> str:
+        parsed_path = urlparse(path).path
+        return super().translate_path(parsed_path)
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -355,6 +403,34 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         logger.info("http | " + format, *args)
+
+    def _read_json_body(self) -> dict[str, Any]:
+        content_length = self.headers.get("Content-Length")
+        if not content_length:
+            raise ValueError("Missing request body.")
+        try:
+            length = int(content_length)
+        except ValueError as exc:
+            raise ValueError("Invalid Content-Length header.") from exc
+        raw_body = self.rfile.read(length)
+        try:
+            return json.loads(raw_body.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError("Request body must be valid JSON.") from exc
+
+    def _send_json(
+        self,
+        payload: dict[str, Any],
+        *,
+        status: int | HTTPStatus = HTTPStatus.OK,
+    ) -> None:
+        body = json.dumps(payload, indent=2).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -392,10 +468,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         fallback_synthetic=args.fallback_synthetic,
     )
     runtime.start()
+    assistant = DashboardChatAssistant()
 
     handler = partial(
         RepoRequestHandler,
         runtime=runtime,
+        assistant=assistant,
         directory=str(PROJECT_ROOT),
     )
     httpd = ThreadingHTTPServer((args.host, args.port), handler)

@@ -1,0 +1,10 @@
+# Optional dependencies for the local dashboard assistant.
+# Install the repository requirements first, then add this file on the machine
+# that will actually host the local model.
+# The extra index provides a prebuilt linux_aarch64 wheel so pip does not fall
+# back to a local llama.cpp source build in this dev container.
+
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+huggingface-hub>=1.0.0
+llama-cpp-python==0.3.19
+python-dotenv>=1.0.0

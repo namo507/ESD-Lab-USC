@@ -148,3 +148,4 @@ temp/
 *.orig
 dashboard/data/.readings_cache.json
 models/_metrics.json
+models/local_llms/

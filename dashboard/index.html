@@ -1252,6 +1252,40 @@
       <span>ESD Lab · University of South Carolina · R01 NIH</span>
     </footer>
   </main>
+
+  <div class="assistant-shell" id="assistant-shell">
+    <button type="button" class="assistant-launcher" id="assistant-launcher" aria-expanded="false" aria-controls="assistant-panel">
+      <span class="assistant-launcher-mark">AI</span>
+      <span id="assistant-launcher-label">Ask NANO AI</span>
+    </button>
+
+    <section class="assistant-panel" id="assistant-panel" hidden aria-label="Dashboard assistant">
+      <header class="assistant-panel-head">
+        <div>
+          <span class="eyebrow">Dashboard assistant</span>
+          <h2>Ask grounded questions about this dashboard</h2>
+          <p id="assistant-status-copy">Checking assistant status…</p>
+        </div>
+        <button type="button" class="assistant-close ghost-button" id="assistant-close">Close</button>
+      </header>
+
+      <div class="assistant-log" id="assistant-log">
+        <article class="assistant-message assistant-message-assistant">
+          <span class="assistant-role">NANO AI</span>
+          <p>I can answer grounded questions about the live dashboard, study metrics, and indexed reading library using the local dashboard model.</p>
+        </article>
+      </div>
+
+      <form class="assistant-form" id="assistant-form">
+        <label class="assistant-sr-only" for="assistant-input">Ask the dashboard assistant</label>
+        <textarea id="assistant-input" rows="3" placeholder="Ask about enrollment, data quality, AUROC, or readings"></textarea>
+        <div class="assistant-form-row">
+          <span class="assistant-status-chip" id="assistant-status-chip" data-tone="soft">Checking status</span>
+          <button type="submit" class="assistant-submit" id="assistant-submit">Send</button>
+        </div>
+      </form>
+    </section>
+  </div>
 </div>
 
 <script src="app.js" defer></script>

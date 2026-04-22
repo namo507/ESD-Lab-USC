@@ -4,6 +4,8 @@ const DATA_URLS = {
   readings: "data/readings_data.json",
   runtime: "data/runtime_status.json",
   research: "research_questions/research_questions.json",
+  chat: "../api/chat",
+  chatStatus: "../api/chat/status",
 };
 
 const RQ_STATUS_META = {
@@ -286,6 +288,12 @@ const STATE = {
     research: null,
     buildCount: 0,
   },
+  assistant: {
+    open: false,
+    pending: false,
+    history: [],
+    status: null,
+  },
 };
 
 let CHARTS = {};
@@ -311,17 +319,21 @@ async function bootstrap() {
   setupViewPanel();
   setupPipelineExplainers();
   setupControls();
+  setupAssistant();
   await syncData({ force: true });
+  await syncAssistantStatus();
   if (window.location.hash && document.querySelector(window.location.hash)) {
     scrollToTarget(window.location.hash);
   }
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       syncData();
+      syncAssistantStatus();
     }
   });
   window.setInterval(() => {
     syncData();
+    syncAssistantStatus();
   }, REFRESH_INTERVAL_MS);
   window.setInterval(updateRefreshCountdown, 1000);
 }
@@ -3304,6 +3316,251 @@ function setError(message) {
   }
   banner.textContent = message;
   banner.classList.remove("hide");
+}
+
+function setupAssistant() {
+  const launcher = document.getElementById("assistant-launcher");
+  if (!launcher || launcher.dataset.bound === "true") {
+    return;
+  }
+
+  launcher.addEventListener("click", () => {
+    toggleAssistantPanel();
+  });
+
+  const close = document.getElementById("assistant-close");
+  if (close) {
+    close.addEventListener("click", () => {
+      toggleAssistantPanel(false);
+    });
+  }
+
+  const form = document.getElementById("assistant-form");
+  if (form) {
+    form.addEventListener("submit", submitAssistantMessage);
+  }
+
+  const input = document.getElementById("assistant-input");
+  if (input) {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        submitAssistantMessage(event);
+      }
+    });
+  }
+
+  launcher.dataset.bound = "true";
+  renderAssistantStatus();
+}
+
+async function syncAssistantStatus() {
+  try {
+    const status = await loadJson(DATA_URLS.chatStatus, null);
+    STATE.assistant.status = status || {
+      state: "offline",
+      ready: false,
+      message: "Assistant status is unavailable right now.",
+    };
+  } catch (error) {
+    STATE.assistant.status = {
+      state: "offline",
+      ready: false,
+      message: `Assistant status is unavailable: ${error.message || error}`,
+    };
+  }
+  renderAssistantStatus();
+}
+
+function renderAssistantStatus() {
+  const status = STATE.assistant.status || {
+    state: "booting",
+    ready: false,
+    message: "Checking assistant status…",
+  };
+  const tone = getAssistantTone(status.state);
+  const launcher = document.getElementById("assistant-launcher");
+  const launcherLabel = document.getElementById("assistant-launcher-label");
+  const statusChip = document.getElementById("assistant-status-chip");
+  const statusCopy = document.getElementById("assistant-status-copy");
+  const submit = document.getElementById("assistant-submit");
+  const input = document.getElementById("assistant-input");
+
+  if (launcher) {
+    launcher.dataset.tone = tone;
+    launcher.setAttribute("aria-expanded", String(STATE.assistant.open));
+  }
+  if (launcherLabel) {
+    launcherLabel.textContent = status.ready ? "Ask NANO AI" : "Assistant setup";
+  }
+  if (statusChip) {
+    statusChip.textContent = getAssistantToneLabel(status);
+    statusChip.dataset.tone = tone;
+  }
+  if (statusCopy) {
+    statusCopy.textContent = status.message || "Assistant status is unavailable.";
+  }
+  if (submit) {
+    submit.disabled = !status.ready || STATE.assistant.pending;
+    submit.textContent = STATE.assistant.pending ? "Thinking…" : "Send";
+  }
+  if (input) {
+    input.disabled = !status.ready || STATE.assistant.pending;
+    input.placeholder = status.ready
+      ? "Ask about enrollment, data quality, AUROC, or readings"
+      : "Install the local Qwen model bundle to enable chat";
+  }
+}
+
+function getAssistantTone(state) {
+  switch ((state || "").toLowerCase()) {
+    case "ready":
+      return "ok";
+    case "degraded":
+      return "warn";
+    case "booting":
+      return "soft";
+    case "offline":
+    case "dependencies-missing":
+    case "memory-insufficient":
+    case "model-missing":
+      return "warn";
+    default:
+      return "soft";
+  }
+}
+
+function getAssistantToneLabel(status) {
+  if (!status) {
+    return "Checking status";
+  }
+  if (status.ready) {
+    return "Ready";
+  }
+
+  switch ((status.state || "").toLowerCase()) {
+    case "dependencies-missing":
+      return "Install dependencies";
+    case "memory-insufficient":
+      return "Needs more memory";
+    case "model-missing":
+      return "Download required";
+    case "degraded":
+      return "Temporarily unavailable";
+    case "offline":
+      return "Offline";
+    default:
+      return "Checking status";
+  }
+}
+
+function toggleAssistantPanel(forceOpen) {
+  const panel = document.getElementById("assistant-panel");
+  if (!panel) {
+    return;
+  }
+  STATE.assistant.open = typeof forceOpen === "boolean" ? forceOpen : !STATE.assistant.open;
+  panel.hidden = !STATE.assistant.open;
+  document.body.classList.toggle("assistant-open", STATE.assistant.open);
+  renderAssistantStatus();
+  if (STATE.assistant.open) {
+    scrollAssistantLog();
+  }
+}
+
+async function submitAssistantMessage(event) {
+  if (event && typeof event.preventDefault === "function") {
+    event.preventDefault();
+  }
+
+  if (STATE.assistant.pending) {
+    return;
+  }
+
+  const input = document.getElementById("assistant-input");
+  const message = input ? input.value.trim() : "";
+  if (!message) {
+    return;
+  }
+
+  appendAssistantMessage("user", message);
+  STATE.assistant.history.push({ role: "user", content: message });
+  if (input) {
+    input.value = "";
+  }
+
+  STATE.assistant.pending = true;
+  renderAssistantStatus();
+
+  try {
+    const response = await fetch(DATA_URLS.chat, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+        history: STATE.assistant.history.slice(-8),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw {
+        message: payload.error || `Assistant request failed (${response.status})`,
+        status: payload.status || null,
+      };
+    }
+
+    appendAssistantMessage("assistant", payload.reply || "No answer was returned.", payload.citations || []);
+    STATE.assistant.history.push({ role: "assistant", content: payload.reply || "" });
+    if (payload.status) {
+      STATE.assistant.status = payload.status;
+    }
+  } catch (error) {
+    const status = error && error.status ? error.status : null;
+    const messageText = status && status.message
+      ? status.message
+      : (error && error.message) || "Assistant request failed.";
+    appendAssistantMessage("assistant", messageText, [], true);
+    if (status) {
+      STATE.assistant.status = status;
+    }
+  } finally {
+    STATE.assistant.pending = false;
+    renderAssistantStatus();
+    scrollAssistantLog();
+  }
+}
+
+function appendAssistantMessage(role, text, citations = [], isSystem = false) {
+  const log = document.getElementById("assistant-log");
+  if (!log) {
+    return;
+  }
+  const roleClass = role === "user" ? "assistant-message-user" : "assistant-message-assistant";
+  const citationMarkup = citations.length
+    ? `<div class="assistant-citations">Context: ${citations.slice(0, 4).map((item) => `<code>${escapeHtml(item)}</code>`).join(" ")}</div>`
+    : "";
+  const systemClass = isSystem ? " assistant-message-system" : "";
+  log.insertAdjacentHTML(
+    "beforeend",
+    `
+      <article class="assistant-message ${roleClass}${systemClass}">
+        <span class="assistant-role">${role === "user" ? "You" : "NANO AI"}</span>
+        <p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>
+        ${citationMarkup}
+      </article>
+    `,
+  );
+  scrollAssistantLog();
+}
+
+function scrollAssistantLog() {
+  const log = document.getElementById("assistant-log");
+  if (!log) {
+    return;
+  }
+  log.scrollTop = log.scrollHeight;
 }
 
 function updateRefreshCountdown() {
