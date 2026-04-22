@@ -66,8 +66,11 @@ For a public share link from a local machine, start the optional share profile:
 bash scripts/share_dashboard.sh
 ```
 
-That launches a Cloudflare tunnel and prints a public dashboard URL while the
-Docker services remain up.
+That launches a Cloudflare tunnel and prints a public dashboard URL.
+
+If Docker Compose is available, the script uses the Docker dashboard and share
+services. If Docker Compose is unavailable, it falls back to the local Python
+dashboard runtime on `127.0.0.1:8080` and starts a host-side Cloudflare tunnel.
 
 By default it uses a quick tunnel, which means the hostname will be a random
 `trycloudflare.com` subdomain. Those quick-tunnel names cannot be customized,

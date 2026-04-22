@@ -46,7 +46,12 @@ If you need to share the dashboard with someone outside your machine, run:
 bash scripts/share_dashboard.sh
 ```
 
-That prints a temporary public URL backed by the live Docker runtime.
+That prints a temporary public URL backed by the live runtime.
+
+If Docker Compose is available, the script uses the Docker dashboard service
+plus the Cloudflare share profile. If Docker Compose is unavailable, it falls
+back to the local Python runtime on `127.0.0.1:8080` and opens a host-side
+Cloudflare tunnel instead.
 
 For a stable branded hostname under the real domain, configure a named
 Cloudflare tunnel and set:

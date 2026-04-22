@@ -230,6 +230,10 @@ make dashboard-share
 That command starts the dashboard, starts the tunnel sidecar, and prints the
 active public dashboard URL for the current session.
 
+If Docker Compose is unavailable, the same command falls back to the local
+Python dashboard runtime on `127.0.0.1:8080` and starts a host-side
+`cloudflared` quick tunnel instead.
+
 The Cloudflare-hosted links currently used for sharing this repository are:
 
 - Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
@@ -263,6 +267,9 @@ service and can print the custom-domain link instead of a random
 `trycloudflare.com` URL.
 
 The share link stays live while the Docker services keep running.
+
+On machines using the non-Docker fallback, the share link stays live while the
+local dashboard process and the `cloudflared` process keep running.
 
 To verify the runtime is still healthy and auto-rebuilding continuously:
 
