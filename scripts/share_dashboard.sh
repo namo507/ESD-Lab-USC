@@ -28,8 +28,9 @@ share_service="dashboard-share"
 export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"
 
 if [[ -n "$named_tunnel_token" && -z "$public_hostname" ]]; then
-  echo "DASHBOARD_PUBLIC_HOSTNAME must be set when CLOUDFLARE_TUNNEL_TOKEN is configured." >&2
-  exit 1
+  echo "CLOUDFLARE_TUNNEL_TOKEN is configured but DASHBOARD_PUBLIC_HOSTNAME is blank; falling back to a quick tunnel." >&2
+  named_tunnel_token=""
+  export CLOUDFLARE_TUNNEL_TOKEN=""
 fi
 
 if [[ -z "$named_tunnel_token" && -n "$public_hostname" ]]; then
