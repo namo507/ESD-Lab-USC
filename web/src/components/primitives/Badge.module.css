@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--w-semibold);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  border-radius: var(--r-4);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+.mono { font-family: var(--font-mono); }
+
+.size-sm { font-size: 10px; padding: 2px 6px; }
+.size-md { font-size: 11px; padding: 3px 8px; }
+
+.dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-info    { background: var(--blue); }
+.dot-ok      { background: var(--green); }
+.dot-fail    { background: var(--red); }
+.dot-pending { background: var(--purple); }
+
+.kind-info    { background: var(--blue-tint);  color: var(--on-info); }
+.kind-ok      { background: var(--green-tint); color: var(--on-ok); }
+.kind-fail    { background: var(--red-tint);   color: var(--on-fail); }
+.kind-pending { background: var(--purple-tint); color: var(--on-pending); }
+.kind-neutral { background: var(--slate-100); color: var(--slate-700); }
+.kind-phi     { background: var(--usc-garnet); color: var(--fg-on-brand); }
+.kind-asib    { background: var(--asib-bg); color: var(--fg-on-brand); }
+.kind-pt      { background: var(--usc-gold); color: var(--on-gold); }
+.kind-td      { background: var(--slate-500); color: var(--fg-on-brand); }
+.kind-vpt     { background: var(--usc-garnet); color: var(--fg-on-brand); }
+.kind-warn    { background: var(--usc-gold-tint); color: var(--warn-fg); }
+.kind-gold    { background: var(--usc-gold); color: var(--on-gold); }
+.kind-inverse { background: var(--ink); color: var(--fg-on-brand); }

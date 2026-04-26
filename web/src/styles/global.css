@@ -1,0 +1,114 @@
+/* Global app styles. Token references only — no HEX literals. */
+
+/* Extended tokens — additions only; tokens.css is the verbatim master. */
+:root {
+  --on-gold: #3a2a00;
+  --on-info: #2f4a7a;
+  --on-ok:   #2a5f37;
+  --on-fail: #7a2f33;
+  --on-pending: #4b3b75;
+  --asib-bg: #3b2966;
+  --warn-fg: #5c4500;
+
+  --amber: #d97706;        /* SQI 0.3-0.5 */
+  --amber-warn: #a06000;   /* ectopic / motion stroke */
+
+  --tile-accept-bg: #f0f7f1;
+  --tile-accept-border: #b9d6c0;
+  --tile-reject-bg: #faf0f0;
+  --tile-reject-border: #e0b7b9;
+
+  --gold-hover: #ffd633;
+  --hipaa-bg: #faf2f2;
+  --ecg-grid: #1f2228;
+  --terminal-fg: #e8e6e2;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+  color: var(--fg1);
+}
+
+/* Page-level layout */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  max-width: 1400px;
+  padding: 28px 32px;
+}
+.app-main.compact { padding: 20px 24px; }
+
+.app-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-micro);
+  color: var(--slate-400);
+  font-family: var(--font-mono);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Animations */
+.pulse-dot { animation: nano-pulse 1.6s ease-in-out infinite; }
+@keyframes nano-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+.flow-line { stroke-dashoffset: 0; animation: dashflow 1.2s linear infinite; }
+@keyframes dashflow { to { stroke-dashoffset: -16; } }
+
+/* Focus rings — gold per spec, never suppressed */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+  border-radius: var(--r-2);
+}
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-page), 0 0 0 4px var(--usc-gold);
+}
+input:focus-visible {
+  outline: none;
+  border-color: var(--usc-garnet);
+  box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.4);
+}
+select:focus-visible {
+  outline: none;
+  border-color: var(--usc-garnet);
+}
+
+/* Visually hidden table caption (a11y) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot, .flow-line { animation: none !important; }
+  * { transition: none !important; }
+}

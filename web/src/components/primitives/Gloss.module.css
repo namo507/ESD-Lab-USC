@@ -1,0 +1,7 @@
+.term {
+  cursor: help;
+  border-bottom: 1px solid transparent;
+}
+.dotted {
+  border-bottom: 1px dotted var(--slate-400);
+}

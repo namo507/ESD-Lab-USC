@@ -1,0 +1,25 @@
+.wrap {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  background: var(--white);
+  overflow: hidden;
+}
+
+.btn {
+  font: inherit;
+  font-weight: var(--w-medium);
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--slate-700);
+  border: none;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  letter-spacing: 0.01em;
+}
+.btn:last-child { border-right: none; }
+.btn:hover { background: var(--bg-hover); }
+.active { background: var(--bg-inverse); color: var(--fg-on-brand); }
+
+.s-sm .btn { font-size: 11px; padding: 4px 10px; }
+.s-md .btn { font-size: 12px; padding: 6px 10px; }

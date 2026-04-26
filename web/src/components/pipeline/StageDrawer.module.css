@@ -1,0 +1,48 @@
+.wrap { display: flex; flex-direction: column; gap: 16px; }
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: var(--w-semibold);
+  margin-top: 4px;
+}
+.desc { font-size: 13px; color: var(--slate-700); margin-top: 8px; line-height: 1.55; }
+
+.metaMono { font-size: 11px; color: var(--slate-500); }
+.strong { color: var(--ink); font-weight: var(--w-semibold); }
+
+.barTrack {
+  display: flex;
+  height: 8px;
+  border-radius: var(--r-2);
+  overflow: hidden;
+  background: var(--slate-100);
+}
+.barSeg { height: 8px; }
+
+.legend { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+.legendItem { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--slate-700); }
+.swatch { width: 7px; height: 7px; border-radius: 1px; }
+
+.metaGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 12px; }
+.metaCell {
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+}
+.metaLabel {
+  font-size: 10px;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.metaValue { font-weight: var(--w-semibold); margin-top: 2px; }
+
+.actions { display: flex; gap: 6px; }
