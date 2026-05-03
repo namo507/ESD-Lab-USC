@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-05-01T19:53:49",
+    "generated_at": "2026-05-02T21:49:15",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -42,15 +42,15 @@
       "2025-11",
       "2025-12",
       "2026-01",
-      "2026-01",
+      "2026-02",
       "2026-03",
       "2026-04"
     ],
     "by_group": {
       "ASIB": {
         "target": 65,
-        "current": 53,
-        "percent": 81.5,
+        "current": 51,
+        "percent": 78.5,
         "monthly": [
           3,
           3,
@@ -79,17 +79,17 @@
           49,
           49,
           51,
-          53,
-          53,
-          53
+          51,
+          51,
+          51
         ],
         "color": "#C44E52",
         "label": "ASIB (VPT + ASD traits)"
       },
       "PT": {
         "target": 130,
-        "current": 97,
-        "percent": 74.6,
+        "current": 100,
+        "percent": 76.9,
         "monthly": [
           0,
           1,
@@ -118,17 +118,17 @@
           93,
           96,
           96,
-          96,
-          97,
-          97
+          99,
+          100,
+          100
         ],
         "color": "#4C72B0",
         "label": "PT (VPT typical)"
       },
       "TD": {
         "target": 65,
-        "current": 49,
-        "percent": 75.4,
+        "current": 50,
+        "percent": 76.9,
         "monthly": [
           1,
           1,
@@ -157,9 +157,9 @@
           48,
           48,
           48,
-          48,
           49,
-          49
+          50,
+          50
         ],
         "color": "#55A868",
         "label": "TD (Term-born typical)"
