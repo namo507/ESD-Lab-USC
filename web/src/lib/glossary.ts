@@ -48,6 +48,10 @@ export const GLOSS = {
     "Protected Health Information. Names, DOBs, MRNs, exact addresses. Never enters data/processed/deidentified/.",
   HIPAA:
     "Health Insurance Portability and Accountability Act. The dashboard logs access, enforces session timeouts, and prevents direct PHI export.",
+  Actiheart:
+    "Actiheart-5 — chest-worn ambulatory ECG + accelerometer used in the NANO Study. 1024 Hz, single-lead. Source of every raw .ecg file.",
+  ASD:
+    "Autism Spectrum Disorder. The Early Social Development Lab studies its earliest behavioral and physiological signatures in infants from 1–36 months.",
 } as const;
 
 export type GlossTerm = keyof typeof GLOSS;

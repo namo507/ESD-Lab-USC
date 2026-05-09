@@ -7,6 +7,7 @@ const REQUIRED_TERMS = [
   "HDA", "SQI", "Epoch", "Window", "Ectopic",
   "Orienting", "Sustained", "Inattention", "Termination",
   "RedCap", "Actiheart5", "PHI", "HIPAA",
+  "Actiheart", "ASD",
 ] as const;
 
 describe("glossary", () => {
