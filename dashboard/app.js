@@ -314,6 +314,7 @@ document.addEventListener("DOMContentLoaded", bootstrap);
 async function bootstrap() {
   initializeTheme();
   decorateRevealTargets();
+  setupSyncHeroMotion();
   setupNavigation();
   setupAnchorRouting();
   setupViewPanel();
@@ -541,7 +542,9 @@ function getOrganizationSitePayload() {
 }
 
 function decorateRevealTargets() {
-  document.querySelectorAll(".card, .pipeline, .sync-card, .section-jumpbar, .atlas-card").forEach((element) => {
+  document
+    .querySelectorAll(".card, .pipeline, .sync-card, .sync-highlight-card, .sync-arm-card, .section-jumpbar, .atlas-card")
+    .forEach((element) => {
     element.classList.add("reveal");
   });
 
@@ -559,6 +562,39 @@ function decorateRevealTargets() {
   document.querySelectorAll(".reveal").forEach((element) => {
     revealObserver.observe(element);
   });
+}
+
+function setupSyncHeroMotion() {
+  const surface = document.getElementById("sync-banner");
+  if (!surface) {
+    return;
+  }
+
+  const resetSurface = () => {
+    surface.style.setProperty("--sync-spot-x", "76%");
+    surface.style.setProperty("--sync-spot-y", "24%");
+    surface.style.setProperty("--sync-tilt-x", "0deg");
+    surface.style.setProperty("--sync-tilt-y", "0deg");
+  };
+
+  resetSurface();
+
+  if (prefersReducedMotion()) {
+    return;
+  }
+
+  surface.addEventListener("pointermove", (event) => {
+    const bounds = surface.getBoundingClientRect();
+    const pointerX = (event.clientX - bounds.left) / bounds.width;
+    const pointerY = (event.clientY - bounds.top) / bounds.height;
+
+    surface.style.setProperty("--sync-spot-x", `${(pointerX * 100).toFixed(2)}%`);
+    surface.style.setProperty("--sync-spot-y", `${(pointerY * 100).toFixed(2)}%`);
+    surface.style.setProperty("--sync-tilt-x", `${((0.5 - pointerY) * 4.2).toFixed(2)}deg`);
+    surface.style.setProperty("--sync-tilt-y", `${((pointerX - 0.5) * 6).toFixed(2)}deg`);
+  });
+
+  surface.addEventListener("pointerleave", resetSurface);
 }
 
 function setupNavigation() {
