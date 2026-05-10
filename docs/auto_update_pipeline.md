@@ -60,34 +60,56 @@ To verify the running container is healthy and the watcher is still triggering r
 python scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
 ```
 
-For a public share link from a local machine, start the optional share profile:
+For a public share link from a local machine:
 
 ```bash
-bash scripts/share_dashboard.sh
+make dashboard-share      # auto mode: prefer named tunnel, fall back to Pages wrapper
+make share-named          # require stable named tunnel; fail if .env incomplete
+make share-quick          # one-off random hostname (no wrapper deploy)
 ```
 
-That launches a Cloudflare tunnel and prints a public dashboard URL.
+The canonical public URL is the **Cloudflare Pages wrapper** at
+`https://esd-lab-namo.pages.dev/`. The wrapper iframes whichever cloudflared
+origin is currently live; the wrapper URL itself never rotates.
 
-If Docker Compose is available, the script uses the Docker dashboard and share
-services. If Docker Compose is unavailable, it falls back to the local Python
-dashboard runtime on `127.0.0.1:8080` and starts a host-side Cloudflare tunnel.
+When auto/quick mode runs, the script:
 
-By default it uses a quick tunnel, which means the hostname will be a random
-`trycloudflare.com` subdomain. Those quick-tunnel names cannot be customized,
-and each quick-share URL should be treated as temporary for the current runtime
-session only.
+1. starts the dashboard runtime (Docker Compose or host Python fallback).
+2. starts the cloudflared tunnel.
+3. captures the new origin URL.
+4. **regenerates** `dashboard/public/pages_wrapper/index.html` and
+   `dist/pages-wrapper/index.html` so the iframe target is fresh.
+5. prints a `Canonical public URL` block plus an `Ephemeral cloudflared
+   origin` block separately. Only the canonical URL should ever be published.
 
-To use a stable branded hostname instead, configure a named tunnel in
-Cloudflare and set these values in `.env`:
+After every quick-tunnel run, deploy the regenerated wrapper to Pages:
+
+```bash
+make pages-deploy
+# = npx wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo
+```
+
+To promote to Tier 1 (a stable branded hostname instead of the wrapper),
+configure a named Cloudflare tunnel and set both `.env` values:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, the same `bash scripts/share_dashboard.sh` command will print
-`https://dashboard.esdlabsc.com/dashboard/` instead of a random
-quick-tunnel URL.
+`make share-named` then prints `https://dashboard.esdlabsc.com/dashboard/`
+as the canonical URL and skips the wrapper rebuild.
+
+Cloudflare account prerequisites required for the named-tunnel path:
+
+- The DNS zone (`esdlabsc.com`) must be attached to the Cloudflare account.
+- A named Tunnel must exist in Cloudflare Zero Trust with a public hostname
+  mapped to `http://dashboard:8080` (Compose service) or
+  `http://localhost:8080` (host-mode runtime).
+
+If those prerequisites are missing, the share script never silently degrades
+— it warns explicitly that it is falling back to a quick tunnel behind the
+Pages wrapper.
 
 ## 4. Running it manually
 

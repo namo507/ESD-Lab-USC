@@ -40,26 +40,45 @@ docker compose up --build dashboard
 
 Then open `http://localhost:8080/dashboard/`.
 
-If you need to share the dashboard with someone outside your machine, run:
+If you need to share the dashboard with someone outside your machine, the
+canonical public URL is:
+
+> **https://esd-lab-namo.pages.dev/** (Cloudflare Pages wrapper · stable)
+
+The wrapper iframes the live cloudflared origin. Run one of:
 
 ```bash
-bash scripts/share_dashboard.sh
+make share-named         # use the stable named tunnel hostname (preferred)
+make dashboard-share     # auto: named when configured, otherwise quick + Pages wrapper
+make share-quick         # one-off random hostname, no wrapper
 ```
 
-That prints a temporary public URL backed by the live runtime.
+Output prints a clearly-labelled `Canonical public URL` plus, in
+quick-tunnel mode, an `Ephemeral cloudflared origin` line that **must not be
+published**. After a quick-tunnel run, deploy the regenerated wrapper:
 
-If Docker Compose is available, the script uses the Docker dashboard service
-plus the Cloudflare share profile. If Docker Compose is unavailable, it falls
-back to the local Python runtime on `127.0.0.1:8080` and opens a host-side
-Cloudflare tunnel instead.
+```bash
+make pages-deploy
+```
 
-For a stable branded hostname under the real domain, configure a named
-Cloudflare tunnel and set:
+For a stable branded hostname (e.g. `https://dashboard.esdlabsc.com/dashboard/`),
+configure both values in `.env` and use `make share-named`:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
+
+Cloudflare account prerequisites for Tier 1 (named tunnel):
+
+1. DNS zone for `esdlabsc.com` attached to the Cloudflare account.
+2. A named Tunnel in Cloudflare Zero Trust pointing at `http://dashboard:8080`.
+3. The Tunnel token copied into `.env`.
+
+If those prerequisites are not in place, the auto mode falls back to the
+Pages wrapper (Tier 2) — the wrapper URL stays the same; only the hidden
+iframe target rotates, and the share script regenerates the wrapper on
+every run.
 
 ### Option C — From a URL (if you host it)
 ```

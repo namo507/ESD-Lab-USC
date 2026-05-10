@@ -1,0 +1,7 @@
+{
+  "dashboard_url": "https://run-2.trycloudflare.com/dashboard/",
+  "origin_host": "run-2.trycloudflare.com",
+  "tunnel_kind": "quick",
+  "generated_at": "2026-05-10T15:35:02+00:00",
+  "wrapper_canonical": "https://esd-lab-namo.pages.dev/"
+}

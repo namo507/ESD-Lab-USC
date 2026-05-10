@@ -214,68 +214,89 @@ This repository can also be opened in a VS Code dev container. The dev container
 
 To reopen the current workspace in the container, use the VS Code command palette and run `Dev Containers: Reopen in Container` after Docker Desktop is running.
 
-Current stable public entrypoints:
+Current canonical public entrypoint:
 
-- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
-- Direct dashboard origin: the current `make dashboard-share` URL printed for the active Cloudflare quick tunnel session
+- **Stable**: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/) — Cloudflare Pages wrapper. The wrapper iframes the live dashboard origin; only this URL should ever be published. Promoted to a named tunnel hostname (`https://dashboard.esdlabsc.com/dashboard/`) when both `CLOUDFLARE_TUNNEL_TOKEN` and `DASHBOARD_PUBLIC_HOSTNAME` are set.
 
-### Shareable Public Links
+### Public Dashboard Sharing
 
-You can expose the live dashboard publicly with:
+There is exactly **one** canonical public URL for the dashboard at any time.
+The share workflow exposes three explicit modes so the URL is never
+ambiguous:
 
-```bash
-make dashboard-share
-```
+| Command | Mode | Canonical URL | Stable? |
+|---------|------|---------------|---------|
+| `make share-named`       | named  | `https://dashboard.esdlabsc.com/dashboard/`            | yes — DNS-backed |
+| `make dashboard-share`   | auto   | named when configured, otherwise → ⬇ Pages wrapper     | yes (wrapper URL) |
+| `make share-quick`       | quick  | `https://esd-lab-namo.pages.dev/` (Pages wrapper)      | yes (wrapper URL) |
 
-That command starts the dashboard, starts the tunnel sidecar, and prints the
-active public dashboard URL for the current session.
+The Pages wrapper at **`https://esd-lab-namo.pages.dev/`** iframes whichever
+cloudflared origin the share script just brought up. The wrapper URL itself
+never rotates; the iframe target inside it is regenerated automatically every
+run from `dashboard/public/pages_wrapper/template.html` and deployed with
+`make pages-deploy`.
 
 If Docker Compose is unavailable, the same command falls back to the local
 Python dashboard runtime on `127.0.0.1:8080` and starts a host-side
-`cloudflared` quick tunnel instead.
+`cloudflared` tunnel instead.
 
-The Cloudflare-hosted links currently used for sharing this repository are:
+#### Tier 1 — stable named tunnel (preferred)
 
-- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
-- Active direct dashboard URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
-
-The Pages wrapper is the preferred public link, but on this machine it still
-depends on the currently active Cloudflare quick tunnel because no local named
-tunnel token/hostname pair is configured.
-
-By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
-printed public URL is temporary and the hostname is random. Do not document or
-bookmark a previous quick-tunnel URL as a permanent dashboard address, because
-it changes when the tunnel is recreated, and update the Pages wrapper if you
-need the embedded public page to keep working after a tunnel restart.
-
-For temporary sharing, always rerun `make dashboard-share` and send only the
-latest quick-share URL printed by the script.
-
-To move from the current quick-tunnel-backed wrapper to a stable branded
-hostname such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS
-zone to the Cloudflare account, create a named public hostname, and set these
-variables in `.env` before running the same command:
+Set both values in `.env` and run `make share-named`:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, `make dashboard-share` switches to the `dashboard-share-named`
-service and can print the custom-domain link instead of a random
-`trycloudflare.com` URL.
+Prerequisites in the Cloudflare account:
 
-The share link stays live while the Docker services keep running.
+1. The DNS zone (e.g. `esdlabsc.com`) attached to Cloudflare.
+2. A named Tunnel created in the Cloudflare Zero Trust dashboard with a
+   public hostname pointing at `http://dashboard:8080` (Compose service
+   name) or the host's `http://localhost:8080`.
+3. The Tunnel token copied into `.env`.
 
-On machines using the non-Docker fallback, the share link stays live while the
-local dashboard process and the `cloudflared` process keep running.
+If those prerequisites are missing, `make share-named` exits non-zero rather
+than silently degrading to a quick tunnel.
 
-To verify the runtime is still healthy and auto-rebuilding continuously:
+#### Tier 2 — Pages wrapper + quick origin (default fallback)
+
+`make dashboard-share` (with both values blank) starts a quick Cloudflare
+tunnel and rebuilds the Pages wrapper to embed the new origin URL. The team
+keeps sharing the same canonical wrapper URL:
+
+> **`https://esd-lab-namo.pages.dev/`**
+
+The wrapper artifact is written to `dist/pages-wrapper/index.html` plus a
+preview at `dashboard/public/pages_wrapper/index.html` and a manifest at
+`dashboard/public/pages_wrapper/manifest.json`. To push the regenerated
+wrapper to Pages:
 
 ```bash
-make dashboard-smoke
+make pages-deploy   # uses npx wrangler pages deploy
 ```
+
+The cloudflared origin (`https://<random>.trycloudflare.com/dashboard/`) is
+printed *separately* and labelled "Ephemeral cloudflared origin (do NOT
+publish)" so it is never confused with the canonical URL.
+
+#### Tier 3 — quick tunnel only
+
+`make share-quick` skips the Pages wrapper entirely and prints only the
+ephemeral hostname. Use this for a one-off share where rotation is fine.
+
+### Verifying the share
+
+```bash
+make dashboard-smoke    # local /api/healthz + watcher liveness check
+curl -I "$(cat ${XDG_RUNTIME_DIR:-/tmp}/esd-lab-usc-share/last_origin.txt)"
+```
+
+The most recent origin URL is recorded in
+`${XDG_RUNTIME_DIR:-/tmp}/esd-lab-usc-share/last_origin.txt` so callers can
+re-verify without re-running the share. The share link stays live while the
+local dashboard process and the `cloudflared` process keep running.
 
 ### Local Dashboard Assistant
 

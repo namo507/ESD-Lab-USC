@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick pages-build pages-deploy assistant-status assistant-prepare
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -112,8 +112,24 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-dashboard-share:  ## Start a public share tunnel and print the shareable URL
-	bash scripts/share_dashboard.sh
+dashboard-share:  ## Start a public share tunnel (auto: prefer named, fall back to quick)
+	bash scripts/share_dashboard.sh --mode auto
+
+share-named:  ## Require a named Cloudflare tunnel; fail if .env is incomplete
+	bash scripts/share_dashboard.sh --mode named
+
+share-quick:  ## Force a quick (random) Cloudflare tunnel for one-off shares
+	bash scripts/share_dashboard.sh --mode quick
+
+pages-build:  ## Render the Pages wrapper from ORIGIN=<https://...> [KIND=quick|named]
+	@if [ -z "$(ORIGIN)" ]; then \
+		echo "Usage: make pages-build ORIGIN=https://<host>/dashboard/ [KIND=quick|named]"; \
+		exit 64; \
+	fi
+	$(PYTHON) scripts/build_pages_wrapper.py --origin "$(ORIGIN)" $(if $(KIND),--kind $(KIND))
+
+pages-deploy: pages-build  ## Deploy dist/pages-wrapper to Cloudflare Pages (esd-lab-namo)
+	npx --yes wrangler@latest pages deploy dist/pages-wrapper --project-name esd-lab-namo
 
 assistant-status:  ## Check local dashboard assistant readiness
 	$(PYTHON) scripts/prepare_dashboard_assistant.py

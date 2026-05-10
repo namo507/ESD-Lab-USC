@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
+# Share the live NANO dashboard with a clearly-labelled public URL.
+#
+# Modes:
+#   --mode auto      (default) prefer named tunnel; fall back to quick tunnel
+#                    only with an explicit warning.
+#   --mode named     require a named Cloudflare tunnel; fail loudly otherwise.
+#   --mode quick     always run a quick (random hostname) tunnel.
+#
+# Output is unambiguous:
+#   * Canonical public URL — the URL operators should publish.
+#   * Ephemeral origin URL — the rotating cloudflared origin (only printed
+#                            when the canonical URL is the Pages wrapper or
+#                            a quick tunnel).
+#
+# After a quick tunnel comes up, this script automatically regenerates the
+# Cloudflare Pages wrapper at `dashboard/public/pages_wrapper/` so the
+# canonical wrapper URL embeds the new origin. The deploy step
+# (`wrangler pages deploy`) stays the operator's call.
+
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -13,6 +32,23 @@ DASHBOARD_PID_FILE="$STATE_DIR/dashboard.pid"
 DASHBOARD_LOG_FILE="$STATE_DIR/dashboard.log"
 TUNNEL_PID_FILE="$STATE_DIR/cloudflared.pid"
 TUNNEL_LOG_FILE="$STATE_DIR/cloudflared.log"
+ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
+
+PAGES_WRAPPER_CANONICAL="https://esd-lab-namo.pages.dev/"
+
+mode="auto"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --mode) mode="$2"; shift 2 ;;
+    --mode=*) mode="${1#--mode=}"; shift ;;
+    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; exit 64 ;;
+  esac
+done
+case "$mode" in
+  auto|named|quick) : ;;
+  *) echo "--mode must be one of: auto | named | quick (got '$mode')" >&2; exit 64 ;;
+esac
 
 if [[ -f .env ]]; then
   set -a
@@ -25,20 +61,44 @@ named_tunnel_token="${CLOUDFLARE_TUNNEL_TOKEN:-}"
 public_hostname="${DASHBOARD_PUBLIC_HOSTNAME:-}"
 share_service="dashboard-share"
 
+case "$mode" in
+  named)
+    if [[ -z "$named_tunnel_token" ]] || [[ -z "$public_hostname" ]]; then
+      echo "ERROR: --mode named requires both CLOUDFLARE_TUNNEL_TOKEN and DASHBOARD_PUBLIC_HOSTNAME in .env." >&2
+      echo "Hint: see README.md § Stable named-tunnel sharing." >&2
+      exit 78
+    fi
+    use_named="true"
+    ;;
+  quick)
+    if [[ -n "$named_tunnel_token" ]] || [[ -n "$public_hostname" ]]; then
+      echo "Note: --mode quick — ignoring CLOUDFLARE_TUNNEL_TOKEN/DASHBOARD_PUBLIC_HOSTNAME for this run." >&2
+    fi
+    named_tunnel_token=""
+    public_hostname=""
+    use_named="false"
+    ;;
+  auto)
+    if [[ -n "$named_tunnel_token" && -n "$public_hostname" ]]; then
+      use_named="true"
+    elif [[ -n "$named_tunnel_token" && -z "$public_hostname" ]]; then
+      echo "WARNING: CLOUDFLARE_TUNNEL_TOKEN is set but DASHBOARD_PUBLIC_HOSTNAME is blank." >&2
+      echo "         Falling back to a quick (random) tunnel because no stable hostname is wired up." >&2
+      echo "         Pass --mode named to fail instead, or set DASHBOARD_PUBLIC_HOSTNAME." >&2
+      named_tunnel_token=""
+      use_named="false"
+    elif [[ -z "$named_tunnel_token" && -n "$public_hostname" ]]; then
+      echo "ERROR: DASHBOARD_PUBLIC_HOSTNAME is set but CLOUDFLARE_TUNNEL_TOKEN is missing." >&2
+      exit 78
+    else
+      use_named="false"
+    fi
+    ;;
+esac
+
 export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"
 
-if [[ -n "$named_tunnel_token" && -z "$public_hostname" ]]; then
-  echo "CLOUDFLARE_TUNNEL_TOKEN is configured but DASHBOARD_PUBLIC_HOSTNAME is blank; falling back to a quick tunnel." >&2
-  named_tunnel_token=""
-  export CLOUDFLARE_TUNNEL_TOKEN=""
-fi
-
-if [[ -z "$named_tunnel_token" && -n "$public_hostname" ]]; then
-  echo "CLOUDFLARE_TUNNEL_TOKEN must be set to use DASHBOARD_PUBLIC_HOSTNAME." >&2
-  exit 1
-fi
-
-if [[ -n "$named_tunnel_token" ]]; then
+if [[ "$use_named" == "true" ]]; then
   share_service="dashboard-share-named"
 fi
 
@@ -156,9 +216,67 @@ ensure_cloudflared() {
   printf '%s\n' "$cloudflared_bin"
 }
 
+# Print the result block. `origin_url` is the cloudflared origin (https://...).
+# When the named tunnel is in use, `origin_url` already equals
+# `https://${public_hostname}/dashboard/`.
+emit_result() {
+  local origin_url="$1"
+  local kind="$2"   # named | quick
+  local rebuild_msg=""
+
+  printf '%s\n' "$origin_url" >"$ORIGIN_RECORD"
+
+  echo
+  echo "════════════════════════════════════════════════════════════════════"
+  if [[ "$kind" == "named" ]]; then
+    echo "  Canonical public URL (stable, named Cloudflare tunnel)"
+    echo "  → ${origin_url}"
+  else
+    echo "  Canonical public URL (Cloudflare Pages wrapper · stable)"
+    echo "  → ${PAGES_WRAPPER_CANONICAL}"
+    echo
+    echo "  Ephemeral cloudflared origin (rotating quick tunnel — do NOT publish)"
+    echo "  → ${origin_url}"
+  fi
+  echo "════════════════════════════════════════════════════════════════════"
+
+  # Rebuild the wrapper artifact deterministically so the iframe target is fresh.
+  local python_bin
+  python_bin="$(resolve_python)" || python_bin=""
+  if [[ -n "$python_bin" ]]; then
+    if "$python_bin" scripts/build_pages_wrapper.py --origin "$origin_url" --kind "$kind" >/dev/null; then
+      rebuild_msg="rebuilt: dashboard/public/pages_wrapper/index.html and dist/pages-wrapper/index.html"
+    else
+      rebuild_msg="WARNING: failed to regenerate Pages wrapper — run scripts/build_pages_wrapper.py manually."
+    fi
+  else
+    rebuild_msg="WARNING: no Python interpreter found — skipped Pages wrapper regen."
+  fi
+  echo "Pages wrapper: ${rebuild_msg}"
+
+  if [[ "$kind" == "quick" ]]; then
+    cat <<EOF
+Next:
+  1. Verify the origin returns 200:    curl -I ${origin_url}
+  2. Deploy the regenerated wrapper:   npx wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo
+  3. Open ${PAGES_WRAPPER_CANONICAL} in a browser.
+
+This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.
+EOF
+  else
+    cat <<EOF
+Next:
+  1. Verify the origin returns 200:    curl -I ${origin_url}
+  2. Open ${origin_url} in a browser.
+
+The named-tunnel hostname stays the same as long as the tunnel keeps running.
+EOF
+  fi
+}
+
 print_host_tunnel_result() {
   local deadline=$((SECONDS + 120))
-  if [[ -n "$named_tunnel_token" ]]; then
+  if [[ "$use_named" == "true" ]]; then
     echo "Waiting for named Cloudflare tunnel to register..."
   else
     echo "Waiting for public URL from Cloudflare quick tunnel..."
@@ -178,29 +296,14 @@ print_host_tunnel_result() {
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
 
-    if [[ -n "$named_tunnel_token" && -n "$registered" ]]; then
-      echo
-      echo "Stable dashboard URL:"
-      echo "https://${public_hostname}/dashboard/"
-      echo
-      echo "The tunnel stays live while these processes are running:"
-      echo "- dashboard: $(cat "$DASHBOARD_PID_FILE" 2>/dev/null || echo unknown)"
-      echo "- cloudflared: $(cat "$TUNNEL_PID_FILE" 2>/dev/null || echo unknown)"
+    if [[ "$use_named" == "true" && -n "$registered" ]]; then
+      emit_result "https://${public_hostname}/dashboard/" "named"
       return 0
     fi
-
-    if [[ -z "$named_tunnel_token" && -n "$url" && -n "$registered" ]]; then
-      echo
-      echo "Temporary quick-share dashboard URL:"
-      echo "${url}/dashboard/"
-      echo
-      echo "This quick-tunnel hostname is temporary and changes when the share service restarts."
-      echo "The tunnel stays live while these processes are running:"
-      echo "- dashboard: $(cat "$DASHBOARD_PID_FILE" 2>/dev/null || echo existing)"
-      echo "- cloudflared: $(cat "$TUNNEL_PID_FILE" 2>/dev/null || echo unknown)"
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+      emit_result "${url}/dashboard/" "quick"
       return 0
     fi
-
     sleep 2
   done
 
@@ -215,7 +318,7 @@ share_with_docker() {
   docker compose --profile share rm -sf dashboard-share dashboard-share-named >/dev/null 2>&1 || true
   docker compose --profile share up -d --force-recreate "$share_service" >/dev/null
 
-  if [[ -n "$named_tunnel_token" ]]; then
+  if [[ "$use_named" == "true" ]]; then
     echo "Waiting for named Cloudflare tunnel to register..."
   else
     echo "Waiting for public URL from Cloudflare quick tunnel..."
@@ -227,22 +330,12 @@ share_with_docker() {
     recent_logs="$({ docker compose logs --since=2m "$share_service" 2>/dev/null || true; })"
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
-    if [[ -n "$named_tunnel_token" && -n "$registered" ]]; then
-      echo
-      echo "Stable dashboard URL:"
-      echo "https://${public_hostname}/dashboard/"
-      echo
-      echo "The tunnel stays live while the Docker services are running."
+    if [[ "$use_named" == "true" && -n "$registered" ]]; then
+      emit_result "https://${public_hostname}/dashboard/" "named"
       return 0
     fi
-
-    if [[ -z "$named_tunnel_token" && -n "$url" && -n "$registered" ]]; then
-      echo
-      echo "Temporary quick-share dashboard URL:"
-      echo "${url}/dashboard/"
-      echo
-      echo "This quick-tunnel hostname is temporary and changes when the share service restarts."
-      echo "The tunnel stays live while the Docker services are running."
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+      emit_result "${url}/dashboard/" "quick"
       return 0
     fi
     sleep 2
@@ -263,7 +356,7 @@ share_without_docker() {
   stop_pid_file "$TUNNEL_PID_FILE"
   : >"$TUNNEL_LOG_FILE"
 
-  if [[ -n "$named_tunnel_token" ]]; then
+  if [[ "$use_named" == "true" ]]; then
     nohup "$cloudflared_bin" tunnel --no-autoupdate run --token "$named_tunnel_token" >"$TUNNEL_LOG_FILE" 2>&1 &
   else
     nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
@@ -273,7 +366,7 @@ share_without_docker() {
   print_host_tunnel_result
 }
 
-if have_command docker; then
+if have_command docker && docker compose version >/dev/null 2>&1; then
   share_with_docker
 else
   share_without_docker

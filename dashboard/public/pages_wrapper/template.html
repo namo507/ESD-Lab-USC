@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>University of South Carolina | ESD Lab Dashboard</title>
+    <meta name="generator" content="ESD-Lab-USC pages_wrapper {{GENERATED_AT}}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #ece4d7;
+        --panel: rgba(255, 250, 242, 0.74);
+        --panel-strong: #fffaf2;
+        --ink: #201711;
+        --muted: #6d6155;
+        --accent: #7f241c;
+        --line: rgba(88, 64, 46, 0.14);
+        --shadow: 0 28px 60px rgba(40, 25, 15, 0.16);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Manrope", sans-serif;
+        background: radial-gradient(circle at top, #fffaf3 0%, var(--bg) 48%, #ddd0bf 100%);
+        color: var(--ink);
+      }
+      a { text-decoration: none; }
+      .shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; gap: 14px; padding: 18px; }
+      .banner {
+        display: grid; grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center; gap: 14px; padding: 14px 18px;
+        border: 1px solid var(--line); border-radius: 24px;
+        background: var(--panel); backdrop-filter: blur(14px);
+        box-shadow: 0 18px 42px rgba(40, 25, 15, 0.1);
+      }
+      .title { display: grid; gap: 4px; min-width: 0; }
+      .title-label {
+        display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        color: var(--accent); font-size: 10px; font-weight: 800;
+        letter-spacing: 0.14em; line-height: 1.4; text-transform: uppercase;
+      }
+      .title-label::before { content: ""; width: 24px; height: 1px; background: currentColor; }
+      .title strong {
+        font-family: "Fraunces", Georgia, serif; font-size: clamp(20px, 2.8vw, 30px);
+        font-weight: 600; line-height: 1.02; letter-spacing: -0.04em;
+      }
+      .title span:last-child { max-width: 58ch; color: var(--muted); font-size: 13px; }
+      .actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+      .actions a {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-height: 40px; padding: 0 14px; border-radius: 999px;
+        border: 1px solid var(--line); background: rgba(255, 255, 255, 0.54);
+        color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+        transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+      }
+      .actions a.primary { background: rgba(127, 36, 28, 0.08); border-color: rgba(127, 36, 28, 0.18); color: var(--accent); }
+      .actions a:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.9); }
+      .frame-shell {
+        min-height: 0; overflow: hidden; border-radius: 30px;
+        border: 1px solid rgba(88, 64, 46, 0.12); background: var(--panel-strong);
+        box-shadow: var(--shadow);
+      }
+      iframe { display: block; width: 100%; height: calc(100vh - 124px); min-height: 720px; border: 0; background: #ffffff; }
+      .fallback { display: none; max-width: 760px; padding: 40px 32px 48px; }
+      .fallback.is-visible { display: grid; gap: 16px; }
+      .fallback h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: clamp(28px, 4vw, 42px); line-height: 1.02; letter-spacing: -0.04em; }
+      .fallback p { margin: 0; color: var(--muted); line-height: 1.6; }
+      .fallback a {
+        display: inline-flex; width: fit-content; align-items: center; justify-content: center;
+        min-height: 42px; padding: 0 16px; border-radius: 999px;
+        border: 1px solid rgba(127, 36, 28, 0.18); background: rgba(127, 36, 28, 0.08);
+        color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+      }
+      .meta-strip {
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        padding: 4px 14px; font-size: 11px; color: var(--muted);
+        font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+      }
+      .pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 2px 9px; border-radius: 999px;
+        background: rgba(127, 36, 28, 0.06); color: var(--accent);
+        border: 1px solid rgba(127, 36, 28, 0.12);
+        font-weight: 600; letter-spacing: 0.04em; font-size: 10px;
+      }
+      .pill.warn { background: rgba(217, 119, 6, 0.08); color: #8a4f06; border-color: rgba(217, 119, 6, 0.18); }
+      @media (max-width: 960px) {
+        .shell { padding: 14px; }
+        .banner { grid-template-columns: 1fr; align-items: start; }
+        .actions { justify-content: flex-start; }
+        iframe { height: calc(100vh - 188px); min-height: 640px; }
+      }
+      @media (max-width: 640px) {
+        .shell { padding: 12px; }
+        .banner { padding: 14px 16px; border-radius: 20px; }
+        .frame-shell { border-radius: 24px; }
+        .actions { width: 100%; }
+        .actions a { flex: 1 1 160px; }
+        iframe { height: calc(100vh - 236px); min-height: 560px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="banner">
+        <div class="title">
+          <span class="title-label">University of South Carolina</span>
+          <strong>Early Social Development Lab</strong>
+          <span>NANO Study research dashboard for longitudinal infant neurodevelopment at the University of South Carolina.</span>
+        </div>
+        <nav class="actions" aria-label="Public dashboard links">
+          <a class="primary" href="{{DASHBOARD_URL}}" target="_blank" rel="noreferrer noopener">Open dashboard</a>
+          <a href="https://www.esdlabsc.com/" target="_blank" rel="noreferrer noopener">ESD Lab site</a>
+        </nav>
+      </header>
+      <div class="meta-strip" aria-label="Wrapper provenance">
+        <span class="pill {{ORIGIN_PILL_CLASS}}">{{ORIGIN_PILL_LABEL}}</span>
+        <span>generated {{GENERATED_AT}} · canonical wrapper · target: {{ORIGIN_DISPLAY}}</span>
+      </div>
+      <div class="frame-shell">
+        <iframe id="dashboard-frame" src="{{DASHBOARD_URL}}" title="University of South Carolina ESD Lab Dashboard"></iframe>
+        <div id="fallback" class="fallback">
+          <h1>Early Social Development Lab Dashboard</h1>
+          <p>The embedded dashboard could not be loaded in this browser context.</p>
+          <p>Use the direct dashboard link below to open the same live surface in a separate tab.</p>
+          <p><a href="{{DASHBOARD_URL}}" target="_blank" rel="noreferrer noopener">Open the dashboard directly</a></p>
+        </div>
+      </div>
+    </div>
+    <script>
+      const frame = document.getElementById('dashboard-frame');
+      const fallback = document.getElementById('fallback');
+      let frameLoaded = false;
+      frame.addEventListener('load', () => {
+        frameLoaded = true;
+        fallback.classList.remove('is-visible');
+        frame.hidden = false;
+      });
+      window.setTimeout(() => {
+        if (!frameLoaded) {
+          frame.hidden = true;
+          fallback.classList.add('is-visible');
+        }
+      }, 5000);
+    </script>
+  </body>
+</html>
