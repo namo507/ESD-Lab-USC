@@ -278,11 +278,16 @@ EOF
 
 print_host_tunnel_result() {
   local deadline=$((SECONDS + 120))
+  local named_registered="false"
   if [[ "$use_named" == "true" ]]; then
     echo "Waiting for named Cloudflare tunnel to register..."
   else
     echo "Waiting for public URL from Cloudflare quick tunnel..."
   fi
+
+  named_hostname_ready() {
+    curl -fsSIL --max-time 10 "https://${public_hostname}/dashboard/" >/dev/null 2>&1
+  }
 
   while (( SECONDS < deadline )); do
     if [[ -f "$TUNNEL_PID_FILE" ]]; then
@@ -299,8 +304,11 @@ print_host_tunnel_result() {
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
 
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
-      emit_result "https://${public_hostname}/dashboard/" "named"
-      return 0
+      named_registered="true"
+      if named_hostname_ready; then
+        emit_result "https://${public_hostname}/dashboard/" "named"
+        return 0
+      fi
     fi
     if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
       emit_result "${url}/dashboard/" "quick"
@@ -309,7 +317,13 @@ print_host_tunnel_result() {
     sleep 2
   done
 
-  echo "Timed out waiting for the tunnel URL." >&2
+  if [[ "$use_named" == "true" && "$named_registered" == "true" ]]; then
+    echo "Timed out waiting for https://${public_hostname}/dashboard/ to become reachable." >&2
+    echo "The tunnel connected, but the named hostname is still not live yet." >&2
+    echo "Check that the zone for ${public_hostname#*.} is active in Cloudflare and that public DNS for ${public_hostname} points to ${CLOUDFLARE_TUNNEL_ID:-<tunnel-id>}.cfargotunnel.com." >&2
+  else
+    echo "Timed out waiting for the tunnel URL." >&2
+  fi
   tail -n 120 "$TUNNEL_LOG_FILE" >&2 || true
   return 1
 }
@@ -349,7 +363,11 @@ share_with_docker() {
 }
 
 share_without_docker() {
-  echo "Docker Compose is unavailable. Falling back to the local Python dashboard runtime and a host-side Cloudflare tunnel."
+  if [[ "$use_named" == "true" ]]; then
+    echo "Using the local Python dashboard runtime and a host-side Cloudflare tunnel for the named hostname."
+  else
+    echo "Docker Compose is unavailable. Falling back to the local Python dashboard runtime and a host-side Cloudflare tunnel."
+  fi
   ensure_local_dashboard
 
   local cloudflared_bin
@@ -368,7 +386,9 @@ share_without_docker() {
   print_host_tunnel_result
 }
 
-if have_command docker && docker compose version >/dev/null 2>&1; then
+if [[ "$use_named" == "true" ]]; then
+  share_without_docker
+elif have_command docker && docker compose version >/dev/null 2>&1; then
   share_with_docker
 else
   share_without_docker
