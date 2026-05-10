@@ -258,7 +258,9 @@ emit_result() {
     cat <<EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
-  2. Deploy the regenerated wrapper:   npx wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo
+  2. Deploy the regenerated wrapper to the production alias:
+       make pages-deploy       # = wrangler@3.112.0 pages deploy --branch main --commit-dirty=true
+       (set CLOUDFLARE_API_TOKEN first; or push to the git-connected branch)
   3. Open ${PAGES_WRAPPER_CANONICAL} in a browser.
 
 This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.

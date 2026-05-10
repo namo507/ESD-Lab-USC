@@ -274,8 +274,18 @@ preview at `dashboard/public/pages_wrapper/index.html` and a manifest at
 wrapper to Pages:
 
 ```bash
-make pages-deploy   # uses npx wrangler pages deploy
+# Prereqs: export CLOUDFLARE_API_TOKEN (Pages:Edit + Account:Read scopes).
+# Override branch/project via CLOUDFLARE_PAGES_BRANCH (default: main) and
+# CLOUDFLARE_PAGES_PROJECT (default: esd-lab-namo).
+make pages-deploy   # wrangler@3.112.0 pages deploy dist/pages-wrapper --branch main --commit-dirty=true
 ```
+
+If `CLOUDFLARE_API_TOKEN` is not available in the operator's shell, use the
+git-connected fallback documented in
+[`dashboard/public/pages_wrapper/README.md`](dashboard/public/pages_wrapper/README.md):
+push the regenerated `dashboard/public/pages_wrapper/index.html` to the
+branch the `esd-lab-namo` Pages project watches; Cloudflare redeploys
+automatically.
 
 The cloudflared origin (`https://<random>.trycloudflare.com/dashboard/`) is
 printed *separately* and labelled "Ephemeral cloudflared origin (do NOT

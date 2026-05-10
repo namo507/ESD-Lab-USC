@@ -85,8 +85,13 @@ When auto/quick mode runs, the script:
 After every quick-tunnel run, deploy the regenerated wrapper to Pages:
 
 ```bash
+# Requires CLOUDFLARE_API_TOKEN with Pages:Edit + Account:Read scopes.
+# Targets the production alias on the project's main branch by default.
 make pages-deploy
-# = npx wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo
+# = wrangler@3.112.0 pages deploy dist/pages-wrapper \
+#       --project-name $CLOUDFLARE_PAGES_PROJECT \
+#       --branch $CLOUDFLARE_PAGES_BRANCH (default main) \
+#       --commit-dirty=true
 ```
 
 To promote to Tier 1 (a stable branded hostname instead of the wrapper),

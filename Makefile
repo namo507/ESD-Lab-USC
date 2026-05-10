@@ -5,6 +5,7 @@
 .DEFAULT_GOAL := help
 PYTHON := python3
 VENV ?= .venv
+WRANGLER_PAGES_CMD ?= npx --yes wrangler@3.112.0
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black
@@ -128,8 +129,20 @@ pages-build:  ## Render the Pages wrapper from ORIGIN=<https://...> [KIND=quick|
 	fi
 	$(PYTHON) scripts/build_pages_wrapper.py --origin "$(ORIGIN)" $(if $(KIND),--kind $(KIND))
 
-pages-deploy: pages-build  ## Deploy dist/pages-wrapper to Cloudflare Pages (esd-lab-namo)
-	npx --yes wrangler@latest pages deploy dist/pages-wrapper --project-name esd-lab-namo
+pages-deploy:  ## Deploy dist/pages-wrapper to esd-lab-namo (production alias). Requires CLOUDFLARE_API_TOKEN.
+	@if [ -z "$$CLOUDFLARE_API_TOKEN" ]; then \
+		echo "ERROR: CLOUDFLARE_API_TOKEN is unset. Either export an API token with Pages:Edit + Account:Read scopes,"; \
+		echo "       or use the git-connected branch path documented in dashboard/public/pages_wrapper/README.md."; \
+		exit 78; \
+	fi
+	@if [ ! -s dist/pages-wrapper/index.html ]; then \
+		echo "ERROR: dist/pages-wrapper/index.html missing. Run 'make pages-build ORIGIN=https://...' or 'make dashboard-share' first."; \
+		exit 66; \
+	fi
+	$(WRANGLER_PAGES_CMD) pages deploy dist/pages-wrapper \
+		--project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} \
+		--branch $${CLOUDFLARE_PAGES_BRANCH:-main} \
+		--commit-dirty=true
 
 assistant-status:  ## Check local dashboard assistant readiness
 	$(PYTHON) scripts/prepare_dashboard_assistant.py

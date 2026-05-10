@@ -41,7 +41,7 @@ The deploy artifact lives at `dist/pages-wrapper/index.html`. Use either:
 
 1. **Wrangler (recommended):**
    ```bash
-   npx wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo
+   npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name esd-lab-namo
    ```
 2. **Git-connected branch:** the operator's existing
    `esd-lab-namo` Pages project is wired to a branch — push the regenerated
@@ -66,7 +66,7 @@ If the public Pages URL still shows a dead origin after `make dashboard-share`:
 1. Run the share command (it should rebuild the wrapper automatically).
 2. Check `manifest.json` — `dashboard_url` should match the URL the share
    script just printed.
-3. Redeploy via `wrangler pages deploy dist/pages-wrapper --project-name esd-lab-namo`.
+3. Redeploy via `npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name esd-lab-namo`.
 
 If the deploy step is skipped, the canonical URL keeps serving the previous
 artifact and the iframe will fail to load until you push.
