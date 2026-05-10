@@ -18,8 +18,8 @@ public sharing constantly.
 This script replaces that pattern with a deterministic build:
 
 1. Read the tracked template at `dashboard/public/pages_wrapper/template.html`.
-2. Substitute `{{DASHBOARD_URL}}`, `{{GENERATED_AT}}`, `{{ORIGIN_DISPLAY}}`,
-   `{{ORIGIN_PILL_LABEL}}`, `{{ORIGIN_PILL_CLASS}}`.
+2. Substitute the template tokens for `{{DASHBOARD_URL}}` and `{{GENERATED_AT}}`.
+    Optional origin metadata tokens may also be present for non-visual uses.
 3. Write to two outputs:
      - `dashboard/public/pages_wrapper/index.html` (committable preview)
      - `dist/pages-wrapper/index.html` (deploy artifact for `wrangler pages deploy`)
@@ -55,9 +55,6 @@ MANIFEST = ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
 REQUIRED_TOKENS = {
     "{{DASHBOARD_URL}}",
     "{{GENERATED_AT}}",
-    "{{ORIGIN_DISPLAY}}",
-    "{{ORIGIN_PILL_LABEL}}",
-    "{{ORIGIN_PILL_CLASS}}",
 }
 
 
