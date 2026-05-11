@@ -82,7 +82,9 @@ When auto/quick mode runs, the script:
 5. prints a `Canonical public URL` block plus an `Ephemeral cloudflared
    origin` block separately. Only the canonical URL should ever be published.
 
-After every quick-tunnel run, deploy the regenerated wrapper to Pages:
+After every quick-tunnel run, the share script auto-deploys the regenerated
+wrapper to Pages when `CLOUDFLARE_API_TOKEN` is available. If that token is
+not present, deploy the wrapper manually:
 
 ```bash
 # Requires CLOUDFLARE_API_TOKEN with Pages:Edit + Account:Read scopes.

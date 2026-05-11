@@ -1059,7 +1059,7 @@ function updateDashboardViewControls() {
   });
 
   const currentHash = window.location.hash;
-  document.querySelectorAll(".view-link[data-section]").forEach((button) => {
+  document.querySelectorAll(".view-link[data-section], .view-header-signal[data-section], .view-signal-card[data-section]").forEach((button) => {
     let isActive = false;
     if (currentHash && button.dataset.jumpTarget) {
       isActive = button.dataset.jumpTarget === currentHash;
@@ -1434,6 +1434,119 @@ function renderChrome() {
   document.getElementById("sync-notes").textContent = runtime.errors && runtime.errors.length
     ? runtime.errors.join(" · ")
     : "Watching dashboard inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.";
+
+  renderViewPanelSignals();
+}
+
+function renderViewPanelSignals() {
+  const dashboard = STATE.dashboard;
+  if (!dashboard) {
+    return;
+  }
+
+  const enrollment = (dashboard.enrollment && dashboard.enrollment.by_group) || {};
+  const audit = (dashboard.redcap_audit && dashboard.redcap_audit.summary) || {};
+  const total = Object.values(enrollment).reduce((sum, group) => sum + Number(group.current || 0), 0);
+  const target = Object.values(enrollment).reduce((sum, group) => sum + Number(group.target || 0), 0);
+  const enrollmentProgress = target ? (total / target) * 100 : 0;
+
+  const missingness = Array.isArray(dashboard.data_quality && dashboard.data_quality.missingness)
+    ? dashboard.data_quality.missingness
+    : [];
+  const meanMissing = missingness.length
+    ? missingness.reduce((sum, item) => sum + Number(item.pct_missing || 0), 0) / missingness.length
+    : 0;
+  const completeness = missingness.length ? 100 - meanMissing : 0;
+  const highestMissingness = missingness
+    .slice()
+    .sort((left, right) => Number(right.pct_missing || 0) - Number(left.pct_missing || 0))[0];
+
+  const bestModel = ((dashboard.ml_performance && dashboard.ml_performance.models) || [])
+    .slice()
+    .sort((left, right) => Number(right.auroc || 0) - Number(left.auroc || 0))[0];
+
+  const readings = STATE.readings || emptyReadingsPayload();
+  const runtime = STATE.runtime || {};
+  const readingSummary = readings.summary || {};
+  const categoryCount = Array.isArray(readingSummary.categories) ? readingSummary.categories.length : 0;
+  const queryCount = Number(audit.open_queries || 0);
+
+  setText("view-signal-enrollment-value", `${formatInt(total)} / ${formatInt(target)}`);
+  setText(
+    "view-signal-enrollment-note",
+    `${enrollmentProgress.toFixed(1)}% of target · ${formatEnrollmentSignal(enrollment)}`
+  );
+  setText("view-header-enrollment-value", `${formatInt(total)} / ${formatInt(target)}`);
+  setText("view-header-enrollment-note", `${enrollmentProgress.toFixed(1)}% of target`);
+  setSignalMeterWidth("view-header-enrollment-bar", enrollmentProgress);
+  setSignalMeterWidth("view-signal-enrollment-bar", enrollmentProgress);
+
+  setText("view-signal-quality-value", `${completeness.toFixed(1)}% ready`);
+  setText(
+    "view-signal-quality-note",
+    highestMissingness
+      ? `${formatInt(queryCount)} open quer${queryCount === 1 ? "y" : "ies"} · ${humanizeSignalLabel(highestMissingness.instrument)} missing ${Number(highestMissingness.pct_missing || 0).toFixed(1)}%`
+      : `${formatInt(queryCount)} open quer${queryCount === 1 ? "y" : "ies"} · Missingness diagnostics pending`
+  );
+  setText("view-header-quality-value", `${completeness.toFixed(1)}%`);
+  setText("view-header-quality-note", `${formatInt(queryCount)} open quer${queryCount === 1 ? "y" : "ies"}`);
+  setSignalMeterWidth("view-header-quality-bar", completeness);
+  setSignalMeterWidth("view-signal-quality-bar", completeness);
+
+  if (bestModel) {
+    const ciText = Array.isArray(bestModel.auroc_ci)
+      ? `[${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}]`
+      : "CI pending";
+    setText("view-signal-model-value", `${Number(bestModel.auroc || 0).toFixed(3)} AUROC`);
+    setText("view-signal-model-note", `${bestModel.name} · 95% CI ${ciText}`);
+    setText("view-header-model-value", `${Number(bestModel.auroc || 0).toFixed(3)} AUROC`);
+    setText("view-header-model-note", bestModel.name || "Best model live");
+    setSignalMeterWidth("view-header-model-bar", Number(bestModel.auroc || 0) * 100);
+    setSignalMeterWidth("view-signal-model-bar", Number(bestModel.auroc || 0) * 100);
+  } else {
+    setText("view-signal-model-value", "Pending");
+    setText("view-signal-model-note", "Model metrics populate after the next successful dashboard refresh.");
+    setText("view-header-model-value", "Pending");
+    setText("view-header-model-note", "Awaiting metrics");
+    setSignalMeterWidth("view-header-model-bar", 14);
+    setSignalMeterWidth("view-signal-model-bar", 14);
+  }
+
+  const totalReadings = Number(readingSummary.total_readings || 0);
+  const totalPages = Number(readingSummary.total_pages || 0);
+  const watchInterval = Number(runtime.watch_interval_seconds || REFRESH_INTERVAL_MS / 1000);
+  setText("view-signal-library-value", `${formatInt(totalReadings)} readings`);
+  setText(
+    "view-signal-library-note",
+    `${formatInt(totalPages)} pages · ${formatInt(categoryCount)} categor${categoryCount === 1 ? "y" : "ies"} tracked · ${watchInterval}s cadence`
+  );
+  setText("view-header-library-value", `${formatInt(totalReadings)} readings`);
+  setText("view-header-library-note", `${formatInt(totalPages)} pages tracked`);
+  setSignalMeterWidth("view-header-library-bar", totalPages ? Math.min(100, Math.max(18, totalPages / 8)) : 18);
+  setSignalMeterWidth("view-signal-library-bar", totalPages ? Math.min(100, Math.max(18, totalPages / 8)) : 18);
+}
+
+function setSignalMeterWidth(id, value) {
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
+  const safeValue = Math.max(0, Math.min(100, Number(value || 0)));
+  const visibleValue = safeValue > 0 ? Math.max(10, safeValue) : 0;
+  element.style.width = `${visibleValue}%`;
+}
+
+function formatEnrollmentSignal(enrollment) {
+  return Object.entries(enrollment)
+    .slice(0, 3)
+    .map(([groupCode, group]) => `${groupCode} ${formatInt(Number(group.current || 0))}`)
+    .join(" · ");
+}
+
+function humanizeSignalLabel(value) {
+  return String(value || "Signal")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function renderDashboard() {

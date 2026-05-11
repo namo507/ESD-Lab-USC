@@ -270,8 +270,9 @@ keeps sharing the same canonical wrapper URL:
 
 The wrapper artifact is written to `dist/pages-wrapper/index.html` plus a
 preview at `dashboard/public/pages_wrapper/index.html` and a manifest at
-`dashboard/public/pages_wrapper/manifest.json`. To push the regenerated
-wrapper to Pages:
+`dashboard/public/pages_wrapper/manifest.json`. When `CLOUDFLARE_API_TOKEN`
+is exported, `make dashboard-share` and the share watchdog auto-deploy that
+wrapper to Pages. To push the regenerated wrapper manually:
 
 ```bash
 # Prereqs: export CLOUDFLARE_API_TOKEN (Pages:Edit + Account:Read scopes).

@@ -55,7 +55,9 @@ make share-quick         # one-off random hostname, no wrapper
 
 Output prints a clearly-labelled `Canonical public URL` plus, in
 quick-tunnel mode, an `Ephemeral cloudflared origin` line that **must not be
-published**. After a quick-tunnel run, deploy the regenerated wrapper:
+published**. When `CLOUDFLARE_API_TOKEN` is exported, the quick-tunnel path
+auto-deploys the regenerated wrapper to Pages. Without that token, deploy the
+wrapper manually:
 
 ```bash
 make pages-deploy

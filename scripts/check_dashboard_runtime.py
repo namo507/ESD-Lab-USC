@@ -171,7 +171,7 @@ def probe_pages_wrapper(pages_url: str, timeout: int) -> dict[str, str]:
 def repair_public_share(mode: str) -> None:
     command = (
         "if [[ -f .env ]]; then set -a; source .env; set +a; fi; "
-        f"bash scripts/share_dashboard.sh --mode {mode} && make pages-deploy"
+        f"bash scripts/share_dashboard.sh --mode {mode}"
     )
     subprocess.run(["bash", "-lc", command], cwd=PROJECT_ROOT, check=True)
 

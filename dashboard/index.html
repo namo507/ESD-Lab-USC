@@ -111,12 +111,47 @@
       <button type="button" class="view-panel-scrim" id="view-panel-scrim" aria-label="Close view panel"></button>
       <aside class="view-panel" id="view-panel" aria-label="Dashboard view panel">
         <div class="view-panel-header">
-          <div>
+          <div class="view-panel-header-copy">
             <span class="eyebrow">View panel</span>
             <h2 class="view-panel-title">Open a focused dashboard view instead of one long page</h2>
             <p class="view-panel-copy">Keep the homepage centered on key metrics, then switch into dedicated section views or expand the full dashboard only when you need the long-form browse.</p>
           </div>
-          <button type="button" class="view-panel-close" id="view-panel-close" aria-label="Close view panel">Close</button>
+          <div class="view-panel-header-stage" aria-label="Live dashboard quick scan">
+            <div class="view-panel-header-stage-top">
+              <span class="view-panel-header-stage-label">Live scan</span>
+              <button type="button" class="view-panel-close" id="view-panel-close" aria-label="Close view panel">Close</button>
+            </div>
+
+            <div class="view-panel-header-mini-grid">
+              <button type="button" class="view-header-signal" data-tone="recruitment" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
+                <span class="view-header-signal-label">Enrollment</span>
+                <strong id="view-header-enrollment-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-enrollment-note">Target progress will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-enrollment-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="quality" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
+                <span class="view-header-signal-label">Readiness</span>
+                <strong id="view-header-quality-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-quality-note">Quality diagnostics will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-quality-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="model" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
+                <span class="view-header-signal-label">Model lead</span>
+                <strong id="view-header-model-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-model-note">Model performance will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-model-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="library" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
+                <span class="view-header-signal-label">Library</span>
+                <strong id="view-header-library-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-library-note">Reading library coverage will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-library-bar"></span></div>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="view-panel-status">
@@ -249,6 +284,69 @@
             </div>
           </section>
         </div>
+
+        <section class="view-panel-signalboard" aria-label="Live dashboard signal board">
+          <div class="view-panel-signalboard-head">
+            <div>
+              <span class="eyebrow">Signal board</span>
+              <h3>Scan the live study story before opening a section.</h3>
+            </div>
+            <p>These animated cards compress the strongest operational signals, then jump directly into the most relevant dashboard view.</p>
+          </div>
+
+          <div class="view-panel-signal-rail" aria-hidden="true">
+            <span>Recruit</span>
+            <span>Ready</span>
+            <span>Model</span>
+            <span>Read</span>
+          </div>
+
+          <div class="view-panel-signal-grid">
+            <button type="button" class="view-signal-card" data-tone="recruitment" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Recruitment pulse</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-enrollment-value">—</strong>
+              <span id="view-signal-enrollment-note">Enrollment progress will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-enrollment-bar"></span></div>
+              <span class="view-signal-action">Open overview trends</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="quality" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Data readiness</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-quality-value">—</strong>
+              <span id="view-signal-quality-note">Quality diagnostics will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-quality-bar"></span></div>
+              <span class="view-signal-action">Open missingness review</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="model" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Model signal</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-model-value">—</strong>
+              <span id="view-signal-model-note">Model performance will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-model-bar"></span></div>
+              <span class="view-signal-action">Open ROC comparison</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="library" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Evidence library</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-library-value">—</strong>
+              <span id="view-signal-library-note">Reading library coverage will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-library-bar"></span></div>
+              <span class="view-signal-action">Open reading archive</span>
+            </button>
+          </div>
+        </section>
       </aside>
     </div>
 

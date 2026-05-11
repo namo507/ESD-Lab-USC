@@ -15,8 +15,8 @@
 #
 # After a quick tunnel comes up, this script automatically regenerates the
 # Cloudflare Pages wrapper at `dashboard/public/pages_wrapper/` so the
-# canonical wrapper URL embeds the new origin. The deploy step
-# (`wrangler pages deploy`) stays the operator's call.
+# canonical wrapper URL embeds the new origin. When CLOUDFLARE_API_TOKEN is
+# available, it also deploys the refreshed wrapper to Pages automatically.
 
 set -euo pipefail
 
@@ -216,6 +216,23 @@ ensure_cloudflared() {
   printf '%s\n' "$cloudflared_bin"
 }
 
+auto_deploy_pages_wrapper() {
+  if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+    echo "rebuilt, but auto-deploy skipped because CLOUDFLARE_API_TOKEN is unset"
+    return 0
+  fi
+
+  local deploy_log
+  deploy_log="$STATE_DIR/pages_deploy.log"
+  if make pages-deploy >"$deploy_log" 2>&1; then
+    echo "rebuilt and auto-deployed to ${PAGES_WRAPPER_CANONICAL}"
+    return 0
+  fi
+
+  echo "WARNING: rebuilt, but auto-deploy failed; see ${deploy_log} or run 'make pages-deploy' manually"
+  return 1
+}
+
 # Print the result block. `origin_url` is the cloudflared origin (https://...).
 # When the named tunnel is in use, `origin_url` already equals
 # `https://${public_hostname}/dashboard/`.
@@ -223,6 +240,7 @@ emit_result() {
   local origin_url="$1"
   local kind="$2"   # named | quick
   local rebuild_msg=""
+  local wrapper_auto_deployed="false"
 
   printf '%s\n' "$origin_url" >"$ORIGIN_RECORD"
 
@@ -246,6 +264,12 @@ emit_result() {
   if [[ -n "$python_bin" ]]; then
     if "$python_bin" scripts/build_pages_wrapper.py --origin "$origin_url" --kind "$kind" >/dev/null; then
       rebuild_msg="rebuilt: dashboard/public/pages_wrapper/index.html and dist/pages-wrapper/index.html"
+      if [[ "$kind" == "quick" ]]; then
+        rebuild_msg="$(auto_deploy_pages_wrapper)"
+        if [[ "$rebuild_msg" == rebuilt\ and\ auto-deployed* ]]; then
+          wrapper_auto_deployed="true"
+        fi
+      fi
     else
       rebuild_msg="WARNING: failed to regenerate Pages wrapper — run scripts/build_pages_wrapper.py manually."
     fi
@@ -255,7 +279,16 @@ emit_result() {
   echo "Pages wrapper: ${rebuild_msg}"
 
   if [[ "$kind" == "quick" ]]; then
-    cat <<EOF
+    if [[ "$wrapper_auto_deployed" == "true" ]]; then
+      cat <<EOF
+Next:
+  1. Verify the origin returns 200:    curl -I ${origin_url}
+  2. Open ${PAGES_WRAPPER_CANONICAL} in a browser.
+
+This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.
+EOF
+    else
+      cat <<EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
   2. Deploy the regenerated wrapper to the production alias:
@@ -265,6 +298,7 @@ Next:
 
 This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.
 EOF
+    fi
   else
     cat <<EOF
 Next:
@@ -299,7 +333,7 @@ print_host_tunnel_result() {
     fi
 
     local recent_logs url registered
-    recent_logs="$(tail -n 200 "$TUNNEL_LOG_FILE" 2>/dev/null || true)"
+  recent_logs="$(tail -n 200 "$TUNNEL_LOG_FILE" 2>/dev/null | tr -d '\000' || true)"
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
 

@@ -116,7 +116,7 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 dashboard-share:  ## Start a public share tunnel (auto: prefer named, fall back to quick)
 	bash scripts/share_dashboard.sh --mode auto
 
-dashboard-share-watch:  ## Continuously verify pages.dev and repair the quick-tunnel-backed wrapper if it dies
+dashboard-share-watch:  ## Continuously verify pages.dev and auto-repair/redeploy the quick-tunnel-backed wrapper if it dies
 	$(PYTHON) scripts/check_dashboard_runtime.py \
 		--base-url http://127.0.0.1:8080 \
 		--pages-url https://esd-lab-namo.pages.dev/ \
