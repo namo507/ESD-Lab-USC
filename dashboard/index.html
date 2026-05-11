@@ -13,6 +13,20 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
+<div class="site-loader" id="site-loader" role="status" aria-live="polite" aria-label="Preparing NANO dashboard">
+  <div class="site-loader-panel site-loader-panel-left"></div>
+  <div class="site-loader-panel site-loader-panel-right"></div>
+  <div class="site-loader-content">
+    <span class="site-loader-kicker">NANO Study</span>
+    <strong id="site-loader-title">Preparing the live research environment</strong>
+    <p id="site-loader-copy">Syncing enrollment, modeling, geospatial, and readings surfaces for the live dashboard.</p>
+  </div>
+</div>
+<div class="site-noise" aria-hidden="true"></div>
+<div class="site-cursor" id="site-cursor" aria-hidden="true">
+  <span class="site-cursor-ring"></span>
+  <span class="site-cursor-dot"></span>
+</div>
 <div class="app">
   <!-- ─── Sidebar ─── -->
   <aside class="sidebar">
@@ -53,6 +67,13 @@
       <a href="../docs/auto_update_pipeline.md" target="_blank"><span class="dot"></span>Auto-Update Docs</a>
       <a href="../docs/research_questions_process.md" target="_blank"><span class="dot"></span>Research Questions SOP</a>
     </nav>
+
+    <div class="sidebar-preview" id="sidebar-preview">
+      <span class="sidebar-preview-label t-label">Focused surface</span>
+      <strong class="sidebar-preview-title" id="sidebar-preview-title">Homepage snapshot</strong>
+      <p class="sidebar-preview-copy" id="sidebar-preview-copy">Operational metrics, overview KPIs, and quick-entry cards.</p>
+      <a class="sidebar-preview-link" id="sidebar-preview-link" href="#overview-kpis">Open overview</a>
+    </div>
 
     <div class="side-meta" id="side-meta">&nbsp;</div>
   </aside>
@@ -175,6 +196,24 @@
           </section>
 
           <section class="view-panel-group">
+            <h3>Community and geography</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-kpis-section" data-section="geo">
+                <strong>Geo overview</strong>
+                <span>Recruitment zones, partner network, and community coverage KPIs.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-map-card" data-section="geo">
+                <strong>Interactive map</strong>
+                <span>Layered recruitment, SDoH, catchment, and partner-network map view.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-distance-grid" data-section="geo">
+                <strong>Distance and retention</strong>
+                <span>Travel bands, retention patterns, and geographic access trends.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
             <h3>Modeling views</h3>
             <div class="view-link-grid">
               <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-explainer" data-section="ml">
@@ -226,7 +265,7 @@
         </div>
         <div class="sync-hero-core">
           <div class="sync-copy">
-            <h1 class="t-display">Recruitment health, data readiness, and model signals aligned in one balanced landing view.</h1>
+            <h1 class="t-display" data-split="words">Recruitment health, data readiness, and model signals aligned in one balanced landing view.</h1>
             <p id="sync-notes">Watching dashboard data inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.</p>
           </div>
           <div class="sync-visual" aria-hidden="true">
@@ -328,6 +367,11 @@
           <strong>Methods pipeline</strong>
           <span>Collection to modeling to sharing</span>
           <small>Pipeline</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="geo" href="#geo-kpis-section">
+          <strong>Geospatial intelligence</strong>
+          <span>Recruitment zones, catchment map, and community access</span>
+          <small>Geospatial</small>
         </a>
         <a class="atlas-card jump-card" data-card-group="quality" href="#quality-missingness">
           <strong>QC signals</strong>

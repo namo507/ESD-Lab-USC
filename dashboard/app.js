@@ -306,6 +306,7 @@ let nextRefreshAt = 0;
 let controlsInitialized = false;
 let COHORT_SORT = { col: "nano_id", dir: "asc" };
 let REVEAL_OBSERVER = null;
+let LOADER_DISMISSED = false;
 let ML_EXPLAINER = {
   timer: null,
   stages: [],
@@ -321,6 +322,7 @@ async function bootstrap() {
   initializeTheme();
   decorateRevealTargets();
   setupSyncHeroMotion();
+  setupImmersiveChrome();
   setupNavigation();
   setupAnchorRouting();
   setupViewPanel();
@@ -328,7 +330,13 @@ async function bootstrap() {
   setupControls();
   setupAssistant();
   await syncData({ force: true });
-  await syncAssistantStatus();
+  try {
+    await syncAssistantStatus();
+  } catch (error) {
+    console.error(error);
+  } finally {
+    dismissSiteLoader();
+  }
   if (window.location.hash && document.querySelector(window.location.hash)) {
     scrollToTarget(window.location.hash);
   }
@@ -589,6 +597,8 @@ function decorateRevealTargets() {
       }
       REVEAL_OBSERVER.observe(element);
     });
+
+  setupMagneticInteractions();
 }
 
 function setupSyncHeroMotion() {
@@ -622,6 +632,215 @@ function setupSyncHeroMotion() {
   });
 
   surface.addEventListener("pointerleave", resetSurface);
+}
+
+function setupImmersiveChrome() {
+  document.body.classList.add("immersive-shell");
+  splitMotionText();
+  setupScrollChrome();
+  setupSidebarPreview();
+  setupInteractiveCursor();
+  setupMagneticInteractions();
+}
+
+function dismissSiteLoader() {
+  if (LOADER_DISMISSED) {
+    return;
+  }
+
+  const loader = document.getElementById("site-loader");
+  if (!loader) {
+    LOADER_DISMISSED = true;
+    document.body.classList.add("app-ready");
+    return;
+  }
+
+  document.body.classList.add("app-ready");
+  loader.classList.add("is-hidden");
+  window.setTimeout(() => {
+    loader.hidden = true;
+  }, 900);
+  LOADER_DISMISSED = true;
+}
+
+function splitMotionText(root = document) {
+  root.querySelectorAll('[data-split="words"]').forEach((element) => {
+    if (element.dataset.splitReady === "true") {
+      return;
+    }
+
+    const words = String(element.textContent || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .split(" ")
+      .filter(Boolean);
+
+    if (!words.length) {
+      return;
+    }
+
+    element.setAttribute("aria-label", words.join(" "));
+    element.innerHTML = words
+      .map(
+        (word, index) =>
+          `<span class="split-word" style="--word-index:${index}"><span class="split-word-inner" aria-hidden="true">${escapeHtml(word)}</span></span>`
+      )
+      .join(" ");
+    element.dataset.splitReady = "true";
+  });
+}
+
+function setupSidebarPreview() {
+  const preview = document.getElementById("sidebar-preview");
+  if (!preview || preview.dataset.bound === "true") {
+    return;
+  }
+
+  const links = Array.from(document.querySelectorAll(".nav a[data-target]"));
+  links.forEach((link) => {
+    const handlePreview = () => updateSidebarPreview(link.dataset.target);
+    link.addEventListener("mouseenter", handlePreview);
+    link.addEventListener("focus", handlePreview);
+  });
+
+  const nav = document.querySelector(".nav");
+  if (nav) {
+    nav.addEventListener("mouseleave", () => updateSidebarPreview(STATE.ui.activeSection));
+  }
+
+  preview.dataset.bound = "true";
+  updateSidebarPreview(STATE.ui.activeSection);
+}
+
+function updateSidebarPreview(sectionId = STATE.ui.activeSection || "overview") {
+  const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
+  setText("sidebar-preview-title", title[0]);
+  setText("sidebar-preview-copy", title[1]);
+
+  const link = document.getElementById("sidebar-preview-link");
+  if (link) {
+    link.href = SECTION_DEFAULT_TARGETS[sectionId] || SECTION_DEFAULT_TARGETS.overview;
+    link.textContent = sectionId === "overview" ? "Open overview" : `Open ${shortText(title[0], 24)}`;
+  }
+}
+
+function setupScrollChrome() {
+  if (document.body.dataset.scrollChromeBound === "true") {
+    return;
+  }
+
+  let lastScrollTop = window.scrollY || 0;
+  const onScroll = () => {
+    const current = window.scrollY || 0;
+    document.body.classList.toggle("is-scrolled", current > 24);
+
+    if (Math.abs(current - lastScrollTop) > 10) {
+      const scrollingDown = current > lastScrollTop && current > 120;
+      document.body.classList.toggle("is-scrolling-down", scrollingDown);
+      lastScrollTop = current;
+    }
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  document.body.dataset.scrollChromeBound = "true";
+}
+
+function setupInteractiveCursor() {
+  const cursor = document.getElementById("site-cursor");
+  if (!cursor || cursor.dataset.bound === "true") {
+    return;
+  }
+
+  const supportsCursor = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (!supportsCursor || prefersReducedMotion()) {
+    cursor.hidden = true;
+    cursor.dataset.bound = "true";
+    return;
+  }
+
+  const interactiveSelector = [
+    "a",
+    "button",
+    ".card",
+    ".jump-card",
+    ".view-link",
+    ".geo-layer-pill",
+    ".assistant-panel",
+  ].join(", ");
+
+  const state = {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 2,
+    targetX: window.innerWidth / 2,
+    targetY: window.innerHeight / 2,
+  };
+
+  const frame = () => {
+    state.x += (state.targetX - state.x) * 0.18;
+    state.y += (state.targetY - state.y) * 0.18;
+    cursor.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`;
+    window.requestAnimationFrame(frame);
+  };
+
+  document.addEventListener("pointermove", (event) => {
+    state.targetX = event.clientX;
+    state.targetY = event.clientY;
+    document.body.classList.add("has-active-cursor");
+  });
+
+  document.addEventListener("pointerdown", () => cursor.classList.add("is-clicking"));
+  document.addEventListener("pointerup", () => cursor.classList.remove("is-clicking"));
+  document.addEventListener("mouseover", (event) => {
+    cursor.classList.toggle("is-hovering", Boolean(event.target.closest(interactiveSelector)));
+  });
+  document.addEventListener("mouseout", (event) => {
+    if (!event.relatedTarget || !event.relatedTarget.closest(interactiveSelector)) {
+      cursor.classList.remove("is-hovering");
+    }
+  });
+
+  cursor.dataset.bound = "true";
+  window.requestAnimationFrame(frame);
+}
+
+function setupMagneticInteractions(root = document) {
+  if (prefersReducedMotion() || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    return;
+  }
+
+  const selector = [
+    ".nav a[data-target]",
+    ".sync-link-pill",
+    ".section-jump-pill",
+    ".atlas-card",
+    ".view-link",
+    ".view-mode-card",
+    ".assistant-launcher",
+    ".assistant-submit",
+    ".ghost-button",
+    ".geo-layer-pill",
+    ".theme-option",
+  ].join(", ");
+
+  root.querySelectorAll(selector).forEach((element) => {
+    if (element.dataset.magneticBound === "true") {
+      return;
+    }
+
+    element.classList.add("magnetic-target");
+    element.addEventListener("pointermove", (event) => {
+      const bounds = element.getBoundingClientRect();
+      const offsetX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 16;
+      const offsetY = ((event.clientY - bounds.top) / bounds.height - 0.5) * 12;
+      element.style.transform = `translate3d(${offsetX.toFixed(2)}px, ${offsetY.toFixed(2)}px, 0)`;
+    });
+    element.addEventListener("pointerleave", () => {
+      element.style.transform = "";
+    });
+
+    element.dataset.magneticBound = "true";
+  });
 }
 
 function setupNavigation() {
@@ -937,12 +1156,14 @@ function scrollToTarget(selector, { preserveView = false } = {}) {
 
 function setActiveSection(sectionId) {
   STATE.ui.activeSection = sectionId;
+  document.body.dataset.activeSection = sectionId;
   document.querySelectorAll(".nav a[data-target]").forEach((link) => {
     link.classList.toggle("active", link.dataset.target === sectionId);
   });
   const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
   document.getElementById("page-title").innerHTML = `<span class="title-mark" aria-hidden="true">◆</span>${escapeHtml(title[0])}`;
   document.getElementById("page-sub").textContent = title[1];
+  updateSidebarPreview(sectionId);
   updateViewPanelStatus(sectionId);
 }
 
