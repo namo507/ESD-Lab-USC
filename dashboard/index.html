@@ -8,7 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="styles.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 <div class="app">
@@ -26,6 +28,7 @@
       <a href="#labsite" data-target="labsite"><span class="dot"></span>ESD Lab Site</a>
       <a href="#impact" data-target="impact"><span class="dot"></span>ESD Impact</a>
       <a href="#pipeline" data-target="pipeline"><span class="dot"></span>Pipeline</a>
+      <a href="#geo" data-target="geo"><span class="dot"></span>Geospatial</a>
       <a href="#quality" data-target="quality"><span class="dot"></span>Data Quality</a>
       <a href="#ml" data-target="ml"><span class="dot"></span>ML Performance</a>
       <a href="#trajectories" data-target="trajectories"><span class="dot"></span>Trajectories</a>
@@ -758,10 +761,77 @@
       </div>
     </section>
 
+    <!-- ─── Section: Geospatial Analysis ─── -->
+    <section id="geo">
+      <div class="section jump-target" id="geo-kpis-section">
+        <h2><span class="num">6</span>Geospatial Analysis</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within geospatial</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#geo-kpis-section">Overview</a>
+            <a class="section-jump-pill" href="#geo-map-card">Map</a>
+            <a class="section-jump-pill" href="#geo-sdoh-grid">SDoH</a>
+            <a class="section-jump-pill" href="#geo-distance-grid">Distance</a>
+          </div>
+        </div>
+        <div class="grid kpis" id="geo-kpis"></div>
+      </div>
+
+      <div class="card" id="geo-map-card">
+        <div class="card-header">
+          <div>
+            <h3>Recruitment &amp; Community Map</h3>
+            <p class="card-sub">Aggregated ZIP-level recruitment density, SDoH risk overlays, NICU catchment, and partner network across the South Carolina Midlands.</p>
+          </div>
+          <div class="card-actions" id="geo-layer-controls"></div>
+        </div>
+        <div id="geo-map" class="geo-map-container" role="img" aria-label="Geospatial map of NANO Study recruitment region"></div>
+        <div id="geo-timeline-bar" class="geo-timeline">
+          <button class="geo-play-btn" id="geo-play-btn" aria-label="Play enrollment timeline">▶</button>
+          <span class="geo-timeline-label" id="geo-timeline-label">—</span>
+          <div class="geo-timeline-track" id="geo-timeline-track">
+            <div class="geo-timeline-fill" id="geo-timeline-fill"></div>
+            <div class="geo-timeline-thumb" id="geo-timeline-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid two" id="geo-sdoh-grid">
+        <div class="card" id="geo-sdoh-radar">
+          <h3>PRAPARE Domain Profile</h3>
+          <p class="card-sub">Mean social-determinant risk scores across responding ZIP codes, by domain.</p>
+          <div class="chart-wrap" id="geo-sdoh-radar-chart"></div>
+        </div>
+        <div class="card" id="geo-sdoh-table-card">
+          <h3>SDoH by ZIP (Aggregated)</h3>
+          <p class="card-sub">Per-ZIP composite and domain-level PRAPARE risk, suppressed below n=5.</p>
+          <div class="table-scroll" id="geo-sdoh-table-scroll">
+            <table class="data" id="table-sdoh">
+              <thead><tr id="geo-sdoh-thead"></tr></thead>
+              <tbody id="geo-sdoh-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid two" id="geo-distance-grid">
+        <div class="card" id="geo-distance-chart-card">
+          <h3>Visit Distance Distribution</h3>
+          <p class="card-sub">Participant count by distance band from the ESD Lab (1800 Gervais St, Columbia).</p>
+          <div class="chart-wrap" id="geo-distance-chart"></div>
+        </div>
+        <div class="card" id="geo-retention-card">
+          <h3>Distance vs. Retention</h3>
+          <p class="card-sub">Mean visit completeness rate by distance band, highlighting travel-related attrition.</p>
+          <div class="chart-wrap" id="geo-retention-chart"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- ─── Section: Data Quality ─── -->
     <section id="quality">
       <div class="section jump-target" id="quality-kpis">
-        <h2><span class="num">6</span>Data Quality &amp; REDCap Audit</h2>
+        <h2><span class="num">7</span>Data Quality &amp; REDCap Audit</h2>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within quality</span>
           <div class="section-jump-links">
@@ -814,7 +884,7 @@
     <!-- ─── Section: ML Performance ─── -->
     <section id="ml">
       <div class="section jump-target" id="ml-overview">
-        <h2><span class="num">7</span>Machine Learning Performance</h2>
+        <h2><span class="num">8</span>Machine Learning Performance</h2>
         <p class="page-sub section-subhead-large">Predicting ADOS-2 positive screen at 12 months from NICU + infant biomarkers. Stratified 5-fold CV, 2000 bootstrap samples for CI.</p>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within machine learning</span>
@@ -951,7 +1021,7 @@
     <!-- ─── Section: Trajectories ─── -->
     <section id="trajectories">
       <div class="section jump-target" id="trajectories-overview">
-        <h2><span class="num">8</span>Participant Trajectories</h2>
+        <h2><span class="num">9</span>Participant Trajectories</h2>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within trajectories</span>
           <div class="section-jump-links">
@@ -1012,7 +1082,7 @@
     <!-- ─── Section: Cohort ─── -->
     <section id="cohort">
       <div class="section jump-target" id="cohort-overview">
-        <h2><span class="num">9</span>Cohort Snapshot</h2>
+        <h2><span class="num">10</span>Cohort Snapshot</h2>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within cohort</span>
           <div class="section-jump-links">
@@ -1065,7 +1135,7 @@
 
     <section id="research">
       <div class="section jump-target" id="research-overview">
-        <h2><span class="num">10</span>Research Questions</h2>
+        <h2><span class="num">11</span>Research Questions</h2>
         <p class="section-lede">
           Living SOP of the 40 research, methods, and engineering questions that
           sit between a raw REDCap event and a publishable figure. Every row is
@@ -1178,7 +1248,7 @@
 
     <section id="readings">
       <div class="section jump-target" id="readings-overview">
-        <h2><span class="num">11</span>Reading Library</h2>
+        <h2><span class="num">12</span>Reading Library</h2>
         <div class="section-jumpbar">
           <span class="section-jump-label">Jump within readings</span>
           <div class="section-jump-links">

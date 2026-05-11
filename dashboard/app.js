@@ -77,6 +77,10 @@ const SECTION_TITLES = {
     "Data Flow Pipeline",
     "Interactive map of how study signals move from collection through sharing",
   ],
+  geo: [
+    "Geospatial Analysis",
+    "ZIP-level recruitment geography, SDoH overlays, NICU catchment, and community partner network",
+  ],
   quality: [
     "Data Quality & REDCap Audit",
     "Missingness, QC workload, and audit activity aligned in one operational surface",
@@ -108,6 +112,7 @@ const SECTION_DEFAULT_TARGETS = {
   labsite: "#labsite-summary",
   impact: "#impact-overview",
   pipeline: "#pipeline-map",
+  geo: "#geo-kpis-section",
   quality: "#quality-missingness",
   ml: "#ml-explainer",
   trajectories: "#trajectories-chart",
@@ -1222,6 +1227,7 @@ function renderDashboard() {
   renderCompletionChart();
   drawCohort();
   renderResearchQuestions();
+  renderGeo();
   decorateRevealTargets();
 }
 
@@ -3993,4 +3999,385 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GEOSPATIAL ANALYSIS SECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+const GEO_LAYERS = [
+  { id: "recruitment", label: "Recruitment", default: true },
+  { id: "sdoh", label: "SDoH Risk", default: false },
+  { id: "catchment", label: "Catchment", default: false },
+  { id: "partners", label: "Partners", default: false },
+];
+
+const GEO_STATE = {
+  map: null,
+  layers: {},
+  activeLayer: "recruitment",
+  timeline: { playing: false, timer: null, index: 0 },
+  timelineMarkers: [],
+};
+
+function renderGeo() {
+  const geo = STATE.dashboard && STATE.dashboard.geo;
+  if (!geo) return;
+  renderGeoKPIs(geo);
+  initGeoMap(geo);
+  renderGeoLayerControls();
+  renderSDoHRadar(geo.sdoh_heat);
+  renderSDoHTable(geo.sdoh_heat);
+  renderDistanceChart(geo.catchment);
+  renderRetentionChart(geo.catchment);
+  initGeoTimeline(geo);
+}
+
+function renderGeoKPIs(geo) {
+  const el = document.getElementById("geo-kpis");
+  if (!el) return;
+  const zones = geo.recruitment_zones || [];
+  const nonSuppressed = zones.filter(function(z) { return !z.suppressed && z.n_total; });
+  const totalParticipants = geo.catchment ? geo.catchment.total_participants : 0;
+  const rings = geo.catchment ? geo.catchment.participants_by_ring : [];
+  const medianRing = rings.length > 1 ? rings[1] : rings[0];
+  const sdoh = geo.sdoh_heat || [];
+  const meanRisk = sdoh.length
+    ? sdoh.reduce(function(s, d) { return s + d.composite_risk; }, 0) / sdoh.length
+    : 0;
+  const partners = geo.partner_network || [];
+  const farRing = rings.find(function(r) { return r.ring_km >= 50; });
+
+  el.innerHTML =
+    '<div class="card kpi-card">' +
+      '<span class="t-label label">ZIP Codes Reached</span>' +
+      '<span class="t-kpi">' + nonSuppressed.length + '</span>' +
+      '<span class="t-caption">' + zones.length + ' total zones, ' + (zones.length - nonSuppressed.length) + ' suppressed</span>' +
+    '</div>' +
+    '<div class="card kpi-card">' +
+      '<span class="t-label label">Total Participants (Geo)</span>' +
+      '<span class="t-kpi">' + formatInt(totalParticipants) + '</span>' +
+      '<span class="t-caption">Mapped to ZIP centroids</span>' +
+    '</div>' +
+    '<div class="card kpi-card">' +
+      '<span class="t-label label">SDoH Composite Risk</span>' +
+      '<span class="t-kpi">' + meanRisk.toFixed(2) + '</span>' +
+      '<span class="t-caption">Mean PRAPARE across ' + sdoh.length + ' ZIPs</span>' +
+    '</div>' +
+    '<div class="card kpi-card">' +
+      '<span class="t-label label">Community Partners</span>' +
+      '<span class="t-kpi">' + partners.length + '</span>' +
+      '<span class="t-caption">Mapped in the Midlands region</span>' +
+    '</div>' +
+    '<div class="card kpi-card">' +
+      '<span class="t-label label">Retention &gt;50 km</span>' +
+      '<span class="t-kpi">' + (farRing ? farRing.mean_completeness + '%' : '—') + '</span>' +
+      '<span class="t-caption">' + (farRing ? farRing.n + ' participants in band' : 'No data') + '</span>' +
+    '</div>';
+}
+
+function initGeoMap(geo) {
+  if (typeof L === "undefined") return;
+  var container = document.getElementById("geo-map");
+  if (!container) return;
+
+  if (GEO_STATE.map) {
+    GEO_STATE.map.remove();
+    GEO_STATE.map = null;
+    GEO_STATE.layers = {};
+  }
+
+  var center = geo.meta.center ? [geo.meta.center[1], geo.meta.center[0]] : [34.0, -81.03];
+  var map = L.map(container, { scrollWheelZoom: false, zoomControl: true }).setView(center, geo.meta.zoom_default || 10);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://osm.org/copyright">OSM</a>',
+    subdomains: "abcd",
+    maxZoom: 16,
+  }).addTo(map);
+
+  GEO_STATE.map = map;
+
+  // Layer 1: Recruitment choropleth (circle markers)
+  var recruitLayer = L.layerGroup();
+  var zones = geo.recruitment_zones || [];
+  var maxN = Math.max.apply(null, zones.map(function(z) { return z.n_total || 0; }).concat([1]));
+  zones.forEach(function(zone) {
+    if (zone.suppressed || !zone.n_total) return;
+    var lat = zone.centroid[1], lng = zone.centroid[0];
+    var ratio = zone.n_total / maxN;
+    var radius = 8 + ratio * 22;
+    var groups = zone.n_by_group || {};
+    var dominant = Object.keys(groups).sort(function(a, b) { return (groups[b] || 0) - (groups[a] || 0); })[0];
+    var color = dominant === "ASIB" ? COLORS.ASIB : dominant === "TD" ? COLORS.TD : COLORS.PT;
+
+    var circle = L.circleMarker([lat, lng], {
+      radius: radius, fillColor: color, fillOpacity: 0.15 + ratio * 0.5,
+      color: color, weight: 1.5, opacity: 0.7,
+    });
+    circle.bindTooltip(
+      '<div class="geo-tooltip-title">' + escapeHtml(zone.label) + ' (' + zone.zip + ')</div>' +
+      '<div class="geo-tooltip-row"><span class="label">Total</span><span class="value">' + zone.n_total + '</span></div>' +
+      '<div class="geo-tooltip-row"><span class="label">ASIB</span><span class="value">' + (groups.ASIB || 0) + '</span></div>' +
+      '<div class="geo-tooltip-row"><span class="label">PT</span><span class="value">' + (groups.PT || 0) + '</span></div>' +
+      '<div class="geo-tooltip-row"><span class="label">TD</span><span class="value">' + (groups.TD || 0) + '</span></div>' +
+      '<div class="geo-tooltip-row"><span class="label">Distance</span><span class="value">' + zone.distance_km + ' km</span></div>',
+      { className: "geo-tooltip is-visible", direction: "top", offset: [0, -radius] }
+    );
+    recruitLayer.addLayer(circle);
+  });
+  GEO_STATE.layers.recruitment = recruitLayer;
+  recruitLayer.addTo(map);
+
+  // Lab marker
+  var labIcon = L.divIcon({ className: "", html: '<div style="font-size:18px;color:' + COLORS.accent + ';text-shadow:0 1px 3px rgba(0,0,0,0.3);">◆</div>', iconSize: [20, 20], iconAnchor: [10, 10] });
+  L.marker(center, { icon: labIcon }).addTo(map).bindTooltip("ESD Lab · 1800 Gervais St", { direction: "top", offset: [0, -12] });
+
+  // Layer 2: SDoH heat (colored circles by risk)
+  var sdohLayer = L.layerGroup();
+  (geo.sdoh_heat || []).forEach(function(entry) {
+    if (entry.suppressed) return;
+    var lat = entry.centroid[1], lng = entry.centroid[0];
+    var risk = entry.composite_risk;
+    var hue = risk < 0.35 ? 140 : risk < 0.55 ? 35 : 8;
+    var color = "hsl(" + hue + ", 70%, 50%)";
+    var circle = L.circleMarker([lat, lng], {
+      radius: 14, fillColor: color, fillOpacity: 0.4, color: color, weight: 1.5, opacity: 0.6,
+    });
+    var domainHTML = Object.keys(entry.domains).map(function(d) {
+      return '<div class="geo-tooltip-row"><span class="label">' + d.charAt(0).toUpperCase() + d.slice(1).replace("_", " ") +
+        '</span><span class="value">' + entry.domains[d].toFixed(2) + '</span></div>';
+    }).join("");
+    circle.bindTooltip(
+      '<div class="geo-tooltip-title">SDoH · ZIP ' + entry.zip + '</div>' +
+      '<div class="geo-tooltip-row"><span class="label">Composite</span><span class="value" style="color:' + color + '">' + risk.toFixed(2) + '</span></div>' +
+      domainHTML +
+      '<div class="geo-tooltip-row"><span class="label">Respondents</span><span class="value">' + entry.n_respondents + '</span></div>',
+      { className: "geo-tooltip is-visible", direction: "top", offset: [0, -14] }
+    );
+    sdohLayer.addLayer(circle);
+  });
+  GEO_STATE.layers.sdoh = sdohLayer;
+
+  // Layer 3: Catchment rings
+  var catchLayer = L.layerGroup();
+  var rings = geo.catchment ? geo.catchment.distance_rings_km : [];
+  rings.forEach(function(km) {
+    L.circle(center, { radius: km * 1000, color: COLORS.accent, weight: 1, opacity: 0.3, fillColor: COLORS.accent, fillOpacity: 0.04, dashArray: "6 4" }).addTo(catchLayer);
+  });
+  (geo.catchment && geo.catchment.nicu_sites || []).forEach(function(nicu) {
+    var lat = nicu.coords[1], lng = nicu.coords[0];
+    var nicuIcon = L.divIcon({ className: "geo-nicu-label", html: "🏥", iconSize: [20, 20], iconAnchor: [10, 10] });
+    L.marker([lat, lng], { icon: nicuIcon }).addTo(catchLayer).bindTooltip(
+      '<div class="geo-tooltip-title">' + escapeHtml(nicu.name) + '</div>' +
+      '<div class="geo-tooltip-row"><span class="label">Referred</span><span class="value">' + nicu.n_referred + '</span></div>' +
+      '<div class="geo-tooltip-row"><span class="label">Mean GA</span><span class="value">' + nicu.mean_ga_weeks + 'w</span></div>',
+      { className: "geo-tooltip is-visible", direction: "top", offset: [0, -12] }
+    );
+  });
+  GEO_STATE.layers.catchment = catchLayer;
+
+  // Layer 4: Partners
+  var partnerLayer = L.layerGroup();
+  (geo.partner_network || []).forEach(function(p) {
+    var lat = p.coords[1], lng = p.coords[0];
+    L.polyline([center, [lat, lng]], { color: COLORS.accentSoft, weight: 1, opacity: 0.3, dashArray: "4 4" }).addTo(partnerLayer);
+    var pIcon = L.circleMarker([lat, lng], { radius: 5, fillColor: COLORS.accentSoft, fillOpacity: 0.8, color: "#fff", weight: 2 });
+    pIcon.bindTooltip(
+      '<div class="geo-tooltip-title">' + escapeHtml(p.name) + '</div>' +
+      '<div class="geo-tooltip-row"><span class="label">Type</span><span class="value">' + (p.type || "partner") + '</span></div>',
+      { className: "geo-tooltip is-visible", direction: "top", offset: [0, -6] }
+    );
+    partnerLayer.addLayer(pIcon);
+  });
+  GEO_STATE.layers.partners = partnerLayer;
+
+  setTimeout(function() { map.invalidateSize(); }, 300);
+}
+
+function renderGeoLayerControls() {
+  var el = document.getElementById("geo-layer-controls");
+  if (!el) return;
+  el.innerHTML = '<div class="geo-layer-pills">' + GEO_LAYERS.map(function(layer) {
+    return '<button class="geo-layer-pill' + (layer.default ? ' is-active' : '') + '" data-layer="' + layer.id + '">' + layer.label + '</button>';
+  }).join("") + '</div>';
+
+  el.addEventListener("click", function(e) {
+    var btn = e.target.closest("[data-layer]");
+    if (!btn || !GEO_STATE.map) return;
+    var id = btn.dataset.layer;
+    el.querySelectorAll(".geo-layer-pill").forEach(function(pill) {
+      var active = pill.dataset.layer === id;
+      pill.classList.toggle("is-active", active);
+    });
+    GEO_LAYERS.forEach(function(layer) {
+      var lg = GEO_STATE.layers[layer.id];
+      if (!lg) return;
+      if (layer.id === id) { GEO_STATE.map.addLayer(lg); }
+      else { GEO_STATE.map.removeLayer(lg); }
+    });
+    GEO_STATE.activeLayer = id;
+  });
+}
+
+function renderSDoHRadar(sdohHeat) {
+  var el = document.getElementById("geo-sdoh-radar-chart");
+  if (!el || !sdohHeat || !sdohHeat.length) return;
+  var domains = ["housing", "food", "transportation", "social_isolation", "stress"];
+  var labels = ["Housing", "Food", "Transportation", "Social Isolation", "Stress"];
+  var means = domains.map(function(d) {
+    var vals = sdohHeat.map(function(z) { return z.domains[d] || 0; });
+    return vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+  });
+
+  var canvas = el.querySelector("canvas");
+  if (!canvas) { canvas = document.createElement("canvas"); el.appendChild(canvas); }
+  if (CHARTS.geoRadar) { CHARTS.geoRadar.destroy(); }
+
+  CHARTS.geoRadar = new Chart(canvas, {
+    type: "radar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Mean Risk Score",
+        data: means.map(function(v) { return Math.round(v * 100) / 100; }),
+        backgroundColor: "rgba(58, 118, 254, 0.15)",
+        borderColor: COLORS.accent,
+        borderWidth: 2,
+        pointBackgroundColor: COLORS.accent,
+        pointRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { beginAtZero: true, max: 1, ticks: { stepSize: 0.2, font: { size: 10 } }, pointLabels: { font: { size: 11 } }, grid: { color: COLORS.grid } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function renderSDoHTable(sdohHeat) {
+  var thead = document.getElementById("geo-sdoh-thead");
+  var tbody = document.getElementById("geo-sdoh-tbody");
+  if (!thead || !tbody || !sdohHeat || !sdohHeat.length) return;
+  thead.innerHTML = '<th>ZIP</th><th>N</th><th>Composite</th><th>Housing</th><th>Food</th><th>Transport</th><th>Isolation</th><th>Stress</th>';
+
+  function riskColor(v) { return v < 0.35 ? COLORS.ok : v < 0.55 ? COLORS.warn : COLORS.bad; }
+  function riskCell(v) { return '<td><span class="sdoh-bar" style="width:' + Math.round(v * 60) + 'px;background:' + riskColor(v) + '"></span> ' + v.toFixed(2) + '</td>'; }
+
+  tbody.innerHTML = sdohHeat.map(function(z) {
+    var d = z.domains;
+    return '<tr><td class="t-mono">' + z.zip + '</td><td>' + z.n_respondents + '</td>' +
+      riskCell(z.composite_risk) + riskCell(d.housing) + riskCell(d.food) +
+      riskCell(d.transportation) + riskCell(d.social_isolation) + riskCell(d.stress) + '</tr>';
+  }).join("");
+}
+
+function renderDistanceChart(catchment) {
+  var el = document.getElementById("geo-distance-chart");
+  if (!el || !catchment) return;
+  var rings = catchment.participants_by_ring || [];
+  var canvas = el.querySelector("canvas");
+  if (!canvas) { canvas = document.createElement("canvas"); el.appendChild(canvas); }
+  if (CHARTS.geoDistance) { CHARTS.geoDistance.destroy(); }
+
+  CHARTS.geoDistance = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: rings.map(function(r) { return r.lower_km + "–" + r.ring_km + " km"; }),
+      datasets: [{
+        label: "Participants",
+        data: rings.map(function(r) { return r.n; }),
+        backgroundColor: rings.map(function(r, i) { return i === 0 ? COLORS.accent : "rgba(58,118,254," + (0.7 - i * 0.15) + ")"; }),
+        borderRadius: 6,
+        barPercentage: 0.7,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { beginAtZero: true, grid: { color: COLORS.grid } }, x: { grid: { display: false } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function renderRetentionChart(catchment) {
+  var el = document.getElementById("geo-retention-chart");
+  if (!el || !catchment) return;
+  var rings = catchment.participants_by_ring || [];
+  var canvas = el.querySelector("canvas");
+  if (!canvas) { canvas = document.createElement("canvas"); el.appendChild(canvas); }
+  if (CHARTS.geoRetention) { CHARTS.geoRetention.destroy(); }
+
+  CHARTS.geoRetention = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels: rings.map(function(r) { return r.lower_km + "–" + r.ring_km + " km"; }),
+      datasets: [{
+        label: "Mean Completeness %",
+        data: rings.map(function(r) { return r.mean_completeness; }),
+        borderColor: COLORS.TD,
+        backgroundColor: "rgba(47,127,79,0.1)",
+        fill: true, tension: 0.3, pointRadius: 5, pointBackgroundColor: COLORS.TD,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { y: { min: 50, max: 100, grid: { color: COLORS.grid }, ticks: { callback: function(v) { return v + "%"; } } }, x: { grid: { display: false } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+}
+
+function initGeoTimeline(geo) {
+  var timeline = geo.enrollment_geo_timeline;
+  if (!timeline || !timeline.length) return;
+  var playBtn = document.getElementById("geo-play-btn");
+  var label = document.getElementById("geo-timeline-label");
+  var fill = document.getElementById("geo-timeline-fill");
+  var thumb = document.getElementById("geo-timeline-thumb");
+  var track = document.getElementById("geo-timeline-track");
+  if (!playBtn || !label || !fill || !thumb) return;
+
+  function updateTimeline(idx) {
+    var frame = timeline[idx];
+    if (!frame) return;
+    var pct = ((idx + 1) / timeline.length * 100).toFixed(1) + "%";
+    label.textContent = frame.month_label;
+    fill.style.width = pct;
+    thumb.style.left = pct;
+  }
+
+  updateTimeline(0);
+  GEO_STATE.timeline.index = 0;
+
+  playBtn.addEventListener("click", function() {
+    if (GEO_STATE.timeline.playing) {
+      clearInterval(GEO_STATE.timeline.timer);
+      GEO_STATE.timeline.playing = false;
+      playBtn.textContent = "▶";
+      playBtn.classList.remove("is-playing");
+    } else {
+      GEO_STATE.timeline.playing = true;
+      playBtn.textContent = "⏸";
+      playBtn.classList.add("is-playing");
+      GEO_STATE.timeline.timer = setInterval(function() {
+        GEO_STATE.timeline.index++;
+        if (GEO_STATE.timeline.index >= timeline.length) {
+          GEO_STATE.timeline.index = 0;
+        }
+        updateTimeline(GEO_STATE.timeline.index);
+      }, 600);
+    }
+  });
+
+  if (track) {
+    track.addEventListener("click", function(e) {
+      var rect = track.getBoundingClientRect();
+      var ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      var idx = Math.round(ratio * (timeline.length - 1));
+      GEO_STATE.timeline.index = idx;
+      updateTimeline(idx);
+    });
+  }
 }

@@ -307,6 +307,9 @@ def generate_cohort_table(n: int = 40) -> list[dict]:
 def build_payload() -> dict:
     """Assemble the full dashboard JSON payload."""
     from dashboard.pipelines import build_org_site_data
+    from dashboard.pipelines.build_geo_data import generate_geo_data
+
+    enrollment = generate_enrollment()
 
     return {
         "meta": {
@@ -323,7 +326,7 @@ def build_payload() -> dict:
                 "n_target": 260,
             },
         },
-        "enrollment": generate_enrollment(),
+        "enrollment": enrollment,
         "visit_completion": generate_visit_completion(),
         "data_quality": generate_data_quality(),
         "ml_performance": generate_ml_performance(),
@@ -331,6 +334,7 @@ def build_payload() -> dict:
         "redcap_audit": generate_redcap_audit(),
         "cohort_table": generate_cohort_table(),
         "organization_site": build_org_site_data.build_payload(allow_network=False),
+        "geo": generate_geo_data(enrollment_data=enrollment),
     }
 
 
