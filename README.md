@@ -216,7 +216,7 @@ To reopen the current workspace in the container, use the VS Code command palett
 
 Current canonical public entrypoint:
 
-- **Stable**: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/) — Cloudflare Pages wrapper. The wrapper iframes the live dashboard origin; only this URL should ever be published. Promoted to a named tunnel hostname (`https://dashboard.esdlabsc.com/dashboard/`) when both `CLOUDFLARE_TUNNEL_TOKEN` and `DASHBOARD_PUBLIC_HOSTNAME` are set.
+- **Stable**: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/) — Cloudflare Pages wrapper. The wrapper iframes the live dashboard origin; only this URL should ever be published. Promoted to a named tunnel hostname (`https://esd-lab-namo.sc.edu/dashboard/`) once USC IT creates the CNAME at the registrar (DNSMadeEasy). See [docs/cloudflare_cutover_blockers.md](docs/cloudflare_cutover_blockers.md) for the exact remaining step.
 
 ### Public Dashboard Sharing
 
