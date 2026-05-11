@@ -9,10 +9,10 @@ const DATA_URLS = {
 };
 
 const RQ_STATUS_META = {
-  open: { label: "Open", color: "#8b6916" },
-  in_progress: { label: "In progress", color: "#4c72b0" },
-  blocked: { label: "Blocked", color: "#9f3424" },
-  resolved: { label: "Resolved", color: "#23633a" },
+  open: { label: "Open", color: "#b86d12" },
+  in_progress: { label: "In progress", color: "#3a76fe" },
+  blocked: { label: "Blocked", color: "#c65739" },
+  resolved: { label: "Resolved", color: "#2f7f4f" },
 };
 
 const RQ_PRIORITY_META = {
@@ -37,26 +37,26 @@ const AUTO_THEME_HOURS = {
 };
 
 const COLORS = {
-  ASIB: "#c44e52",
-  PT: "#4c72b0",
-  TD: "#55a868",
-  accent: "#6d1f1a",
-  accentSoft: "#9d5240",
-  models: ["#4c72b0", "#c44e52", "#55a868", "#dd8452", "#8172b3", "#937860"],
-  ok: "#23633a",
-  warn: "#8b6916",
-  bad: "#9f3424",
-  grid: "rgba(95, 72, 53, 0.12)",
+  ASIB: "#d85c52",
+  PT: "#3a76fe",
+  TD: "#2f7f4f",
+  accent: "#3a76fe",
+  accentSoft: "#f29431",
+  models: ["#3a76fe", "#2f7f4f", "#f29431", "#c65739", "#5d79d8", "#7ea5ff"],
+  ok: "#2f7f4f",
+  warn: "#b86d12",
+  bad: "#c65739",
+  grid: "rgba(58, 118, 254, 0.12)",
 };
 
 const THEME_CHART_TOKENS = {
   light: {
-    text: "#5f554e",
-    grid: "rgba(95, 72, 53, 0.12)",
+    text: "#4f5f77",
+    grid: "rgba(58, 118, 254, 0.12)",
   },
   dark: {
-    text: "#d6dde5",
-    grid: "rgba(214, 221, 229, 0.14)",
+    text: "#d9e1f2",
+    grid: "rgba(217, 225, 242, 0.14)",
   },
 };
 
@@ -262,7 +262,7 @@ const ERROR_BAR_PLUGIN = {
 };
 
 Chart.register(ERROR_BAR_PLUGIN);
-Chart.defaults.font.family = 'Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+Chart.defaults.font.family = 'Libre Franklin, "Segoe UI", "Helvetica Neue", Arial, sans-serif';
 Chart.defaults.font.size = 12;
 Chart.defaults.color = THEME_CHART_TOKENS.light.text;
 Chart.defaults.animation.duration = 700;
@@ -300,6 +300,7 @@ let CHARTS = {};
 let nextRefreshAt = 0;
 let controlsInitialized = false;
 let COHORT_SORT = { col: "nano_id", dir: "asc" };
+let REVEAL_OBSERVER = null;
 let ML_EXPLAINER = {
   timer: null,
   stages: [],
@@ -542,26 +543,47 @@ function getOrganizationSitePayload() {
 }
 
 function decorateRevealTargets() {
+  document.querySelectorAll(".card").forEach((element) => element.classList.add("content-card"));
+  document.querySelectorAll(".ml-domain-card").forEach((element) => element.classList.add("signal-card"));
+  document.querySelectorAll(".sync-arm-card").forEach((element) => element.classList.add("arm-card"));
+
+  if (!REVEAL_OBSERVER) {
+    REVEAL_OBSERVER = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+          entry.target.classList.add("revealed");
+          entry.target.classList.remove("reveal-pending");
+          REVEAL_OBSERVER.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "0px 0px -40px 0px",
+      }
+    );
+  }
+
   document
-    .querySelectorAll(".card, .pipeline, .sync-card, .sync-highlight-card, .sync-arm-card, .section-jumpbar, .atlas-card")
+    .querySelectorAll(".kpi-card, .jump-card, .content-card, .signal-card, .arm-card, .mini-kpi-item, tbody tr")
     .forEach((element) => {
-    element.classList.add("reveal");
-  });
+      if (element.classList.contains("revealed")) {
+        return;
+      }
 
-  const revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-        }
-      });
-    },
-    { threshold: 0.18 }
-  );
-
-  document.querySelectorAll(".reveal").forEach((element) => {
-    revealObserver.observe(element);
-  });
+      element.classList.add("reveal-pending");
+      const parent = element.parentElement;
+      if (parent && parent.matches(".grid.kpis, .section-atlas-grid, .sync-arm-grid, .reading-grid, #rq-grid")) {
+        const siblings = Array.from(parent.children).filter((node) => node.nodeType === Node.ELEMENT_NODE);
+        const index = Math.max(0, siblings.indexOf(element));
+        element.style.transitionDelay = `${index * 60}ms`;
+      } else {
+        element.style.transitionDelay = "";
+      }
+      REVEAL_OBSERVER.observe(element);
+    });
 }
 
 function setupSyncHeroMotion() {
@@ -914,7 +936,7 @@ function setActiveSection(sectionId) {
     link.classList.toggle("active", link.dataset.target === sectionId);
   });
   const title = SECTION_TITLES[sectionId] || SECTION_TITLES.overview;
-  document.getElementById("page-title").textContent = title[0];
+  document.getElementById("page-title").innerHTML = `<span class="title-mark" aria-hidden="true">◆</span>${escapeHtml(title[0])}`;
   document.getElementById("page-sub").textContent = title[1];
   updateViewPanelStatus(sectionId);
 }
@@ -979,6 +1001,17 @@ function setupControls() {
       drawCohort();
     });
   });
+
+  const cohortScroll = document.getElementById("cohort-table-scroll");
+  if (cohortScroll && cohortScroll.dataset.bound !== "true") {
+    cohortScroll.addEventListener("scroll", () => {
+      const head = document.querySelector("#table-cohort thead");
+      if (head) {
+        head.classList.toggle("scrolled", cohortScroll.scrollTop > 0);
+      }
+    });
+    cohortScroll.dataset.bound = "true";
+  }
 
   setupResearchQuestionsControls();
 }
@@ -1189,6 +1222,7 @@ function renderDashboard() {
   renderCompletionChart();
   drawCohort();
   renderResearchQuestions();
+  decorateRevealTargets();
 }
 
 function renderOverview() {
@@ -1220,6 +1254,24 @@ function renderOverview() {
     : 0;
   const completeness = 100 - meanMissing;
   animateNumber("kpi-completeness", completeness, (value) => `${value.toFixed(1)}%`);
+
+  const queryCard = document.getElementById("kpi-queries") && document.getElementById("kpi-queries").closest(".kpi-card");
+  const aurocCard = document.getElementById("kpi-auroc") && document.getElementById("kpi-auroc").closest(".kpi-card");
+  const completenessCard = document.getElementById("kpi-completeness") && document.getElementById("kpi-completeness").closest(".kpi-card");
+  const completenessDelta = document.getElementById("kpi-completeness") && document.getElementById("kpi-completeness").nextElementSibling;
+  if (queryCard) {
+    queryCard.dataset.kpiTone = audit.open_queries ? "warn" : "default";
+  }
+  if (aurocCard) {
+    aurocCard.dataset.kpiTone = "accent";
+  }
+  if (completenessCard) {
+    completenessCard.dataset.kpiTone = completeness < 80 ? "warn" : "default";
+  }
+  if (completenessDelta) {
+    completenessDelta.classList.toggle("warn", completeness < 80);
+    completenessDelta.classList.toggle("ok", completeness >= 80);
+  }
 
   animateNumber("home-progress-total", pctValue, (value) => `${value.toFixed(1)}%`);
   setText("home-progress-note", `${formatInt(total)} enrolled of ${formatInt(target)} planned across ASIB, PT, and TD.`);
@@ -1258,18 +1310,20 @@ function renderOverview() {
       const color = escapeHtml(group.color || "#7f241c");
       const note = `${formatInt(group.current || 0)} of ${formatInt(group.target || 0)} participants enrolled`;
       return `
-        <a class="sync-arm-card" href="#overview-enrollment">
+        <a class="sync-arm-card arm-card" data-arm-code="${escapeHtml(groupCode)}" href="#overview-enrollment">
           <div class="sync-arm-head">
             <span class="sync-arm-label">${escapeHtml(groupCode)}</span>
             <strong class="sync-arm-value">${progress.toFixed(0)}%</strong>
           </div>
           <span>${label}</span>
-          <div class="sync-arm-bar" aria-hidden="true"><span style="width:${progress.toFixed(1)}%; background: linear-gradient(90deg, ${color}, rgba(216, 121, 90, 0.95));"></span></div>
+          <div class="sync-arm-bar" aria-hidden="true"><span class="sync-arm-fill" style="width:${progress.toFixed(1)}%; background:${color};"></span></div>
           <span class="sync-arm-note">${escapeHtml(note)}</span>
         </a>
       `;
     }).join("");
   }
+
+  decorateRevealTargets();
 }
 
 function renderOrganizationSections() {
@@ -1862,9 +1916,11 @@ function renderQualitySection() {
   document.querySelector("#table-audit tbody").innerHTML = (audit.recent_activity || [])
     .map(
       (row) =>
-        `<tr><td>${escapeHtml(row.date)}</td><td>${escapeHtml(row.action)}</td><td><code>${escapeHtml(row.record_id)}</code></td><td>${escapeHtml(row.user)}</td></tr>`
+        `<tr><td class="t-mono">${escapeHtml(row.date)}</td><td>${escapeHtml(row.action)}</td><td class="t-mono">${escapeHtml(row.record_id)}</td><td>${escapeHtml(row.user)}</td></tr>`
     )
     .join("");
+
+  decorateRevealTargets();
 }
 
 function renderMlSection() {
@@ -1913,29 +1969,28 @@ function renderMlSection() {
     },
   });
 
-  upsertChart("shap", "chart-shap", {
-    type: "bar",
-    data: {
-      labels: (ml.shap || []).map((feature) => feature.label),
-      datasets: [
-        {
-          label: "SHAP importance",
-          data: (ml.shap || []).map((feature) => feature.importance),
-          backgroundColor: `${COLORS.accent}cc`,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: "y",
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { beginAtZero: true, grid: { color: COLORS.grid } },
-        y: { grid: { display: false } },
-      },
-    },
-  });
+  const shapRows = (ml.shap || [])
+    .slice()
+    .sort((left, right) => Number(right.importance || 0) - Number(left.importance || 0))
+    .slice(0, 8);
+  const topImportance = shapRows.length ? Number(shapRows[0].importance || 0) : 0;
+  const shapList = document.getElementById("ml-shap-ranks");
+  if (shapList) {
+    shapList.innerHTML = shapRows
+      .map((feature, index) => {
+        const label = escapeHtml(feature.label || humanizeFeatureKey(feature.feature || `Feature ${index + 1}`));
+        const width = topImportance > 0 ? Math.max(14, (Number(feature.importance || 0) / topImportance) * 100) : 14;
+        return `
+          <div class="ml-shap-rank-item">
+            <span class="ml-shap-rank-index">${index + 1}</span>
+            <div class="ml-shap-rank-copy">
+              <span class="ml-shap-rank-label t-mono">${label}</span>
+              <span class="ml-shap-rank-bar"><span style="width:${width.toFixed(1)}%"></span></span>
+            </div>
+          </div>`;
+      })
+      .join("");
+  }
 
   upsertChart("auroc", "chart-auroc", {
     type: "bar",
@@ -1975,7 +2030,7 @@ function renderMlSection() {
   document.querySelector("#table-subgroup tbody").innerHTML = (ml.subgroup || [])
     .map(
       (row) =>
-        `<tr><td>${escapeHtml(row.subgroup)}</td><td>${escapeHtml(String(row.n))}</td><td>${Number(row.mean_auroc).toFixed(3)}</td><td>+/-${Number(row.sd).toFixed(3)}</td></tr>`
+        `<tr><td>${escapeHtml(row.subgroup)}</td><td class="t-mono">${escapeHtml(String(row.n))}</td><td class="t-mono">${Number(row.mean_auroc).toFixed(3)}</td><td class="t-mono">+/-${Number(row.sd).toFixed(3)}</td></tr>`
     )
     .join("");
 
@@ -1983,17 +2038,19 @@ function renderMlSection() {
     .slice()
     .sort((left, right) => right.auroc - left.auroc)
     .map(
-      (row) => `
-        <tr>
-          <td><b>${escapeHtml(row.name)}</b></td>
-          <td>${Number(row.auroc).toFixed(3)}</td>
-          <td>[${row.auroc_ci[0]}-${row.auroc_ci[1]}]</td>
-          <td>${Number(row.sensitivity).toFixed(3)}</td>
-          <td>${Number(row.specificity).toFixed(3)}</td>
-          <td>${Number(row.f1).toFixed(3)}</td>
+      (row, index) => `
+        <tr class="${index === 0 ? "best-row" : ""}">
+          <td><strong>${escapeHtml(row.name)}</strong></td>
+          <td class="t-mono">${Number(row.auroc).toFixed(3)}</td>
+          <td class="t-mono">[${row.auroc_ci[0]}-${row.auroc_ci[1]}]</td>
+          <td class="t-mono">${Number(row.sensitivity).toFixed(3)}</td>
+          <td class="t-mono">${Number(row.specificity).toFixed(3)}</td>
+          <td class="t-mono">${Number(row.f1).toFixed(3)}</td>
         </tr>`
     )
     .join("");
+
+  decorateRevealTargets();
 }
 
 function renderMlExplainer(ml) {
@@ -2086,8 +2143,17 @@ function renderMlExplainer(ml) {
     )
     .join("");
 
+  document.querySelectorAll("#ml-stage-track .ml-stage-node").forEach((node) => {
+    node.addEventListener("mouseenter", stopMlExplainerTimer);
+    node.addEventListener("mouseleave", startMlExplainerTimer);
+  });
+
   renderMlOutputMetrics(bestModel, ml.confusion || {});
   document.getElementById("ml-score-fill").style.width = `${Math.max(16, Number(bestModel.auroc) * 100)}%`;
+  const scoreTrack = document.querySelector(".ml-score-track");
+  if (scoreTrack) {
+    scoreTrack.style.setProperty("--ml-score-pct", `${Math.max(16, Number(bestModel.auroc) * 100)}%`);
+  }
 
   setMlExplainerStage(ML_EXPLAINER.index);
   startMlExplainerTimer();
@@ -2100,27 +2166,43 @@ function renderMlOutputMetrics(bestModel, confusion) {
     {
       label: "95% CI",
       value: Array.isArray(bestModel.auroc_ci)
-        ? `${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}`
+        ? `[${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}]`
         : "—",
     },
   ];
+  const confusionLabels = {
+    tp: "True Positive",
+    fp: "False Positive",
+    tn: "True Negative",
+    fn: "False Negative",
+  };
 
-  const confusionParts = ["tp", "fp", "tn", "fn"]
+  const confusionGrid = ["tp", "fp", "tn", "fn"]
     .filter((key) => Number.isFinite(Number(confusion[key])))
-    .map((key) => `${key.toUpperCase()} ${confusion[key]}`);
-  if (confusionParts.length) {
-    metrics.push({ label: "Confusion", value: confusionParts.join(" · ") });
-  }
-
-  document.getElementById("ml-output-metrics").innerHTML = metrics
-    .map(
-      (metric) => `
-        <div class="ml-output-metric">
-          <span>${escapeHtml(metric.label)}</span>
-          <strong>${escapeHtml(metric.value)}</strong>
-        </div>`
-    )
+    .map((key) => {
+      const tone = key === "tp" || key === "tn" ? "ok" : "danger";
+      return `
+        <div class="confusion-cell ${tone}">
+          <strong class="t-mono">${escapeHtml(String(confusion[key]))}</strong>
+          <span class="t-label">${escapeHtml(confusionLabels[key])}</span>
+        </div>`;
+    })
     .join("");
+
+  document.getElementById("ml-output-metrics").innerHTML = `
+    <div class="metrics-grid">
+      ${metrics
+        .map(
+          (metric) => `
+            <div class="ml-output-metric">
+              <span class="t-label">${escapeHtml(metric.label)}</span>
+              <strong class="t-mono">${escapeHtml(metric.value)}</strong>
+            </div>`
+        )
+        .join("")}
+    </div>
+    ${confusionGrid ? `<div class="confusion-grid">${confusionGrid}</div>` : ""}
+    <div class="f1-chip"><span class="t-label">F1</span><strong class="t-mono">${escapeHtml(formatMetric(bestModel.f1))}</strong></div>`;
 }
 
 function setupMlExplainerInteractions(root) {
@@ -2179,33 +2261,54 @@ function setMlExplainerStage(index) {
   const safeIndex = Math.max(0, Math.min(index, ML_EXPLAINER.stages.length - 1));
   const stage = ML_EXPLAINER.stages[safeIndex];
   ML_EXPLAINER.index = safeIndex;
+  const detail = document.getElementById("ml-stage-detail");
+  const nextNode = document.querySelector(`#ml-stage-track .ml-stage-node[data-ml-stage-index="${safeIndex}"]`);
 
   root.style.setProperty(
     "--ml-progress",
     `${Math.max(10, ((safeIndex + 1) / ML_EXPLAINER.stages.length) * 100)}%`
   );
 
-  document.querySelectorAll("#ml-stage-track .ml-stage-node").forEach((node, nodeIndex) => {
-    node.classList.toggle("is-active", nodeIndex === safeIndex);
-    node.classList.toggle("is-complete", nodeIndex < safeIndex);
-  });
+  if (detail) {
+    detail.classList.add("is-transitioning");
+  }
+  if (nextNode) {
+    nextNode.classList.add("is-entering");
+  }
 
-  setText("ml-stage-kicker", `Stage ${safeIndex + 1} of ${ML_EXPLAINER.stages.length}`);
-  setText("ml-stage-title", stage.title);
-  setText("ml-stage-body", stage.body);
-  document.getElementById("ml-stage-evidence").innerHTML = (stage.evidence || [])
-    .map((item) => `<span class="chip">${escapeHtml(item)}</span>`)
-    .join("");
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      document.querySelectorAll("#ml-stage-track .ml-stage-node").forEach((node, nodeIndex) => {
+        node.classList.toggle("is-active", nodeIndex === safeIndex);
+        node.classList.toggle("is-complete", nodeIndex < safeIndex);
+      });
 
-  renderMlSignalRail(ML_EXPLAINER.architecture, safeIndex, ML_EXPLAINER.stages.length);
-  renderMlArchitectureDiagram({
-    architecture: ML_EXPLAINER.architecture,
-    stageIndex: safeIndex,
-    bestModel: ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel,
-    topFeatures: ML_EXPLAINER.context && ML_EXPLAINER.context.topFeatures,
-    featureDomains: ML_EXPLAINER.context && ML_EXPLAINER.context.featureDomains,
+      setText("ml-stage-kicker", `Stage ${safeIndex + 1} of ${ML_EXPLAINER.stages.length}`);
+      setText("ml-stage-title", stage.title);
+      setText("ml-stage-body", stage.body);
+      document.getElementById("ml-stage-evidence").innerHTML = (stage.evidence || [])
+        .map((item) => `<span class="chip feature-chip">${escapeHtml(item)}</span>`)
+        .join("");
+
+      renderMlSignalRail(ML_EXPLAINER.architecture, safeIndex, ML_EXPLAINER.stages.length);
+      renderMlArchitectureDiagram({
+        architecture: ML_EXPLAINER.architecture,
+        stageIndex: safeIndex,
+        bestModel: ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel,
+        topFeatures: ML_EXPLAINER.context && ML_EXPLAINER.context.topFeatures,
+        featureDomains: ML_EXPLAINER.context && ML_EXPLAINER.context.featureDomains,
+      });
+      renderMlMethods(stage, ML_EXPLAINER.architecture, ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel);
+
+      if (detail) {
+        detail.classList.remove("is-transitioning");
+      }
+      if (nextNode) {
+        nextNode.classList.remove("is-entering");
+      }
+      decorateRevealTargets();
+    });
   });
-  renderMlMethods(stage, ML_EXPLAINER.architecture, ML_EXPLAINER.context && ML_EXPLAINER.context.bestModel);
 }
 
 function getBestModel(ml) {
@@ -2890,7 +2993,7 @@ function renderTrajectoriesTable() {
     .map(
       (row) => {
         const slopeLabel = row.slope == null ? "—" : Number(row.slope).toFixed(3);
-        return `<tr><td><span class="badge ${row.group.toLowerCase()}">${row.group}</span></td><td>${row.biomarker}</td><td>${Number(row.intercept).toFixed(2)}</td><td>${slopeLabel}</td></tr>`;
+        return `<tr><td><span class="badge ${row.group.toLowerCase()}">${row.group}</span></td><td class="t-mono">${row.biomarker}</td><td class="t-mono">${Number(row.intercept).toFixed(2)}</td><td class="t-mono">${slopeLabel}</td></tr>`;
       }
     )
     .join("");
@@ -2946,21 +3049,27 @@ function drawCohort() {
 
   rows.sort((left, right) => compareValues(left[COHORT_SORT.col], right[COHORT_SORT.col], COHORT_SORT.dir));
 
+  setText("cohort-count", `${formatInt(rows.length)} participants`);
+  setText("cohort-toolbar-group", selectedGroup === "all" ? "All groups" : selectedGroup);
+  setText("cohort-toolbar-qc", selectedQc === "all" ? "All QC" : selectedQc);
+
   document.querySelector("#table-cohort tbody").innerHTML = rows
     .map(
       (row) => `
         <tr>
-          <td><code>${escapeHtml(row.nano_id)}</code></td>
+          <td class="t-mono">${escapeHtml(row.nano_id)}</td>
           <td><span class="badge ${String(row.group || "").toLowerCase()}">${escapeHtml(row.group)}</span></td>
-          <td>${escapeHtml(String(row.ga_weeks ?? "-"))}</td>
-          <td>${formatInt(row.birth_weight_g)}</td>
+          <td class="t-mono">${escapeHtml(String(row.ga_weeks ?? "-"))}</td>
+          <td class="t-mono">${formatInt(row.birth_weight_g)}</td>
           <td>${escapeHtml(row.sex)}</td>
-          <td>${escapeHtml(row.last_visit)}</td>
-          <td>${Number(row.completeness_pct).toFixed(1)}%</td>
+          <td class="t-mono">${escapeHtml(row.last_visit)}</td>
+          <td class="t-mono">${Number(row.completeness_pct).toFixed(1)}%</td>
           <td><span class="badge ${row.qc_status === "OK" ? "ok" : "warn"}">${escapeHtml(row.qc_status)}</span></td>
         </tr>`
     )
     .join("");
+
+  decorateRevealTargets();
 }
 
 function renderReadings() {
@@ -3031,7 +3140,7 @@ function renderReadings() {
   grid.innerHTML = items
     .map(
       (item) => `
-        <article class="reading-card reveal is-visible ${item.is_recent ? "recent" : ""}">
+        <article class="reading-card content-card ${item.is_recent ? "recent" : ""}">
           <div>
             <div class="reading-meta">
               <span class="badge ok">${escapeHtml(item.category)}</span>
@@ -3049,7 +3158,7 @@ function renderReadings() {
             <span>.${escapeHtml(item.extension)}</span>
           </div>
           <div class="reading-tags">
-            ${(item.keywords || []).map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("")}
+            ${(item.keywords || []).map((keyword) => `<span class="feature-chip t-mono">${escapeHtml(keyword)}</span>`).join("")}
           </div>
           <div class="reading-actions">
             <a class="reading-link" href="${item.relative_href}" target="_blank" rel="noreferrer">Open material</a>
@@ -3058,6 +3167,8 @@ function renderReadings() {
         </article>`
     )
     .join("");
+
+  decorateRevealTargets();
 }
 
 function renderResearchQuestions() {
@@ -3179,6 +3290,7 @@ function renderResearchQuestions() {
   if (empty) empty.classList.add("hide");
 
   grid.innerHTML = filtered.map(renderResearchCard).join("");
+  decorateRevealTargets();
 }
 
 function populateRqSelect(id, values, current) {
@@ -3256,7 +3368,7 @@ function renderResearchCard(q) {
     .join("");
 
   return `
-    <article class="research-card reveal is-visible" data-status="${escapeHtml(q.status)}" data-priority="${escapeHtml(q.priority)}">
+    <article class="research-card content-card" data-status="${escapeHtml(q.status)}" data-priority="${escapeHtml(q.priority)}">
       <header class="research-card-head">
         <div class="research-card-ids">
           <span class="research-id">${escapeHtml(q.id)}</span>
@@ -3286,7 +3398,13 @@ function renderFooter() {
   const metadataMode = STATE.readings.meta && STATE.readings.meta.pdf_metadata_enabled
     ? "PDF-aware indexing"
     : "filename-only indexing";
-  document.getElementById("footer-left").textContent = `${dashboardMeta.data_source || "dashboard"} · ${formatInt(readings.total_readings || 0)} indexed readings · ${formatInt(readings.total_pages || 0)} pages scanned · ${metadataMode} · no PHI rendered in the web surface`;
+  document.getElementById("footer-left").innerHTML = [
+    escapeHtml(dashboardMeta.data_source || "dashboard"),
+    `${formatInt(readings.total_readings || 0)} indexed readings`,
+    `${formatInt(readings.total_pages || 0)} pages scanned`,
+    metadataMode,
+    "no PHI rendered",
+  ].map((item) => `<span class="footer-chip">${item}</span>`).join('<span class="footer-dot">·</span>');
 }
 
 function upsertChart(key, canvasId, config) {

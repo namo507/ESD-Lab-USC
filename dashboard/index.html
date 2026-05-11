@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -59,8 +59,8 @@
     <!-- Topbar -->
     <div class="topbar">
       <div>
-        <div class="page-title" id="page-title">NANO Study · Research Dashboard</div>
-        <div class="page-sub" id="page-sub">R01 longitudinal cohort · VPT infants from NICU admission through 36 months</div>
+        <div class="page-title t-headline" id="page-title"><span class="title-mark" aria-hidden="true">◆</span>NANO Study · Research Dashboard</div>
+        <div class="page-sub t-caption" id="page-sub">R01 longitudinal cohort · VPT infants from NICU admission through 36 months</div>
       </div>
       <div class="topbar-right">
         <span class="status-pill live"><span class="pulse"></span>Live monitor</span>
@@ -69,7 +69,7 @@
         <span class="status-pill soft">Refresh in <span id="next-refresh">—</span></span>
         <span id="data-source-chip" class="status-pill soft">synthetic_demo</span>
         <div class="theme-toggle status-pill soft" id="theme-toggle" role="group" aria-label="Theme mode selector">
-          <span class="theme-toggle-label">Theme</span>
+          <span class="theme-toggle-label t-label">Theme</span>
           <div class="theme-toggle-options">
             <button type="button" class="theme-option" data-theme-preference="auto" aria-pressed="true">Auto</button>
             <button type="button" class="theme-option" data-theme-preference="light" aria-pressed="false">Light</button>
@@ -77,7 +77,7 @@
           </div>
         </div>
         <button type="button" class="status-pill soft home-view-trigger" id="home-view-toggle" hidden>Homepage</button>
-        <button type="button" class="status-pill soft view-panel-trigger" id="view-panel-toggle" aria-controls="view-panel-shell" aria-expanded="false">View Panel</button>
+        <button type="button" class="status-pill soft view-panel-trigger t-label" id="view-panel-toggle" aria-controls="view-panel-shell" aria-expanded="false">View Panel</button>
       </div>
     </div>
 
@@ -214,7 +214,7 @@
       <div class="sync-hero">
         <div class="sync-hero-top">
           <span class="eyebrow">Overview cockpit</span>
-          <div class="sync-hero-pills">
+          <div class="sync-hero-pills cockpit-quicknav">
             <a class="sync-link-pill" href="#overview-enrollment">Recruitment curves</a>
             <a class="sync-link-pill" href="#quality-kpis">Quality checks</a>
             <a class="sync-link-pill" href="#ml-explainer">Model explainer</a>
@@ -223,7 +223,7 @@
         </div>
         <div class="sync-hero-core">
           <div class="sync-copy">
-            <h1>Recruitment health, data readiness, and model signals aligned in one balanced landing view.</h1>
+            <h1 class="t-display">Recruitment health, data readiness, and model signals aligned in one balanced landing view.</h1>
             <p id="sync-notes">Watching dashboard data inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.</p>
           </div>
           <div class="sync-visual" aria-hidden="true">
@@ -301,52 +301,52 @@
         </div>
       </div>
       <div class="section-atlas-grid">
-        <a class="atlas-card" href="#overview-kpis">
+        <a class="atlas-card jump-card" data-card-group="overview" href="#overview-kpis">
           <strong>Study status</strong>
           <span>KPI snapshot and operational health</span>
           <small>Overview</small>
         </a>
-        <a class="atlas-card" href="#labsite-summary">
+        <a class="atlas-card jump-card" data-card-group="organization" href="#labsite-summary">
           <strong>ESD Lab site</strong>
           <span>Mission, studies, resources, and community links</span>
           <small>Organization</small>
         </a>
-        <a class="atlas-card" href="#impact-overview">
+        <a class="atlas-card jump-card" data-card-group="organization" href="#impact-overview">
           <strong>ESD impact</strong>
           <span>Publications, news, and participant stories with filters</span>
           <small>Organization</small>
         </a>
-        <a class="atlas-card" href="#overview-enrollment">
+        <a class="atlas-card jump-card" data-card-group="overview" href="#overview-enrollment">
           <strong>Recruitment curves</strong>
           <span>Enrollment and target progress</span>
           <small>Overview</small>
         </a>
-        <a class="atlas-card" href="#pipeline-map">
+        <a class="atlas-card jump-card" data-card-group="pipeline" href="#pipeline-map">
           <strong>Methods pipeline</strong>
           <span>Collection to modeling to sharing</span>
           <small>Pipeline</small>
         </a>
-        <a class="atlas-card" href="#quality-missingness">
+        <a class="atlas-card jump-card" data-card-group="quality" href="#quality-missingness">
           <strong>QC signals</strong>
           <span>Missingness, queries, and audit actions</span>
           <small>Data quality</small>
         </a>
-        <a class="atlas-card" href="#ml-explainer">
+        <a class="atlas-card jump-card" data-card-group="ml" href="#ml-explainer">
           <strong>Model explainer</strong>
           <span>Architecture animation and methods links</span>
           <small>ML performance</small>
         </a>
-        <a class="atlas-card" href="#trajectories-chart">
+        <a class="atlas-card jump-card" data-card-group="trajectories" href="#trajectories-chart">
           <strong>Developmental trajectories</strong>
           <span>Biomarker slopes and visit completion</span>
           <small>Trajectories</small>
         </a>
-        <a class="atlas-card" href="#cohort-table-card">
+        <a class="atlas-card jump-card" data-card-group="cohort" href="#cohort-table-card">
           <strong>Cohort table</strong>
           <span>Sortable participant snapshot</span>
           <small>Cohort</small>
         </a>
-        <a class="atlas-card" href="#readings-library">
+        <a class="atlas-card jump-card" data-card-group="readings" href="#readings-library">
           <strong>Reading library</strong>
           <span>Featured papers and searchable archive</span>
           <small>Readings</small>
@@ -368,40 +368,40 @@
           </div>
         </div>
         <div class="grid kpis">
-          <div class="card kpi">
+          <div class="card kpi kpi-card" data-kpi-tone="default">
             <span class="hint">i</span>
             <div class="hint-popup">Total participants currently enrolled across all three groups (ASIB, PT, TD). Target: 260 over 5 years.</div>
-            <div class="label">Enrolled / Target</div>
-            <div class="value" id="kpi-enroll">—</div>
-            <div class="delta ok" id="kpi-enroll-delta">—</div>
+            <div class="label t-label">Enrolled / Target</div>
+            <div class="value t-kpi t-mono" id="kpi-enroll">—</div>
+            <div class="delta ok t-caption" id="kpi-enroll-delta">—</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi kpi-card" data-kpi-tone="default">
             <span class="hint">i</span>
             <div class="hint-popup">Records active in REDCap (have had ≥1 visit completed).</div>
-            <div class="label">Active Records</div>
-            <div class="value" id="kpi-active">—</div>
-            <div class="delta" id="kpi-active-delta">—</div>
+            <div class="label t-label">Active Records</div>
+            <div class="value t-kpi t-mono" id="kpi-active">—</div>
+            <div class="delta t-caption" id="kpi-active-delta">—</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi kpi-card" data-kpi-tone="warn">
             <span class="hint">i</span>
             <div class="hint-popup">Outstanding REDCap data queries awaiting resolution by the data team.</div>
-            <div class="label">Open Queries</div>
-            <div class="value" id="kpi-queries">—</div>
-            <div class="delta warn">auto-assigned to RA team</div>
+            <div class="label t-label">Open Queries</div>
+            <div class="value t-kpi t-mono" id="kpi-queries">—</div>
+            <div class="delta warn t-caption">auto-assigned to RA team</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi kpi-card" data-kpi-tone="accent">
             <span class="hint">i</span>
             <div class="hint-popup">Best model's AUROC for predicting ADOS-2 positive screen at 12 months from NICU+infant biomarkers.</div>
-            <div class="label">Best Model AUROC</div>
-            <div class="value" id="kpi-auroc">—</div>
-            <div class="delta ok" id="kpi-auroc-sub">—</div>
+            <div class="label t-label">Best Model AUROC</div>
+            <div class="value t-kpi t-mono" id="kpi-auroc">—</div>
+            <div class="delta ok t-caption" id="kpi-auroc-sub">—</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi kpi-card" data-kpi-tone="warn">
             <span class="hint">i</span>
             <div class="hint-popup">Average fraction of REDCap fields completed per participant per visit.</div>
-            <div class="label">Mean Completeness</div>
-            <div class="value" id="kpi-completeness">—</div>
-            <div class="delta ok">target ≥ 80%</div>
+            <div class="label t-label">Mean Completeness</div>
+            <div class="value t-kpi t-mono" id="kpi-completeness">—</div>
+            <div class="delta ok t-caption">target ≥ 80%</div>
           </div>
         </div>
       </div>
@@ -772,12 +772,12 @@
           </div>
         </div>
         <div class="grid kpis">
-          <div class="card kpi"><div class="label">Records</div><div class="value" id="dq-records">—</div><div class="delta">in REDCap</div></div>
-          <div class="card kpi"><div class="label">Double-entry diff</div><div class="value" id="dq-double">—</div><div class="delta warn">needs review</div></div>
-          <div class="card kpi"><div class="label">Out-of-range</div><div class="value" id="dq-oor">—</div><div class="delta warn">above 3.5 SD</div></div>
-          <div class="card kpi"><div class="label">Missing required</div><div class="value" id="dq-missing">—</div><div class="delta bad">blocks analysis</div></div>
-          <div class="card kpi"><div class="label">ECG transfer late</div><div class="value" id="dq-ecg-late">—</div><div class="delta warn">> 48 h</div></div>
-          <div class="card kpi"><div class="label">Pending PI review</div><div class="value" id="dq-pi">—</div><div class="delta">awaiting sign-off</div></div>
+          <div class="card kpi kpi-card mini-kpi-item"><div class="label t-label">Records</div><div class="value t-kpi t-mono" id="dq-records">—</div><div class="delta t-caption">in REDCap</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">Double-entry diff</div><div class="value t-kpi t-mono" id="dq-double">—</div><div class="delta warn t-caption">needs review</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">Out-of-range</div><div class="value t-kpi t-mono" id="dq-oor">—</div><div class="delta warn t-caption">above 3.5 SD</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="danger"><div class="label t-label">Missing required</div><div class="value t-kpi t-mono" id="dq-missing">—</div><div class="delta bad t-caption">blocks analysis</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">ECG transfer late</div><div class="value t-kpi t-mono" id="dq-ecg-late">—</div><div class="delta warn t-caption">&gt; 48 h</div></div>
+          <div class="card kpi kpi-card mini-kpi-item"><div class="label t-label">Pending PI review</div><div class="value t-kpi t-mono" id="dq-pi">—</div><div class="delta t-caption">awaiting sign-off</div></div>
         </div>
 
         <div class="grid two stack-top">
@@ -908,7 +908,7 @@
             <span class="hint">i</span>
             <div class="hint-popup"><b>Feature importance</b> from SHAP values averaged across CV folds for the best-performing model.</div>
             <h3>Top predictors (SHAP)</h3>
-            <div class="chart-wrap tall"><canvas id="chart-shap"></canvas></div>
+            <div class="chart-wrap tall chart-wrap-shap"><canvas id="chart-shap"></canvas><div class="ml-shap-ranks" id="ml-shap-ranks"></div></div>
           </div>
         </div>
 
@@ -1034,7 +1034,15 @@
         </div>
 
         <div class="card table-card jump-target" id="cohort-table-card">
+          <div class="table-toolbar cohort-toolbar" id="cohort-toolbar">
+            <span class="t-caption" id="cohort-count">— participants</span>
+            <div class="cohort-toolbar-actions">
+              <span class="toolbar-chip t-label" id="cohort-toolbar-group">All groups</span>
+              <span class="toolbar-chip t-label" id="cohort-toolbar-qc">All QC</span>
+            </div>
+          </div>
           <h3>First 40 participants (sortable)</h3>
+          <div class="table-scroll" id="cohort-table-scroll">
           <table class="data" id="table-cohort">
             <thead>
               <tr>
@@ -1050,6 +1058,7 @@
             </thead>
             <tbody></tbody>
           </table>
+          </div>
         </div>
       </div>
     </section>
@@ -1266,9 +1275,13 @@
       </div>
     </section>
 
-    <footer>
-      <span id="footer-left">Live dashboard initialized · awaiting data sync</span>
-      <span>ESD Lab · University of South Carolina · R01 NIH</span>
+    <footer class="dashboard-footer">
+      <div class="footer-left t-caption" id="footer-left">Live dashboard initialized · awaiting data sync</div>
+      <div class="footer-right t-caption">ESD Lab · University of South Carolina · R01 NIH</div>
+      <div class="footer-links">
+        <a class="footer-link t-mono" href="../config/study_parameters.yml" target="_blank">study_parameters.yml</a>
+        <a class="footer-link t-mono" href="../config/redcap_config.yml" target="_blank">redcap_config.yml</a>
+      </div>
     </footer>
   </main>
 
