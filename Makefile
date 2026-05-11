@@ -12,7 +12,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick pages-build pages-deploy assistant-status assistant-prepare
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share dashboard-share-watch share-named share-quick pages-build pages-deploy assistant-status assistant-prepare
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -115,6 +115,15 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 
 dashboard-share:  ## Start a public share tunnel (auto: prefer named, fall back to quick)
 	bash scripts/share_dashboard.sh --mode auto
+
+dashboard-share-watch:  ## Continuously verify pages.dev and repair the quick-tunnel-backed wrapper if it dies
+	$(PYTHON) scripts/check_dashboard_runtime.py \
+		--base-url http://127.0.0.1:8080 \
+		--pages-url https://esd-lab-namo.pages.dev/ \
+		--repair-share \
+		--share-mode quick \
+		--watch \
+		--interval 120
 
 share-named:  ## Require a named Cloudflare tunnel; fail if .env is incomplete
 	bash scripts/share_dashboard.sh --mode named
