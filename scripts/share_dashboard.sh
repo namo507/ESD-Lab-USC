@@ -265,7 +265,13 @@ emit_result() {
     if "$python_bin" scripts/build_pages_wrapper.py --origin "$origin_url" --kind "$kind" >/dev/null; then
       rebuild_msg="rebuilt: dashboard/public/pages_wrapper/index.html and dist/pages-wrapper/index.html"
       if [[ "$kind" == "quick" ]]; then
-        rebuild_msg="$(auto_deploy_pages_wrapper)"
+        if rebuild_msg="$(auto_deploy_pages_wrapper)"; then
+          if [[ "$rebuild_msg" == rebuilt\ and\ auto-deployed* ]]; then
+            wrapper_auto_deployed="true"
+          fi
+        elif [[ -z "$rebuild_msg" ]]; then
+          rebuild_msg="WARNING: rebuilt, but auto-deploy failed; run 'make pages-deploy' manually."
+        fi
         if [[ "$rebuild_msg" == rebuilt\ and\ auto-deployed* ]]; then
           wrapper_auto_deployed="true"
         fi

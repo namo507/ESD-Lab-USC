@@ -5,14 +5,13 @@
 .DEFAULT_GOAL := help
 PYTHON := python3
 VENV ?= .venv
-WRANGLER_PAGES_CMD ?= npx --yes wrangler@3.112.0
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share dashboard-share-watch share-named share-quick pages-build pages-deploy assistant-status assistant-prepare
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-deploy
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -113,51 +112,11 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-dashboard-share:  ## Start a public share tunnel (auto: prefer named, fall back to quick)
-	bash scripts/share_dashboard.sh --mode auto
+dashboard-share:  ## Start a public share tunnel and print the shareable URL
+	bash scripts/share_dashboard.sh
 
-dashboard-share-watch:  ## Continuously verify pages.dev and auto-repair/redeploy the quick-tunnel-backed wrapper if it dies
-	$(PYTHON) scripts/check_dashboard_runtime.py \
-		--base-url http://127.0.0.1:8080 \
-		--pages-url https://esd-lab-namo.pages.dev/ \
-		--repair-share \
-		--share-mode quick \
-		--watch \
-		--interval 120
-
-share-named:  ## Require a named Cloudflare tunnel; fail if .env is incomplete
-	bash scripts/share_dashboard.sh --mode named
-
-share-quick:  ## Force a quick (random) Cloudflare tunnel for one-off shares
-	bash scripts/share_dashboard.sh --mode quick
-
-pages-build:  ## Render the Pages wrapper from ORIGIN=<https://...> [KIND=quick|named]
-	@if [ -z "$(ORIGIN)" ]; then \
-		echo "Usage: make pages-build ORIGIN=https://<host>/dashboard/ [KIND=quick|named]"; \
-		exit 64; \
-	fi
-	$(PYTHON) scripts/build_pages_wrapper.py --origin "$(ORIGIN)" $(if $(KIND),--kind $(KIND))
-
-pages-deploy:  ## Deploy dist/pages-wrapper to esd-lab-namo (production alias). Requires CLOUDFLARE_API_TOKEN.
-	@if [ -z "$$CLOUDFLARE_API_TOKEN" ]; then \
-		echo "ERROR: CLOUDFLARE_API_TOKEN is unset. Either export an API token with Pages:Edit + Account:Read scopes,"; \
-		echo "       or use the git-connected branch path documented in dashboard/public/pages_wrapper/README.md."; \
-		exit 78; \
-	fi
-	@if [ ! -s dist/pages-wrapper/index.html ]; then \
-		echo "ERROR: dist/pages-wrapper/index.html missing. Run 'make pages-build ORIGIN=https://...' or 'make dashboard-share' first."; \
-		exit 66; \
-	fi
-	$(WRANGLER_PAGES_CMD) pages deploy dist/pages-wrapper \
-		--project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} \
-		--branch $${CLOUDFLARE_PAGES_BRANCH:-main} \
-		--commit-dirty=true
-
-assistant-status:  ## Check local dashboard assistant readiness
-	$(PYTHON) scripts/prepare_dashboard_assistant.py
-
-assistant-prepare:  ## Download local GGUF assets for the dashboard assistant
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --download
+pages-deploy:  ## Deploy the Pages wrapper to the canonical Cloudflare Pages project
+	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
 

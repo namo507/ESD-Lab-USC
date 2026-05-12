@@ -147,5 +147,7 @@ temp/
 *.bak
 *.orig
 dashboard/data/.readings_cache.json
-models/_metrics.json
+
+# ─── Models (large binary files; store locally or in LFS) ────
 models/local_llms/
+models/_metrics.json

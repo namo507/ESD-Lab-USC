@@ -214,118 +214,61 @@ This repository can also be opened in a VS Code dev container. The dev container
 
 To reopen the current workspace in the container, use the VS Code command palette and run `Dev Containers: Reopen in Container` after Docker Desktop is running.
 
-Current canonical public entrypoint:
+Current stable public entrypoints:
 
-- **Stable**: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/) — Cloudflare Pages wrapper. The wrapper iframes the live dashboard origin; only this URL should ever be published. Promoted to a named tunnel hostname (`https://esd-lab-namo.sc.edu/dashboard/`) once USC IT creates the CNAME at the registrar (DNSMadeEasy). See [docs/cloudflare_cutover_blockers.md](docs/cloudflare_cutover_blockers.md) for the exact remaining step.
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Direct dashboard origin: the current `make dashboard-share` URL printed for the active Cloudflare quick tunnel session
 
-### Public Dashboard Sharing
+### Shareable Public Links
 
-There is exactly **one** canonical public URL for the dashboard at any time.
-The share workflow exposes three explicit modes so the URL is never
-ambiguous:
+You can expose the live dashboard publicly with:
 
-| Command | Mode | Canonical URL | Stable? |
-|---------|------|---------------|---------|
-| `make share-named`       | named  | `https://dashboard.esdlabsc.com/dashboard/`            | yes — DNS-backed |
-| `make dashboard-share`   | auto   | named when configured, otherwise → ⬇ Pages wrapper     | yes (wrapper URL) |
-| `make share-quick`       | quick  | `https://esd-lab-namo.pages.dev/` (Pages wrapper)      | yes (wrapper URL) |
+```bash
+make dashboard-share
+```
 
-The Pages wrapper at **`https://esd-lab-namo.pages.dev/`** iframes whichever
-cloudflared origin the share script just brought up. The wrapper URL itself
-never rotates; the iframe target inside it is regenerated automatically every
-run from `dashboard/public/pages_wrapper/template.html` and deployed with
-`make pages-deploy`.
+That command starts the dashboard, starts the tunnel sidecar, and prints the
+active public dashboard URL for the current session.
 
-If Docker Compose is unavailable, the same command falls back to the local
-Python dashboard runtime on `127.0.0.1:8080` and starts a host-side
-`cloudflared` tunnel instead.
+The Cloudflare-hosted links currently used for sharing this repository are:
 
-#### Tier 1 — stable named tunnel (preferred)
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Active direct dashboard URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
 
-Set both values in `.env` and run `make share-named`:
+The Pages wrapper is the preferred public link, but on this machine it still
+depends on the currently active Cloudflare quick tunnel because no local named
+tunnel token/hostname pair is configured.
+
+By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
+printed public URL is temporary and the hostname is random. Do not document or
+bookmark a previous quick-tunnel URL as a permanent dashboard address, because
+it changes when the tunnel is recreated, and update the Pages wrapper if you
+need the embedded public page to keep working after a tunnel restart.
+
+For temporary sharing, always rerun `make dashboard-share` and send only the
+latest quick-share URL printed by the script.
+
+To move from the current quick-tunnel-backed wrapper to a stable branded
+hostname such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS
+zone to the Cloudflare account, create a named public hostname, and set these
+variables in `.env` before running the same command:
 
 ```bash
 CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-Prerequisites in the Cloudflare account:
+After that, `make dashboard-share` switches to the `dashboard-share-named`
+service and can print the custom-domain link instead of a random
+`trycloudflare.com` URL.
 
-1. The DNS zone (e.g. `esdlabsc.com`) attached to Cloudflare.
-2. A named Tunnel created in the Cloudflare Zero Trust dashboard with a
-   public hostname pointing at `http://dashboard:8080` (Compose service
-   name) or the host's `http://localhost:8080`.
-3. The Tunnel token copied into `.env`.
+The share link stays live while the Docker services keep running.
 
-If those prerequisites are missing, `make share-named` exits non-zero rather
-than silently degrading to a quick tunnel.
-
-#### Tier 2 — Pages wrapper + quick origin (default fallback)
-
-`make dashboard-share` (with both values blank) starts a quick Cloudflare
-tunnel and rebuilds the Pages wrapper to embed the new origin URL. The team
-keeps sharing the same canonical wrapper URL:
-
-> **`https://esd-lab-namo.pages.dev/`**
-
-The wrapper artifact is written to `dist/pages-wrapper/index.html` plus a
-preview at `dashboard/public/pages_wrapper/index.html` and a manifest at
-`dashboard/public/pages_wrapper/manifest.json`. When `CLOUDFLARE_API_TOKEN`
-is exported, `make dashboard-share` and the share watchdog auto-deploy that
-wrapper to Pages. To push the regenerated wrapper manually:
+To verify the runtime is still healthy and auto-rebuilding continuously:
 
 ```bash
-# Prereqs: export CLOUDFLARE_API_TOKEN (Pages:Edit + Account:Read scopes).
-# Override branch/project via CLOUDFLARE_PAGES_BRANCH (default: main) and
-# CLOUDFLARE_PAGES_PROJECT (default: esd-lab-namo).
-make pages-deploy   # wrangler@3.112.0 pages deploy dist/pages-wrapper --branch main --commit-dirty=true
+make dashboard-smoke
 ```
-
-If `CLOUDFLARE_API_TOKEN` is not available in the operator's shell, use the
-git-connected fallback documented in
-[`dashboard/public/pages_wrapper/README.md`](dashboard/public/pages_wrapper/README.md):
-push the regenerated `dashboard/public/pages_wrapper/index.html` to the
-branch the `esd-lab-namo` Pages project watches; Cloudflare redeploys
-automatically.
-
-The cloudflared origin (`https://<random>.trycloudflare.com/dashboard/`) is
-printed *separately* and labelled "Ephemeral cloudflared origin (do NOT
-publish)" so it is never confused with the canonical URL.
-
-#### Tier 3 — quick tunnel only
-
-`make share-quick` skips the Pages wrapper entirely and prints only the
-ephemeral hostname. Use this for a one-off share where rotation is fine.
-
-### Verifying the share
-
-```bash
-make dashboard-smoke    # local /api/healthz + watcher liveness check
-curl -I "$(cat ${XDG_RUNTIME_DIR:-/tmp}/esd-lab-usc-share/last_origin.txt)"
-```
-
-The most recent origin URL is recorded in
-`${XDG_RUNTIME_DIR:-/tmp}/esd-lab-usc-share/last_origin.txt` so callers can
-re-verify without re-running the share. The share link stays live while the
-local dashboard process and the `cloudflared` process keep running.
-
-### Local Dashboard Assistant
-
-The live dashboard now includes a collapsible chat assistant wired to a local
-GGUF model backend. The default target is
-`bartowski/Qwen2.5-1.5B-Instruct-GGUF` with the
-`Qwen2.5-1.5B-Instruct-Q3_K_S.gguf` file, which is still small enough to run in
-this dev container with the tuned assistant settings.
-
-Use these commands to install the runtime and fetch the model locally:
-
-```bash
-pip install -r dashboard/requirements-assistant.txt
-make assistant-status
-make assistant-prepare
-```
-
-Detailed setup notes are in [docs/dashboard_ai_assistant.md](docs/dashboard_ai_assistant.md).
 
 ---
 
