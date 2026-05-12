@@ -272,6 +272,23 @@ make dashboard-smoke
 
 ---
 
+## Docker/Compose Health Check
+
+Before sharing or running the dashboard, you can verify Docker and Compose service health:
+
+```bash
+make docker-health
+```
+
+This checks:
+- Docker daemon is running
+- Compose services (dashboard, dashboard-share, dashboard-share-named) are up and healthy
+- The dashboard endpoint is reachable
+
+This is automatically run as a pre-step in `make dashboard-share`.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branching strategy, commit conventions, and PR checklist.

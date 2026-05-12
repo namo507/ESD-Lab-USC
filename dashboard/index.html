@@ -408,10 +408,37 @@
         </div>
         <div class="sync-story-grid">
           <div class="sync-storyboard">
-            <div class="sync-storyboard-copy">
-              <span class="eyebrow">Study pulse ribbon</span>
-              <h3 class="sync-storyboard-title">The landing surface now carries live study motion instead of unused white space.</h3>
-              <p class="sync-storyboard-note">Recruitment, data readiness, modeling, and reading coverage move through one connected board so the homepage feels balanced, informative, and active before you open any deeper section.</p>
+            <div class="sync-storyboard-top">
+              <div class="sync-storyboard-copy">
+                <span class="eyebrow">Study pulse ribbon</span>
+                <h3 class="sync-storyboard-title">The landing surface now carries live study motion instead of unused white space.</h3>
+                <p class="sync-storyboard-note">Recruitment, data readiness, modeling, and reading coverage move through one connected board so the homepage feels balanced, informative, and active before you open any deeper section.</p>
+              </div>
+              <div class="sync-storyboard-stage" aria-hidden="true">
+                <div class="sync-storyboard-stage-grid"></div>
+                <div class="sync-storyboard-stage-core">
+                  <span class="sync-storyboard-stage-label">Live signal map</span>
+                  <strong id="home-stage-focus-value">—</strong>
+                  <p id="home-stage-focus-note">Waiting for synced study metrics.</p>
+                  <div class="sync-storyboard-stage-bars">
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-a"><i id="home-stage-bar-enrollment"></i></span>
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-b"><i id="home-stage-bar-readiness"></i></span>
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-c"><i id="home-stage-bar-library"></i></span>
+                  </div>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-a">
+                  <span>Enrollment</span>
+                  <strong id="home-stage-chip-enrollment">—</strong>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-b">
+                  <span>Readiness</span>
+                  <strong id="home-stage-chip-readiness">—</strong>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-c">
+                  <span>Library</span>
+                  <strong id="home-stage-chip-library">—</strong>
+                </div>
+              </div>
             </div>
             <div class="sync-story-track" aria-label="Live study pulse">
               <a class="sync-story-node" data-tone="recruitment" href="#overview-enrollment">

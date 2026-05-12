@@ -113,6 +113,11 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
+	@if command -v docker >/dev/null 2>&1; then \
+		$(MAKE) docker-health; \
+	else \
+		echo "Docker unavailable; skipping Docker health preflight and using the local runtime fallback."; \
+	fi
 	bash scripts/share_dashboard.sh
 
 pages-deploy:  ## Deploy the Pages wrapper to the canonical Cloudflare Pages project
@@ -133,6 +138,10 @@ clean:  ## Remove Python cache files and test artifacts
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null; true
 	find . -type f -name ".coverage" -delete 2>/dev/null; true
 	@echo "✓ Cleaned Python cache and test artifacts."
+
+
+docker-health:  ## Check Docker daemon and Compose service health
+	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url http://127.0.0.1:8080/dashboard/ --json
 
 clean-all: clean  ## Remove virtualenv and all generated files
 	rm -rf $(VENV)

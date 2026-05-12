@@ -1,4 +1,5 @@
 const REFRESH_INTERVAL_MS = 20000;
+const ASSISTANT_STATUS_POLL_ENABLED = false;
 const DATA_URLS = {
   dashboard: "data/dashboard_data.json",
   readings: "data/readings_data.json",
@@ -330,11 +331,21 @@ async function bootstrap() {
   setupControls();
   setupAssistant();
   await syncData({ force: true });
-  try {
-    await syncAssistantStatus();
-  } catch (error) {
-    console.error(error);
-  } finally {
+  if (ASSISTANT_STATUS_POLL_ENABLED) {
+    try {
+      await syncAssistantStatus();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      dismissSiteLoader();
+    }
+  } else {
+    STATE.assistant.status = {
+      state: "offline",
+      ready: false,
+      message: "Assistant status checks are paused until the chat panel is opened.",
+    };
+    renderAssistantStatus();
     dismissSiteLoader();
   }
   if (window.location.hash && document.querySelector(window.location.hash)) {
@@ -343,12 +354,16 @@ async function bootstrap() {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       syncData();
-      syncAssistantStatus();
+      if (ASSISTANT_STATUS_POLL_ENABLED && STATE.assistant.open) {
+        syncAssistantStatus();
+      }
     }
   });
   window.setInterval(() => {
     syncData();
-    syncAssistantStatus();
+    if (ASSISTANT_STATUS_POLL_ENABLED && STATE.assistant.open) {
+      syncAssistantStatus();
+    }
   }, REFRESH_INTERVAL_MS);
   window.setInterval(updateRefreshCountdown, 1000);
 }
@@ -1717,6 +1732,23 @@ function renderHomePulseSurface({ enrollment, audit, total, target, pctValue, co
       : `${formatInt(totalPages)} pages indexed across ${formatInt(categoryCount)} categories`
   );
   setSignalMeterWidth("home-pulse-library-bar", totalPages ? Math.min(100, Math.max(18, totalPages / 8)) : 18);
+
+  setText("home-stage-focus-value", `${pctValue.toFixed(0)}% aligned`);
+  setText(
+    "home-stage-focus-note",
+    bestModel
+      ? `${bestModel.name} leads the live model board · ${watchInterval}s watch cadence.`
+      : `${watchInterval}s watch cadence · ${formatInt(totalReadings)} indexed readings in the library.`
+  );
+  setText("home-stage-chip-enrollment", `${formatInt(total)} / ${formatInt(target)}`);
+  setText("home-stage-chip-readiness", `${completeness.toFixed(0)}% ready`);
+  setText("home-stage-chip-library", `${formatInt(totalReadings)} indexed`);
+  setSignalMeterWidth("home-stage-bar-enrollment", pctValue);
+  setSignalMeterWidth("home-stage-bar-readiness", completeness);
+  setSignalMeterWidth(
+    "home-stage-bar-library",
+    totalReadings ? Math.min(100, Math.max(18, totalReadings * 4)) : 18
+  );
 
   setText("home-ambient-runtime-value", `${watchInterval}s watch`);
   setText(
@@ -4044,6 +4076,9 @@ function toggleAssistantPanel(forceOpen) {
   STATE.assistant.open = typeof forceOpen === "boolean" ? forceOpen : !STATE.assistant.open;
   panel.hidden = !STATE.assistant.open;
   document.body.classList.toggle("assistant-open", STATE.assistant.open);
+  if (STATE.assistant.open) {
+    syncAssistantStatus();
+  }
   renderAssistantStatus();
   if (STATE.assistant.open) {
     scrollAssistantLog();
