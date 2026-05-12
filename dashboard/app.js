@@ -580,7 +580,7 @@ function decorateRevealTargets() {
   }
 
   document
-    .querySelectorAll(".kpi-card, .jump-card, .content-card, .signal-card, .arm-card, .mini-kpi-item, tbody tr")
+    .querySelectorAll(".kpi-card, .jump-card, .content-card, .signal-card, .arm-card, .sync-storyboard, .sync-story-node, .sync-ambient-card, .mini-kpi-item, tbody tr")
     .forEach((element) => {
       if (element.classList.contains("revealed")) {
         return;
@@ -588,7 +588,7 @@ function decorateRevealTargets() {
 
       element.classList.add("reveal-pending");
       const parent = element.parentElement;
-      if (parent && parent.matches(".grid.kpis, .section-atlas-grid, .sync-arm-grid, .reading-grid, #rq-grid")) {
+      if (parent && parent.matches(".grid.kpis, .section-atlas-grid, .sync-arm-grid, .sync-story-track, .sync-ambient-grid, .reading-grid, #rq-grid")) {
         const siblings = Array.from(parent.children).filter((node) => node.nodeType === Node.ELEMENT_NODE);
         const index = Math.max(0, siblings.indexOf(element));
         element.style.transitionDelay = `${index * 60}ms`;
@@ -812,6 +812,8 @@ function setupMagneticInteractions(root = document) {
   const selector = [
     ".nav a[data-target]",
     ".sync-link-pill",
+    ".sync-story-node",
+    ".sync-ambient-card",
     ".section-jump-pill",
     ".atlas-card",
     ".view-link",
@@ -1663,7 +1665,93 @@ function renderOverview() {
     }).join("");
   }
 
+  renderHomePulseSurface({ enrollment, audit, total, target, pctValue, completeness, bestModel });
+
   decorateRevealTargets();
+}
+
+function renderHomePulseSurface({ enrollment, audit, total, target, pctValue, completeness, bestModel }) {
+  const runtime = STATE.runtime || {};
+  const readings = STATE.readings || emptyReadingsPayload();
+  const readingSummary = readings.summary || {};
+  const categories = Array.isArray(readingSummary.categories) ? readingSummary.categories : [];
+  const topCategory = categories[0] || null;
+  const totalReadings = Number(readingSummary.total_readings || 0);
+  const totalPages = Number(readingSummary.total_pages || 0);
+  const categoryCount = categories.length;
+  const watchInterval = Number(runtime.watch_interval_seconds || REFRESH_INTERVAL_MS / 1000);
+  const leadingArm = Object.entries(enrollment)
+    .slice()
+    .sort((left, right) => Number((right[1] && right[1].percent) || 0) - Number((left[1] && left[1].percent) || 0))[0];
+  const groupSummary = Object.entries(enrollment)
+    .slice(0, 3)
+    .map(([groupCode, group]) => `${groupCode} ${formatInt(Number((group && group.current) || 0))}`)
+    .join(" · ");
+
+  setText("home-pulse-enrollment-value", `${formatInt(total)} / ${formatInt(target)}`);
+  setText("home-pulse-enrollment-note", `${pctValue.toFixed(1)}% of target · ${groupSummary}`);
+  setSignalMeterWidth("home-pulse-enrollment-bar", pctValue);
+
+  setText("home-pulse-quality-value", `${completeness.toFixed(1)}% ready`);
+  setText(
+    "home-pulse-quality-note",
+    `${formatInt(audit.open_queries)} open quer${audit.open_queries === 1 ? "y" : "ies"} · ${formatInt(audit.active_participants)} active records`
+  );
+  setSignalMeterWidth("home-pulse-quality-bar", completeness);
+
+  if (bestModel) {
+    setText("home-pulse-model-value", `${Number(bestModel.auroc || 0).toFixed(3)} AUROC`);
+    setText("home-pulse-model-note", `${bestModel.name} currently leads the live model board.`);
+    setSignalMeterWidth("home-pulse-model-bar", Number(bestModel.auroc || 0) * 100);
+  } else {
+    setText("home-pulse-model-value", "Pending");
+    setText("home-pulse-model-note", "Model evaluation will populate after the next dashboard refresh.");
+    setSignalMeterWidth("home-pulse-model-bar", 14);
+  }
+
+  setText("home-pulse-library-value", `${formatInt(totalReadings)} readings`);
+  setText(
+    "home-pulse-library-note",
+    topCategory
+      ? `${topCategory.label} leads · ${formatInt(totalPages)} pages indexed`
+      : `${formatInt(totalPages)} pages indexed across ${formatInt(categoryCount)} categories`
+  );
+  setSignalMeterWidth("home-pulse-library-bar", totalPages ? Math.min(100, Math.max(18, totalPages / 8)) : 18);
+
+  setText("home-ambient-runtime-value", `${watchInterval}s watch`);
+  setText(
+    "home-ambient-runtime-note",
+    runtime.last_build_finished_at
+      ? `Last rebuild ${formatDateTime(runtime.last_build_finished_at)}`
+      : "Waiting for the first live rebuild cycle."
+  );
+
+  setText(
+    "home-ambient-library-value",
+    topCategory ? shortText(topCategory.label, 18) : `${formatInt(categoryCount)} tracked`
+  );
+  setText(
+    "home-ambient-library-note",
+    readings.meta.latest_modified_at
+      ? `Latest file ${formatDateTime(readings.meta.latest_modified_at)}`
+      : "Reading library waiting for indexed content."
+  );
+
+  setText("home-ambient-query-value", `${formatInt(audit.open_queries)} open`);
+  setText(
+    "home-ambient-query-note",
+    audit.open_queries
+      ? `${formatInt(audit.open_queries)} item${audit.open_queries === 1 ? " needs" : "s need"} REDCap follow-up.`
+      : "All current REDCap queries are resolved."
+  );
+
+  setText("home-ambient-cohort-value", `${formatInt(audit.active_participants)} active`);
+  setText(
+    "home-ambient-cohort-note",
+    leadingArm
+      ? `${leadingArm[0]} leads at ${Number((leadingArm[1] && leadingArm[1].percent) || 0).toFixed(0)}% of target.`
+      : "Cohort movement will appear here after refresh."
+  );
 }
 
 function renderOrganizationSections() {

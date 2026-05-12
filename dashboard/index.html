@@ -406,6 +406,63 @@
             <span id="home-best-model-note">Waiting for model evaluation</span>
           </div>
         </div>
+        <div class="sync-story-grid">
+          <div class="sync-storyboard">
+            <div class="sync-storyboard-copy">
+              <span class="eyebrow">Study pulse ribbon</span>
+              <h3 class="sync-storyboard-title">The landing surface now carries live study motion instead of unused white space.</h3>
+              <p class="sync-storyboard-note">Recruitment, data readiness, modeling, and reading coverage move through one connected board so the homepage feels balanced, informative, and active before you open any deeper section.</p>
+            </div>
+            <div class="sync-story-track" aria-label="Live study pulse">
+              <a class="sync-story-node" data-tone="recruitment" href="#overview-enrollment">
+                <span class="sync-story-kicker">Recruitment live</span>
+                <strong id="home-pulse-enrollment-value">—</strong>
+                <span id="home-pulse-enrollment-note">Waiting for enrollment signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-enrollment-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="quality" href="#quality-kpis">
+                <span class="sync-story-kicker">Readiness pulse</span>
+                <strong id="home-pulse-quality-value">—</strong>
+                <span id="home-pulse-quality-note">Waiting for quality signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-quality-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="model" href="#ml-explainer">
+                <span class="sync-story-kicker">Model confidence</span>
+                <strong id="home-pulse-model-value">—</strong>
+                <span id="home-pulse-model-note">Waiting for model signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-model-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="library" href="#readings-spotlight">
+                <span class="sync-story-kicker">Library coverage</span>
+                <strong id="home-pulse-library-value">—</strong>
+                <span id="home-pulse-library-note">Waiting for readings signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-library-bar"></span></span>
+              </a>
+            </div>
+          </div>
+          <div class="sync-ambient-grid" aria-label="Live operational highlights">
+            <a class="sync-ambient-card" data-tone="runtime" href="#overview-kpis">
+              <span class="sync-story-kicker">Refresh cadence</span>
+              <strong id="home-ambient-runtime-value">—</strong>
+              <span id="home-ambient-runtime-note">Waiting for runtime cadence.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="library" href="#readings-spotlight">
+              <span class="sync-story-kicker">Reading focus</span>
+              <strong id="home-ambient-library-value">—</strong>
+              <span id="home-ambient-library-note">Waiting for reading spotlight.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="queries" href="#quality-kpis">
+              <span class="sync-story-kicker">Follow-up load</span>
+              <strong id="home-ambient-query-value">—</strong>
+              <span id="home-ambient-query-note">Waiting for REDCap workload.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="cohort" href="#cohort-table-card">
+              <span class="sync-story-kicker">Active cohort</span>
+              <strong id="home-ambient-cohort-value">—</strong>
+              <span id="home-ambient-cohort-note">Waiting for cohort movement.</span>
+            </a>
+          </div>
+        </div>
         <div class="sync-arm-grid" id="home-arm-grid" aria-label="Enrollment progress by study group"></div>
       </div>
       <div class="sync-cards">
