@@ -1579,6 +1579,7 @@ function renderDashboard() {
   drawCohort();
   renderResearchQuestions();
   renderGeo();
+  renderPulseAtlas();
   decorateRevealTargets();
 }
 
@@ -4837,4 +4838,208 @@ function initGeoTimeline(geo) {
       updateTimeline(idx);
     });
   }
+}
+// ──────────────────────────────────────────────────────────────────
+// Pulse Atlas — animated cohort × pipeline × signal widget
+// Reads enrollment, stages, ML, REDCap audit, runtime.
+// One-time SVG bootstrap + per-frame particle advance via rAF.
+// ──────────────────────────────────────────────────────────────────
+const PULSE_ATLAS = {
+  initialized: false,
+  rafId: null,
+  particles: [],
+  focus: "all",
+  paths: {},
+  lastTs: 0,
+  pulseAccum: 0,
+};
+
+const PA_COHORTS = ["VPT", "ASIB", "TD"];
+const PA_COHORT_STREAM_MAP = { VPT: "PT", ASIB: "ASIB", TD: "TD" };
+const PA_STAGES = [
+  { id: "ingest",     short: "Ingest",     x: 130 },
+  { id: "preprocess", short: "Pre-proc",   x: 250 },
+  { id: "qa",         short: "QC",         x: 370 },
+  { id: "hrv",        short: "HRV",        x: 490 },
+  { id: "hda",        short: "HDA",        x: 590 },
+  { id: "merge",      short: "Export",     x: 680 },
+];
+
+function getSvgPointAt(pathEl, t) {
+  const len = pathEl.getTotalLength();
+  return pathEl.getPointAtLength(len * t);
+}
+
+function renderPulseAtlas() {
+  if (!STATE.dashboard) return;
+  const root = document.getElementById("pulse-atlas");
+  if (!root) return;
+
+  // bootstrap once
+  if (!PULSE_ATLAS.initialized) {
+    PULSE_ATLAS.paths = {
+      VPT:  document.getElementById("pa-path-VPT"),
+      ASIB: document.getElementById("pa-path-ASIB"),
+      TD:   document.getElementById("pa-path-TD"),
+    };
+
+    // render pipeline stage bubbles
+    const stagesGroup = document.getElementById("pa-stages");
+    if (stagesGroup) {
+      stagesGroup.innerHTML = "";
+      PA_STAGES.forEach((s) => {
+        const cx = s.x;
+        const cy = 180;
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("data-pa-stage", s.id);
+        g.innerHTML = `
+          <circle cx="${cx}" cy="${cy}" r="14" fill="rgba(255,255,255,0.92)" stroke="rgba(109,31,26,0.18)" stroke-width="1.2" />
+          <circle cx="${cx}" cy="${cy}" r="3.5" fill="#6d1f1a" opacity="0.7" />
+          <text class="pa-label" x="${cx}" y="${cy + 30}" text-anchor="middle">${s.short}</text>
+          <text class="pa-num"   x="${cx}" y="${cy - 22}" text-anchor="middle" data-pa-stage-count="${s.id}">—</text>
+        `;
+        stagesGroup.appendChild(g);
+      });
+    }
+
+    // attach focus tag listeners
+    root.querySelectorAll(".pulse-atlas-tag").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        PULSE_ATLAS.focus = btn.dataset.paFocus || "all";
+        root.querySelectorAll(".pulse-atlas-tag").forEach((b) =>
+          b.classList.toggle("is-active", b === btn));
+        applyPulseAtlasFocus();
+      });
+    });
+
+    // mouse-tilt the parent hero visual + react to atlas hover
+    root.addEventListener("mousemove", (e) => {
+      const rect = root.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      root.style.setProperty("--pa-tilt-x", `${(py - 0.5) * -2.4}deg`);
+      root.style.setProperty("--pa-tilt-y", `${(px - 0.5) * 3.2}deg`);
+    });
+
+    // seed particles — 4 per cohort, staggered
+    PA_COHORTS.forEach((cohort, ci) => {
+      for (let k = 0; k < 4; k++) {
+        PULSE_ATLAS.particles.push({
+          cohort,
+          t: ci * 0.13 + k * 0.25,
+          speed: 0.04 + (k % 3) * 0.012,  // path-units per second
+        });
+      }
+    });
+
+    PULSE_ATLAS.initialized = true;
+    startPulseAtlasLoop();
+  }
+
+  // refresh stage counters + cohort start labels from dashboard data
+  const enrollment = STATE.dashboard.enrollment.by_group;
+  const fmt = (n) => formatInt(Math.round(n || 0));
+  PA_COHORTS.forEach((c) => {
+    const key = PA_COHORT_STREAM_MAP[c];
+    const group = enrollment[key] || enrollment[c] || {};
+    setText(`pa-num-${c}`, fmt(group.current));
+  });
+
+  // pipeline stage inflight (best-effort: enrollment + qc flags)
+  const stages = (STATE.dashboard.pipeline && STATE.dashboard.pipeline.stages) || null;
+  PA_STAGES.forEach((s) => {
+    const el = document.querySelector(`[data-pa-stage-count="${s.id}"]`);
+    if (!el) return;
+    let val = 0;
+    if (stages) {
+      const m = stages.find((x) => x.id === s.id);
+      if (m) val = m.inflight || m.count || 0;
+    }
+    el.textContent = fmt(val);
+  });
+
+  // side cards — model signal + pipeline yield
+  const bestModel = (STATE.dashboard.ml_performance.models || [])
+    .slice().sort((a, b) => (b.auroc || 0) - (a.auroc || 0))[0];
+  if (bestModel) {
+    setText("pa-side-signal", `${(bestModel.auroc || 0).toFixed(3)}`);
+    setText("pa-side-signal-sub", `${bestModel.name} · AUROC 95% CI [${(bestModel.auroc_ci || [0,0])[0]}-${(bestModel.auroc_ci || [0,0])[1]}]`);
+    const bar = document.getElementById("pa-side-signal-bar");
+    if (bar) bar.style.width = `${Math.max(0, Math.min(100, (bestModel.auroc || 0) * 100))}%`;
+  }
+
+  const missing = STATE.dashboard.data_quality.missingness || [];
+  const meanMissing = missing.length ? missing.reduce((s, x) => s + (x.pct_missing || 0), 0) / missing.length : 0;
+  const yieldPct = Math.max(0, 100 - meanMissing);
+  setText("pa-side-yield", `${yieldPct.toFixed(1)}%`);
+  setText("pa-side-yield-sub", `${missing.length} instruments scanned · MICE pool m=20`);
+  const yieldBar = document.getElementById("pa-side-yield-bar");
+  if (yieldBar) yieldBar.style.width = `${yieldPct}%`;
+
+  // mini-stat row
+  const audit = STATE.dashboard.redcap_audit.summary || {};
+  setText("pa-mini-inflight", fmt((stages || []).reduce((a, x) => a + (x.inflight || 0), 0)));
+  setText("pa-mini-queries", fmt(audit.open_queries));
+  setText("pa-mini-builds", fmt((STATE.runtime || {}).build_count || 0));
+
+  applyPulseAtlasFocus();
+}
+
+function applyPulseAtlasFocus() {
+  const focus = PULSE_ATLAS.focus;
+  document.querySelectorAll(".pulse-atlas-svg .pa-stream").forEach((el) => {
+    const cohort = el.dataset.paStream;
+    const active = focus === "all" || focus === cohort;
+    el.setAttribute("stroke-dasharray", "4 6");
+    el.setAttribute("opacity", active ? "0.85" : "0.18");
+    el.style.animation = active ? "syncPipelineFlow 1.6s linear infinite" : "none";
+  });
+}
+
+function startPulseAtlasLoop() {
+  if (PULSE_ATLAS.rafId) return;
+  function step(ts) {
+    PULSE_ATLAS.rafId = requestAnimationFrame(step);
+    if (!PULSE_ATLAS.lastTs) PULSE_ATLAS.lastTs = ts;
+    const dt = Math.min(0.05, (ts - PULSE_ATLAS.lastTs) / 1000);
+    PULSE_ATLAS.lastTs = ts;
+    PULSE_ATLAS.pulseAccum += dt;
+
+    // throttle DOM writes to ~30fps
+    if (PULSE_ATLAS.pulseAccum < 0.033) return;
+    PULSE_ATLAS.pulseAccum = 0;
+
+    const particlesGroup = document.getElementById("pa-particles");
+    const sparksGroup = document.getElementById("pa-sparks");
+    if (!particlesGroup || !sparksGroup) return;
+
+    let html = "";
+    let sparks = "";
+    PULSE_ATLAS.particles.forEach((p, i) => {
+      p.t += p.speed * dt;
+      if (p.t > 1) {
+        p.t = 0;
+        // emit a spark at the endpoint
+        const pathEl = PULSE_ATLAS.paths[p.cohort];
+        if (pathEl) {
+          const end = getSvgPointAt(pathEl, 0.99);
+          sparks += `<circle class="pa-spark" cx="${end.x.toFixed(1)}" cy="${end.y.toFixed(1)}" r="6" fill="url(#pa-spark-grad)" style="animation: pulseAtlasSpark 0.9s ease-out forwards;" />`;
+        }
+      }
+      const pathEl = PULSE_ATLAS.paths[p.cohort];
+      if (!pathEl) return;
+      const pt = getSvgPointAt(pathEl, p.t);
+      const active = PULSE_ATLAS.focus === "all" || PULSE_ATLAS.focus === p.cohort;
+      const color = p.cohort === "VPT" ? "#6d1f1a" : p.cohort === "ASIB" ? "#8172b3" : "#55a868";
+      html += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${active ? 3.6 : 1.4}" fill="${color}" opacity="${active ? 0.92 : 0.28}" />`;
+    });
+    particlesGroup.innerHTML = html;
+    sparksGroup.innerHTML = sparks;
+  }
+  PULSE_ATLAS.rafId = requestAnimationFrame(step);
+}
+
+// Honor reduced motion preference — kill the rAF entirely
+if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  startPulseAtlasLoop = function noopLoop() {};
 }

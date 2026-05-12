@@ -491,6 +491,83 @@
           </div>
         </div>
         <div class="sync-arm-grid" id="home-arm-grid" aria-label="Enrollment progress by study group"></div>
+
+        <!-- ─── Pulse Atlas · animated cohort + pipeline + signal widget ─── -->
+        <section class="pulse-atlas" id="pulse-atlas" aria-label="Live cohort, pipeline, and model-signal pulse">
+          <div class="pulse-atlas-head">
+            <div>
+              <span class="eyebrow">Live pulse</span>
+              <h2>Cohort streams, pipeline particles, and model signals — moving as the data lands</h2>
+            </div>
+            <div class="pulse-atlas-tags" role="tablist" aria-label="Pulse atlas focus">
+              <button type="button" class="pulse-atlas-tag is-active" data-pa-focus="all">All streams</button>
+              <button type="button" class="pulse-atlas-tag" data-pa-focus="VPT">VPT</button>
+              <button type="button" class="pulse-atlas-tag" data-pa-focus="ASIB">ASIB</button>
+              <button type="button" class="pulse-atlas-tag" data-pa-focus="TD">TD</button>
+            </div>
+          </div>
+          <div class="pulse-atlas-grid">
+            <div class="pulse-atlas-canvas-wrap">
+              <svg class="pulse-atlas-svg" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Three cohort streams flowing through six pipeline stages">
+                <defs>
+                  <radialGradient id="pa-spark-grad">
+                    <stop offset="0%" stop-color="#ffcc00" stop-opacity="1" />
+                    <stop offset="60%" stop-color="#ffcc00" stop-opacity="0.35" />
+                    <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
+                  </radialGradient>
+                  <path id="pa-path-VPT"  d="M 30 90  C 180 60, 260 90, 380 110 S 600 80, 690 90" />
+                  <path id="pa-path-ASIB" d="M 30 180 C 200 200, 280 150, 380 180 S 600 200, 690 180" />
+                  <path id="pa-path-TD"   d="M 30 270 C 180 260, 280 290, 380 250 S 600 280, 690 270" />
+                </defs>
+                <use class="pa-track" href="#pa-path-VPT"  />
+                <use class="pa-track" href="#pa-path-ASIB" />
+                <use class="pa-track" href="#pa-path-TD"   />
+                <use class="pa-stream pa-stream-VPT"  href="#pa-path-VPT"  data-pa-stream="VPT" />
+                <use class="pa-stream pa-stream-ASIB" href="#pa-path-ASIB" data-pa-stream="ASIB" />
+                <use class="pa-stream pa-stream-TD"   href="#pa-path-TD"   data-pa-stream="TD" />
+                <g id="pa-stages"></g>
+                <g id="pa-particles"></g>
+                <g id="pa-sparks"></g>
+                <g class="pa-start-labels">
+                  <text class="pa-label" x="30" y="74">VPT</text>
+                  <text class="pa-num"   x="30" y="58" id="pa-num-VPT">—</text>
+                  <text class="pa-label" x="30" y="164">ASIB</text>
+                  <text class="pa-num"   x="30" y="148" id="pa-num-ASIB">—</text>
+                  <text class="pa-label" x="30" y="254">TD</text>
+                  <text class="pa-num"   x="30" y="238" id="pa-num-TD">—</text>
+                </g>
+              </svg>
+            </div>
+            <div class="pulse-atlas-side">
+              <div class="pa-card">
+                <span class="pa-card-label">Today's signal</span>
+                <strong id="pa-side-signal">—</strong>
+                <span class="pa-card-sub" id="pa-side-signal-sub">Awaiting model evaluation</span>
+                <div class="pa-bar"><div class="pa-bar-fill" id="pa-side-signal-bar" data-tone="ocean"></div></div>
+              </div>
+              <div class="pa-card">
+                <span class="pa-card-label">Pipeline yield</span>
+                <strong id="pa-side-yield">—</strong>
+                <span class="pa-card-sub" id="pa-side-yield-sub">QC pass rate across last 24 h of epochs</span>
+                <div class="pa-bar"><div class="pa-bar-fill" id="pa-side-yield-bar" data-tone="sage"></div></div>
+              </div>
+              <div class="pa-mini-stat-row" aria-label="Live counters">
+                <div class="pa-mini-stat">
+                  <span class="pa-mini-label">In flight</span>
+                  <span class="pa-mini-val" id="pa-mini-inflight">—</span>
+                </div>
+                <div class="pa-mini-stat">
+                  <span class="pa-mini-label">Queries</span>
+                  <span class="pa-mini-val" id="pa-mini-queries">—</span>
+                </div>
+                <div class="pa-mini-stat">
+                  <span class="pa-mini-label">Build #</span>
+                  <span class="pa-mini-val" id="pa-mini-builds">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
       <div class="sync-cards">
         <div class="sync-card">

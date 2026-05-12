@@ -799,9 +799,15 @@ body.view-panel-open .view-panel {
 
 .sync-hero-core {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
   align-items: center;
-  gap: 20px;
+  gap: clamp(24px, 3vw, 48px);
+}
+
+@media (max-width: 1100px) {
+  .sync-hero-core {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .sync-hero-top {
@@ -850,13 +856,20 @@ body.view-panel-open .view-panel {
   gap: 14px;
 }
 
-.sync-copy h1 {
+.sync-copy h1,
+.sync-copy h1.t-display {
   margin: 0;
   font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(30px, 4vw, 44px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
-  max-width: 13ch;
+  font-size: clamp(28px, 3.1vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  max-width: 22ch;
+  font-weight: 600;
+}
+
+.sync-copy h1 [data-word] {
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .sync-copy p {
@@ -870,16 +883,16 @@ body.view-panel-open .view-panel {
   display: grid;
   align-items: center;
   justify-items: center;
-  min-height: 280px;
+  min-height: clamp(300px, 32vw, 420px);
   perspective: 1400px;
 }
 
 .sync-visual-stage {
   position: relative;
-  width: min(100%, 320px);
-  aspect-ratio: 1.02;
+  width: min(100%, 460px);
+  aspect-ratio: 1.05;
   transform-style: preserve-3d;
-  transform: rotateX(var(--sync-tilt-x)) rotateY(var(--sync-tilt-y));
+  transform: rotateX(var(--sync-tilt-x, 0deg)) rotateY(var(--sync-tilt-y, 0deg));
   transition: transform 0.28s ease-out;
 }
 
@@ -9524,4 +9537,359 @@ body[data-theme="dark"] .sync-storyboard-stage-grid {
   .sync-banner::after {
     animation: none !important;
   }
+}
+/* ──────────────────────────────────────────────────────────────────
+   Pulse Atlas — animated cohort-and-pipeline widget that fills the
+   empty space below the hero. Reactive to mouse, driven by ESD data.
+   ────────────────────────────────────────────────────────────────── */
+.pulse-atlas {
+  position: relative;
+  margin-top: 18px;
+  padding: clamp(20px, 2.4vw, 30px) clamp(22px, 2.6vw, 32px);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.78), transparent 46%),
+    radial-gradient(circle at 84% 88%, rgba(216, 184, 146, 0.18), transparent 50%),
+    linear-gradient(135deg, rgba(255, 250, 243, 0.92), rgba(247, 238, 226, 0.74));
+  border: 1px solid rgba(95, 72, 53, 0.12);
+  box-shadow: 0 22px 48px rgba(40, 25, 15, 0.07);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.pulse-atlas::before,
+.pulse-atlas::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(28px);
+  z-index: 0;
+}
+
+.pulse-atlas::before {
+  top: -80px;
+  right: -40px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(109, 31, 26, 0.12), transparent 70%);
+  animation: pulseAtlasDrift 18s ease-in-out infinite;
+}
+
+.pulse-atlas::after {
+  bottom: -90px;
+  left: -50px;
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(120, 169, 248, 0.16), transparent 70%);
+  animation: pulseAtlasDrift 22s ease-in-out infinite reverse;
+}
+
+.pulse-atlas-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: clamp(22px, 2.8vw, 36px);
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .pulse-atlas-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.pulse-atlas-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pulse-atlas-head .eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pulse-atlas-head h2 {
+  margin: 6px 0 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  max-width: 26ch;
+}
+
+.pulse-atlas-head .pulse-atlas-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pulse-atlas-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(95, 72, 53, 0.12);
+  color: var(--ink-soft, #5f4835);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease, background-color 0.18s ease;
+}
+
+.pulse-atlas-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 31, 26, 0.12);
+}
+
+.pulse-atlas-tag.is-active,
+.pulse-atlas-tag:hover {
+  transform: translateY(-1px);
+  border-color: rgba(109, 31, 26, 0.28);
+  color: var(--accent);
+  background: rgba(255, 244, 233, 0.92);
+}
+
+.pulse-atlas-canvas-wrap {
+  position: relative;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(95, 72, 53, 0.1);
+  padding: 14px;
+  min-height: clamp(280px, 26vw, 360px);
+  overflow: hidden;
+}
+
+.pulse-atlas-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pulse-atlas-svg .pa-track {
+  fill: none;
+  stroke: rgba(95, 72, 53, 0.18);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 6;
+}
+
+.pulse-atlas-svg .pa-stream {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.pulse-atlas-svg .pa-stream-VPT  { stroke: #6d1f1a; }
+.pulse-atlas-svg .pa-stream-ASIB { stroke: #8172b3; }
+.pulse-atlas-svg .pa-stream-TD   { stroke: #55a868; }
+
+.pulse-atlas-svg .pa-bubble {
+  fill: rgba(255, 251, 246, 0.9);
+  stroke: rgba(109, 31, 26, 0.18);
+  stroke-width: 1.2;
+}
+
+.pulse-atlas-svg .pa-spark {
+  filter: drop-shadow(0 0 8px rgba(255, 204, 0, 0.4));
+}
+
+.pulse-atlas-svg .pa-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  fill: rgba(95, 72, 53, 0.62);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pulse-atlas-svg .pa-num {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 17px;
+  font-weight: 600;
+  fill: var(--ink, #2a1a12);
+  font-variant-numeric: tabular-nums;
+}
+
+.pulse-atlas-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pulse-atlas-side .pa-card {
+  position: relative;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(255, 249, 237, 0.74));
+  border: 1px solid rgba(95, 72, 53, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.pulse-atlas-side .pa-card .pa-card-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.pulse-atlas-side .pa-card strong {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(22px, 1.8vw, 26px);
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.pulse-atlas-side .pa-card .pa-card-sub {
+  font-size: 12px;
+  color: var(--ink-soft, #5f4835);
+  line-height: 1.45;
+}
+
+.pulse-atlas-side .pa-card .pa-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(95, 72, 53, 0.1);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.pulse-atlas-side .pa-card .pa-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d1f1a, #c79026);
+  width: 0;
+  transition: width 0.8s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.pulse-atlas-side .pa-card .pa-bar-fill[data-tone="sage"]  { background: linear-gradient(90deg, #55a868, #85a892); }
+.pulse-atlas-side .pa-card .pa-bar-fill[data-tone="ocean"] { background: linear-gradient(90deg, #4c72b0, #9bb8e0); }
+
+.pulse-atlas-side .pa-mini-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pulse-atlas-side .pa-mini-stat {
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(95, 72, 53, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pulse-atlas-side .pa-mini-stat .pa-mini-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft, #6f6b66);
+  text-transform: uppercase;
+}
+
+.pulse-atlas-side .pa-mini-stat .pa-mini-val {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #2a1a12);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulseAtlasDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-14px, 10px) scale(1.06); }
+}
+
+@keyframes pulseAtlasSpark {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50%      { transform: scale(1.6); opacity: 0.4; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Friendly global motifs — subtle drifting blobs across body.
+   Sit behind everything; pointer-events:none so never block clicks.
+   ────────────────────────────────────────────────────────────────── */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(70px);
+  z-index: 0;
+  opacity: 0.55;
+}
+
+body::before {
+  top: -180px;
+  left: -120px;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(255, 244, 220, 0.6), transparent 70%);
+  animation: bodyBlobDrift 28s ease-in-out infinite;
+}
+
+body::after {
+  bottom: -200px;
+  right: -160px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(120, 169, 248, 0.18), transparent 70%);
+  animation: bodyBlobDrift 32s ease-in-out infinite reverse;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes bodyBlobDrift {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(36px, -28px); }
+  66%      { transform: translate(-24px, 18px); }
+}
+
+body[data-theme="dark"]::before { background: radial-gradient(circle, rgba(255, 204, 0, 0.06), transparent 70%); }
+body[data-theme="dark"]::after  { background: radial-gradient(circle, rgba(120, 169, 248, 0.08), transparent 70%); }
+
+body[data-theme="dark"] .pulse-atlas {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(40, 30, 22, 0.55), transparent 46%),
+    radial-gradient(circle at 84% 88%, rgba(216, 184, 146, 0.12), transparent 50%),
+    linear-gradient(135deg, rgba(34, 26, 20, 0.85), rgba(45, 34, 26, 0.7));
+  border-color: rgba(216, 184, 146, 0.16);
+}
+
+body[data-theme="dark"] .pulse-atlas-canvas-wrap,
+body[data-theme="dark"] .pulse-atlas-side .pa-card,
+body[data-theme="dark"] .pulse-atlas-side .pa-mini-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(216, 184, 146, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-atlas::before,
+  .pulse-atlas::after,
+  body::before,
+  body::after { animation: none !important; }
 }
