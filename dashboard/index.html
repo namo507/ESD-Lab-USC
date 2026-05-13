@@ -7,9 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-  <link rel="stylesheet" href="styles.css?v=20260512-landing-mosaic">
+  <link rel="stylesheet" href="styles.css?v=20260513-glass-overhaul">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
@@ -23,6 +23,12 @@
   </div>
 </div>
 <div class="site-noise" aria-hidden="true"></div>
+<div class="ambient-blobs" aria-hidden="true">
+  <span class="ambient-blob ambient-blob-garnet"></span>
+  <span class="ambient-blob ambient-blob-peach"></span>
+  <span class="ambient-blob ambient-blob-sage"></span>
+  <span class="ambient-blob ambient-blob-ocean"></span>
+</div>
 <div class="site-cursor" id="site-cursor" aria-hidden="true">
   <span class="site-cursor-ring"></span>
   <span class="site-cursor-dot"></span>
@@ -353,18 +359,21 @@
     <section class="sync-banner" id="sync-banner">
       <div class="sync-hero">
         <div class="sync-hero-top">
-          <span class="eyebrow">Overview cockpit</span>
+          <span class="eyebrow">Live NANO pipeline</span>
           <div class="sync-hero-pills cockpit-quicknav">
-            <a class="sync-link-pill" href="#overview-enrollment">Recruitment curves</a>
-            <a class="sync-link-pill" href="#quality-kpis">Quality checks</a>
-            <a class="sync-link-pill" href="#ml-explainer">Model explainer</a>
-            <a class="sync-link-pill" href="#impact-overview">Impact feed</a>
+            <a class="sync-link-pill" href="#overview-kpis">KPI deck</a>
+            <a class="sync-link-pill" href="#pipeline-map">Node map</a>
+            <a class="sync-link-pill" href="#quality-missingness">QA watch</a>
+            <a class="sync-link-pill" href="#readings-spotlight">Evidence layer</a>
           </div>
         </div>
         <div class="sync-hero-core">
           <div class="sync-copy">
-            <h1 class="t-display" data-split="words">Recruitment health, data readiness, and model signals aligned in one balanced landing view.</h1>
-            <p id="sync-notes">Watching dashboard data inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.</p>
+            <div class="sync-copy-intro">
+              <span class="sync-copy-status">Warm glass shell · de-identified live surfaces</span>
+            </div>
+            <h1 class="t-display" data-split="chars">The heartbeat of every baby's first year.</h1>
+            <p id="sync-notes">Tracking <span class="gloss" data-term="NANO">NANO</span> enrollment, <span class="gloss" data-term="RMSSD">RMSSD</span> maturation, <span class="gloss" data-term="REDCap">REDCap</span> operations, and <span class="gloss" data-term="HIPAA">HIPAA</span>-safe exports from intake through de-identification.</p>
           </div>
           <div class="sync-visual" aria-hidden="true">
             <div class="sync-visual-stage">
@@ -374,36 +383,36 @@
               <div class="sync-visual-ring sync-visual-ring-b"></div>
               <div class="sync-visual-grid"></div>
               <div class="sync-visual-card">
-                <span>Dashboard flow</span>
-                <strong>Friendly motion for live study operations.</strong>
-                <p>Enrollment, quality, and model signals stay connected in one warm research workspace.</p>
+                <span>Study orchestration</span>
+                <strong>Glassmorphic command surface for infant physiology.</strong>
+                <p>Enrollment, window QA, HRV features, and compliant sharing stay aligned in one premium operational view.</p>
               </div>
-              <div class="sync-visual-chip sync-visual-chip-a">Enrollment live</div>
-              <div class="sync-visual-chip sync-visual-chip-b">Quality watch</div>
-              <div class="sync-visual-chip sync-visual-chip-c">Model signal</div>
+              <div class="sync-visual-chip sync-visual-chip-a">Actiheart intake</div>
+              <div class="sync-visual-chip sync-visual-chip-b">Window QA</div>
+              <div class="sync-visual-chip sync-visual-chip-c">De-identify</div>
             </div>
           </div>
         </div>
         <div class="sync-highlight-strip">
           <div class="sync-highlight-card">
-            <span class="sync-label">Enrollment pace</span>
+            <span class="sync-label">Enrolled</span>
             <strong id="home-progress-total">—</strong>
-            <span id="home-progress-note">Waiting for enrollment snapshot</span>
+            <span id="home-progress-note">Awaiting cohort snapshot</span>
           </div>
           <div class="sync-highlight-card">
-            <span class="sync-label">Active cohort</span>
+            <span class="sync-label">Median RMSSD</span>
             <strong id="home-active-total">—</strong>
-            <span id="home-active-note">Waiting for activity summary</span>
+            <span id="home-active-note">Trajectory median will appear here</span>
           </div>
           <div class="sync-highlight-card">
-            <span class="sync-label">Study completeness</span>
+            <span class="sync-label">Epochs</span>
             <strong id="home-completeness-total">—</strong>
-            <span id="home-completeness-note">Waiting for quality snapshot</span>
+            <span id="home-completeness-note">Derived processing windows will appear here</span>
           </div>
           <div class="sync-highlight-card">
-            <span class="sync-label">Best model</span>
+            <span class="sync-label">PHI leaks</span>
             <strong id="home-best-model">—</strong>
-            <span id="home-best-model-note">Waiting for model evaluation</span>
+            <span id="home-best-model-note">De-identification status will appear here</span>
           </div>
         </div>
         <div class="sync-dashboard-mosaic">
@@ -411,14 +420,14 @@
             <div class="sync-storyboard">
             <div class="sync-storyboard-top">
               <div class="sync-storyboard-copy">
-                <span class="eyebrow">Study pulse ribbon</span>
-                <h3 class="sync-storyboard-title">The landing surface now carries live study motion instead of unused white space.</h3>
-                <p class="sync-storyboard-note">Recruitment, data readiness, modeling, and reading coverage move through one connected board so the homepage feels balanced, informative, and active before you open any deeper section.</p>
+                <span class="eyebrow">Pipeline balance</span>
+                <h3 class="sync-storyboard-title">A symmetrical landing surface that keeps intake, QA, feature engineering, and export in one glance.</h3>
+                <p class="sync-storyboard-note">The homepage now leads with a premium node-driven story: REDCap intake on the left, feature and quality orchestration in the middle, and compliant export on the right.</p>
               </div>
               <div class="sync-storyboard-stage" aria-hidden="true">
                 <div class="sync-storyboard-stage-grid"></div>
                 <div class="sync-storyboard-stage-core">
-                  <span class="sync-storyboard-stage-label">Live signal map</span>
+                  <span class="sync-storyboard-stage-label">Live orchestration</span>
                   <strong id="home-stage-focus-value">—</strong>
                   <p id="home-stage-focus-note">Waiting for synced study metrics.</p>
                   <div class="sync-storyboard-stage-bars">
@@ -428,40 +437,40 @@
                   </div>
                 </div>
                 <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-a">
-                  <span>Enrollment</span>
+                  <span>REDCap</span>
                   <strong id="home-stage-chip-enrollment">—</strong>
                 </div>
                 <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-b">
-                  <span>Readiness</span>
+                  <span>Window QA</span>
                   <strong id="home-stage-chip-readiness">—</strong>
                 </div>
                 <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-c">
-                  <span>Library</span>
+                  <span>HRV</span>
                   <strong id="home-stage-chip-library">—</strong>
                 </div>
               </div>
             </div>
             <div class="sync-story-track" aria-label="Live study pulse">
               <a class="sync-story-node" data-tone="recruitment" href="#overview-enrollment">
-                <span class="sync-story-kicker">Recruitment live</span>
+                <span class="sync-story-kicker">REDCap intake</span>
                 <strong id="home-pulse-enrollment-value">—</strong>
                 <span id="home-pulse-enrollment-note">Waiting for enrollment signal.</span>
                 <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-enrollment-bar"></span></span>
               </a>
               <a class="sync-story-node" data-tone="quality" href="#quality-kpis">
-                <span class="sync-story-kicker">Readiness pulse</span>
+                <span class="sync-story-kicker">Window QA</span>
                 <strong id="home-pulse-quality-value">—</strong>
                 <span id="home-pulse-quality-note">Waiting for quality signal.</span>
                 <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-quality-bar"></span></span>
               </a>
               <a class="sync-story-node" data-tone="model" href="#ml-explainer">
-                <span class="sync-story-kicker">Model confidence</span>
+                <span class="sync-story-kicker">HRV features</span>
                 <strong id="home-pulse-model-value">—</strong>
                 <span id="home-pulse-model-note">Waiting for model signal.</span>
                 <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-model-bar"></span></span>
               </a>
               <a class="sync-story-node" data-tone="library" href="#readings-spotlight">
-                <span class="sync-story-kicker">Library coverage</span>
+                <span class="sync-story-kicker">De-identify</span>
                 <strong id="home-pulse-library-value">—</strong>
                 <span id="home-pulse-library-note">Waiting for readings signal.</span>
                 <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-library-bar"></span></span>
@@ -470,22 +479,22 @@
             </div>
             <div class="sync-ambient-grid" aria-label="Live operational highlights">
             <a class="sync-ambient-card" data-tone="runtime" href="#overview-kpis">
-              <span class="sync-story-kicker">Refresh cadence</span>
+              <span class="sync-story-kicker">Watcher cadence</span>
               <strong id="home-ambient-runtime-value">—</strong>
               <span id="home-ambient-runtime-note">Waiting for runtime cadence.</span>
             </a>
             <a class="sync-ambient-card" data-tone="library" href="#readings-spotlight">
-              <span class="sync-story-kicker">Reading focus</span>
+              <span class="sync-story-kicker">Evidence focus</span>
               <strong id="home-ambient-library-value">—</strong>
               <span id="home-ambient-library-note">Waiting for reading spotlight.</span>
             </a>
             <a class="sync-ambient-card" data-tone="queries" href="#quality-kpis">
-              <span class="sync-story-kicker">Follow-up load</span>
+              <span class="sync-story-kicker">Query pressure</span>
               <strong id="home-ambient-query-value">—</strong>
               <span id="home-ambient-query-note">Waiting for REDCap workload.</span>
             </a>
             <a class="sync-ambient-card" data-tone="cohort" href="#cohort-table-card">
-              <span class="sync-story-kicker">Active cohort</span>
+              <span class="sync-story-kicker">Cohort balance</span>
               <strong id="home-ambient-cohort-value">—</strong>
               <span id="home-ambient-cohort-note">Waiting for cohort movement.</span>
             </a>
@@ -514,6 +523,18 @@
                 <strong id="runtime-query-count">0</strong>
                 <span id="runtime-query-status">Waiting for REDCap summary</span>
               </div>
+            </div>
+            <div class="qa-feed-panel" id="qa-feed-panel" aria-live="polite">
+              <div class="qa-feed-head">
+                <div>
+                  <span class="eyebrow">Agentic QA</span>
+                  <h3>Pipeline alerts and live study insights</h3>
+                  <p>Dark-glass observer feed for REDCap intake, window QA, feature drift, and HIPAA-safe export signals.</p>
+                </div>
+                <span class="qa-feed-chip">Observer-driven</span>
+              </div>
+              <div class="qa-feed-summary" id="qa-feed-summary">Monitoring REDCap, window QA, and de-identification guardrails.</div>
+              <div class="qa-feed-list" id="qa-feed-list"></div>
             </div>
           </div>
 
@@ -944,127 +965,123 @@
     <!-- ─── Section: Pipeline ─── -->
     <section id="pipeline">
       <div class="section jump-target" id="pipeline-map">
-        <h2><span class="num">5</span>Data Flow Pipeline</h2>
-        <p class="page-sub section-subhead">
-          Click any stage for a plain-language explanation of what it does. Each stage maps to a folder in this repo.
-        </p>
-        <div class="section-jumpbar">
-          <span class="section-jump-label">Jump from methods to outputs</span>
-          <div class="section-jump-links">
-            <a class="section-jump-pill" href="#pipeline-map">Pipeline map</a>
-            <a class="section-jump-pill" href="#quality-missingness">QC follow-up</a>
-            <a class="section-jump-pill" href="#ml-explainer">Model architecture</a>
-            <a class="section-jump-pill" href="#readings-library">Reading library</a>
+        <div class="pipeline-header">
+          <div>
+            <span class="eyebrow">Node map</span>
+            <h2><span class="num">5</span>Intake to De-identify</h2>
+            <p class="page-sub section-subhead">
+              Hover any stage to inspect how <span class="gloss" data-term="Actiheart">Actiheart</span> traces, <span class="gloss" data-term="REDCap">REDCap</span> context, <span class="gloss" data-term="SQI">SQI</span>-aware window checks, and <span class="gloss" data-term="PHI">PHI</span>-safe exports move through the NANO pipeline.
+            </p>
+          </div>
+          <div class="pipeline-legend" aria-label="Pipeline legend">
+            <span class="pipeline-legend-chip is-active">In flight</span>
+            <span class="pipeline-legend-chip">Hover a capsule for detail</span>
           </div>
         </div>
-        <div class="pipeline">
-          <svg viewBox="0 0 900 340" preserveAspectRatio="xMidYMid meet" id="pipeline-svg">
-            <!-- Stage labels -->
-            <text x="105" y="22" class="pl-stage-title" text-anchor="middle">COLLECT</text>
-            <text x="340" y="22" class="pl-stage-title" text-anchor="middle">INGEST / SECURE</text>
-            <text x="580" y="22" class="pl-stage-title" text-anchor="middle">PROCESS / MODEL</text>
-            <text x="815" y="22" class="pl-stage-title" text-anchor="middle">SHARE</text>
+        <div class="pipeline-node-map">
+          <div class="pipeline-canvas">
+            <svg viewBox="0 0 1180 360" preserveAspectRatio="xMidYMid meet" id="pipeline-svg" role="img" aria-label="Six-stage pipeline map from intake to de-identify">
+              <defs>
+                <linearGradient id="pl-connection-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#73000a" stop-opacity="0.2"></stop>
+                  <stop offset="52%" stop-color="#c78652" stop-opacity="0.9"></stop>
+                  <stop offset="100%" stop-color="#4f7d7a" stop-opacity="0.25"></stop>
+                </linearGradient>
+                <path id="pl-curve-a" d="M 110 198 C 170 152, 220 136, 286 138"></path>
+                <path id="pl-curve-b" d="M 286 138 C 348 140, 404 206, 470 212"></path>
+                <path id="pl-curve-c" d="M 470 212 C 544 220, 592 150, 660 142"></path>
+                <path id="pl-curve-d" d="M 660 142 C 732 130, 796 216, 856 220"></path>
+                <path id="pl-curve-e" d="M 856 220 C 932 222, 992 176, 1058 152"></path>
+              </defs>
 
-            <!-- COLLECT nodes -->
-            <g class="pl-node" data-key="hero">
-              <rect x="30" y="50" width="150" height="46" rx="6" fill="#c44e52"/>
-              <text x="105" y="72" text-anchor="middle">HeRO NICU Monitor</text>
-              <text x="105" y="86" text-anchor="middle" class="pl-meta">ECG @ 1024 Hz</text>
-            </g>
-            <g class="pl-node" data-key="actiheart">
-              <rect x="30" y="110" width="150" height="46" rx="6" fill="#c44e52"/>
-              <text x="105" y="132" text-anchor="middle">Actiheart-5</text>
-              <text x="105" y="146" text-anchor="middle" class="pl-meta">R-R intervals</text>
-            </g>
-            <g class="pl-node" data-key="squirrel">
-              <rect x="30" y="170" width="150" height="46" rx="6" fill="#c44e52"/>
-              <text x="105" y="192" text-anchor="middle">Squirrel Datalogger</text>
-              <text x="105" y="206" text-anchor="middle" class="pl-meta">Skin Temp · 1-min</text>
-            </g>
-            <g class="pl-node" data-key="datavyu">
-              <rect x="30" y="230" width="150" height="46" rx="6" fill="#c44e52"/>
-              <text x="105" y="252" text-anchor="middle">DataVyu Coding</text>
-              <text x="105" y="266" text-anchor="middle" class="pl-meta">Behavioral videos</text>
-            </g>
+              <path class="pl-connection" d="M 110 198 C 170 152, 220 136, 286 138"></path>
+              <path class="pl-connection" d="M 286 138 C 348 140, 404 206, 470 212"></path>
+              <path class="pl-connection" d="M 470 212 C 544 220, 592 150, 660 142"></path>
+              <path class="pl-connection" d="M 660 142 C 732 130, 796 216, 856 220"></path>
+              <path class="pl-connection" d="M 856 220 C 932 222, 992 176, 1058 152"></path>
 
-            <!-- Arrows to secure -->
-            <path d="M180 73 C 220 73 220 155 265 155" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M180 133 L 265 155" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M180 193 L 265 155" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M180 253 C 220 253 220 155 265 155" stroke="#888" stroke-width="1.5" fill="none"/>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="14s" begin="0s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-a"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="15s" begin="-2.4s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-b"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="13s" begin="-5.2s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-c"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="16s" begin="-7.4s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-d"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="12s" begin="-9.1s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-e"></mpath></animateMotion>
+              </circle>
 
-            <!-- SECURE node -->
-            <g class="pl-node" data-key="secure">
-              <rect x="265" y="120" width="150" height="70" rx="8" fill="#1a1a1a"/>
-              <text x="340" y="147" text-anchor="middle" class="pl-strong">USC Secure Server</text>
-              <text x="340" y="162" text-anchor="middle" class="pl-meta muted">HIPAA-encrypted</text>
-              <text x="340" y="176" text-anchor="middle" class="pl-meta muted">${NANO_DATA_ROOT}</text>
-            </g>
+              <g class="pl-node is-focused" data-key="intake" data-stage-state="live" tabindex="0" role="button" transform="translate(40 140)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">01</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Intake</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">Actiheart-5 + REDCap</text>
+              </g>
 
-            <!-- REDCap node -->
-            <g class="pl-node" data-key="redcap">
-              <rect x="265" y="210" width="150" height="46" rx="6" fill="#4c72b0"/>
-              <text x="340" y="232" text-anchor="middle">REDCap Database</text>
-              <text x="340" y="246" text-anchor="middle" class="pl-meta">Demographics · Scores</text>
-            </g>
-            <path d="M415 155 L 475 155" stroke="#888" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
-            <path d="M415 232 C 450 232 450 170 475 170" stroke="#888" stroke-width="1.5" fill="none"/>
+              <g class="pl-node" data-key="ingest" data-stage-state="live" tabindex="0" role="button" transform="translate(216 80)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">02</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Ingest</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">Secure mount + audit</text>
+              </g>
 
-            <!-- PROCESS nodes -->
-            <g class="pl-node" data-key="ecgpp">
-              <rect x="475" y="60" width="200" height="40" rx="6" fill="#55a868"/>
-              <text x="575" y="84" text-anchor="middle">ECG Preprocessing · HRV</text>
-            </g>
-            <g class="pl-node" data-key="impute">
-              <rect x="475" y="110" width="200" height="40" rx="6" fill="#55a868"/>
-              <text x="575" y="134" text-anchor="middle">MICE Multiple Imputation</text>
-            </g>
-            <g class="pl-node" data-key="features">
-              <rect x="475" y="160" width="200" height="40" rx="6" fill="#55a868"/>
-              <text x="575" y="184" text-anchor="middle">Feature Matrix (per visit)</text>
-            </g>
-            <g class="pl-node" data-key="ml">
-              <rect x="475" y="210" width="200" height="40" rx="6" fill="#73000a"/>
-              <text x="575" y="234" text-anchor="middle">ML / DL Models (RF/XGB/CNN)</text>
-            </g>
-            <g class="pl-node" data-key="mixed">
-              <rect x="475" y="260" width="200" height="40" rx="6" fill="#73000a"/>
-              <text x="575" y="284" text-anchor="middle">Mixed-Effects · LGCM</text>
-            </g>
+              <g class="pl-node" data-key="preprocess" tabindex="0" role="button" transform="translate(400 154)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">03</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Preprocess</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">ECG cleanup + sync</text>
+              </g>
 
-            <!-- Arrows between process -->
-            <path d="M675 80 L 730 80" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M675 130 L 730 130" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M675 180 L 730 180" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M675 230 L 730 230" stroke="#888" stroke-width="1.5" fill="none"/>
-            <path d="M675 280 L 730 280" stroke="#888" stroke-width="1.5" fill="none"/>
+              <g class="pl-node" data-key="window_qa" data-stage-state="live" tabindex="0" role="button" transform="translate(590 84)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">04</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Window QA</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">SQI + epoch filter</text>
+              </g>
 
-            <!-- SHARE nodes -->
-            <g class="pl-node" data-key="manuscripts">
-              <rect x="730" y="60" width="150" height="56" rx="6" fill="#937860"/>
-              <text x="805" y="82" text-anchor="middle">Manuscripts</text>
-              <text x="805" y="100" text-anchor="middle" class="pl-meta">reports/manuscripts</text>
-            </g>
-            <g class="pl-node" data-key="dashboard">
-              <rect x="730" y="130" width="150" height="56" rx="6" fill="#937860"/>
-              <text x="805" y="152" text-anchor="middle">This Dashboard</text>
-              <text x="805" y="170" text-anchor="middle" class="pl-meta">JSON payload</text>
-            </g>
-            <g class="pl-node" data-key="deident">
-              <rect x="730" y="200" width="150" height="56" rx="6" fill="#937860"/>
-              <text x="805" y="222" text-anchor="middle">De-identified Export</text>
-              <text x="805" y="240" text-anchor="middle" class="pl-meta">NDAR / SRA submission</text>
-            </g>
+              <g class="pl-node" data-key="hrv_features" tabindex="0" role="button" transform="translate(786 162)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">05</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">HRV Features</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">RMSSD · RSA · SDNN</text>
+              </g>
 
-            <defs>
-              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-                <path d="M0,0 L8,4 L0,8 z" fill="#888"/>
-              </marker>
-            </defs>
-          </svg>
-        </div>
-        <div id="pipeline-explainer" class="pl-explainer">
-          <b>Tip:</b> Click any stage above to see what it does, which files implement it, and how it connects to the R01 aims.
+              <g class="pl-node" data-key="deidentify" data-stage-state="live" tabindex="0" role="button" transform="translate(988 94)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">06</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">De-identify</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">HIPAA-safe export</text>
+              </g>
+            </svg>
+          </div>
+
+          <aside id="pipeline-explainer" class="pl-detail-card" data-stage="intake">
+            <span class="eyebrow">Stage detail</span>
+            <h3 id="pipeline-detail-title">Intake</h3>
+            <p id="pipeline-detail-copy">Actiheart-5 R-R intervals, REDCap visit context, and infant state notes enter the intake lane before secure ingest and downstream window QA.</p>
+            <div class="pipeline-detail-tags" id="pipeline-detail-tags">
+              <span>Actiheart-5</span>
+              <span>REDCap</span>
+              <span>Home visit</span>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
@@ -1698,6 +1715,6 @@
   </div>
 </div>
 
-  <script src="app.js?v=20260512-landing-mosaic" defer></script>
+  <script src="app.js?v=20260513-glass-overhaul" defer></script>
 </body>
 </html>

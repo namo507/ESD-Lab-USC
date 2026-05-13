@@ -139,6 +139,54 @@ const PIPELINE_EXPLAINERS = {
   deident: '<b>De-identified export</b><br>Date-shifted, PHI-stripped data products for sharing and compliance workflows.',
 };
 
+const GLOSSARY_TERMS = {
+  NANO: "Neurodevelopment of Autonomic and Neural Organization, the R01 longitudinal infant cohort surfaced throughout this dashboard.",
+  RMSSD: "Root mean square of successive differences, a time-domain heart rate variability measure often used as a vagal regulation signal.",
+  VPT: "Very preterm infants, the primary NICU-origin cohort in the NANO study.",
+  ASIB: "Autism-sibling-likelihood arm in this dashboard's group labels, tracking infants with elevated autism-related risk context.",
+  TD: "Typically developing comparison group used for longitudinal reference signals.",
+  CGA: "Corrected gestational age, the developmental age adjusted for prematurity.",
+  ACTIHEART: "Actiheart-5 ambulatory sensor used to capture inter-beat intervals during home and follow-up visits.",
+  REDCAP: "Research Electronic Data Capture, the longitudinal operations system for visits, forms, and study workflow status.",
+  PHI: "Protected health information. It is intentionally excluded from this dashboard payload and presentation layer.",
+  HIPAA: "Health Insurance Portability and Accountability Act privacy requirements that govern protected clinical data handling.",
+  SQI: "Signal quality index used to gate noisy windows before feature extraction and downstream interpretation.",
+  HDA: "Heart rate deceleration analysis features derived from autonomic response timing and recovery structure.",
+};
+
+const PIPELINE_STAGE_DETAILS = {
+  intake: {
+    title: "Intake",
+    copy: "Actiheart-5 traces, REDCap visit context, and infant-state notes land together so every downstream pass keeps physiology aligned with visit metadata.",
+    tags: ["Actiheart-5", "REDCap", "Home visit"],
+  },
+  ingest: {
+    title: "Ingest",
+    copy: "Raw files enter the secure mount, are time-stamped, and receive an auditable handoff before any preprocessing or cohort summaries are materialized.",
+    tags: ["Secure mount", "Audit trail", "HIPAA-aware"],
+  },
+  preprocess: {
+    title: "Preprocess",
+    copy: "ECG cleanup, R-peak review, timestamp harmonization, and behavioral alignment happen here so later windows reflect comparable physiologic segments.",
+    tags: ["ECG cleanup", "R peaks", "Alignment"],
+  },
+  window_qa: {
+    title: "Window QA",
+    copy: "Signal-quality rules scan each segment for noise, dropout, and artifactual intervals before HRV summaries are allowed into the feature board.",
+    tags: ["SQI", "Epoch filter", "Guardrails"],
+  },
+  hrv_features: {
+    title: "HRV Features",
+    copy: "Accepted windows become RMSSD, RSA, SDNN, and HDA features that feed the longitudinal comparisons, explainer cards, and model surfaces.",
+    tags: ["RMSSD", "RSA", "SDNN"],
+  },
+  deidentify: {
+    title: "De-identify",
+    copy: "Only aggregate, surrogate, and PHI-scrubbed outputs make it to the dashboard, downstream sharing products, and public-facing visual summaries.",
+    tags: ["PHI scrub", "Surrogate IDs", "Share-ready"],
+  },
+};
+
 const ML_STAGE_ROTATE_MS = 3400;
 const FEATURE_DOMAIN_RULES = [
   {
@@ -268,7 +316,7 @@ const ERROR_BAR_PLUGIN = {
 };
 
 Chart.register(ERROR_BAR_PLUGIN);
-Chart.defaults.font.family = 'Libre Franklin, "Segoe UI", "Helvetica Neue", Arial, sans-serif';
+Chart.defaults.font.family = 'Manrope, "Segoe UI", "Helvetica Neue", Arial, sans-serif';
 Chart.defaults.font.size = 12;
 Chart.defaults.color = THEME_CHART_TOKENS.light.text;
 Chart.defaults.animation.duration = 700;
@@ -308,6 +356,10 @@ let controlsInitialized = false;
 let COHORT_SORT = { col: "nano_id", dir: "asc" };
 let REVEAL_OBSERVER = null;
 let LOADER_DISMISSED = false;
+let QA_FEED_OBSERVER = null;
+let QA_FEED_DEBOUNCE = 0;
+let NUMBER_ANIMATION_OBSERVER = null;
+const PENDING_NUMBER_ANIMATIONS = new WeakMap();
 let ML_EXPLAINER = {
   timer: null,
   stages: [],
@@ -328,6 +380,9 @@ async function bootstrap() {
   setupAnchorRouting();
   setupViewPanel();
   setupPipelineExplainers();
+  setupGlossary();
+  setupKpiDeckEffects();
+  setupQaFeedObserver();
   setupControls();
   setupAssistant();
   await syncData({ force: true });
@@ -679,22 +734,35 @@ function dismissSiteLoader() {
 }
 
 function splitMotionText(root = document) {
-  root.querySelectorAll('[data-split="words"]').forEach((element) => {
+  root.querySelectorAll("[data-split]").forEach((element) => {
     if (element.dataset.splitReady === "true") {
       return;
     }
 
-    const words = String(element.textContent || "")
-      .trim()
-      .replace(/\s+/g, " ")
-      .split(" ")
-      .filter(Boolean);
-
-    if (!words.length) {
+    const mode = element.dataset.split || "words";
+    const rawText = String(element.textContent || "");
+    const normalized = rawText.replace(/\s+/g, " ").trim();
+    if (!normalized) {
       return;
     }
 
-    element.setAttribute("aria-label", words.join(" "));
+    element.setAttribute("aria-label", normalized);
+
+    if (mode === "chars") {
+      const chars = Array.from(rawText);
+      element.innerHTML = chars
+        .map((char, index) => {
+          if (char === " ") {
+            return '<span class="split-space" aria-hidden="true"> </span>';
+          }
+          return `<span class="split-char" style="--char-index:${index}"><span class="split-char-inner" aria-hidden="true">${escapeHtml(char)}</span></span>`;
+        })
+        .join("");
+      element.dataset.splitReady = "true";
+      return;
+    }
+
+    const words = normalized.split(" ").filter(Boolean);
     element.innerHTML = words
       .map(
         (word, index) =>
@@ -778,10 +846,16 @@ function setupInteractiveCursor() {
     "a",
     "button",
     ".card",
+    ".sync-highlight-card",
     ".jump-card",
     ".view-link",
     ".geo-layer-pill",
     ".assistant-panel",
+    ".gloss",
+    ".pl-node",
+    ".pipeline-legend-chip",
+    ".pulse-atlas-tag",
+    ".qa-feed-item",
   ].join(", ");
 
   const state = {
@@ -789,11 +863,23 @@ function setupInteractiveCursor() {
     y: window.innerHeight / 2,
     targetX: window.innerWidth / 2,
     targetY: window.innerHeight / 2,
+    hoverTarget: null,
   };
 
   const frame = () => {
-    state.x += (state.targetX - state.x) * 0.18;
-    state.y += (state.targetY - state.y) * 0.18;
+    let focusX = state.targetX;
+    let focusY = state.targetY;
+
+    if (state.hoverTarget && state.hoverTarget.isConnected) {
+      const bounds = state.hoverTarget.getBoundingClientRect();
+      const centerX = bounds.left + bounds.width / 2;
+      const centerY = bounds.top + bounds.height / 2;
+      focusX = state.targetX + (centerX - state.targetX) * 0.2;
+      focusY = state.targetY + (centerY - state.targetY) * 0.2;
+    }
+
+    state.x += (focusX - state.x) * 0.18;
+    state.y += (focusY - state.y) * 0.18;
     cursor.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`;
     window.requestAnimationFrame(frame);
   };
@@ -807,10 +893,13 @@ function setupInteractiveCursor() {
   document.addEventListener("pointerdown", () => cursor.classList.add("is-clicking"));
   document.addEventListener("pointerup", () => cursor.classList.remove("is-clicking"));
   document.addEventListener("mouseover", (event) => {
-    cursor.classList.toggle("is-hovering", Boolean(event.target.closest(interactiveSelector)));
+    const target = event.target.closest(interactiveSelector);
+    state.hoverTarget = target;
+    cursor.classList.toggle("is-hovering", Boolean(target));
   });
   document.addEventListener("mouseout", (event) => {
     if (!event.relatedTarget || !event.relatedTarget.closest(interactiveSelector)) {
+      state.hoverTarget = null;
       cursor.classList.remove("is-hovering");
     }
   });
@@ -838,6 +927,8 @@ function setupMagneticInteractions(root = document) {
     ".ghost-button",
     ".geo-layer-pill",
     ".theme-option",
+    ".sync-highlight-card",
+    ".pulse-atlas-tag",
   ].join(", ");
 
   root.querySelectorAll(selector).forEach((element) => {
@@ -857,6 +948,105 @@ function setupMagneticInteractions(root = document) {
     });
 
     element.dataset.magneticBound = "true";
+  });
+}
+
+function setupKpiDeckEffects(root = document) {
+  if (prefersReducedMotion() || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    return;
+  }
+
+  root.querySelectorAll(".sync-highlight-card").forEach((card) => {
+    if (card.dataset.sheenBound === "true") {
+      return;
+    }
+
+    const reset = () => {
+      card.style.setProperty("--kpi-sheen-x", "50%");
+      card.style.setProperty("--kpi-sheen-y", "50%");
+    };
+
+    reset();
+    card.addEventListener("pointermove", (event) => {
+      const bounds = card.getBoundingClientRect();
+      const x = ((event.clientX - bounds.left) / bounds.width) * 100;
+      const y = ((event.clientY - bounds.top) / bounds.height) * 100;
+      card.style.setProperty("--kpi-sheen-x", `${x.toFixed(2)}%`);
+      card.style.setProperty("--kpi-sheen-y", `${y.toFixed(2)}%`);
+    });
+    card.addEventListener("pointerleave", reset);
+    card.dataset.sheenBound = "true";
+  });
+}
+
+function setupGlossary(root = document) {
+  root.querySelectorAll(".gloss").forEach((element) => {
+    if (element.dataset.glossBound === "true") {
+      return;
+    }
+
+    const rawTerm = String(element.dataset.term || element.textContent || "").trim();
+    const definition = element.dataset.definition || GLOSSARY_TERMS[rawTerm.toUpperCase()] || "";
+    if (definition) {
+      element.setAttribute("data-definition", definition);
+      element.setAttribute("tabindex", "0");
+    }
+    element.dataset.glossBound = "true";
+  });
+}
+
+function setupQaFeedObserver() {
+  const list = document.getElementById("qa-feed-list");
+  if (!list || list.dataset.bound === "true") {
+    return;
+  }
+
+  const scheduleTypewriter = () => {
+    window.clearTimeout(QA_FEED_DEBOUNCE);
+    QA_FEED_DEBOUNCE = window.setTimeout(() => {
+      runQaFeedTypewriter(list);
+    }, 400);
+  };
+
+  QA_FEED_OBSERVER = new MutationObserver(scheduleTypewriter);
+  QA_FEED_OBSERVER.observe(list, { childList: true, subtree: true });
+  list.dataset.bound = "true";
+  scheduleTypewriter();
+}
+
+function runQaFeedTypewriter(root) {
+  root.querySelectorAll("[data-typewriter-pending='true']").forEach((item, index) => {
+    const textElement = item.querySelector(".qa-feed-text");
+    const fullText = item.dataset.fullText || "";
+    if (!textElement) {
+      return;
+    }
+
+    item.dataset.typewriterPending = "false";
+    if (prefersReducedMotion()) {
+      textElement.textContent = fullText;
+      item.classList.add("is-complete");
+      return;
+    }
+
+    textElement.textContent = "";
+    item.classList.remove("is-complete");
+
+    const chars = Array.from(fullText);
+    let cursor = 0;
+    const increment = Math.max(1, Math.ceil(chars.length / 34));
+
+    const tick = () => {
+      cursor = Math.min(chars.length, cursor + increment);
+      textElement.textContent = chars.slice(0, cursor).join("");
+      if (cursor < chars.length) {
+        window.setTimeout(tick, 28 + index * 6);
+        return;
+      }
+      item.classList.add("is-complete");
+    };
+
+    window.setTimeout(tick, index * 120);
   });
 }
 
@@ -1204,12 +1394,50 @@ function updateViewPanelStatus(sectionId) {
 }
 
 function setupPipelineExplainers() {
-  document.querySelectorAll(".pl-node").forEach((node) => {
-    node.addEventListener("click", () => {
-      const key = node.dataset.key;
-      document.getElementById("pipeline-explainer").innerHTML = PIPELINE_EXPLAINERS[key] || "No explanation available.";
+  const nodes = Array.from(document.querySelectorAll(".pl-node"));
+  if (!nodes.length) {
+    return;
+  }
+
+  const renderDetail = (key) => {
+    const detail = PIPELINE_STAGE_DETAILS[key] || PIPELINE_STAGE_DETAILS.intake;
+    const panel = document.getElementById("pipeline-explainer");
+    const title = document.getElementById("pipeline-detail-title");
+    const copy = document.getElementById("pipeline-detail-copy");
+    const tags = document.getElementById("pipeline-detail-tags");
+    if (!panel || !title || !copy || !tags) {
+      return;
+    }
+
+    title.textContent = detail.title;
+    copy.textContent = detail.copy;
+    tags.innerHTML = detail.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("");
+    panel.dataset.stage = key;
+
+    nodes.forEach((node) => {
+      node.classList.toggle("is-focused", node.dataset.key === key);
     });
+  };
+
+  nodes.forEach((node) => {
+    if (node.dataset.bound === "true") {
+      return;
+    }
+
+    ["mouseenter", "focus", "click"].forEach((eventName) => {
+      node.addEventListener(eventName, () => renderDetail(node.dataset.key));
+    });
+    node.dataset.bound = "true";
   });
+
+  renderDetail(nodes.find((node) => node.classList.contains("is-focused"))?.dataset.key || nodes[0].dataset.key);
+}
+
+function buildSyncNotesMarkup({ topCategory, watchInterval }) {
+  const categoryFragment = topCategory
+    ? ` while ${escapeHtml(topCategory.label)} leads the evidence index.`
+    : ".";
+  return `Tracking ${glossMarkup("NANO")} enrollment, ${glossMarkup("RMSSD")} maturation, ${glossMarkup("REDCap")} operations, and ${glossMarkup("HIPAA", "HIPAA")}-safe exports on a ${formatInt(watchInterval)}s watch cadence${categoryFragment}`;
 }
 
 function setupControls() {
@@ -1448,9 +1676,16 @@ function renderChrome() {
   document.getElementById("runtime-source").textContent = topCategory
     ? `Top category: ${topCategory.label}`
     : "Watching source folders";
-  document.getElementById("sync-notes").textContent = runtime.errors && runtime.errors.length
-    ? runtime.errors.join(" · ")
-    : "Watching dashboard inputs and the ESD Lab readings library for changes, then updating the charts without a hard page reload.";
+
+  const syncNotes = document.getElementById("sync-notes");
+  if (syncNotes) {
+    if (runtime.errors && runtime.errors.length) {
+      syncNotes.textContent = runtime.errors.join(" · ");
+    } else {
+      syncNotes.innerHTML = buildSyncNotesMarkup({ topCategory, watchInterval: runtime.watch_interval_seconds || REFRESH_INTERVAL_MS / 1000 });
+      setupGlossary(syncNotes);
+    }
+  }
 
   renderViewPanelSignals();
 }
@@ -1569,6 +1804,7 @@ function humanizeSignalLabel(value) {
 function renderDashboard() {
   renderOrganizationSections();
   renderOverview();
+  renderQaFeed();
   renderEnrollmentChart();
   renderProgressChart();
   renderQualitySection();
@@ -1631,26 +1867,26 @@ function renderOverview() {
     completenessDelta.classList.toggle("ok", completeness >= 80);
   }
 
-  animateNumber("home-progress-total", pctValue, (value) => `${value.toFixed(1)}%`);
-  setText("home-progress-note", `${formatInt(total)} enrolled of ${formatInt(target)} planned across ASIB, PT, and TD.`);
-  animateNumber("home-active-total", audit.active_participants, (value) => formatInt(Math.round(value)));
-  setText("home-active-note", `${formatInt(audit.total_participants_enrolled)} total enrolled · ${formatInt(audit.withdrawn)} withdrawn.`);
-  animateNumber("home-completeness-total", completeness, (value) => `${value.toFixed(1)}%`);
-  setText(
-    "home-completeness-note",
-    `${formatInt(audit.open_queries)} open REDCap quer${audit.open_queries === 1 ? "y" : "ies"} currently assigned for follow-up.`
-  );
+  const medianRmssd = deriveMedianBiomarkerValue("RMSSD");
+  const epochEstimate = deriveEpochEstimate();
+  const phiLeaks = 0;
 
-  if (bestModel) {
-    setText("home-best-model", `${bestModel.auroc.toFixed(3)} AUROC`);
-    setText(
-      "home-best-model-note",
-      `${bestModel.name} with 95% CI [${bestModel.auroc_ci[0]}-${bestModel.auroc_ci[1]}].`
-    );
+  animateNumber("home-progress-total", total, (value) => formatInt(Math.round(value)));
+  setText("home-progress-note", `${pctValue.toFixed(1)}% of ${formatInt(target)} planned across ASIB, PT, and TD.`);
+
+  if (Number.isFinite(medianRmssd)) {
+    animateNumber("home-active-total", medianRmssd, (value) => `${value.toFixed(1)} ms`);
+    setText("home-active-note", "Median across visible RMSSD trajectory means.");
   } else {
-    setText("home-best-model", "Pending");
-    setText("home-best-model-note", "Model evaluation will populate after the next dashboard refresh.");
+    setText("home-active-total", "—");
+    setText("home-active-note", "RMSSD medians will appear after trajectory data loads.");
   }
+
+  animateNumber("home-completeness-total", epochEstimate, (value) => formatInt(Math.round(value)));
+  setText("home-completeness-note", "Derived QA windows across completed visits when raw epoch counts are unavailable.");
+
+  animateNumber("home-best-model", phiLeaks, (value) => formatInt(Math.round(value)));
+  setText("home-best-model-note", `PHI scrub active across ${formatInt(audit.active_participants)} active dashboard records.`);
 
   animateNumber("runtime-query-count", audit.open_queries, (value) => formatInt(Math.round(value)));
   setText(
@@ -1684,6 +1920,138 @@ function renderOverview() {
   renderHomePulseSurface({ enrollment, audit, total, target, pctValue, completeness, bestModel });
 
   decorateRevealTargets();
+}
+
+function deriveMedianBiomarkerValue(biomarker) {
+  const byGroup = STATE.dashboard && STATE.dashboard.trajectories && STATE.dashboard.trajectories.by_group;
+  if (!byGroup) {
+    return null;
+  }
+
+  const values = Object.values(byGroup)
+    .flatMap((group) => (group && group.mean && group.mean[biomarker]) || [])
+    .map(Number)
+    .filter(Number.isFinite)
+    .sort((left, right) => left - right);
+
+  if (!values.length) {
+    return null;
+  }
+
+  const middle = Math.floor(values.length / 2);
+  return values.length % 2
+    ? values[middle]
+    : (values[middle - 1] + values[middle]) / 2;
+}
+
+function deriveEpochEstimate() {
+  const dashboard = STATE.dashboard;
+  if (!dashboard) {
+    return 0;
+  }
+
+  const stages = dashboard.pipeline && Array.isArray(dashboard.pipeline.stages)
+    ? dashboard.pipeline.stages
+    : [];
+  const stageVolume = stages.reduce(
+    (sum, stage) => sum + Number(stage.count || stage.inflight || 0),
+    0
+  );
+  if (stageVolume > 0) {
+    return Math.round(stageVolume);
+  }
+
+  const enrollment = (dashboard.enrollment && dashboard.enrollment.by_group) || {};
+  const byGroup = (dashboard.visit_completion && dashboard.visit_completion.by_group) || {};
+  const events = (dashboard.visit_completion && dashboard.visit_completion.events) || [];
+  let estimatedVisits = 0;
+
+  Object.entries(byGroup).forEach(([groupCode, completionSeries]) => {
+    const current = Number((enrollment[groupCode] || {}).current || 0);
+    const meanCompletion = Array.isArray(completionSeries) && completionSeries.length
+      ? completionSeries.reduce((sum, value) => sum + Number(value || 0), 0) / completionSeries.length / 100
+      : 0;
+    estimatedVisits += current * meanCompletion * Math.max(events.length, 1);
+  });
+
+  return Math.round(estimatedVisits * 6);
+}
+
+function renderQaFeed() {
+  const list = document.getElementById("qa-feed-list");
+  const summary = document.getElementById("qa-feed-summary");
+  if (!list || !summary || !STATE.dashboard) {
+    return;
+  }
+
+  const items = buildQaFeedItems();
+  summary.textContent = items.length
+    ? `${items[0].label} · ${items[0].time}`
+    : "Monitoring REDCap, window QA, and de-identification guardrails.";
+
+  list.innerHTML = items
+    .map(
+      (item) => `
+        <article class="qa-feed-item" data-tone="${escapeHtml(item.tone)}" data-typewriter-pending="true" data-full-text="${escapeHtml(item.text)}">
+          <div class="qa-feed-item-meta">
+            <span class="qa-feed-item-label">${escapeHtml(item.label)}</span>
+            <span class="qa-feed-item-time">${escapeHtml(item.time)}</span>
+          </div>
+          <p class="qa-feed-text"></p>
+        </article>`
+    )
+    .join("");
+}
+
+function buildQaFeedItems() {
+  const dashboard = STATE.dashboard || {};
+  const runtime = STATE.runtime || {};
+  const readings = STATE.readings || emptyReadingsPayload();
+  const audit = (dashboard.redcap_audit && dashboard.redcap_audit.summary) || {};
+  const missingness = Array.isArray(dashboard.data_quality && dashboard.data_quality.missingness)
+    ? dashboard.data_quality.missingness.slice().sort((left, right) => Number(right.pct_missing || 0) - Number(left.pct_missing || 0))
+    : [];
+  const topMissing = missingness[0];
+  const rmssd = deriveMedianBiomarkerValue("RMSSD");
+  const watchInterval = Number(runtime.watch_interval_seconds || REFRESH_INTERVAL_MS / 1000);
+  const lastTime = formatShortTime(runtime.last_build_finished_at || dashboard.meta && dashboard.meta.generated_at || Date.now());
+
+  return [
+    {
+      tone: Number(audit.open_queries || 0) > 0 ? "warn" : "ok",
+      label: "REDCap intake",
+      time: lastTime,
+      text: `${formatInt(audit.open_queries || 0)} open REDCap quer${Number(audit.open_queries || 0) === 1 ? "y" : "ies"} remain across ${formatInt(audit.active_participants || 0)} active records.`,
+    },
+    {
+      tone: topMissing && Number(topMissing.pct_missing || 0) > 24 ? "warn" : "soft",
+      label: "Window QA",
+      time: `${watchInterval}s watcher`,
+      text: topMissing
+        ? `${humanizeSignalLabel(topMissing.instrument)} is the current QA attention point at ${Number(topMissing.pct_missing || 0).toFixed(1)}% missingness.`
+        : "Window QA has no flagged instruments in the current payload.",
+    },
+    {
+      tone: "accent",
+      label: "HRV features",
+      time: "Trajectory board",
+      text: Number.isFinite(rmssd)
+        ? `Median RMSSD across the visible trajectory board is ${rmssd.toFixed(1)} ms.`
+        : "HRV features will populate as soon as trajectory payloads are available.",
+    },
+    {
+      tone: "gold",
+      label: "Evidence index",
+      time: formatShortTime(readings.meta && readings.meta.latest_modified_at),
+      text: `${formatInt(readings.summary && readings.summary.total_readings || 0)} readings and ${formatInt(readings.summary && readings.summary.total_pages || 0)} indexed pages remain attached to the live dashboard context.`,
+    },
+    {
+      tone: "ok",
+      label: "De-identify",
+      time: "HIPAA guard",
+      text: "PHI guard remains clear. This presentation layer only exposes de-identified aggregates and surrogate cohort rows.",
+    },
+  ];
 }
 
 function renderHomePulseSurface({ enrollment, audit, total, target, pctValue, completeness, bestModel }) {
@@ -3891,6 +4259,42 @@ function animateNumber(id, value, formatter) {
     return;
   }
 
+  if (prefersReducedMotion()) {
+    element.dataset.rawValue = String(value);
+    element.textContent = formatter ? formatter(value) : String(value);
+    return;
+  }
+
+  if (!isElementVisibleEnough(element) && element.dataset.counterVisible !== "true") {
+    if (!NUMBER_ANIMATION_OBSERVER) {
+      NUMBER_ANIMATION_OBSERVER = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) {
+              return;
+            }
+            entry.target.dataset.counterVisible = "true";
+            const pending = PENDING_NUMBER_ANIMATIONS.get(entry.target);
+            if (pending) {
+              animateNumberElement(entry.target, pending.value, pending.formatter);
+              PENDING_NUMBER_ANIMATIONS.delete(entry.target);
+            }
+            NUMBER_ANIMATION_OBSERVER.unobserve(entry.target);
+          });
+        },
+        { threshold: 0.35, rootMargin: "0px 0px -8% 0px" }
+      );
+    }
+
+    PENDING_NUMBER_ANIMATIONS.set(element, { value, formatter });
+    NUMBER_ANIMATION_OBSERVER.observe(element);
+    return;
+  }
+
+  animateNumberElement(element, value, formatter);
+}
+
+function animateNumberElement(element, value, formatter) {
   const start = Number(element.dataset.rawValue || value);
   const duration = 650;
   if (!Number.isFinite(start) || start === value) {
@@ -3913,6 +4317,11 @@ function animateNumber(id, value, formatter) {
     element.textContent = formatter ? formatter(value) : String(value);
   };
   window.requestAnimationFrame(frame);
+}
+
+function isElementVisibleEnough(element) {
+  const rect = element.getBoundingClientRect();
+  return rect.bottom > window.innerHeight * 0.08 && rect.top < window.innerHeight * 0.92;
 }
 
 function setText(id, value) {
@@ -4443,11 +4852,31 @@ function formatDateTime(value) {
   });
 }
 
+function formatShortTime(value) {
+  if (!value) {
+    return "Now";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatInt(value) {
   if (value == null || Number.isNaN(Number(value))) {
     return "-";
   }
   return Number(value).toLocaleString();
+}
+
+function glossMarkup(term, label = term) {
+  return `<span class="gloss" data-term="${escapeHtml(term)}">${escapeHtml(label)}</span>`;
 }
 
 function escapeHtml(value) {
