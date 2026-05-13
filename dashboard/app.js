@@ -360,6 +360,8 @@ let QA_FEED_OBSERVER = null;
 let QA_FEED_DEBOUNCE = 0;
 let NUMBER_ANIMATION_OBSERVER = null;
 const PENDING_NUMBER_ANIMATIONS = new WeakMap();
+let SIDEBAR_LAYOUT_FRAME = 0;
+let SIDEBAR_LAYOUT_OBSERVER = null;
 let ML_EXPLAINER = {
   timer: null,
   stages: [],
@@ -708,6 +710,7 @@ function setupImmersiveChrome() {
   document.body.classList.add("immersive-shell");
   splitMotionText();
   setupScrollChrome();
+  setupSidebarLayout();
   setupSidebarPreview();
   setupInteractiveCursor();
   setupMagneticInteractions();
@@ -793,6 +796,89 @@ function setupSidebarPreview() {
 
   preview.dataset.bound = "true";
   updateSidebarPreview(STATE.ui.activeSection);
+}
+
+function setupSidebarLayout() {
+  const sidebar = document.querySelector(".sidebar");
+  const nav = sidebar ? sidebar.querySelector(".nav") : null;
+  const brand = sidebar ? sidebar.querySelector(".brand") : null;
+  if (!sidebar || !nav) {
+    return;
+  }
+
+  const scheduleLayout = () => {
+    window.cancelAnimationFrame(SIDEBAR_LAYOUT_FRAME);
+    SIDEBAR_LAYOUT_FRAME = window.requestAnimationFrame(() => {
+      syncSidebarLayout(sidebar, nav, brand);
+    });
+  };
+
+  if (sidebar.dataset.layoutBound === "true") {
+    scheduleLayout();
+    return;
+  }
+
+  window.addEventListener("resize", scheduleLayout, { passive: true });
+  window.addEventListener("orientationchange", scheduleLayout, { passive: true });
+
+  if (typeof ResizeObserver !== "undefined") {
+    SIDEBAR_LAYOUT_OBSERVER?.disconnect();
+    SIDEBAR_LAYOUT_OBSERVER = new ResizeObserver(scheduleLayout);
+    SIDEBAR_LAYOUT_OBSERVER.observe(sidebar);
+    SIDEBAR_LAYOUT_OBSERVER.observe(nav);
+    if (brand) {
+      SIDEBAR_LAYOUT_OBSERVER.observe(brand);
+    }
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleLayout).catch(() => {});
+  }
+
+  sidebar.dataset.layoutBound = "true";
+  scheduleLayout();
+}
+
+function syncSidebarLayout(sidebar, nav, brand) {
+  const targetLinks = Array.from(nav.querySelectorAll("a[data-target]"));
+  if (!targetLinks.length) {
+    return;
+  }
+
+  const navStyles = window.getComputedStyle(nav);
+  const gapValue = navStyles.columnGap && navStyles.columnGap !== "normal"
+    ? navStyles.columnGap
+    : navStyles.gap;
+  const navGap = parseFloat(gapValue || "8") || 8;
+  const totalLinkWidth = targetLinks.reduce(
+    (sum, link) => sum + Math.ceil(link.getBoundingClientRect().width),
+    0
+  ) + navGap * Math.max(targetLinks.length - 1, 0);
+  const brandWidth = brand ? Math.ceil(brand.getBoundingClientRect().width) : 0;
+  const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
+  const availableRailWidth = Math.max(sidebar.clientWidth - brandWidth - 84, 0);
+  const useRail = viewportWidth >= 1480 && totalLinkWidth <= availableRailWidth * 0.96;
+  const nextMode = useRail ? "rail" : viewportWidth >= 1180 ? "board" : "stack";
+  const columnCount = nextMode === "board"
+    ? Math.max(2, Math.min(4, Math.floor(Math.max(sidebar.clientWidth - 320, 0) / 190) || 2))
+    : nextMode === "stack"
+      ? (viewportWidth >= 720 ? 3 : viewportWidth >= 560 ? 2 : 1)
+      : 1;
+  const shellRect = sidebar.getBoundingClientRect();
+  const topInset = parseFloat(window.getComputedStyle(sidebar).top || "0") || 0;
+  const usesFixedShell = nextMode !== "stack";
+  const shellClearance = usesFixedShell
+    ? Math.ceil(shellRect.height + topInset + 28)
+    : 16;
+  const anchorOffset = usesFixedShell
+    ? Math.ceil(shellRect.height + topInset + 16)
+    : 112;
+
+  sidebar.dataset.layoutMode = nextMode;
+  sidebar.style.setProperty("--sidebar-nav-columns", String(columnCount));
+  document.documentElement.style.setProperty("--dashboard-shell-clearance", `${shellClearance}px`);
+  document.documentElement.style.setProperty("--dashboard-anchor-offset", `${anchorOffset}px`);
+  document.body.classList.toggle("has-fixed-sidebar-shell", usesFixedShell);
 }
 
 function updateSidebarPreview(sectionId = STATE.ui.activeSection || "overview") {
