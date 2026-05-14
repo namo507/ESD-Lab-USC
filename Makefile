@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-deploy
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-deploy pages-watch pages-watch-once share-live
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -122,6 +122,15 @@ dashboard-share:  ## Start a public share tunnel and print the shareable URL
 
 pages-deploy:  ## Deploy the Pages wrapper to the canonical Cloudflare Pages project
 	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
+
+pages-watch:  ## Continuously regen + redeploy wrapper whenever the cloudflared origin rotates
+	$(PYTHON) scripts/watch_pages_wrapper.py
+
+pages-watch-once:  ## One-shot: regen + redeploy iff origin differs from last manifest
+	$(PYTHON) scripts/watch_pages_wrapper.py --once
+
+share-live:  ## Continuously supervise local dashboard+quick-share and republish wrapper on tunnel restart
+	bash scripts/share_dashboard.sh --continuous --mode quick
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
 

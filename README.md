@@ -227,6 +227,17 @@ You can expose the live dashboard publicly with:
 make dashboard-share
 ```
 
+For continuous supervision (recommended while actively editing localhost):
+
+```bash
+make share-live
+```
+
+`make share-live` runs in continuous quick-tunnel mode, keeps the local dashboard
+runtime and cloudflared tunnel alive, auto-restarts them if they stop, and rewrites
+the Pages wrapper target whenever the quick-tunnel hostname rotates so
+`https://esd-lab-namo.pages.dev/` stays current.
+
 That command starts the dashboard, starts the tunnel sidecar, and prints the
 active public dashboard URL for the current session.
 

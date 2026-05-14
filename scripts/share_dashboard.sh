@@ -37,10 +37,12 @@ ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
 PAGES_WRAPPER_CANONICAL="https://esd-lab-namo.pages.dev/"
 
 mode="auto"
+continuous="false"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) mode="$2"; shift 2 ;;
     --mode=*) mode="${1#--mode=}"; shift ;;
+    --continuous) continuous="true"; shift ;;
     -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 64 ;;
   esac
@@ -417,16 +419,53 @@ share_without_docker() {
   : >"$TUNNEL_LOG_FILE"
 
   if [[ "$use_named" == "true" ]]; then
-    nohup "$cloudflared_bin" tunnel --no-autoupdate run --token "$named_tunnel_token" >"$TUNNEL_LOG_FILE" 2>&1 &
+    nohup "$cloudflared_bin" tunnel --no-autoupdate run >"$TUNNEL_LOG_FILE" 2>&1 &
   else
     nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
   fi
   echo $! >"$TUNNEL_PID_FILE"
 
   print_host_tunnel_result
+
+  if [[ "$continuous" != "true" ]]; then
+    return 0
+  fi
+
+  echo
+  echo "Continuous mode enabled: supervising local dashboard + tunnel (Ctrl-C to stop)."
+
+  trap 'stop_pid_file "$TUNNEL_PID_FILE"; stop_pid_file "$DASHBOARD_PID_FILE"; exit 0' INT TERM
+
+  while true; do
+    sleep 5
+
+    if ! curl -fsS "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
+      echo "Dashboard health check failed; attempting local runtime restart..."
+      ensure_local_dashboard
+    fi
+
+    local tunnel_pid
+    tunnel_pid="$(cat "$TUNNEL_PID_FILE" 2>/dev/null || true)"
+    if [[ -z "$tunnel_pid" ]] || ! kill -0 "$tunnel_pid" 2>/dev/null; then
+      echo "Tunnel process not running; restarting Cloudflare tunnel..."
+      : >"$TUNNEL_LOG_FILE"
+      if [[ "$use_named" == "true" ]]; then
+        nohup "$cloudflared_bin" tunnel --no-autoupdate run >"$TUNNEL_LOG_FILE" 2>&1 &
+      else
+        nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+      fi
+      echo $! >"$TUNNEL_PID_FILE"
+      print_host_tunnel_result || true
+    fi
+  done
 }
 
-if [[ "$use_named" == "true" ]]; then
+if [[ "$continuous" == "true" ]]; then
+  if [[ "$use_named" == "false" ]]; then
+    echo "Continuous supervisor is using host-side cloudflared management so quick-tunnel rotations can be detected and republished."
+  fi
+  share_without_docker
+elif [[ "$use_named" == "true" ]]; then
   share_without_docker
 elif have_command docker && docker compose version >/dev/null 2>&1; then
   share_with_docker
