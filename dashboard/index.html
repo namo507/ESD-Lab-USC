@@ -382,10 +382,14 @@
               <div class="sync-visual-ring sync-visual-ring-a"></div>
               <div class="sync-visual-ring sync-visual-ring-b"></div>
               <div class="sync-visual-grid"></div>
-              <div class="sync-visual-card">
+              <div class="sync-visual-card" style="position: relative;">
                 <span>Study orchestration</span>
                 <strong>Glassmorphic command surface for infant physiology.</strong>
                 <p>Enrollment, window QA, HRV features, and compliant sharing stay aligned in one premium operational view.</p>
+                <div class="sync-mini-badges" style="position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px;">
+                  <span class="sync-visual-chip sync-visual-chip-mini" style="position: static; font-size: 10px; padding: 4px 8px; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; color: var(--usc-garnet); animation: pulse 2s infinite;">REDCap: 78 queries</span>
+                  <span class="sync-visual-chip sync-visual-chip-mini" style="position: static; font-size: 10px; padding: 4px 8px; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; color: var(--ocean-800); animation: pulse 2s infinite 1s;">AUROC: 0.899</span>
+                </div>
               </div>
               <div class="sync-visual-chip sync-visual-chip-a">Actiheart intake</div>
               <div class="sync-visual-chip sync-visual-chip-b">Window QA</div>
@@ -394,22 +398,22 @@
           </div>
         </div>
         <div class="sync-highlight-strip">
-          <div class="sync-highlight-card">
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="ocean">
             <span class="sync-label">Enrolled</span>
             <strong id="home-progress-total">—</strong>
             <span id="home-progress-note">Awaiting cohort snapshot</span>
           </div>
-          <div class="sync-highlight-card">
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="sage">
             <span class="sync-label">Median RMSSD</span>
             <strong id="home-active-total">—</strong>
             <span id="home-active-note">Trajectory median will appear here</span>
           </div>
-          <div class="sync-highlight-card">
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="warn">
             <span class="sync-label">Epochs</span>
             <strong id="home-completeness-total">—</strong>
             <span id="home-completeness-note">Derived processing windows will appear here</span>
           </div>
-          <div class="sync-highlight-card">
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="danger">
             <span class="sync-label">PHI leaks</span>
             <strong id="home-best-model">—</strong>
             <span id="home-best-model-note">De-identification status will appear here</span>
@@ -1102,7 +1106,7 @@
         <div class="grid kpis" id="geo-kpis"></div>
       </div>
 
-      <div class="card" id="geo-map-card">
+      <div class="card" id="geo-map-card" style="position: relative;">
         <div class="card-header">
           <div>
             <h3>Recruitment &amp; Community Map</h3>
@@ -1110,8 +1114,10 @@
           </div>
           <div class="card-actions" id="geo-layer-controls"></div>
         </div>
-        <div id="geo-map" class="geo-map-container" role="img" aria-label="Geospatial map of NANO Study recruitment region"></div>
-        <div id="geo-timeline-bar" class="geo-timeline">
+        <div id="geo-map" class="geo-map-container" role="img" aria-label="Geospatial map of NANO Study recruitment region" style="position: relative;">
+          <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px); background-size: 20px 20px; color: var(--warm-500); font-family: var(--font-mono); font-size: 14px; pointer-events: none; z-index: 1;">Map loading...</div>
+        </div>
+        <div id="geo-timeline-bar" class="geo-timeline glass-soft" style="position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 1000; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 16px; background: rgba(255, 255, 255, 0.85);">
           <button class="geo-play-btn" id="geo-play-btn" aria-label="Play enrollment timeline">▶</button>
           <span class="geo-timeline-label" id="geo-timeline-label">—</span>
           <div class="geo-timeline-track" id="geo-timeline-track">
@@ -1249,13 +1255,13 @@
 
             <div class="ml-explainer-main">
               <div class="ml-stage-board">
+                <p class="t-eyebrow" style="margin-bottom: 8px; color: var(--warm-500);">Auto-advances through the analysis steps; hover to pause or click a stage to inspect it.</p>
                 <div class="ml-stage-board-scroll">
                   <div class="ml-stage-rail" aria-hidden="true">
                     <svg class="ml-signal-svg" id="ml-signal-svg" viewBox="0 0 660 82" preserveAspectRatio="none"></svg>
                   </div>
                   <div class="ml-stage-track" id="ml-stage-track"></div>
                 </div>
-                <p class="ml-stage-caption">Auto-advances through the analysis steps; hover to pause or click a stage to inspect it.</p>
               </div>
 
               <div class="ml-stage-detail" id="ml-stage-detail">
@@ -1417,7 +1423,7 @@
             <a class="section-jump-pill" href="#overview-kpis">Return to overview</a>
           </div>
         </div>
-        <div class="filters filters-spaced jump-target" id="cohort-filters">
+        <div class="filters filters-spaced jump-target" id="cohort-filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px;">
           <div class="filter">
             <label>Group</label>
             <select id="filter-group" title="Filter cohort by group"><option value="all">All groups</option><option>ASIB</option><option>PT</option><option>TD</option></select>
@@ -1426,15 +1432,15 @@
             <label>QC Status</label>
             <select id="filter-qc" title="Filter cohort by QC status"><option value="all">All</option><option>OK</option><option>Review</option></select>
           </div>
+          <div class="cohort-toolbar-actions" style="margin-left: auto;">
+            <span class="toolbar-chip t-label" id="cohort-toolbar-group">All groups</span>
+            <span class="toolbar-chip t-label" id="cohort-toolbar-qc">All QC</span>
+          </div>
         </div>
 
         <div class="card table-card jump-target" id="cohort-table-card">
-          <div class="table-toolbar cohort-toolbar" id="cohort-toolbar">
+          <div class="table-toolbar cohort-toolbar" id="cohort-toolbar" style="margin-bottom: 12px;">
             <span class="t-caption" id="cohort-count">— participants</span>
-            <div class="cohort-toolbar-actions">
-              <span class="toolbar-chip t-label" id="cohort-toolbar-group">All groups</span>
-              <span class="toolbar-chip t-label" id="cohort-toolbar-qc">All QC</span>
-            </div>
           </div>
           <h3>First 40 participants (sortable)</h3>
           <div class="table-scroll" id="cohort-table-scroll">
@@ -1480,22 +1486,22 @@
         <div class="grid four jump-target" id="research-kpis">
           <div class="card kpi">
             <div class="label">Total questions</div>
-            <div class="value" id="rq-kpi-total">—</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-total">—</div>
             <div class="delta" id="rq-kpi-total-note">Across 8 categories</div>
           </div>
           <div class="card kpi">
             <div class="label">In progress</div>
-            <div class="value" id="rq-kpi-inprogress">—</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-inprogress">—</div>
             <div class="delta" id="rq-kpi-inprogress-note">Active analyst workload</div>
           </div>
           <div class="card kpi">
             <div class="label">Resolved</div>
-            <div class="value" id="rq-kpi-resolved">—</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-resolved">—</div>
             <div class="delta" id="rq-kpi-resolved-note">Closed with test + link</div>
           </div>
-          <div class="card kpi">
+          <div class="card kpi kpi-accent" data-kpi-tone="danger">
             <div class="label">Critical + High open</div>
-            <div class="value" id="rq-kpi-critical">—</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-critical">—</div>
             <div class="delta" id="rq-kpi-critical-note">Unresolved high-priority work</div>
           </div>
         </div>
@@ -1512,7 +1518,7 @@
               <span class="legend-item"><span class="legend-swatch legend-hi"></span>3+</span>
             </div>
           </div>
-          <div class="research-heatmap-wrap">
+          <div class="research-heatmap-wrap" style="overflow-x: auto; -webkit-mask-image: linear-gradient(to right, black 95%, transparent 100%); mask-image: linear-gradient(to right, black 95%, transparent 100%);">
             <table class="research-heatmap" id="rq-heatmap">
               <thead>
                 <tr>

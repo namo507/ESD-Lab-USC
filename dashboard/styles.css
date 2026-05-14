@@ -9885,14 +9885,14 @@ body[data-theme="dark"] .sync-storyboard-stage-grid {
 
 .pulse-atlas-svg .pa-track {
   fill: none;
-  stroke: rgba(95, 72, 53, 0.18);
+  stroke: rgba(95, 72, 53, 0.2);
   stroke-width: 1.4;
   stroke-dasharray: 3 6;
 }
 
 .pulse-atlas-svg .pa-stream {
   fill: none;
-  stroke-width: 2.2;
+  stroke-width: 2;
   stroke-linecap: round;
 }
 
@@ -12302,3 +12302,294 @@ body[data-theme="dark"] .sidebar[data-layout-mode="stack"] .nav a.active {
     cursor: auto !important;
   }
 }
+
+/* ==========================================================================
+   DASHBOARD VISUAL OVERHAUL
+   ========================================================================== */
+
+/* GLOBAL 1: Numbered section top-padding */
+main > section[id] .section {
+  padding-top: 40px !important;
+}
+
+/* GLOBAL 2: Chart Tile Top-Blank Zones */
+.card:has(.chart-wrap),
+.card:has(canvas) {
+  display: flex !important;
+  flex-direction: column !important;
+  padding-top: 0 !important;
+  min-height: 0 !important;
+}
+.card:has(.chart-wrap) > h3,
+.card:has(canvas) > h3 {
+  padding: 20px 20px 12px 20px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.chart-wrap {
+  display: flex !important;
+  flex: 1 !important;
+  min-height: 200px !important;
+  padding: 0 20px 20px 20px;
+}
+
+/* GLOBAL 4: Scene margins */
+.section {
+  margin-bottom: 48px !important;
+}
+
+/* GLOBAL 5: Blob bleed isolation */
+.card, .glass-card, .sync-card, .sync-highlight-card, .view-panel {
+  isolation: isolate;
+}
+
+/* SECTION 0: Nav Grid */
+.nav-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+}
+.nav a {
+  align-items: center !important;
+}
+
+/* SECTION 0B: Hero Title */
+.page-title {
+  max-width: none !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+/* SECTION 0B: Status pill row wrapping */
+.topbar-right {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  /* Add right-edge gradient fade via mask or padding if needed */
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  padding-bottom: 4px;
+}
+.topbar-right::-webkit-scrollbar {
+  display: none;
+}
+.topbar-right .status-pill {
+  flex-shrink: 0;
+}
+
+/* SECTION 0C: Pipeline Word Break */
+.sync-copy h1 {
+  word-break: normal !important;
+  hyphens: none !important;
+}
+/* Ensure text wrapper has 55% width */
+.sync-copy {
+  min-width: 55% !important;
+}
+
+/* SECTION 1 & 3: 3+2 Grid Fix */
+.grid.kpis {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+}
+/* Fix kpi tile inside dead space */
+.card.kpi {
+  justify-content: flex-start !important;
+}
+.card.kpi .value {
+  margin-top: auto !important;
+}
+.card.kpi .label {
+  align-self: flex-start !important;
+}
+
+/* SECTION 2: Enrollment Charts tile alignment */
+#overview-enrollment .grid.two {
+  align-items: stretch !important;
+}
+/* Left chart canvas padding for diagonal labels */
+#chart-enrollment {
+  padding-bottom: 48px !important;
+}
+
+/* SECTION 4: Dissemination */
+/* URL 1-line clamp */
+.reading-meta a, .story-url {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  color: var(--warm-400) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block;
+}
+/* Story card grid equal heights */
+.reading-grid, .story-grid {
+  grid-auto-rows: 1fr !important;
+}
+.reading-card {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* SECTION 5: Pipeline */
+.stage-detail-card {
+  padding: 20px 24px !important;
+  margin-top: 0 !important;
+}
+.pipeline-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  grid-auto-rows: auto !important;
+}
+.pl-node:not(.is-focused) {
+  opacity: 0.5 !important;
+  border: 2px solid var(--warm-300) !important;
+}
+
+/* SECTION 6: Geospatial */
+#geo-map-tile {
+  aspect-ratio: 16/7 !important;
+}
+#geo-kpis-section .grid.two {
+  align-items: stretch !important;
+}
+
+/* SECTION 7: Missingness labels */
+#chart-missingness {
+  /* Using chart js options for y-axis width if possible, else CSS override */
+}
+
+/* SECTION 8: ML Performance */
+#ml-explainer-card {
+  padding: 24px 28px !important;
+  overflow: hidden !important;
+}
+.ml-metrics-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+.ml-metrics-table th:nth-child(1) { width: 30%; }
+.ml-metrics-table th:nth-child(2) { width: 12%; }
+.ml-metrics-table th:nth-child(3) { width: 20%; }
+.ml-metrics-table th:nth-child(4) { width: 12%; }
+.ml-metrics-table th:nth-child(5) { width: 12%; }
+.ml-metrics-table th:nth-child(6) { width: 12%; }
+
+/* SECTION 9: Trajectories */
+#traj-group-intercepts {
+  overflow-y: auto !important;
+  max-height: 480px !important;
+}
+.table-wrapper {
+  overflow-x: auto !important;
+  -webkit-mask-image: linear-gradient(to right, black 95%, transparent 100%);
+  mask-image: linear-gradient(to right, black 95%, transparent 100%);
+}
+
+/* SECTION 10: Cohort numeric align */
+.cohort-table td.numeric, .cohort-table th.numeric {
+  text-align: right !important;
+}
+
+/* SECTION 11: Research */
+.rq-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+
+/* SECTION 0B: Error Banner Redesign */
+.error-banner {
+  background: var(--rose-soft, #ffebe9) !important;
+  color: var(--usc-garnet, #73000a) !important;
+  border: 1px solid rgba(115, 0, 10, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin: 16px 5vw !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  box-shadow: 0 4px 12px rgba(115, 0, 10, 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+}
+.error-banner.hide {
+  display: none !important;
+}
+.error-banner::before {
+  content: "⚠️";
+  font-size: 1.2rem;
+}
+
+/* GLOBAL 3: Native selects to custom pills */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(19, 87, 192, 0.1);
+  border-radius: 20px !important;
+  padding: 6px 32px 6px 14px !important;
+  color: var(--ink-dark);
+  font-family: var(--font-inter);
+  font-size: 13px !important;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 8px auto;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  backdrop-filter: blur(8px);
+}
+select:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+/* KPI Accent semantics */
+.kpi-accent {
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), rgba(240, 248, 255, 0.5)) !important;
+  border: 1px solid rgba(0,0,0,0.05) !important;
+}
+.kpi-accent[data-kpi-tone="ocean"] {
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), rgba(210, 230, 250, 0.5)) !important;
+}
+.kpi-accent[data-kpi-tone="sage"] {
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), rgba(220, 240, 220, 0.5)) !important;
+}
+.kpi-accent[data-kpi-tone="warn"] {
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), rgba(255, 240, 210, 0.5)) !important;
+}
+.kpi-accent[data-kpi-tone="danger"] {
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), rgba(255, 220, 220, 0.5)) !important;
+}
+
+/* SECTION 12: Reading Library & Expanders */
+.search-input {
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%228%22%3E%3C%2Fcircle%3E%3Cline%20x1%3D%2221%22%20y1%3D%2221%22%20x2%3D%2216.65%22%20y2%3D%2216.65%22%3E%3C%2Fline%3E%3C%2Fsvg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 12px center !important;
+  background-size: 16px auto !important;
+  padding-left: 36px !important;
+}
+
+#reading-clear-filters {
+  transition: all 0.2s ease;
+}
+#reading-clear-filters:hover {
+  background: var(--glass-300);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.reading-abstract, .reading-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rq-expander {
+  transition: transform 0.2s ease;
+}
+.rq-expander:hover {
+  transform: rotate(90deg);
+}
+

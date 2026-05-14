@@ -645,7 +645,7 @@ function decorateRevealTargets() {
         });
       },
       {
-        threshold: 0.1,
+        threshold: 0.15,
         rootMargin: "0px 0px -40px 0px",
       }
     );
@@ -898,6 +898,24 @@ function setupScrollChrome() {
     return;
   }
 
+  // Create progress bar if it doesn't exist
+  let progressBar = document.getElementById("scroll-progress");
+  if (!progressBar) {
+    progressBar = document.createElement("div");
+    progressBar.id = "scroll-progress";
+    progressBar.style.position = "fixed";
+    progressBar.style.top = "0";
+    progressBar.style.left = "0";
+    progressBar.style.height = "3px";
+    progressBar.style.background = "var(--usc-garnet, #73000a)";
+    progressBar.style.width = "100%";
+    progressBar.style.transformOrigin = "left center";
+    progressBar.style.transform = "scaleX(0)";
+    progressBar.style.zIndex = "9999";
+    progressBar.style.transition = "transform 0.1s ease-out";
+    document.body.appendChild(progressBar);
+  }
+
   let lastScrollTop = window.scrollY || 0;
   const onScroll = () => {
     const current = window.scrollY || 0;
@@ -908,6 +926,10 @@ function setupScrollChrome() {
       document.body.classList.toggle("is-scrolling-down", scrollingDown);
       lastScrollTop = current;
     }
+
+    const docHeight = document.body.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? current / docHeight : 0;
+    progressBar.style.transform = `scaleX(${progress})`;
   };
 
   window.addEventListener("scroll", onScroll, { passive: true });
@@ -1042,7 +1064,7 @@ function setupKpiDeckEffects(root = document) {
     return;
   }
 
-  root.querySelectorAll(".sync-highlight-card").forEach((card) => {
+  root.querySelectorAll(".sync-highlight-card, .glass-card, .card").forEach((card) => {
     if (card.dataset.sheenBound === "true") {
       return;
     }
@@ -2800,7 +2822,18 @@ function renderQualitySection() {
           grid: { color: COLORS.grid },
           ticks: { callback: (value) => `${value}%` },
         },
-        y: { grid: { display: false } },
+        y: { 
+          grid: { display: false },
+          afterFit: function(scaleInstance) {
+            scaleInstance.width = 160;
+          },
+          ticks: {
+            callback: function(value, index) {
+              const label = this.getLabelForValue(value);
+              return label.length > 20 ? label.substring(0, 18) + '...' : label;
+            }
+          }
+        },
       },
     },
   });
@@ -2828,12 +2861,17 @@ function renderQualitySection() {
     },
   });
 
-  document.querySelector("#table-audit tbody").innerHTML = (audit.recent_activity || [])
-    .map(
-      (row) =>
-        `<tr><td class="t-mono">${escapeHtml(row.date)}</td><td>${escapeHtml(row.action)}</td><td class="t-mono">${escapeHtml(row.record_id)}</td><td>${escapeHtml(row.user)}</td></tr>`
-    )
-    .join("");
+  const recentActivity = audit.recent_activity || [];
+  if (recentActivity.length === 0) {
+    document.querySelector("#table-audit tbody").innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 48px; color: var(--warm-500); background: rgba(0,0,0,0.01);"><span style="font-size: 24px; display: block; margin-bottom: 8px;">📋</span>No recent activity</td></tr>`;
+  } else {
+    document.querySelector("#table-audit tbody").innerHTML = recentActivity
+      .map(
+        (row) =>
+          `<tr><td class="t-mono">${escapeHtml(row.date)}</td><td>${escapeHtml(row.action)}</td><td class="t-mono">${escapeHtml(row.record_id)}</td><td>${escapeHtml(row.user)}</td></tr>`
+      )
+      .join("");
+  }
 
   decorateRevealTargets();
 }
@@ -3116,7 +3154,7 @@ function renderMlOutputMetrics(bestModel, confusion) {
         )
         .join("")}
     </div>
-    ${confusionGrid ? `<div class="confusion-grid">${confusionGrid}</div>` : ""}
+    ${confusionGrid ? `<div class="card" style="padding:16px; background:var(--glass-200); margin-top:16px;"><span class="eyebrow" style="margin-bottom:8px; display:block;">CONFUSION MATRIX SUMMARY</span><div class="confusion-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">${confusionGrid}</div></div>` : ""}
     <div class="f1-chip"><span class="t-label">F1</span><strong class="t-mono">${escapeHtml(formatMetric(bestModel.f1))}</strong></div>`;
 }
 
@@ -4420,11 +4458,14 @@ function setText(id, value) {
 function setError(message) {
   const banner = document.getElementById("error-banner");
   if (!message) {
-    banner.textContent = "";
+    banner.innerHTML = "";
     banner.classList.add("hide");
     return;
   }
-  banner.textContent = message;
+  banner.innerHTML = `
+    <span class="msg" style="flex:1;">${message}</span>
+    <button type="button" class="close-btn" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--usc-garnet);" onclick="this.parentElement.classList.add('hide')">&times;</button>
+  `;
   banner.classList.remove("hide");
 }
 
