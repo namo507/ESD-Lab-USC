@@ -346,11 +346,12 @@ code {
   position: sticky;
   top: 18px;
   z-index: 20;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 18px;
-  padding: 20px 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: clamp(14px, 1.6vw, 22px);
+  row-gap: 10px;
+  align-items: center;
+  padding: 16px 22px;
   border: 1px solid rgba(255, 253, 249, 0.72);
   border-radius: 24px;
   background: rgba(251, 247, 240, 0.82);
@@ -360,16 +361,44 @@ code {
   min-width: 0;
 }
 
+.topbar > :first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .page-title {
   font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1.05;
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.page-title .title-mark {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .page-sub {
-  margin-top: 6px;
+  margin: 0;
   color: var(--ink-soft);
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1280px) {
+  .topbar { grid-template-columns: minmax(0, 1fr); }
+  .topbar-right { justify-content: flex-start !important; }
+  .page-sub { white-space: normal; max-width: 60ch; }
 }
 
 .section-subhead {
@@ -1830,6 +1859,28 @@ main section {
 .ml-explainer-card {
   --ml-progress: 16%;
   overflow: hidden;
+  padding-top: clamp(20px, 1.6vw, 26px);
+  padding-bottom: clamp(22px, 1.8vw, 28px);
+}
+
+/* When the model explainer payload is still loading, collapse the empty
+   inner grid so the card hugs its visible content instead of sitting on
+   ~400 px of dead white. */
+.ml-explainer-card .ml-input-bank:empty,
+.ml-explainer-card .ml-stage-detail:empty,
+.ml-explainer-card .ml-stage-board:empty,
+.ml-explainer-card .ml-feature-cloud:empty,
+.ml-explainer-card .ml-domain-grid:empty {
+  display: none;
+}
+
+.ml-explainer-layout {
+  align-items: start;
+}
+
+.ml-input-bank,
+.ml-stage-detail {
+  min-height: 0;
 }
 
 .ml-explainer-card::after {
@@ -4485,17 +4536,25 @@ body {
 .page-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: clamp(2rem, 2.8vw, 2.8rem);
-  line-height: 1.0;
+  gap: 10px;
+  min-width: 0;
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.1;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page-sub {
-  margin-top: var(--sp-2);
+  margin: 0;
   max-width: 58rem;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-right {
@@ -6849,16 +6908,16 @@ body::after {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.4fr);
-  gap: 22px 16px;
-  padding: 22px 24px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 18px;
+  padding: 18px 24px;
 }
 
 .page-title {
-  max-width: 13ch;
-  font-size: clamp(2.2rem, 3.4vw, 3.4rem);
-  line-height: 0.98;
-  letter-spacing: -0.06em;
+  max-width: none;
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
@@ -8498,10 +8557,11 @@ body.immersive-shell {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(420px, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: clamp(14px, 1.6vw, 22px);
+  row-gap: 10px;
   align-items: center;
-  padding: clamp(18px, 2vw, 24px);
+  padding: 16px clamp(18px, 2vw, 24px);
   border-radius: 30px;
 }
 
@@ -10810,15 +10870,23 @@ body.is-scrolling-down .sidebar {
   top: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
+  column-gap: clamp(14px, 1.6vw, 22px);
+  row-gap: 10px;
   align-items: center;
   margin-bottom: 22px;
-  padding: 18px 22px;
+  padding: 16px 22px;
   border-radius: 28px;
   background: rgba(255, 250, 244, 0.56);
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow: 0 18px 44px rgba(77, 54, 40, 0.1);
+}
+
+.topbar > :first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 body.is-scrolled .topbar,
@@ -10830,12 +10898,31 @@ body.is-scrolling-down .topbar {
 
 .page-title {
   font-family: var(--font-serif);
-  font-size: clamp(1.7rem, 2.4vw, 2.55rem);
+  font-size: clamp(20px, 2.1vw, 28px);
+  line-height: 1.1;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .page-sub {
   color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+@media (max-width: 1280px) {
+  .topbar { grid-template-columns: minmax(0, 1fr); }
+  .topbar-right { justify-content: flex-start; }
+  .page-sub { white-space: normal; max-width: 60ch; }
 }
 
 .topbar-right {
