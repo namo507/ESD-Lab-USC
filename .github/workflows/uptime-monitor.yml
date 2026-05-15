@@ -1,0 +1,126 @@
+name: Uptime monitor
+
+# Runs every 15 minutes. Probes the canonical Pages URL with the
+# health-check script. On failure: open / update a single GitHub issue
+# ("ESD Pages site is down") AND fire a repository_dispatch event that
+# triggers the deploy workflow to push a fresh artifact.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Probe live site
+        id: probe
+        run: |
+          set +e
+          python scripts/check_site_health.py \
+            --url https://esd-lab-namo.pages.dev/ \
+            --timeout 25 \
+            --min-bytes 8192 \
+            --max-stamp-age-hours 168 \
+            > probe.log 2>&1
+          rc=$?
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          cat probe.log
+          exit 0
+
+      - name: Trigger redeploy on failure
+        if: steps.probe.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+            -d '{"event_type":"redeploy-pages"}'
+
+      - name: Open / update incident issue on failure
+        if: steps.probe.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "ESD Pages site is down";
+            const log = require("fs").readFileSync("probe.log", "utf-8");
+            const body = [
+              "Uptime monitor detected the public Pages site is unhealthy.",
+              "",
+              "Run: " + process.env.GITHUB_SERVER_URL + "/" + process.env.GITHUB_REPOSITORY + "/actions/runs/" + process.env.GITHUB_RUN_ID,
+              "",
+              "Probe output:",
+              "```",
+              log.trim(),
+              "```",
+              "",
+              "A redeploy has been requested automatically. If the site stays down for more than two consecutive probes, investigate the deploy-pages workflow.",
+            ].join("\n");
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "uptime",
+            });
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["uptime", "incident"],
+              });
+            }
+
+      - name: Close incident issue on recovery
+        if: steps.probe.outputs.exit_code == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "ESD Pages site is down";
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "uptime",
+            });
+            const existing = issues.find(i => i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: "Site healthy again — closing.",
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: "closed",
+              });
+            }
