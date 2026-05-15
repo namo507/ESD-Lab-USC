@@ -34,3 +34,26 @@ jobs:
           flake8 src/ tests/ scripts/ redcap/ \
             --max-line-length=88 \
             --extend-ignore=E203,W503
+
+  test-dashboard-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dashboard image
+        run: docker compose build dashboard
+
+      - name: Start dashboard runtime
+        run: docker compose up -d dashboard
+
+      - name: Smoke test dashboard runtime
+        run: python3 scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080 --timeout 180
+
+      - name: Dashboard logs
+        if: always()
+        run: docker compose logs --tail=200 dashboard
+
+      - name: Tear down services
+        if: always()
+        run: docker compose down --remove-orphans --volumes

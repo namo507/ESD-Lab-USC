@@ -1,0 +1,13 @@
+.svg { width: 100%; display: block; background: var(--bg-surface); }
+.node { cursor: pointer; }
+.node:focus-visible { outline: 2px solid var(--usc-gold); outline-offset: 2px; }
+.label { font-size: 13px; font-weight: var(--w-semibold); fill: var(--ink); }
+.bigNum {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--w-semibold);
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.sub { font-size: 10px; font-family: var(--font-mono); fill: var(--slate-500); }
+.failLabel { font-size: 9px; font-family: var(--font-mono); fill: var(--red); }

@@ -1,0 +1,45 @@
+{
+  "name": "ESD Lab USC",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/ESD-Lab-USC",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "NANO dashboard",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "R_HOME": "/usr/lib/R",
+    "VENV": "/workspaces/ESD-Lab-USC/.devcontainer/.venv"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.devcontainer/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "jupyter.jupyterServerType": "local",
+        "files.exclude": {
+          "**/.pytest_cache": true,
+          "**/__pycache__": true
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "REditorSupport.r",
+        "ms-vscode.makefile-tools",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

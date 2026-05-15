@@ -40,6 +40,7 @@ plotly>=5.18.0
 
 # ─── Configuration & Utilities ──────────────────────────────
 PyYAML>=6.0.1
+beautifulsoup4>=4.12.3
 python-dotenv>=1.0.0
 click>=8.1.0
 tqdm>=4.66.0
@@ -56,6 +57,7 @@ rpy2>=3.5.14
 # ─── Reporting ──────────────────────────────────────────────
 jinja2>=3.1.0
 markdown>=3.5.0
+pypdf>=4.2.0
 
 # ─── Testing ────────────────────────────────────────────────
 pytest>=7.4.0

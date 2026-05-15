@@ -1,0 +1,52 @@
+.tile {
+  position: relative;
+  cursor: pointer;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  padding: 4px 4px 3px;
+  transition: border-color 80ms ease;
+  height: 56px;
+}
+.tile:hover { border-color: var(--slate-400); }
+
+.selected { border-color: var(--ink); }
+.accepted { background: var(--tile-accept-bg); border-color: var(--tile-accept-border); }
+.rejected { background: var(--tile-reject-bg); border-color: var(--tile-reject-border); }
+
+.ecg { width: 100%; height: 30px; display: block; }
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 1px;
+}
+.idx { font-size: 9px; font-family: var(--font-mono); color: var(--slate-500); }
+
+.sqiTrack {
+  flex: 1;
+  height: 3px;
+  background: var(--slate-100);
+  border-radius: 0;
+}
+.sqiBar { height: 100%; }
+.sqiGreen { background: var(--green); }
+.sqiGold  { background: var(--usc-gold); }
+.sqiAmber { background: var(--amber); }
+.sqiRed   { background: var(--red); }
+
+.pip {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pipOk   { background: var(--green); }
+.pipFail { background: var(--red); }

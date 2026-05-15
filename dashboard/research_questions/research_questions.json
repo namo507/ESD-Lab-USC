@@ -1,0 +1,1071 @@
+{
+  "meta": {
+    "owner": "Research Programmer (Data & Stats Analyst)",
+    "accountable": "PI — R01 NANO Study",
+    "review_cadence": "Quarterly (grant year Q1–Q4)",
+    "last_updated": "2026-04-21",
+    "version": "1.0.0",
+    "source": "dashboard/research_questions/research_questions.md",
+    "total_questions": 40,
+    "categories": [
+      "Dataset Structure",
+      "Clinical Assessments",
+      "Missing Data",
+      "ML Targets",
+      "Statistical Modeling",
+      "Data Harmonization",
+      "NDA Compliance",
+      "Reproducibility"
+    ],
+    "type_tags": [
+      "Data Infrastructure",
+      "Data Cleaning",
+      "Data Harmonization",
+      "ML Pipeline",
+      "Statistical Modeling",
+      "Feature Engineering",
+      "NDA Compliance",
+      "Manuscript Writing"
+    ],
+    "status_values": [
+      "open",
+      "in_progress",
+      "blocked",
+      "resolved"
+    ]
+  },
+  "questions": [
+    {
+      "id": "RQ-01",
+      "category": "Dataset Structure",
+      "type_tag": "Data Infrastructure",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "What is the canonical participant × event × instrument long-format schema, and how should it normalize against REDCap exports?",
+      "summary": "Lock down the tidy long-format schema (one row per participant × event × instrument) as the analysis-ready source of truth. REDCap flattens longitudinal events inconsistently; a stable schema prevents silent joins from drifting across the pipeline.",
+      "implementation": "Define a normalized table `redcap_long` with keys (subject_surrogate, event_name, instrument, field, value). Wide-format feature matrices are derived from this through documented pivots in build_dashboard_data.py.",
+      "assets": [
+        "dashboard/pipelines/build_dashboard_data.py",
+        "dashboard/context_skill/references/tables/redcap.md",
+        "data/data_dictionary/NANO_master_data_dictionary.csv"
+      ],
+      "widgets": [
+        "Overview KPI",
+        "Data Quality bar"
+      ],
+      "metrics": [
+        "Schema drift events",
+        "Join-key null rate"
+      ]
+    },
+    {
+      "id": "RQ-02",
+      "category": "Dataset Structure",
+      "type_tag": "Data Infrastructure",
+      "status": "resolved",
+      "priority": "high",
+      "question": "How are the three cohort groups (ASIB, PT, TD) encoded, and what controlled vocabulary covers all longitudinal events (NICU, 1/2/3/6/9/12/24/36 months CGA)?",
+      "summary": "Fix a vocabulary for group codes and event names so every downstream asset (mixed models, NDA submission, dashboard filters) uses the same strings. Enforce this via a validator in the context skill.",
+      "implementation": "`entities.md` defines group codes; `dashboard_schema.md` fixes the event string order. The extractor validator fails the build if new strings appear without documentation.",
+      "assets": [
+        "dashboard/context_skill/references/entities.md",
+        "dashboard/context_skill/extract_context.py"
+      ],
+      "widgets": [
+        "Trajectories chart",
+        "Cohort table"
+      ],
+      "metrics": [
+        "Distinct event strings",
+        "Distinct group codes"
+      ]
+    },
+    {
+      "id": "RQ-03",
+      "category": "Dataset Structure",
+      "type_tag": "Data Infrastructure",
+      "status": "open",
+      "priority": "medium",
+      "question": "Should the analyst-facing feature matrix live in wide (subject × timepoint × feature) or long (tidy) format, and which is optimal for mixed-effects vs. ML downstream?",
+      "summary": "Mixed-effects (lme4/nlme) consumes long format; tabular ML consumes wide. Decide which canonical form persists to disk and which is a derived view.",
+      "implementation": "Persist long-format parquet as ground truth; generate wide views via pandas pivot and R tidyr::pivot_wider at pipeline time. Document the contract in dashboard_schema.md.",
+      "assets": [
+        "src/preprocessing/hrv_features.py",
+        "dashboard/pipelines/build_dashboard_data.R"
+      ],
+      "widgets": [
+        "Pipeline map"
+      ],
+      "metrics": [
+        "Parquet file count",
+        "Pivot runtime"
+      ]
+    },
+    {
+      "id": "RQ-04",
+      "category": "Dataset Structure",
+      "type_tag": "Feature Engineering",
+      "status": "in_progress",
+      "priority": "medium",
+      "question": "Which derived variables (HRV indices, PRS, HDA phases) belong in the raw features table vs. a higher-level feature matrix layer?",
+      "summary": "Separate raw-adjacent derivations (per-segment RMSSD) from analysis-ready features (per-visit summaries). Two layers avoid re-running heavy preprocessing each time a modeler iterates.",
+      "implementation": "Layer A = segment-level HRV parquet. Layer B = visit-level feature matrix (aggregated, z-scored). Caching keyed by commit SHA + config hash.",
+      "assets": [
+        "src/preprocessing/hrv_features.py",
+        "src/features/feature_engineering.py"
+      ],
+      "widgets": [
+        "Feature domain chips",
+        "ML SHAP bar"
+      ],
+      "metrics": [
+        "Cache hit rate",
+        "Rebuild time"
+      ]
+    },
+    {
+      "id": "RQ-05",
+      "category": "Dataset Structure",
+      "type_tag": "Data Infrastructure",
+      "status": "resolved",
+      "priority": "high",
+      "question": "What is the PHI surface area in the raw dataset, and which columns require hashing or surrogate encoding before any analysis?",
+      "summary": "Every column flagged `phi_flag=true` in the data dictionary gets dropped before aggregation; subject IDs are hashed with `NANO_ID_SALT` into NANO-#### surrogates.",
+      "implementation": "`drop_phi` helper in build_dashboard_data.py reads data-dictionary flags; surrogate IDs computed with salted SHA-256.",
+      "assets": [
+        "dashboard/pipelines/build_dashboard_data.py",
+        "docs/hipaa_compliance_checklist.md"
+      ],
+      "widgets": [
+        "Data Quality KPI",
+        "Privacy banner"
+      ],
+      "metrics": [
+        "Dropped columns",
+        "Salt rotation log"
+      ]
+    },
+    {
+      "id": "RQ-06",
+      "category": "Clinical Assessments",
+      "type_tag": "Data Harmonization",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How do we harmonize the 3-month Bayley-4 with legacy Bayley-3 scores collected at earlier timepoints?",
+      "summary": "Bayley versions differ in normative sample and subtest weights. Use published equating tables or linear regression calibration on the 3-month overlap sample.",
+      "implementation": "Write a harmonization module that applies edition-specific crosswalks and emits an edition flag per row. Test against the developer-provided equating tables.",
+      "assets": [
+        "src/preprocessing/bayley_harmonization.py",
+        "dashboard/context_skill/references/metrics.md"
+      ],
+      "widgets": [
+        "Trajectories covariate chip",
+        "Cohort table"
+      ],
+      "metrics": [
+        "Edition flag coverage",
+        "Calibration residual"
+      ]
+    },
+    {
+      "id": "RQ-07",
+      "category": "Clinical Assessments",
+      "type_tag": "Data Cleaning",
+      "status": "open",
+      "priority": "medium",
+      "question": "What is the handling rule for assessors scoring an item at modified (chronological) vs. corrected (post-menstrual) age?",
+      "summary": "Corrected age is preferred through 24 months for VPT infants. Every assessment row needs a `used_age` field with audit rationale.",
+      "implementation": "Add `used_age` and `age_days` to REDCap; enforce at the scoring form. Pipeline rejects rows missing this pair.",
+      "assets": [
+        "redcap/api/redcap_audit.py",
+        "docs/data_context_skill.md"
+      ],
+      "widgets": [
+        "Data Quality audit table"
+      ],
+      "metrics": [
+        "Missing used_age %",
+        "Corrected-age adoption"
+      ]
+    },
+    {
+      "id": "RQ-08",
+      "category": "Clinical Assessments",
+      "type_tag": "Data Harmonization",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How are ADOS, M-CHAT-R, and SCQ scores reconciled across age-appropriate instruments over the 36-month window?",
+      "summary": "Each instrument applies to a different age band. Build a composite ASD-risk index using the best instrument available per visit, with an explicit hierarchy and source field.",
+      "implementation": "Python class `AsdRiskComposite` selects per-visit instrument, applies calibrated severity scores (ADOS CSS), and logs source.",
+      "assets": [
+        "src/features/asd_risk_composite.py",
+        "dashboard/research_questions/research_questions.md"
+      ],
+      "widgets": [
+        "ML target selector",
+        "Trajectories chart"
+      ],
+      "metrics": [
+        "Composite coverage %",
+        "Instrument crossover rate"
+      ]
+    },
+    {
+      "id": "RQ-09",
+      "category": "Clinical Assessments",
+      "type_tag": "Statistical Modeling",
+      "status": "open",
+      "priority": "medium",
+      "question": "What algorithm operationalizes ‘clinically significant developmental concern’ from composite scores?",
+      "summary": "Pre-register a decision rule (e.g., ≥1 SD below norm on any Bayley domain OR ADOS CSS ≥ 4) before outcome adjudication begins.",
+      "implementation": "Rule lives in `src/features/outcomes.py` as pure function; versioned; manuscript points at the commit SHA.",
+      "assets": [
+        "src/features/outcomes.py"
+      ],
+      "widgets": [
+        "ML target label",
+        "Cohort filter"
+      ],
+      "metrics": [
+        "Rule coverage",
+        "False-positive on pilot data"
+      ]
+    },
+    {
+      "id": "RQ-10",
+      "category": "Clinical Assessments",
+      "type_tag": "Data Cleaning",
+      "status": "open",
+      "priority": "low",
+      "question": "How should we document inter-rater reliability (IRR) for each instrument and integrate ICC into the dashboard?",
+      "summary": "Quarterly double-coding on ~10% of assessments. Intraclass correlation thresholds: ICC ≥ 0.75 for continuous, κ ≥ 0.6 for categorical.",
+      "implementation": "Add `irr_batch_id` to REDCap; compute ICC/κ in R; surface in Data Quality section with instrument chips.",
+      "assets": [
+        "scripts/generate_data_quality_report.py",
+        "dashboard/pipelines/build_dashboard_data.R"
+      ],
+      "widgets": [
+        "Data Quality chips",
+        "IRR trend card"
+      ],
+      "metrics": [
+        "ICC per instrument",
+        "κ per instrument"
+      ]
+    },
+    {
+      "id": "RQ-11",
+      "category": "Missing Data",
+      "type_tag": "Statistical Modeling",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "What is the MCAR/MAR/MNAR assumption per instrument, and how do we test it empirically?",
+      "summary": "Run Little’s MCAR test + logistic regression of missingness on observed covariates. Assume MAR conditional on documented auxiliaries; note MNAR risk explicitly.",
+      "implementation": "R script `tests/missingness_mcar.R` runs Little’s test; Python counterpart in `src/qc/missingness_checks.py`. Report fed into the dashboard quality panel.",
+      "assets": [
+        "src/qc/missingness_checks.py",
+        "dashboard/context_skill/references/qc_flags.md"
+      ],
+      "widgets": [
+        "Missingness horizontal bar"
+      ],
+      "metrics": [
+        "p-value MCAR test",
+        "Auxiliary coverage"
+      ]
+    },
+    {
+      "id": "RQ-12",
+      "category": "Missing Data",
+      "type_tag": "Statistical Modeling",
+      "status": "resolved",
+      "priority": "high",
+      "question": "How many MICE iterations (m) are sufficient for longitudinal HRV + Bayley? Target m=20 — how many within-imputation iterations?",
+      "summary": "m=20 imputations × 30 within-imputation iterations is the pre-registered default; validated by trace-plot stability and effective-degrees-of-freedom sensitivity.",
+      "implementation": "mice (R) + scikit-learn IterativeImputer (Python) both configured with m=20; pooling done via Rubin’s rules in a shared helper.",
+      "assets": [
+        "src/qc/impute.py",
+        "dashboard/context_skill/references/metrics.md"
+      ],
+      "widgets": [
+        "Data Quality imputation chip"
+      ],
+      "metrics": [
+        "m",
+        "Convergence trace stability"
+      ]
+    },
+    {
+      "id": "RQ-13",
+      "category": "Missing Data",
+      "type_tag": "Feature Engineering",
+      "status": "in_progress",
+      "priority": "medium",
+      "question": "What auxiliary variables should enter the imputation model to improve MAR plausibility?",
+      "summary": "Include SES, maternal depression (EPDS), caregiver work schedule, NICU length-of-stay, and prior-visit HRV. These predict missingness without being targets of analysis.",
+      "implementation": "Config-driven auxiliary list in `config/imputation_auxiliaries.yml`; unit-tested against MAR simulation.",
+      "assets": [
+        "config/imputation_auxiliaries.yml",
+        "src/qc/impute.py"
+      ],
+      "widgets": [
+        "Missingness bar context tooltip"
+      ],
+      "metrics": [
+        "Auxiliary count",
+        "MAR simulation bias"
+      ]
+    },
+    {
+      "id": "RQ-14",
+      "category": "Missing Data",
+      "type_tag": "Statistical Modeling",
+      "status": "open",
+      "priority": "high",
+      "question": "How do we pool estimates across imputations for mixed-effects and latent growth models (Rubin’s rules)?",
+      "summary": "Use `mice::pool` in R and `statsmodels.miceData` / manual Rubin pooling in Python. For lavaan LGCM, prefer FIML when possible, else pool over imputed datasets with `semTools::runMI`.",
+      "implementation": "Central helper `pool_estimates(fit_list)` returns pooled coefs, SEs, and df. Used by every inferential report.",
+      "assets": [
+        "src/models/statistical_analysis.R",
+        "src/models/mixed_effects.py"
+      ],
+      "widgets": [
+        "Trajectories intercept/slope table"
+      ],
+      "metrics": [
+        "Pooling coverage",
+        "Fraction of missing information"
+      ]
+    },
+    {
+      "id": "RQ-15",
+      "category": "Missing Data",
+      "type_tag": "Statistical Modeling",
+      "status": "open",
+      "priority": "medium",
+      "question": "When should we prefer FIML (lavaan) over multiple imputation for structural models?",
+      "summary": "FIML when missingness is plausibly MAR conditional on model covariates and sample is large enough; MI when auxiliaries not in the analysis model are needed.",
+      "implementation": "Decision tree documented in `research_questions.md §Missing Data`. Each published table reports which method was used.",
+      "assets": [
+        "dashboard/research_questions/research_questions.md",
+        "src/models/lgcm_lavaan.R"
+      ],
+      "widgets": [
+        "Methods citation chip"
+      ],
+      "metrics": [
+        "Method usage counts"
+      ]
+    },
+    {
+      "id": "RQ-16",
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "status": "in_progress",
+      "priority": "critical",
+      "question": "What is the primary prediction target — binary autism-risk at 24m, continuous ADOS calibrated severity, or trajectory cluster membership?",
+      "summary": "Pre-register the primary target. Candidate: binary high-risk status at 24 months from ADOS-2 + clinician confirmation; continuous CSS as secondary. Trajectory clusters are exploratory.",
+      "implementation": "`config/model_config.yml` sets the primary target; ML pipelines read this single source. Any change triggers pipeline replay.",
+      "assets": [
+        "config/model_config.yml",
+        "src/models/ml_pipeline.py"
+      ],
+      "widgets": [
+        "ML model explainer",
+        "ML ROC curves"
+      ],
+      "metrics": [
+        "AUROC",
+        "Calibration Brier"
+      ]
+    },
+    {
+      "id": "RQ-17",
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How do we handle label leakage when a visit used to compute features overlaps the outcome assessment?",
+      "summary": "Enforce temporal split: features from visits ≤ 12 months feed a target at 24 months. Any feature within ±30 days of outcome is dropped.",
+      "implementation": "`split_temporal(features_df, outcome_df, lag_days=30)` enforces the gap; unit-tested with synthetic data.",
+      "assets": [
+        "src/models/temporal_split.py",
+        "src/models/model_evaluation.py"
+      ],
+      "widgets": [
+        "ML confusion summary",
+        "Subgroup table"
+      ],
+      "metrics": [
+        "Leakage audit count"
+      ]
+    },
+    {
+      "id": "RQ-18",
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "status": "open",
+      "priority": "medium",
+      "question": "What is the minimum effective sample size per class for RF/XGB vs. deep models (CNN+LSTM, Transformer)?",
+      "summary": "Tabular baselines can work with ~50/class; deep sequence models need ≥150/class and heavy regularization. Document on the ML explainer.",
+      "implementation": "Add per-model sample-size gate in `ml_pipeline.py`; warn + skip if the cohort falls below threshold.",
+      "assets": [
+        "src/models/ml_pipeline.py",
+        "src/models/deep_learning_ecg.py"
+      ],
+      "widgets": [
+        "ML subgroup table"
+      ],
+      "metrics": [
+        "Sample per class",
+        "Skipped-model count"
+      ]
+    },
+    {
+      "id": "RQ-19",
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How should class imbalance (ASIB ~25%, PT ~50%, TD ~25%) be addressed — reweighting, focal loss, or time-series SMOTE?",
+      "summary": "Default: class-weighted loss + stratified CV. Focal loss reserved for deep models. Time-series SMOTE only on segment-level oversampling, never on subjects.",
+      "implementation": "Policy documented in `dashboard_schema.md`; `class_weighting_policy` key in model_config.yml.",
+      "assets": [
+        "config/model_config.yml",
+        "src/models/ml_pipeline.py"
+      ],
+      "widgets": [
+        "ML ROC curves"
+      ],
+      "metrics": [
+        "Sensitivity by class",
+        "Specificity by class"
+      ]
+    },
+    {
+      "id": "RQ-20",
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "status": "open",
+      "priority": "medium",
+      "question": "Which secondary targets (motor delay, language delay) give enough power for multi-task learning?",
+      "summary": "Estimate class prevalence and pilot effective-sample-size per secondary target. Multi-task heads share the encoder; per-target loss weighting.",
+      "implementation": "Run pre-analysis power simulation in `scripts/power_sim_multitask.R`; gate multi-task adoption on power ≥ 0.8.",
+      "assets": [
+        "scripts/power_sim_multitask.R",
+        "src/models/multitask_head.py"
+      ],
+      "widgets": [
+        "ML target selector",
+        "ML subgroup table"
+      ],
+      "metrics": [
+        "Power estimate per target"
+      ]
+    },
+    {
+      "id": "RQ-21",
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "What is the preferred mixed-effects specification (random intercepts vs. intercepts+slopes) for HRV trajectories by group?",
+      "summary": "Start with random intercepts + random slopes on age_months; compare vs. intercepts-only via AIC/BIC and likelihood-ratio tests. Group × time fixed interaction is the scientific term of interest.",
+      "implementation": "Workflow in `src/models/mixed_effects.R` using lme4::lmer; model comparison logged to `reports/mixed_effects_selection.md`.",
+      "assets": [
+        "src/models/mixed_effects.R",
+        "src/models/statistical_analysis.R"
+      ],
+      "widgets": [
+        "Trajectories chart",
+        "Intercept/slope table"
+      ],
+      "metrics": [
+        "ΔAIC",
+        "LRT p-value"
+      ]
+    },
+    {
+      "id": "RQ-22",
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "status": "open",
+      "priority": "medium",
+      "question": "For Latent Growth Curve Models, do we fit linear, quadratic, or piecewise slopes given 9 unevenly spaced timepoints?",
+      "summary": "HRV maturation is non-linear; piecewise (knot at 6 months) or quadratic often better. Pre-register candidate shapes; pick via CFI/RMSEA.",
+      "implementation": "Fit linear, quadratic, and piecewise with knots ∈ {3, 6, 12} in lavaan; compare nested models; report sensitivity.",
+      "assets": [
+        "src/models/lgcm_lavaan.R"
+      ],
+      "widgets": [
+        "Trajectories shape chip"
+      ],
+      "metrics": [
+        "CFI",
+        "RMSEA",
+        "ΔAIC"
+      ]
+    },
+    {
+      "id": "RQ-23",
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How are family-wise error rates controlled across the panel of HRV biomarkers?",
+      "summary": "Benjamini-Hochberg FDR at q=0.05 within each biomarker family (time domain, frequency domain, nonlinear). Confirmatory tests use stricter Bonferroni.",
+      "implementation": "Central `multiplicity.py` applies the correction by family; reports include unadjusted and adjusted p-values.",
+      "assets": [
+        "src/models/multiplicity.py"
+      ],
+      "widgets": [
+        "Trajectories CI bands",
+        "Audit table"
+      ],
+      "metrics": [
+        "# tests",
+        "FDR q"
+      ]
+    },
+    {
+      "id": "RQ-24",
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "status": "open",
+      "priority": "medium",
+      "question": "Which covariates are pre-registered (sex, GA at birth, SES, maternal age) and which are time-varying vs. baseline?",
+      "summary": "Baseline fixed: sex, GA, birth weight, maternal age, SES at enrollment. Time-varying: corrected age, current SES, caregiver depression, medication.",
+      "implementation": "Document covariate list in `docs/statistical_analysis_plan.md`; enforce in model factory.",
+      "assets": [
+        "docs/statistical_analysis_plan.md",
+        "src/models/mixed_effects.py"
+      ],
+      "widgets": [
+        "Covariate chip row"
+      ],
+      "metrics": [
+        "Covariate coverage %"
+      ]
+    },
+    {
+      "id": "RQ-25",
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "status": "resolved",
+      "priority": "critical",
+      "question": "What is the power analysis basis for detecting a group × time interaction at α=0.05 with 260 infants?",
+      "summary": "Monte Carlo simulation targeting medium interaction effect (d≈0.4) yields >0.85 power with 260 infants, 9 visits, 15% attrition. Documented in grant aim 1.",
+      "implementation": "`scripts/power_sim.R` reproduces the grant-year power estimate; rerun annually with observed attrition.",
+      "assets": [
+        "scripts/power_sim.R",
+        "docs/grant_aim1_power.md"
+      ],
+      "widgets": [
+        "Overview KPI card"
+      ],
+      "metrics": [
+        "Power estimate",
+        "Observed attrition"
+      ]
+    },
+    {
+      "id": "RQ-26",
+      "category": "Data Harmonization",
+      "type_tag": "Feature Engineering",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "How do we harmonize ECG sampling rates (1024 Hz NICU vs. 500 Hz outpatient monitors) before HRV feature extraction?",
+      "summary": "Resample all ECG to a common 512 Hz grid before R-peak detection to neutralize device-dependent HRV bias; validate on a paired-sample cohort.",
+      "implementation": "`resample_common_grid(signal, sr_in, sr_out=512)` with anti-aliasing filter; unit-tested against paired recordings.",
+      "assets": [
+        "src/preprocessing/ecg_preprocessing.py"
+      ],
+      "widgets": [
+        "Pipeline map",
+        "Methods citation"
+      ],
+      "metrics": [
+        "HRV bias (paired)"
+      ]
+    },
+    {
+      "id": "RQ-27",
+      "category": "Data Harmonization",
+      "type_tag": "Data Cleaning",
+      "status": "resolved",
+      "priority": "high",
+      "question": "What is the policy for segment rejection (artifact %, ectopic beats, minimum clean length) across the cohort?",
+      "summary": "Accept segments with <5% ectopic, ≥5 min clean length, Malik filter variance gate. Reject others; log reason; no silent drops.",
+      "implementation": "`src/qc/ecg_segment_qc.py` emits per-segment `accepted` flag + reason code; dashboard aggregates rejection reasons.",
+      "assets": [
+        "src/qc/ecg_segment_qc.py",
+        "dashboard/context_skill/references/qc_flags.md"
+      ],
+      "widgets": [
+        "Data Quality QC cards"
+      ],
+      "metrics": [
+        "Reject rate",
+        "Reason distribution"
+      ]
+    },
+    {
+      "id": "RQ-28",
+      "category": "Data Harmonization",
+      "type_tag": "Feature Engineering",
+      "status": "in_progress",
+      "priority": "medium",
+      "question": "How are age-corrected z-scores computed across visits, and from which normative reference?",
+      "summary": "Use published NICU and term norms per biomarker; compute z-scores relative to corrected age strata in months.",
+      "implementation": "`normative_zscore(feature, age_months, instrument)` consults a CSV of reference stats under `data/reference/`.",
+      "assets": [
+        "data/reference/hrv_norms.csv",
+        "src/features/normative_z.py"
+      ],
+      "widgets": [
+        "Trajectories CI bands",
+        "Cohort table"
+      ],
+      "metrics": [
+        "Norm coverage %"
+      ]
+    },
+    {
+      "id": "RQ-29",
+      "category": "Data Harmonization",
+      "type_tag": "NDA Compliance",
+      "status": "open",
+      "priority": "high",
+      "question": "How do we align REDCap event names with NDA experiment IDs and assessment definitions?",
+      "summary": "Maintain an explicit crosswalk (`nda_crosswalk.csv`) mapping REDCap event_name → NDA experiment_id; unit-test both sides on every sync.",
+      "implementation": "CI check compares REDCap export to the crosswalk and fails on any unmapped event.",
+      "assets": [
+        "data/nda/nda_crosswalk.csv",
+        "scripts/nda_export.py"
+      ],
+      "widgets": [
+        "Data Quality crosswalk card"
+      ],
+      "metrics": [
+        "Unmapped events",
+        "Crosswalk version"
+      ]
+    },
+    {
+      "id": "RQ-30",
+      "category": "Data Harmonization",
+      "type_tag": "Data Harmonization",
+      "status": "open",
+      "priority": "medium",
+      "question": "What crosswalk resolves caregiver-report instruments (PSI, CES-D, EPDS) between English and Spanish versions?",
+      "summary": "Document published translations and cross-language measurement invariance checks. If invariance fails, stratify analyses by language.",
+      "implementation": "Measurement-invariance tests via `lavaan::cfa(group=\"language\")`; results logged to `reports/language_invariance.md`.",
+      "assets": [
+        "src/models/language_invariance.R",
+        "reports/language_invariance.md"
+      ],
+      "widgets": [
+        "Trajectories covariate chip"
+      ],
+      "metrics": [
+        "ΔCFI across groups"
+      ]
+    },
+    {
+      "id": "RQ-31",
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "Which NDA GUIDs are required for each participant, and at what point in the protocol are they generated?",
+      "summary": "GUIDs generated at enrollment using the NDA GUID tool; stored in REDCap `nda_guid` field (flagged PHI); never exposed to the dashboard.",
+      "implementation": "`scripts/generate_nda_guid.py` wraps the NDA tool; REDCap validation rule requires the field before enrollment is marked complete.",
+      "assets": [
+        "scripts/generate_nda_guid.py",
+        "docs/nda_submission_checklist.md"
+      ],
+      "widgets": [
+        "Privacy banner"
+      ],
+      "metrics": [
+        "GUID coverage %"
+      ]
+    },
+    {
+      "id": "RQ-32",
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "status": "in_progress",
+      "priority": "critical",
+      "question": "What is the mapping between our local variables and the NDA ndar_subject01 / bayley_scales01 / asd_screening01 data structures?",
+      "summary": "Maintain a 1:1 field-level map with types, allowed values, and value transforms. Exporter validates each field before submission.",
+      "implementation": "`data/nda/field_map.yml` is the source of truth; `scripts/nda_export.py` builds NDA-ready CSVs from it.",
+      "assets": [
+        "data/nda/field_map.yml",
+        "scripts/nda_export.py"
+      ],
+      "widgets": [
+        "Data Quality NDA card"
+      ],
+      "metrics": [
+        "Field map coverage",
+        "Validation errors"
+      ]
+    },
+    {
+      "id": "RQ-33",
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "status": "open",
+      "priority": "high",
+      "question": "How do we stage raw ECG waveforms for the NDA raw-data upload while keeping PHI stripped?",
+      "summary": "Re-encode EDF files with a deterministic de-identified header; store under `nda_stage/raw_ecg/<guid>/` keyed only by GUID.",
+      "implementation": "`scripts/deidentify_edf.py` rewrites header metadata; hash validates integrity.",
+      "assets": [
+        "scripts/deidentify_edf.py",
+        "docs/nda_submission_checklist.md"
+      ],
+      "widgets": [
+        "Pipeline map (shared step)"
+      ],
+      "metrics": [
+        "Staged file count",
+        "Header leak check"
+      ]
+    },
+    {
+      "id": "RQ-34",
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "status": "open",
+      "priority": "medium",
+      "question": "What are the NDA submission deadlines relative to R01 grant year, and what is our QA gate?",
+      "summary": "Submissions due 6 months after the end of each grant year. QA gate: NDA validator must pass with zero hard errors; soft warnings documented.",
+      "implementation": "Add scheduled task for Aug 1 / Feb 1 reminders; QA gate enforced in CI for the NDA exporter.",
+      "assets": [
+        "docs/nda_submission_checklist.md",
+        "scripts/nda_export.py"
+      ],
+      "widgets": [
+        "Overview KPI (submission clock)"
+      ],
+      "metrics": [
+        "Days to deadline",
+        "Validator error count"
+      ]
+    },
+    {
+      "id": "RQ-35",
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "status": "open",
+      "priority": "medium",
+      "question": "How do we version NDA submissions so that corrections are traceable back to REDCap audit entries?",
+      "summary": "Each submission keeps a manifest (`nda_manifest_<date>.json`) capturing git SHA, REDCap audit range, and file hashes. Corrections ship as delta submissions.",
+      "implementation": "`scripts/nda_manifest.py` writes the manifest; delta submissions reference prior manifest IDs.",
+      "assets": [
+        "scripts/nda_manifest.py"
+      ],
+      "widgets": [
+        "Data Quality audit table"
+      ],
+      "metrics": [
+        "Manifest chain length",
+        "Delta count"
+      ]
+    },
+    {
+      "id": "RQ-36",
+      "category": "Reproducibility",
+      "type_tag": "Data Infrastructure",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "What is the CI pipeline that re-runs the full dashboard build on every commit to catch schema drift?",
+      "summary": "GitHub Actions: run synthetic dashboard build + contract test + extract_context.py --check on every push. Fail on any drift.",
+      "implementation": "`.github/workflows/dashboard-ci.yml` wires synthetic run + contract test + drift check. Artifact retained for 14 days.",
+      "assets": [
+        ".github/workflows/dashboard-ci.yml",
+        "tests/test_dashboard_contract.py"
+      ],
+      "widgets": [
+        "Data Quality KPI"
+      ],
+      "metrics": [
+        "CI pass rate",
+        "Drift events"
+      ]
+    },
+    {
+      "id": "RQ-37",
+      "category": "Reproducibility",
+      "type_tag": "Data Infrastructure",
+      "status": "resolved",
+      "priority": "medium",
+      "question": "How are random seeds controlled across Python (numpy, sklearn, torch) and R (set.seed, future.apply) for full replay?",
+      "summary": "Single `SEED=20260401` in `config/seeds.yml` consumed by all entry points. Torch uses `torch.manual_seed` + `torch.use_deterministic_algorithms(True)`.",
+      "implementation": "`src/utils/seed.py` + `src/utils/seed.R` both read the same YAML; every script calls the helper at startup.",
+      "assets": [
+        "config/seeds.yml",
+        "src/utils/seed.py",
+        "src/utils/seed.R"
+      ],
+      "widgets": [
+        "Methods citation",
+        "Pipeline map"
+      ],
+      "metrics": [
+        "Seed coverage %"
+      ]
+    },
+    {
+      "id": "RQ-38",
+      "category": "Reproducibility",
+      "type_tag": "Data Infrastructure",
+      "status": "in_progress",
+      "priority": "high",
+      "question": "What is the containerization story (docker compose) such that a collaborator can reproduce a figure from the paper in <30 minutes?",
+      "summary": "`docker compose up --build dashboard` runs the live runtime with pinned versions; a synthetic replay path reproduces every figure without PHI access.",
+      "implementation": "Pin Python 3.11, R 4.3, Chart.js 4.5.1. Provide `make replay-figure FIG=<id>` target.",
+      "assets": [
+        "docker-compose.yml",
+        "Makefile"
+      ],
+      "widgets": [
+        "Pipeline map"
+      ],
+      "metrics": [
+        "Replay runtime",
+        "Version drift"
+      ]
+    },
+    {
+      "id": "RQ-39",
+      "category": "Reproducibility",
+      "type_tag": "Data Infrastructure",
+      "status": "open",
+      "priority": "medium",
+      "question": "How are intermediate artifacts (feature_matrix.parquet, model weights, SHAP values) versioned — DVC, git-lfs, or MLflow?",
+      "summary": "DVC on a S3-compatible backend inside USC secure storage for parquet + weights; MLflow for model/SHAP metadata. No raw PHI in DVC.",
+      "implementation": "Bootstrap DVC in `setup_artifact_store.sh`; MLflow tracking server tied to Aim 1 experiment.",
+      "assets": [
+        "setup_artifact_store.sh",
+        "mlflow/server.yml"
+      ],
+      "widgets": [
+        "ML SHAP bar"
+      ],
+      "metrics": [
+        "Artifact store size",
+        "MLflow run count"
+      ]
+    },
+    {
+      "id": "RQ-40",
+      "category": "Reproducibility",
+      "type_tag": "Manuscript Writing",
+      "status": "open",
+      "priority": "high",
+      "question": "How do we issue a manuscript-ready reproducibility appendix mapping every table and figure to a commit SHA and data hash?",
+      "summary": "Each figure/table is generated by a numbered Rmd or notebook that stamps the commit SHA + dashboard_data.json hash into the artifact caption.",
+      "implementation": "`reports/appendix_builder.Rmd` composes the appendix from per-figure YAML metadata; PDF exports via `rmarkdown::render`.",
+      "assets": [
+        "reports/appendix_builder.Rmd",
+        "reports/figures/"
+      ],
+      "widgets": [
+        "Manuscript appendix link"
+      ],
+      "metrics": [
+        "Figure provenance coverage %"
+      ]
+    }
+  ],
+  "rollups": {
+    "by_category": {
+      "Clinical Assessments": 5,
+      "Data Harmonization": 5,
+      "Dataset Structure": 5,
+      "ML Targets": 5,
+      "Missing Data": 5,
+      "NDA Compliance": 5,
+      "Reproducibility": 5,
+      "Statistical Modeling": 5
+    },
+    "by_type_tag": {
+      "Data Cleaning": 3,
+      "Data Harmonization": 3,
+      "Data Infrastructure": 8,
+      "Feature Engineering": 4,
+      "ML Pipeline": 5,
+      "Manuscript Writing": 1,
+      "NDA Compliance": 6,
+      "Statistical Modeling": 10
+    },
+    "by_status": {
+      "blocked": 0,
+      "in_progress": 17,
+      "open": 17,
+      "resolved": 6
+    },
+    "by_priority": {
+      "critical": 3,
+      "high": 20,
+      "low": 1,
+      "medium": 16
+    }
+  },
+  "matrix": [
+    {
+      "category": "Clinical Assessments",
+      "type_tag": "Data Cleaning",
+      "count": 2,
+      "ids": [
+        "RQ-07",
+        "RQ-10"
+      ]
+    },
+    {
+      "category": "Clinical Assessments",
+      "type_tag": "Data Harmonization",
+      "count": 2,
+      "ids": [
+        "RQ-06",
+        "RQ-08"
+      ]
+    },
+    {
+      "category": "Clinical Assessments",
+      "type_tag": "Statistical Modeling",
+      "count": 1,
+      "ids": [
+        "RQ-09"
+      ]
+    },
+    {
+      "category": "Data Harmonization",
+      "type_tag": "Data Cleaning",
+      "count": 1,
+      "ids": [
+        "RQ-27"
+      ]
+    },
+    {
+      "category": "Data Harmonization",
+      "type_tag": "Data Harmonization",
+      "count": 1,
+      "ids": [
+        "RQ-30"
+      ]
+    },
+    {
+      "category": "Data Harmonization",
+      "type_tag": "Feature Engineering",
+      "count": 2,
+      "ids": [
+        "RQ-26",
+        "RQ-28"
+      ]
+    },
+    {
+      "category": "Data Harmonization",
+      "type_tag": "NDA Compliance",
+      "count": 1,
+      "ids": [
+        "RQ-29"
+      ]
+    },
+    {
+      "category": "Dataset Structure",
+      "type_tag": "Data Infrastructure",
+      "count": 4,
+      "ids": [
+        "RQ-01",
+        "RQ-02",
+        "RQ-03",
+        "RQ-05"
+      ]
+    },
+    {
+      "category": "Dataset Structure",
+      "type_tag": "Feature Engineering",
+      "count": 1,
+      "ids": [
+        "RQ-04"
+      ]
+    },
+    {
+      "category": "ML Targets",
+      "type_tag": "ML Pipeline",
+      "count": 5,
+      "ids": [
+        "RQ-16",
+        "RQ-17",
+        "RQ-18",
+        "RQ-19",
+        "RQ-20"
+      ]
+    },
+    {
+      "category": "Missing Data",
+      "type_tag": "Feature Engineering",
+      "count": 1,
+      "ids": [
+        "RQ-13"
+      ]
+    },
+    {
+      "category": "Missing Data",
+      "type_tag": "Statistical Modeling",
+      "count": 4,
+      "ids": [
+        "RQ-11",
+        "RQ-12",
+        "RQ-14",
+        "RQ-15"
+      ]
+    },
+    {
+      "category": "NDA Compliance",
+      "type_tag": "NDA Compliance",
+      "count": 5,
+      "ids": [
+        "RQ-31",
+        "RQ-32",
+        "RQ-33",
+        "RQ-34",
+        "RQ-35"
+      ]
+    },
+    {
+      "category": "Reproducibility",
+      "type_tag": "Data Infrastructure",
+      "count": 4,
+      "ids": [
+        "RQ-36",
+        "RQ-37",
+        "RQ-38",
+        "RQ-39"
+      ]
+    },
+    {
+      "category": "Reproducibility",
+      "type_tag": "Manuscript Writing",
+      "count": 1,
+      "ids": [
+        "RQ-40"
+      ]
+    },
+    {
+      "category": "Statistical Modeling",
+      "type_tag": "Statistical Modeling",
+      "count": 5,
+      "ids": [
+        "RQ-21",
+        "RQ-22",
+        "RQ-23",
+        "RQ-24",
+        "RQ-25"
+      ]
+    }
+  ]
+}

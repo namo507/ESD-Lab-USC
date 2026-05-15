@@ -28,6 +28,8 @@ redcap:
 # ─── Processed Data Directories ─────────────────────────────
 processed:
   ecg_dir: "${NANO_DATA_ROOT}/processed/ecg"
+  redcap_latest: "${NANO_DATA_ROOT}/processed/redcap_latest.parquet"
+  feature_matrix: "${NANO_DATA_ROOT}/processed/feature_matrix.parquet"
   # Per-participant HRV feature matrices (parquet)
   hrv_features_dir: "${NANO_DATA_ROOT}/processed/ecg/hrv_features"
   # Cleaned IBI time series
@@ -54,6 +56,7 @@ deidentified:
 # ─── Models ─────────────────────────────────────────────────
 models:
   base_dir: "${NANO_DATA_ROOT}/models"
+  metrics: "${NANO_DATA_ROOT}/models/_metrics.json"
   sklearn_dir: "${NANO_DATA_ROOT}/models/sklearn"
   torch_dir: "${NANO_DATA_ROOT}/models/torch"
   r_models_dir: "${NANO_DATA_ROOT}/models/r_models"
@@ -74,3 +77,6 @@ logs:
   pipeline_log: "logs/pipeline.log"
   redcap_sync_log: "logs/redcap_sync.log"
   audit_log: "logs/data_access_audit.log"
+
+# ─── Repo-Committed Metadata ───────────────────────────────
+data_dictionary: "data/data_dictionary/NANO_master_data_dictionary.csv"

@@ -1,0 +1,14 @@
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  display: block;
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+
+.hoverable { cursor: pointer; }
+.hoverable:hover { border-color: var(--border-strong); }

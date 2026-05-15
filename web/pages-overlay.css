@@ -735,7 +735,31 @@ select.glass-pill {
   }
 }
 
-/* ---------- 17. Scroll progress bar --------------------------- */
+/* ---------- 17. Scroll progress bar + global smoothness ------- */
+/* 60ms linear keeps the bar locked tight to wheel velocity. */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Tighten common micro-interaction transitions globally so the
+   cursor-driven motions feel snappy instead of lagging. */
+.glass-card,
+.glass,
+.tile,
+.chart-tile,
+.kpi,
+.nav-link,
+.year-tag,
+.code-tag,
+.config-tag,
+.dock-item,
+button,
+a {
+  transition-duration: 160ms !important;
+  transition-timing-function: var(--ease-soft, cubic-bezier(0.22, 1, 0.36, 1)) !important;
+  will-change: transform, opacity;
+}
 
 #__esd_scroll_progress {
   position: fixed;
@@ -748,12 +772,14 @@ select.glass-pill {
   background: linear-gradient(90deg, var(--usc-garnet, #73000a), var(--usc-gold, #d4ad6a));
   z-index: 9999;
   pointer-events: none;
-  transition: transform 120ms linear;
+  transition: transform 60ms linear;
+  will-change: transform;
 }
 
 /* ---------- 18. Glass-card hover sheen wiring ----------------- */
 /* Gated by @media (hover: hover) so touch devices skip the math
-   and avoid sticky-hover artifacts on tap. */
+   and avoid sticky-hover artifacts on tap. Tightened to 140ms
+   ease-out so the sheen tracks the cursor with no perceptible lag. */
 
 .glass-card {
   --mx: 50%;
@@ -768,15 +794,21 @@ select.glass-pill {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(220px circle at var(--mx) var(--my),
-      rgba(255,255,255,0.45), transparent 60%);
+    background: radial-gradient(180px circle at var(--mx) var(--my),
+      rgba(255,255,255,0.5), transparent 55%);
     opacity: 0;
-    transition: opacity 220ms var(--ease-soft, ease);
+    transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1),
+                background-position 0ms;
     pointer-events: none;
     mix-blend-mode: soft-light;
     z-index: 1;
+    will-change: opacity, background-position;
   }
   .glass-card:hover::after { opacity: 1; }
+  /* Slight lift snap on hover for tactile feedback. */
+  .glass-card:hover {
+    transform: translateY(-1px);
+  }
 }
 
 /* ---------- 18b. Flex min-width:0 — fix nested ellipsis ------- */
@@ -915,3 +947,210 @@ select.glass-pill {
   cursor: default;
 }
 #__esd_deploy_banner:hover { opacity: 1; }
+
+/* ---------- 21. NICU geospatial map (Section "where the work happens") */
+/* Interactive Leaflet map injected after the "South Carolina, three NICUs"
+   heading. Lives inside its own glass card so it inherits the warm-glass
+   surface tokens. */
+
+#__esd_nicu_map_wrap {
+  position: relative;
+  isolation: isolate;
+  margin: 28px 0 8px 0;
+  padding: 18px 18px 18px 18px;
+  border-radius: var(--r-glass, 28px);
+  background: var(--glass-300, rgba(255, 255, 255, 0.65));
+  border: 1px solid var(--glass-stroke-soft, rgba(255, 255, 255, 0.6));
+  box-shadow: var(--glass-shadow, 0 22px 60px rgba(28, 25, 22, 0.10));
+  backdrop-filter: blur(18px);
+  overflow: hidden;
+}
+
+#__esd_nicu_map_wrap .nicu-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+#__esd_nicu_map_wrap .nicu-map-eyebrow {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--warm-500, #6b6353);
+}
+
+#__esd_nicu_map_wrap .nicu-map-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--glass-200, rgba(255,255,255,0.45));
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--warm-500, #6b6353);
+}
+#__esd_nicu_map_wrap .nicu-map-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #55a868;
+  box-shadow: 0 0 0 0 rgba(85, 168, 104, 0.65);
+  animation: esdPulse 1.8s ease-in-out infinite;
+}
+@keyframes esdPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(85, 168, 104, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(85, 168, 104, 0.00); }
+  100% { box-shadow: 0 0 0 0   rgba(85, 168, 104, 0.00); }
+}
+
+#__esd_nicu_map {
+  width: 100%;
+  height: 460px;
+  border-radius: calc(var(--r-glass, 28px) - 8px);
+  overflow: hidden;
+  background: #f3ecdf;
+  outline: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+}
+@media (max-width: 768px) {
+  #__esd_nicu_map { height: 360px; }
+}
+
+/* Leaflet container background to match cream palette */
+#__esd_nicu_map .leaflet-container {
+  background: #f6efe2;
+  font-family: var(--font-sans, "Inter", -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+/* Custom marker pin styled like garnet drop */
+.esd-nicu-pin {
+  width: 18px;
+  height: 24px;
+  position: relative;
+  transform: translate(-9px, -22px);
+  filter: drop-shadow(0 4px 6px rgba(115, 0, 10, 0.35));
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.esd-nicu-pin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 35% 30%, #b1383f, var(--usc-garnet, #73000a));
+  clip-path: path("M9 0 C 3 0 0 4 0 9 C 0 16 9 24 9 24 C 9 24 18 16 18 9 C 18 4 15 0 9 0 Z");
+}
+.esd-nicu-pin::after {
+  content: "";
+  position: absolute;
+  top: 7px; left: 7px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #faf6ee;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.4);
+}
+.esd-nicu-pin:hover {
+  transform: translate(-9px, -26px) scale(1.08);
+}
+
+/* Popup glass treatment */
+#__esd_nicu_map .leaflet-popup-content-wrapper {
+  background: var(--glass-400, rgba(255,255,255,0.72)) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+  border-radius: 18px !important;
+  box-shadow: 0 18px 48px rgba(28, 25, 22, 0.18) !important;
+  color: var(--ink, #1a1815);
+  padding: 4px;
+}
+#__esd_nicu_map .leaflet-popup-content {
+  margin: 14px 16px 12px 16px !important;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+#__esd_nicu_map .leaflet-popup-tip {
+  background: var(--glass-400, rgba(255,255,255,0.72)) !important;
+}
+#__esd_nicu_map .leaflet-popup-content h4 {
+  margin: 0 0 6px 0;
+  font-family: var(--font-serif, "Source Serif 4", Georgia, serif);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--usc-garnet, #73000a);
+}
+#__esd_nicu_map .leaflet-popup-content .esd-site-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 10px;
+  row-gap: 4px;
+  margin-top: 6px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--warm-600, #5b5446);
+}
+#__esd_nicu_map .leaflet-popup-content .esd-site-meta .k {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--warm-500, #6b6353);
+}
+#__esd_nicu_map .leaflet-popup-content .esd-site-meta .v {
+  color: var(--ink, #1a1815);
+  font-variant-numeric: tabular-nums;
+}
+
+#__esd_nicu_map_wrap .nicu-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 11px;
+  color: var(--warm-500, #6b6353);
+}
+#__esd_nicu_map_wrap .nicu-legend .item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+#__esd_nicu_map_wrap .nicu-legend .swatch {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--usc-garnet, #73000a);
+}
+
+#__esd_nicu_map_wrap .nicu-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+#__esd_nicu_map_wrap .nicu-summary .cell {
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--glass-200, rgba(255,255,255,0.45));
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+}
+#__esd_nicu_map_wrap .nicu-summary .k {
+  display: block;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warm-500, #6b6353);
+}
+#__esd_nicu_map_wrap .nicu-summary .v {
+  display: block;
+  font-family: var(--font-serif, "Source Serif 4", Georgia, serif);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink, #1a1815);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}

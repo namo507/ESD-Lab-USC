@@ -1,0 +1,99 @@
+.bar {
+  width: var(--sidebar-w-dashboard);
+  border-right: 1px solid var(--border);
+  background: var(--bg-page);
+  padding: 20px 0 24px;
+  align-self: stretch;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--nav-h);
+  align-self: flex-start;
+  height: calc(100vh - var(--nav-h));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.group { padding: 0 12px 4px; }
+.groupLabel {
+  font-size: 10px;
+  font-weight: var(--w-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--slate-400);
+  padding: 0 10px 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  font-size: var(--text-small);
+  color: var(--slate-700);
+  font-weight: var(--w-medium);
+  background: transparent;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+  border-radius: 0;
+  margin-bottom: 1px;
+  transition: background-color var(--dur-fast) var(--ease-standard);
+  text-decoration: none;
+}
+.item:hover { background: var(--bg-hover); }
+.active {
+  background: var(--bg-active);
+  color: var(--ink);
+  font-weight: var(--w-semibold);
+  border-left-color: var(--usc-garnet);
+}
+
+.badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--slate-500);
+  background: var(--slate-100);
+  padding: 1px 6px;
+  border-radius: var(--r-2);
+}
+.badgeActive { color: var(--usc-garnet); background: var(--usc-gold); }
+
+.spacer { flex: 1; }
+
+.summaryWrap { padding: 0 16px; margin-top: 16px; }
+.summary {
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+}
+.summaryValue {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: var(--w-semibold);
+  line-height: 1;
+  margin-top: 4px;
+}
+.summaryTarget { color: var(--slate-400); font-size: 14px; }
+.summarySub { font-size: 11px; color: var(--slate-500); margin-top: 4px; }
+
+.bar2 {
+  display: flex;
+  height: 4px;
+  background: var(--slate-100);
+  margin-top: 8px;
+  border-radius: var(--r-2);
+  overflow: hidden;
+}
+.barFill { background: var(--usc-garnet); height: 100%; }
+
+.version {
+  padding: 0 24px;
+  font-size: 10px;
+  color: var(--slate-400);
+  font-family: var(--font-mono);
+  text-align: left;
+  line-height: 1.6;
+}

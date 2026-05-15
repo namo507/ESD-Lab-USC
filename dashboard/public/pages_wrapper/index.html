@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>University of South Carolina | ESD Lab Dashboard</title>
+    <meta name="generator" content="ESD-Lab-USC pages_wrapper 2026-05-14T20:05:59+00:00">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #e4eef8;
+        --panel: rgba(245, 250, 255, 0.78);
+        --panel-strong: rgba(248, 252, 255, 0.92);
+        --panel-edge: rgba(22, 95, 202, 0.12);
+        --ink: #101b2c;
+        --muted: #5f6f86;
+        --accent: #0f5dc7;
+        --accent-soft: #78aaf8;
+        --gold: #b7d4ff;
+        --line: rgba(30, 77, 144, 0.14);
+        --shadow: 0 32px 70px rgba(28, 70, 128, 0.16);
+        --pointer-x: 78%;
+        --pointer-y: 24%;
+        --tilt-x: 0deg;
+        --tilt-y: 0deg;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Manrope", sans-serif;
+        overflow-x: hidden;
+        background:
+          radial-gradient(circle at 15% 12%, rgba(255, 255, 255, 0.94), transparent 24%),
+          radial-gradient(circle at 78% 18%, rgba(120, 169, 248, 0.24), transparent 26%),
+          radial-gradient(circle at 78% 82%, rgba(23, 91, 196, 0.08), transparent 24%),
+          linear-gradient(180deg, #f8fbff 0%, var(--bg) 46%, #d9e6f4 100%);
+        color: var(--ink);
+      }
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        border-radius: 999px;
+        pointer-events: none;
+        filter: blur(14px);
+        z-index: 0;
+      }
+      body::before {
+        top: -120px;
+        left: -80px;
+        width: 420px;
+        height: 420px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.74), transparent 70%);
+      }
+      body::after {
+        right: -90px;
+        bottom: -140px;
+        width: 360px;
+        height: 360px;
+        background: radial-gradient(circle, rgba(120, 169, 248, 0.22), transparent 72%);
+      }
+      a { text-decoration: none; }
+      .shell {
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 18px;
+        padding: 20px;
+      }
+      .banner {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+        align-items: center;
+        gap: clamp(22px, 4vw, 42px);
+        padding: clamp(24px, 4vw, 40px);
+        border: 1px solid var(--panel-edge);
+        border-radius: 42px;
+        background:
+          radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(255, 255, 255, 0.94), transparent 28%),
+          linear-gradient(135deg, rgba(248, 252, 255, 0.94), rgba(231, 241, 252, 0.78));
+        backdrop-filter: blur(18px);
+        box-shadow: 0 24px 54px rgba(34, 77, 136, 0.12);
+      }
+      .banner::before,
+      .banner::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .banner::before {
+        inset: 8% 42% 16% -6%;
+        background: radial-gradient(circle, rgba(120, 169, 248, 0.22), transparent 72%);
+      }
+      .banner::after {
+        top: -30%;
+        right: -6%;
+        width: 54%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.54), transparent 64%);
+      }
+      .hero-copy {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 28px;
+        min-width: 0;
+      }
+      .title { display: grid; gap: 12px; min-width: 0; }
+      .title-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        line-height: 1.4;
+        text-transform: uppercase;
+      }
+      .title-label::before {
+        content: "";
+        width: 52px;
+        height: 2px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+      .title strong {
+        max-width: 12ch;
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(50px, 6vw, 82px);
+        font-weight: 600;
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+      }
+      .title span:last-child {
+        max-width: 24ch;
+        color: var(--muted);
+        font-size: clamp(20px, 2.4vw, 30px);
+        line-height: 1.28;
+      }
+      .actions {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .actions a {
+        position: relative;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 54px;
+        padding: 0 28px;
+        border-radius: 999px;
+        border: 1px solid rgba(104, 76, 55, 0.16);
+        background: rgba(255, 255, 255, 0.65);
+        box-shadow: 0 12px 26px rgba(27, 79, 143, 0.06);
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+      }
+      .actions a::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0));
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+      .actions a.primary {
+        background: rgba(15, 93, 199, 0.1);
+        border-color: rgba(15, 93, 199, 0.18);
+        color: var(--accent);
+      }
+      .actions a:hover,
+      .actions a:focus-visible {
+        transform: translateY(-2px) scale(1.01);
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(15, 93, 199, 0.22);
+        box-shadow: 0 16px 30px rgba(15, 93, 199, 0.12);
+        outline: none;
+      }
+      .actions a:hover::after,
+      .actions a:focus-visible::after { opacity: 1; }
+      .hero-art {
+        position: relative;
+        z-index: 1;
+        min-height: min(30vw, 380px);
+        display: grid;
+        align-items: center;
+        justify-items: center;
+        perspective: 1400px;
+      }
+      .hero-stage {
+        position: relative;
+        width: min(100%, 480px);
+        aspect-ratio: 1.08;
+        transform-style: preserve-3d;
+        transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+        transition: transform 0.28s ease-out;
+      }
+      .art-halo,
+      .art-ring,
+      .art-grid,
+      .art-card,
+      .art-chip {
+        position: absolute;
+        pointer-events: none;
+      }
+      .art-halo {
+        border-radius: 50%;
+        animation: drift 14s ease-in-out infinite;
+      }
+      .halo-a {
+        inset: 4% auto auto 10%;
+        width: 54%;
+        aspect-ratio: 1;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.08) 58%, transparent 72%);
+      }
+      .halo-b {
+        inset: auto 4% 6% auto;
+        width: 42%;
+        aspect-ratio: 1;
+        background: radial-gradient(circle, rgba(216, 184, 146, 0.62), rgba(216, 184, 146, 0.08) 56%, transparent 72%);
+        animation-duration: 18s;
+        animation-delay: -7s;
+      }
+      .art-ring {
+        border-radius: 50%;
+        border: 1px solid rgba(127, 36, 28, 0.12);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+        animation: orbit 18s linear infinite;
+      }
+      .ring-a {
+        inset: 8% 18% 12% 10%;
+        transform: translateZ(28px);
+      }
+      .ring-b {
+        inset: 18% 8% 8% 22%;
+        border-style: dashed;
+        opacity: 0.7;
+        animation-duration: 24s;
+        animation-direction: reverse;
+      }
+      .art-grid {
+        inset: 14% 16% 14% 14%;
+        border-radius: 28px;
+        background-image: radial-gradient(rgba(15, 93, 199, 0.12) 1px, transparent 1px);
+        background-size: 18px 18px;
+        opacity: 0.28;
+        transform: translateZ(18px);
+      }
+      .art-card {
+        inset: 26% 18% 20% 16%;
+        display: grid;
+        gap: 12px;
+        padding: 28px 26px;
+        border-radius: 32px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(235, 244, 252, 0.74));
+        border: 1px solid rgba(15, 93, 199, 0.12);
+        box-shadow: 0 24px 40px rgba(34, 77, 136, 0.12);
+        backdrop-filter: blur(16px);
+        transform: translateZ(70px);
+      }
+      .art-card span {
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .art-card strong {
+        font-family: "Fraunces", Georgia, serif;
+        font-size: clamp(24px, 2.2vw, 32px);
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+      .art-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .art-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: 999px;
+        background: rgba(248, 252, 255, 0.82);
+        border: 1px solid rgba(15, 93, 199, 0.12);
+        box-shadow: 0 12px 24px rgba(39, 83, 144, 0.1);
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 700;
+        backdrop-filter: blur(10px);
+        transform: translateZ(100px);
+        animation: bob 10s ease-in-out infinite;
+      }
+      .art-chip::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+        box-shadow: 0 0 0 4px rgba(15, 93, 199, 0.08);
+      }
+      .chip-a {
+        top: 16%;
+        left: 0;
+        animation-delay: -2s;
+      }
+      .chip-b {
+        right: 2%;
+        top: 18%;
+        animation-delay: -5s;
+      }
+      .chip-c {
+        right: 10%;
+        bottom: 10%;
+        animation-delay: -7s;
+      }
+      .frame-shell {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 34px;
+        border: 1px solid rgba(22, 95, 202, 0.12);
+        background: var(--panel-strong);
+        box-shadow: var(--shadow);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+      }
+      .frame-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(15, 93, 199, 0.08), transparent 14%, transparent 82%, rgba(120, 169, 248, 0.12));
+        pointer-events: none;
+        z-index: 0;
+      }
+      .frame-shell:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 38px 78px rgba(28, 70, 128, 0.18);
+      }
+      iframe {
+        position: relative;
+        z-index: 1;
+        display: block;
+        width: 100%;
+        height: calc(100vh - 250px);
+        min-height: 720px;
+        border: 0;
+        background: #f6fbff;
+      }
+      .fallback {
+        position: relative;
+        z-index: 1;
+        display: none;
+        max-width: 760px;
+        padding: 40px 32px 48px;
+      }
+      .fallback.is-visible { display: grid; gap: 16px; }
+      .fallback h1 { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: clamp(28px, 4vw, 42px); line-height: 1.02; letter-spacing: -0.04em; }
+      .fallback p { margin: 0; color: var(--muted); line-height: 1.6; }
+      .fallback a {
+        display: inline-flex; width: fit-content; align-items: center; justify-content: center;
+        min-height: 42px; padding: 0 16px; border-radius: 999px;
+        border: 1px solid rgba(15, 93, 199, 0.18); background: rgba(15, 93, 199, 0.08);
+        color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+      }
+      @keyframes drift {
+        0%,
+        100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(10px, -12px, 0) scale(1.04); }
+      }
+      @keyframes orbit {
+        from { transform: translateZ(28px) rotate(0deg); }
+        to { transform: translateZ(28px) rotate(360deg); }
+      }
+      @keyframes bob {
+        0%,
+        100% { transform: translate3d(0, 0, 100px); }
+        50% { transform: translate3d(0, -8px, 100px); }
+      }
+      @media (max-width: 960px) {
+        .shell { padding: 14px; }
+        .banner {
+          grid-template-columns: 1fr;
+          align-items: start;
+          border-radius: 30px;
+        }
+        .actions { justify-content: flex-start; }
+        .hero-art { min-height: 280px; }
+        iframe { height: calc(100vh - 340px); min-height: 640px; }
+      }
+      @media (max-width: 640px) {
+        .shell { padding: 12px; }
+        .banner {
+          padding: 22px 18px;
+          border-radius: 24px;
+        }
+        .title strong { font-size: clamp(42px, 15vw, 56px); }
+        .title span:last-child { font-size: 18px; }
+        .hero-art { min-height: 220px; }
+        .hero-stage { width: min(100%, 360px); }
+        .art-card {
+          inset: 24% 14% 18% 12%;
+          padding: 22px 20px;
+          border-radius: 26px;
+        }
+        .art-card strong { font-size: 22px; }
+        .frame-shell { border-radius: 24px; }
+        .actions { width: 100%; }
+        .actions a {
+          flex: 1 1 160px;
+          min-height: 48px;
+          padding: 0 18px;
+          font-size: 16px;
+        }
+        iframe { height: calc(100vh - 400px); min-height: 560px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="banner" id="hero-banner">
+        <div class="hero-copy">
+          <div class="title">
+            <span class="title-label">University of South Carolina</span>
+            <strong>Early Social Development Lab</strong>
+            <span>Immersive live wrapper for the redesigned NANO Study research dashboard across cohort, geospatial, and model intelligence views.</span>
+          </div>
+          <nav class="actions" aria-label="Public dashboard links">
+            <a class="primary" href="https://resources-rochester-concerts-pubmed.trycloudflare.com/dashboard/" target="_blank" rel="noreferrer noopener">Open dashboard</a>
+            <a href="https://www.esdlabsc.com/" target="_blank" rel="noreferrer noopener">Lab homepage</a>
+          </nav>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="hero-stage">
+            <div class="art-halo halo-a"></div>
+            <div class="art-halo halo-b"></div>
+            <div class="art-ring ring-a"></div>
+            <div class="art-ring ring-b"></div>
+            <div class="art-grid"></div>
+            <div class="art-card">
+              <span>Live research surface</span>
+              <strong>Connected infant development insights.</strong>
+              <p>Motion-led public wrapper around the redesigned NANO dashboard experience.</p>
+            </div>
+            <div class="art-chip chip-a">Live cohort</div>
+            <div class="art-chip chip-b">Geo layers</div>
+            <div class="art-chip chip-c">Model signals</div>
+          </div>
+        </div>
+      </header>
+      <div class="frame-shell">
+        <iframe id="dashboard-frame" src="https://resources-rochester-concerts-pubmed.trycloudflare.com/dashboard/" title="University of South Carolina ESD Lab Dashboard"></iframe>
+        <div id="fallback" class="fallback">
+          <h1>Early Social Development Lab Dashboard</h1>
+          <p>The embedded dashboard could not be loaded in this browser context.</p>
+          <p>Use the direct dashboard link below to open the same live surface in a separate tab.</p>
+          <p><a href="https://resources-rochester-concerts-pubmed.trycloudflare.com/dashboard/" target="_blank" rel="noreferrer noopener">Open the dashboard directly</a></p>
+        </div>
+      </div>
+    </div>
+    <script>
+      const frame = document.getElementById('dashboard-frame');
+      const fallback = document.getElementById('fallback');
+      const banner = document.getElementById('hero-banner');
+      let frameLoaded = false;
+
+      frame.addEventListener('load', () => {
+        frameLoaded = true;
+        fallback.classList.remove('is-visible');
+        frame.hidden = false;
+      });
+      window.setTimeout(() => {
+        if (!frameLoaded) {
+          frame.hidden = true;
+          fallback.classList.add('is-visible');
+        }
+      }, 5000);
+
+      const setBannerIdle = () => {
+        if (!banner) {
+          return;
+        }
+        banner.style.setProperty('--pointer-x', '78%');
+        banner.style.setProperty('--pointer-y', '24%');
+        banner.style.setProperty('--tilt-x', '0deg');
+        banner.style.setProperty('--tilt-y', '0deg');
+      };
+
+      setBannerIdle();
+
+      if (banner) {
+        banner.addEventListener('pointermove', (event) => {
+          const bounds = banner.getBoundingClientRect();
+          const pointerX = (event.clientX - bounds.left) / bounds.width;
+          const pointerY = (event.clientY - bounds.top) / bounds.height;
+          banner.style.setProperty('--pointer-x', `${(pointerX * 100).toFixed(2)}%`);
+          banner.style.setProperty('--pointer-y', `${(pointerY * 100).toFixed(2)}%`);
+          banner.style.setProperty('--tilt-x', `${((0.5 - pointerY) * 5).toFixed(2)}deg`);
+          banner.style.setProperty('--tilt-y', `${((pointerX - 0.5) * 7).toFixed(2)}deg`);
+        });
+        banner.addEventListener('pointerleave', setBannerIdle);
+      }
+    </script>
+  </body>
+</html>

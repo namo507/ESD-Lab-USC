@@ -1,0 +1,2634 @@
+{
+  "meta": {
+    "generated_at": "2026-05-15T16:54:26",
+    "data_source": "repo_demo_inputs",
+    "pipeline_commit": "unknown",
+    "study": {
+      "name": "NANO Study",
+      "long_name": "Neurodevelopment of Autonomic and Neural Organization",
+      "pi": "Jessica Bradshaw, PhD",
+      "institution": "Early Social Development Lab \u00b7 University of South Carolina",
+      "funder": "NIH R01",
+      "duration_years": 5,
+      "n_target": 260
+    }
+  },
+  "enrollment": {
+    "months": [
+      "2023-11",
+      "2023-12",
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+      "2024-08",
+      "2024-09",
+      "2024-10",
+      "2024-11",
+      "2024-12",
+      "2025-01",
+      "2025-02",
+      "2025-03",
+      "2025-04",
+      "2025-05",
+      "2025-06",
+      "2025-07",
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01",
+      "2026-02",
+      "2026-03",
+      "2026-04"
+    ],
+    "by_group": {
+      "ASIB": {
+        "target": 65,
+        "current": 52,
+        "percent": 80.0,
+        "monthly": [
+          1,
+          4,
+          4,
+          4,
+          5,
+          8,
+          8,
+          11,
+          11,
+          13,
+          16,
+          20,
+          23,
+          26,
+          29,
+          32,
+          34,
+          36,
+          40,
+          41,
+          43,
+          45,
+          46,
+          49,
+          50,
+          50,
+          50,
+          52,
+          52,
+          52
+        ],
+        "color": "#C44E52",
+        "label": "ASIB (VPT + ASD traits)"
+      },
+      "PT": {
+        "target": 130,
+        "current": 105,
+        "percent": 80.8,
+        "monthly": [
+          5,
+          5,
+          6,
+          9,
+          12,
+          12,
+          17,
+          21,
+          23,
+          28,
+          32,
+          39,
+          45,
+          50,
+          55,
+          63,
+          68,
+          74,
+          79,
+          84,
+          88,
+          89,
+          93,
+          96,
+          98,
+          98,
+          101,
+          101,
+          104,
+          105
+        ],
+        "color": "#4C72B0",
+        "label": "PT (VPT typical)"
+      },
+      "TD": {
+        "target": 65,
+        "current": 53,
+        "percent": 81.5,
+        "monthly": [
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          9,
+          10,
+          11,
+          14,
+          17,
+          18,
+          22,
+          24,
+          29,
+          31,
+          33,
+          36,
+          39,
+          42,
+          44,
+          45,
+          46,
+          49,
+          49,
+          51,
+          51,
+          51,
+          52,
+          53
+        ],
+        "color": "#55A868",
+        "label": "TD (Term-born typical)"
+      }
+    }
+  },
+  "visit_completion": {
+    "events": [
+      "nicu_admission",
+      "month_1",
+      "month_2",
+      "month_3",
+      "month_6",
+      "month_9",
+      "month_12",
+      "month_24",
+      "month_36"
+    ],
+    "labels": [
+      "NICU Admission",
+      "1 Month CGA",
+      "2 Months CGA",
+      "3 Months CGA",
+      "6 Months",
+      "9 Months",
+      "12 Months",
+      "24 Months",
+      "36 Months"
+    ],
+    "by_group": {
+      "ASIB": [
+        100.0,
+        84.6,
+        94.2,
+        82.7,
+        80.8,
+        75.0,
+        51.9,
+        7.7,
+        0.0
+      ],
+      "PT": [
+        100.0,
+        88.6,
+        92.4,
+        90.5,
+        81.9,
+        76.2,
+        55.2,
+        10.5,
+        0.0
+      ],
+      "TD": [
+        100.0,
+        94.3,
+        98.1,
+        88.7,
+        84.9,
+        73.6,
+        60.4,
+        5.7,
+        0.0
+      ]
+    }
+  },
+  "data_quality": {
+    "missingness": [
+      {
+        "instrument": "ados2_scores",
+        "pct_missing": 18.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "asq3_milestones",
+        "pct_missing": 19.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "bayley4_scores",
+        "pct_missing": 19.4,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "behavioral_coding_log",
+        "pct_missing": 29.9,
+        "status": "High \u2014 MNAR risk"
+      },
+      {
+        "instrument": "csbs_social_communication",
+        "pct_missing": 19.1,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "demographics",
+        "pct_missing": 18.2,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "ecg_recording_log",
+        "pct_missing": 19.4,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "epds_maternal_depression",
+        "pct_missing": 27.6,
+        "status": "High \u2014 MNAR risk"
+      },
+      {
+        "instrument": "mchat_r_tf",
+        "pct_missing": 20.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "nicu_morbidity",
+        "pct_missing": 20.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "nnns_attention_1_3m",
+        "pct_missing": 20.2,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "prapare_sdoh",
+        "pct_missing": 26.4,
+        "status": "High \u2014 MNAR risk"
+      },
+      {
+        "instrument": "temperature_recording_log",
+        "pct_missing": 21.0,
+        "status": "Moderate \u2014 MAR candidate"
+      }
+    ],
+    "qc_flags": {
+      "total_records": 1400,
+      "double_entry_discrepancies": 19,
+      "out_of_range_values": 45,
+      "missing_required_fields": 0,
+      "ecg_transfer_late": 44,
+      "temp_quality_rejected": 27
+    }
+  },
+  "ml_performance": {
+    "models": [
+      {
+        "name": "Random Forest",
+        "slug": "rf",
+        "auroc": 0.82,
+        "auroc_ci": [
+          0.761,
+          0.879
+        ],
+        "auroc_sd": 0.03,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.772,
+        "specificity": 0.738,
+        "f1": 0.674
+      },
+      {
+        "name": "XGBoost",
+        "slug": "xgb",
+        "auroc": 0.859,
+        "auroc_ci": [
+          0.811,
+          0.909
+        ],
+        "auroc_sd": 0.025,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.865,
+        "specificity": 0.899,
+        "f1": 0.678
+      },
+      {
+        "name": "Logistic Regression",
+        "slug": "logreg",
+        "auroc": 0.747,
+        "auroc_ci": [
+          0.662,
+          0.818
+        ],
+        "auroc_sd": 0.04,
+        "roc": {
+          "fpr": [
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003,
+            0.003
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.726,
+        "specificity": 0.856,
+        "f1": 0.674
+      },
+      {
+        "name": "SVM (RBF)",
+        "slug": "svm",
+        "auroc": 0.784,
+        "auroc_ci": [
+          0.711,
+          0.849
+        ],
+        "auroc_sd": 0.035,
+        "roc": {
+          "fpr": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.733,
+        "specificity": 0.777,
+        "f1": 0.681
+      },
+      {
+        "name": "1D-CNN + LSTM",
+        "slug": "cnn_lstm",
+        "auroc": 0.899,
+        "auroc_ci": [
+          0.831,
+          0.949
+        ],
+        "auroc_sd": 0.03,
+        "roc": {
+          "fpr": [
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006,
+            0.006
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.766,
+        "specificity": 0.827,
+        "f1": 0.82
+      },
+      {
+        "name": "Transformer",
+        "slug": "transformer",
+        "auroc": 0.865,
+        "auroc_ci": [
+          0.807,
+          0.933
+        ],
+        "auroc_sd": 0.032,
+        "roc": {
+          "fpr": [
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.777,
+        "specificity": 0.866,
+        "f1": 0.761
+      }
+    ],
+    "shap": [
+      {
+        "feature": "rmssd_mean_m6",
+        "label": "RMSSD mean @ 6mo",
+        "importance": 0.179
+      },
+      {
+        "feature": "rsa_slope_0_12",
+        "label": "RSA slope 0\u219212mo",
+        "importance": 0.156
+      },
+      {
+        "feature": "hda_sa_latency_m3",
+        "label": "HDA sust. attention latency @ 3mo",
+        "importance": 0.125
+      },
+      {
+        "feature": "sdnn_mean_m9",
+        "label": "SDNN mean @ 9mo",
+        "importance": 0.093
+      },
+      {
+        "feature": "cptd_nicu",
+        "label": "Central-Peripheral Temp \u0394 (NICU)",
+        "importance": 0.089
+      },
+      {
+        "feature": "ga_weeks",
+        "label": "Gestational age (weeks)",
+        "importance": 0.072
+      },
+      {
+        "feature": "birth_weight_g",
+        "label": "Birth weight (g)",
+        "importance": 0.061
+      },
+      {
+        "feature": "mchat_total_m9",
+        "label": "M-CHAT total @ 9mo",
+        "importance": 0.06
+      },
+      {
+        "feature": "nnns_attention_m1",
+        "label": "NNNS attention @ 1mo",
+        "importance": 0.052
+      },
+      {
+        "feature": "sample_entropy_m6",
+        "label": "Sample entropy @ 6mo",
+        "importance": 0.041
+      },
+      {
+        "feature": "bayley_cog_m6",
+        "label": "Bayley-4 cognitive @ 6mo",
+        "importance": 0.037
+      },
+      {
+        "feature": "hr_decel_magnitude",
+        "label": "HR deceleration magnitude",
+        "importance": 0.017
+      }
+    ],
+    "confusion": {
+      "tp": 47,
+      "fp": 13,
+      "tn": 71,
+      "fn": 9,
+      "best_model": "1D-CNN + LSTM"
+    },
+    "subgroup": [
+      {
+        "subgroup": "24-26w GA",
+        "n": 28,
+        "mean_auroc": 0.81,
+        "sd": 0.06
+      },
+      {
+        "subgroup": "27-29w GA",
+        "n": 52,
+        "mean_auroc": 0.87,
+        "sd": 0.04
+      },
+      {
+        "subgroup": "30-32w GA",
+        "n": 61,
+        "mean_auroc": 0.89,
+        "sd": 0.03
+      },
+      {
+        "subgroup": "Male",
+        "n": 73,
+        "mean_auroc": 0.86,
+        "sd": 0.04
+      },
+      {
+        "subgroup": "Female",
+        "n": 68,
+        "mean_auroc": 0.88,
+        "sd": 0.04
+      }
+    ]
+  },
+  "trajectories": {
+    "months": [
+      0,
+      1,
+      2,
+      3,
+      6,
+      9,
+      12,
+      24,
+      36
+    ],
+    "by_group": {
+      "ASIB": {
+        "mean": {
+          "RSA": [
+            3.113,
+            3.14,
+            3.183,
+            3.263,
+            3.365,
+            3.463,
+            3.596,
+            3.996,
+            null
+          ],
+          "RMSSD": [
+            29.026,
+            29.21,
+            29.76,
+            30.187,
+            32.273,
+            33.684,
+            36.252,
+            42.779,
+            null
+          ],
+          "SDNN": [
+            35.975,
+            36.173,
+            37.285,
+            38.354,
+            39.919,
+            42.335,
+            43.835,
+            49.974,
+            null
+          ],
+          "HDA_SA": [
+            455.257,
+            451.933,
+            452.267,
+            451.032,
+            448.809,
+            442.942,
+            443.21,
+            408.986,
+            null
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.076,
+              3.106,
+              3.146,
+              3.22,
+              3.328,
+              3.419,
+              3.55,
+              3.86,
+              null
+            ],
+            "high": [
+              3.149,
+              3.174,
+              3.221,
+              3.306,
+              3.403,
+              3.507,
+              3.642,
+              4.132,
+              null
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              28.358,
+              28.306,
+              28.957,
+              29.396,
+              31.438,
+              32.76,
+              35.322,
+              40.844,
+              null
+            ],
+            "high": [
+              29.695,
+              30.115,
+              30.562,
+              30.978,
+              33.109,
+              34.608,
+              37.182,
+              44.714,
+              null
+            ]
+          },
+          "SDNN": {
+            "low": [
+              34.973,
+              35.116,
+              36.346,
+              37.357,
+              38.893,
+              41.304,
+              42.509,
+              47.683,
+              null
+            ],
+            "high": [
+              36.977,
+              37.23,
+              38.223,
+              39.351,
+              40.945,
+              43.366,
+              45.162,
+              52.265,
+              null
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              446.716,
+              443.103,
+              444.055,
+              442.058,
+              439.392,
+              433.857,
+              430.213,
+              382.02,
+              null
+            ],
+            "high": [
+              463.797,
+              460.763,
+              460.48,
+              460.006,
+              458.227,
+              452.026,
+              456.207,
+              435.952,
+              null
+            ]
+          }
+        },
+        "color": "#C44E52"
+      },
+      "PT": {
+        "mean": {
+          "RSA": [
+            3.145,
+            3.235,
+            3.319,
+            3.401,
+            3.633,
+            3.877,
+            4.126,
+            5.119,
+            null
+          ],
+          "RMSSD": [
+            27.642,
+            28.993,
+            29.688,
+            31.196,
+            34.17,
+            37.475,
+            40.84,
+            54.68,
+            null
+          ],
+          "SDNN": [
+            35.358,
+            36.39,
+            37.752,
+            38.964,
+            42.414,
+            46.217,
+            49.778,
+            62.902,
+            null
+          ],
+          "HDA_SA": [
+            450.252,
+            448.966,
+            441.914,
+            435.815,
+            426.035,
+            412.781,
+            400.765,
+            346.939,
+            null
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.119,
+              3.209,
+              3.292,
+              3.371,
+              3.606,
+              3.846,
+              4.095,
+              5.039,
+              null
+            ],
+            "high": [
+              3.172,
+              3.262,
+              3.346,
+              3.431,
+              3.66,
+              3.908,
+              4.158,
+              5.2,
+              null
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              27.174,
+              28.467,
+              29.203,
+              30.744,
+              33.582,
+              36.852,
+              40.074,
+              53.477,
+              null
+            ],
+            "high": [
+              28.111,
+              29.52,
+              30.172,
+              31.648,
+              34.758,
+              38.098,
+              41.606,
+              55.884,
+              null
+            ]
+          },
+          "SDNN": {
+            "low": [
+              34.701,
+              35.653,
+              37.028,
+              38.263,
+              41.658,
+              45.424,
+              48.785,
+              61.184,
+              null
+            ],
+            "high": [
+              36.015,
+              37.128,
+              38.475,
+              39.666,
+              43.169,
+              47.009,
+              50.771,
+              64.62,
+              null
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              444.518,
+              443.394,
+              436.06,
+              429.63,
+              419.643,
+              406.044,
+              393.985,
+              330.902,
+              null
+            ],
+            "high": [
+              455.987,
+              454.538,
+              447.768,
+              442.0,
+              432.427,
+              419.518,
+              407.544,
+              362.976,
+              null
+            ]
+          }
+        },
+        "color": "#4C72B0"
+      },
+      "TD": {
+        "mean": {
+          "RSA": [
+            3.137,
+            3.263,
+            3.385,
+            3.499,
+            3.809,
+            4.117,
+            4.425,
+            5.775,
+            null
+          ],
+          "RMSSD": [
+            28.075,
+            29.509,
+            30.603,
+            31.738,
+            36.142,
+            40.987,
+            43.956,
+            58.679,
+            null
+          ],
+          "SDNN": [
+            35.758,
+            37.065,
+            38.203,
+            40.002,
+            44.638,
+            49.207,
+            52.668,
+            71.509,
+            null
+          ],
+          "HDA_SA": [
+            449.307,
+            440.448,
+            435.381,
+            430.42,
+            413.033,
+            397.083,
+            384.388,
+            339.987,
+            null
+          ]
+        },
+        "ci": {
+          "RSA": {
+            "low": [
+              3.093,
+              3.223,
+              3.341,
+              3.455,
+              3.766,
+              4.071,
+              4.375,
+              5.719,
+              null
+            ],
+            "high": [
+              3.182,
+              3.303,
+              3.428,
+              3.543,
+              3.853,
+              4.163,
+              4.474,
+              5.83,
+              null
+            ]
+          },
+          "RMSSD": {
+            "low": [
+              27.376,
+              28.745,
+              29.873,
+              30.876,
+              35.323,
+              40.201,
+              42.781,
+              57.717,
+              null
+            ],
+            "high": [
+              28.774,
+              30.273,
+              31.333,
+              32.599,
+              36.961,
+              41.772,
+              45.131,
+              59.642,
+              null
+            ]
+          },
+          "SDNN": {
+            "low": [
+              34.857,
+              36.345,
+              37.317,
+              39.107,
+              43.889,
+              48.221,
+              51.659,
+              67.578,
+              null
+            ],
+            "high": [
+              36.659,
+              37.785,
+              39.09,
+              40.897,
+              45.387,
+              50.192,
+              53.678,
+              75.441,
+              null
+            ]
+          },
+          "HDA_SA": {
+            "low": [
+              440.157,
+              431.569,
+              425.695,
+              419.238,
+              402.296,
+              386.259,
+              371.663,
+              319.455,
+              null
+            ],
+            "high": [
+              458.457,
+              449.328,
+              445.066,
+              441.603,
+              423.77,
+              407.906,
+              397.113,
+              360.52,
+              null
+            ]
+          }
+        },
+        "color": "#55A868"
+      }
+    },
+    "biomarkers": [
+      "RSA",
+      "RMSSD",
+      "SDNN",
+      "HDA_SA"
+    ]
+  },
+  "redcap_audit": {
+    "summary": {
+      "total_participants_enrolled": 210,
+      "active_participants": 195,
+      "withdrawn": 15,
+      "open_queries": 78,
+      "records_pending_pi_review": 43,
+      "double_entry_pending": 36
+    },
+    "queries_by_event": [
+      {
+        "event": "NICU Admission",
+        "open": 12
+      },
+      {
+        "event": "1 Month CGA",
+        "open": 0
+      },
+      {
+        "event": "2 Months CGA",
+        "open": 0
+      },
+      {
+        "event": "3 Months CGA",
+        "open": 0
+      },
+      {
+        "event": "6 Months",
+        "open": 0
+      },
+      {
+        "event": "9 Months",
+        "open": 0
+      },
+      {
+        "event": "12 Months",
+        "open": 0
+      },
+      {
+        "event": "24 Months",
+        "open": 0
+      },
+      {
+        "event": "36 Months",
+        "open": 0
+      }
+    ],
+    "recent_activity": []
+  },
+  "cohort_table": [
+    {
+      "nano_id": "NANO-2456",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 1288,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 78.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-4268",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1755,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 83.9,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-7758",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 1999,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 74.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1445",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1341,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 80.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-2471",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 3449,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 62.5,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1441",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 3012,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 79.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-0585",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 2905,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 75.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-5963",
+      "group": "ASIB",
+      "ga_weeks": 24,
+      "birth_weight_g": 1260,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 67.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-9259",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 2018,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 87.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-5181",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 4051,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 76.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-5403",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 1979,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 67.9,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1034",
+      "group": "ASIB",
+      "ga_weeks": 24,
+      "birth_weight_g": 918,
+      "sex": "F",
+      "last_visit": "6 Months",
+      "completeness_pct": 55.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-5746",
+      "group": "ASIB",
+      "ga_weeks": 30,
+      "birth_weight_g": 1531,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 58.9,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-7855",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1634,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 85.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9207",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1479,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 64.3,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1326",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3455,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 88.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9304",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1605,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 67.0,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-5819",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 1714,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 72.3,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-6604",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 1190,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 84.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-9842",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1732,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 65.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1314",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 1810,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 77.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1520",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 2072,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 84.8,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-2668",
+      "group": "ASIB",
+      "ga_weeks": 28,
+      "birth_weight_g": 1788,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 80.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-5537",
+      "group": "ASIB",
+      "ga_weeks": 30,
+      "birth_weight_g": 2108,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 66.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-6496",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 3394,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 80.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-8902",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 1631,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 74.1,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-5432",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 2177,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 77.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-3733",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 2296,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 92.0,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-9542",
+      "group": "PT",
+      "ga_weeks": 30,
+      "birth_weight_g": 2198,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 76.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-3943",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 1314,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 76.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-6080",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 4299,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 75.0,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-8728",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 3359,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 90.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1851",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3723,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 79.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-4437",
+      "group": "PT",
+      "ga_weeks": 26,
+      "birth_weight_g": 1648,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 66.1,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9714",
+      "group": "ASIB",
+      "ga_weeks": 28,
+      "birth_weight_g": 1804,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 90.8,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-6151",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1468,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 65.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-8656",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 3261,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 84.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-2361",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 881,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 85.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1644",
+      "group": "PT",
+      "ga_weeks": 32,
+      "birth_weight_g": 1192,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 91.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-8871",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1497,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 79.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-8049",
+      "group": "ASIB",
+      "ga_weeks": 30,
+      "birth_weight_g": 1517,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 73.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-6691",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1993,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 72.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9022",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1389,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 86.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-8244",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3005,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 72.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-6812",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1851,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 72.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-3697",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 3217,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 84.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-9528",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1376,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 79.6,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9883",
+      "group": "ASIB",
+      "ga_weeks": 28,
+      "birth_weight_g": 1334,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 59.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-7617",
+      "group": "PT",
+      "ga_weeks": 30,
+      "birth_weight_g": 1735,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 83.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-2019",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3574,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 71.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-0370",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 3675,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 82.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-7769",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1880,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 76.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1219",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 1428,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 89.8,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-4663",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1716,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 70.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9999",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1330,
+      "sex": "F",
+      "last_visit": "6 Months",
+      "completeness_pct": 50.0,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-4052",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 2578,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 84.7,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-3953",
+      "group": "TD",
+      "ga_weeks": 39,
+      "birth_weight_g": 2213,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 79.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-4674",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1589,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 81.6,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-9376",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 2071,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 71.4,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-7147",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 3660,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 60.2,
+      "qc_status": "OK"
+    }
+  ],
+  "organization_site": {
+    "meta": {
+      "generated_at": "2026-05-11T17:15:53",
+      "source_mode": "fallback",
+      "source_url": "https://www.esdlabsc.com",
+      "pages_crawled": 0,
+      "errors": []
+    },
+    "summary": {
+      "current_public_studies": 2,
+      "featured_stories": 3,
+      "partner_count": 16,
+      "publication_items": 2,
+      "news_mentions": 4,
+      "impact_item_count": 9,
+      "available_years": [
+        2026,
+        2025,
+        2024,
+        2022,
+        2021,
+        2020
+      ],
+      "phone": "(803) 993-8356",
+      "emails": [
+        "esdlab@sc.edu",
+        "esdlab.espanol@sc.edu"
+      ],
+      "address": "1800 Gervais Street, Columbia, SC 29201",
+      "signup_url": "https://www.esdlabsc.com/newborn-sign-up",
+      "contact_url": "https://www.esdlabsc.com/contact-us",
+      "main_site_url": "https://www.esdlabsc.com/"
+    },
+    "mission": {
+      "headline": "Early identification and intervention of autism spectrum disorder in infancy.",
+      "summary": "The public site frames the ESD Lab as a USC clinical infant research program translating developmental science into earlier support for children and families.",
+      "mission_text": "Our mission is to make scientific discoveries about infant development and autism spectrum disorder to improve the lives of neurodiverse children and their families.",
+      "details": [
+        "Led by Dr. Jessica Bradshaw at the University of South Carolina.",
+        "Affiliated with the Carolina Autism and Neurodevelopment Research Center.",
+        "Combines research, community partnership, and family-facing support."
+      ]
+    },
+    "studies": [
+      {
+        "slug": "nano-study",
+        "title": "NANO Study",
+        "summary": "Three-year newborn follow-up with developmental feedback for families and up to $250 compensation.",
+        "details": [
+          "Follows newborns through the first 3 years of life.",
+          "Tracks social, motor, and language skills over time."
+        ],
+        "href": "https://www.esdlabsc.com/newborn-sign-up",
+        "cta_label": "Sign up for NANO",
+        "audience": "Infants followed through 3 years",
+        "compensation": "up to $250",
+        "eligibility": [
+          "Preterm infants under 1 month",
+          "Infants under 3 months with an older autistic sibling",
+          "Infants under 1 month with a typically developing older sibling"
+        ],
+        "source_page": "https://www.esdlabsc.com/our-studies"
+      },
+      {
+        "slug": "nicu-exit-study",
+        "title": "NICU Exit Study",
+        "summary": "Preterm infant follow-up after NICU discharge with 3-4 visits in the first year and local resource connections.",
+        "details": [
+          "Conducted with the UofSC College of Nursing.",
+          "Provides feedback, local resources, and per-visit compensation."
+        ],
+        "href": "https://www.esdlabsc.com/our-studies",
+        "cta_label": "Learn about NICU Exit",
+        "audience": "Preterm infants after NICU discharge",
+        "compensation": "$40 per study visit",
+        "eligibility": [
+          "Preterm infants discharged from Prisma-Richland NICU",
+          "3-4 visits during the first year"
+        ],
+        "source_page": "https://www.esdlabsc.com/our-studies"
+      }
+    ],
+    "family_pathway": [
+      {
+        "title": "Sign Up",
+        "description": "Families or providers submit the interest form to connect with the lab.",
+        "href": "https://www.esdlabsc.com/newborn-sign-up",
+        "link_label": "Interest form"
+      },
+      {
+        "title": "Complete Visits",
+        "description": "The lab facilitates visits across the first 2-3 years depending on study pathway.",
+        "href": "https://www.esdlabsc.com/our-studies",
+        "link_label": "Study visits"
+      },
+      {
+        "title": "Get Feedback",
+        "description": "Families receive feedback, referrals, and support resources during participation.",
+        "href": "https://www.esdlabsc.com/resources",
+        "link_label": "Resources and support"
+      }
+    ],
+    "team_highlights": [
+      {
+        "name": "Jessica Bradshaw, PhD",
+        "role": "Lab Director",
+        "summary": "Associate Professor of Psychology focused on early identification and intervention of autism spectrum disorder.",
+        "email": "jbradshaw@sc.edu",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Ellen E. Spiller, MPH, DPT",
+        "role": "Research Scientist",
+        "summary": "Supports NIH- and foundation-funded studies focused on infant behavior and physiological development.",
+        "email": "espiller@sc.edu",
+        "href": "https://www.esdlabsc.com/our-team"
+      }
+    ],
+    "resources": [
+      {
+        "title": "Autism Spectrum Disorder - National Institute of Mental Health (NIMH)",
+        "href": "https://www.nimh.nih.gov/health/topics/autism-spectrum-disorders-asd",
+        "category": "Autism Resources",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "American Academy of Pediatrics | Patient Care - Autism",
+        "href": "https://www.aap.org/en/patient-care/autism/",
+        "category": "Autism Resources",
+        "source_page": "https://www.esdlabsc.com/resources"
+      },
+      {
+        "title": "Parents as Teachers | SC First Steps",
+        "href": "https://www.scfirststeps.org/what-we-do/programs/parents-as-teachers/",
+        "category": "Family Support",
+        "source_page": "https://www.esdlabsc.com/resources"
+      }
+    ],
+    "partners": [
+      {
+        "name": "About Play",
+        "href": "https://aboutplaysc.com/",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Team Therapy",
+        "href": "https://teamtherapysc.com/",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      },
+      {
+        "name": "Project Hope Foundation",
+        "href": "https://www.projecthopesc.org/",
+        "source_page": "https://www.esdlabsc.com/our-partners"
+      }
+    ],
+    "contact": {
+      "phone": "(803) 993-8356",
+      "emails": [
+        "esdlab@sc.edu",
+        "esdlab.espanol@sc.edu"
+      ],
+      "address": "1800 Gervais Street, Columbia, SC 29201",
+      "signup_url": "https://www.esdlabsc.com/newborn-sign-up",
+      "contact_url": "https://www.esdlabsc.com/contact-us",
+      "parking_url": "https://www.esdlabsc.com/s/imb_directions_and_map.pdf",
+      "undergraduate_application_url": "https://forms.gle/TMyAsqF3kGh217jg9",
+      "instagram_url": "https://www.instagram.com/uofsc_esdlab/",
+      "spanish_email": "esdlab.espanol@sc.edu"
+    },
+    "publications": [
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2026",
+        "summary": "Summary Scores of the NICU Network Neurobehavioral Scale as predictors of ASD-specific behaviors at 12 months.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | ISDP 2025",
+        "summary": "Infant RSA predicts emerging social communication in children later diagnosed with autism spectrum disorder.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      }
+    ],
+    "news": [
+      {
+        "kind": "news",
+        "title": "AutismConnect Serves More Than 1,000 People in its Third Year",
+        "summary": "McCausland College of Arts and Sciences USC | April 2026",
+        "source": "McCausland College of Arts and Sciences USC",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2026/autismconnect-usc-autism-conference-south-carolina.php",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "Early Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism",
+        "summary": "South Carolina Public Radio interview | September 2025",
+        "source": "South Carolina Public Radio",
+        "href": "https://www.southcarolinapublicradio.org/sc-news/2025-09-05/early-detection-helped-hayden-why-2-usc-researchers-are-studying-links-between-premature-birth-autism",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "A New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder",
+        "summary": "Forbes | December 2021",
+        "source": "Forbes",
+        "href": "https://www.forbes.com/sites/jenniferpalumbo/2021/12/31/how-a-new-study-shows-the-importance-of-early-diagnosis-of-autistic-infants/",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      }
+    ],
+    "stories": [
+      {
+        "kind": "story",
+        "title": "Wrenley's Story",
+        "summary": "Participant story highlighting the ESD Lab's family-facing impact and ongoing support.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/wrenleys-story",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Brandon and Bryanna",
+        "summary": "The ESD Lab provided a free comprehensive autism evaluation within two weeks of referral.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/brandon-and-bryanna-embracing-the-diagnosis",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Charlie's Story",
+        "summary": "Monitoring and feedback helped the family understand speech delays and advocate for the right services.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/charlies-story-the-role-of-early-intervention",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      }
+    ],
+    "impact_feed": [
+      {
+        "kind": "publication",
+        "title": "Poster Presentation | SCAND 2026",
+        "summary": "Summary Scores of the NICU Network Neurobehavioral Scale as predictors of ASD-specific behaviors at 12 months.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2026,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "AutismConnect Serves More Than 1,000 People in its Third Year",
+        "summary": "McCausland College of Arts and Sciences USC | April 2026",
+        "source": "McCausland College of Arts and Sciences USC",
+        "href": "https://www.sc.edu/study/colleges_schools/artsandsciences/about/news/2026/autismconnect-usc-autism-conference-south-carolina.php",
+        "year": 2026,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "publication",
+        "title": "Research Talk | ISDP 2025",
+        "summary": "Infant RSA predicts emerging social communication in children later diagnosed with autism spectrum disorder.",
+        "source": "ESD Lab publications",
+        "href": "https://www.esdlabsc.com/publications-presentations",
+        "year": 2025,
+        "tags": [
+          "Publication",
+          "Presentation"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "Early Detection Helped Hayden. Why 2 USC Researchers are Studying Links Between Premature Birth, Autism",
+        "summary": "South Carolina Public Radio interview | September 2025",
+        "source": "South Carolina Public Radio",
+        "href": "https://www.southcarolinapublicradio.org/sc-news/2025-09-05/early-detection-helped-hayden-why-2-usc-researchers-are-studying-links-between-premature-birth-autism",
+        "year": 2025,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Wrenley's Story",
+        "summary": "Participant story highlighting the ESD Lab's family-facing impact and ongoing support.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/wrenleys-story",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Charlie's Story",
+        "summary": "Monitoring and feedback helped the family understand speech delays and advocate for the right services.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/charlies-story-the-role-of-early-intervention",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "story",
+        "title": "Brandon and Bryanna",
+        "summary": "The ESD Lab provided a free comprehensive autism evaluation within two weeks of referral.",
+        "source": "Participant story",
+        "href": "https://www.esdlabsc.com/participant-stories/brandon-and-bryanna-embracing-the-diagnosis",
+        "year": 2022,
+        "tags": [
+          "Family experience",
+          "Participant story"
+        ]
+      },
+      {
+        "kind": "news",
+        "title": "A New Study Shows The Importance Of Early Diagnosis Of Autism Spectrum Disorder",
+        "summary": "Forbes | December 2021",
+        "source": "Forbes",
+        "href": "https://www.forbes.com/sites/jenniferpalumbo/2021/12/31/how-a-new-study-shows-the-importance-of-early-diagnosis-of-autistic-infants/",
+        "year": 2021,
+        "tags": [
+          "Press",
+          "Outreach"
+        ]
+      }
+    ],
+    "impact_summary": {
+      "types": [
+        {
+          "label": "Publications",
+          "value": "publication",
+          "count": 2
+        },
+        {
+          "label": "News",
+          "value": "news",
+          "count": 3
+        },
+        {
+          "label": "Stories",
+          "value": "story",
+          "count": 3
+        }
+      ],
+      "years": [
+        2026,
+        2025,
+        2024,
+        2022,
+        2021,
+        2020
+      ]
+    }
+  }
+}

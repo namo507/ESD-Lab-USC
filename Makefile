@@ -4,14 +4,14 @@
 
 .DEFAULT_GOAL := help
 PYTHON := python3
-VENV := .venv
+VENV ?= .venv
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-deploy pages-watch pages-watch-once share-live
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -87,6 +87,51 @@ run-pipeline:  ## Run full analysis pipeline end-to-end
 	bash scripts/run_full_pipeline.sh
 	@echo "✓ Full pipeline complete. Check logs/ for details."
 
+dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
+	$(PYTHON) dashboard/pipelines/build_readings_index.py
+	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+	@echo "✓ Dashboard JSON refreshed."
+
+dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
+	$(PYTHON) dashboard/pipelines/bootstrap_dashboard_demo_inputs.py
+	@echo "✓ Repo-local dashboard demo inputs refreshed."
+
+dashboard-build:  ## Build the live dashboard Docker image
+	docker compose build dashboard
+
+dashboard-up:  ## Start the live dashboard at http://localhost:8080/dashboard/
+	docker compose up --build dashboard
+
+dashboard-down:  ## Stop the live dashboard container
+	docker compose down
+
+dashboard-logs:  ## Tail live dashboard logs
+	docker compose logs -f dashboard
+
+dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild loop
+	$(PYTHON) scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
+	@echo "✓ Dashboard Docker runtime passed smoke checks."
+
+dashboard-share:  ## Start a public share tunnel and print the shareable URL
+	@if command -v docker >/dev/null 2>&1; then \
+		$(MAKE) docker-health; \
+	else \
+		echo "Docker unavailable; skipping Docker health preflight and using the local runtime fallback."; \
+	fi
+	bash scripts/share_dashboard.sh
+
+pages-deploy:  ## Deploy the Pages wrapper to the canonical Cloudflare Pages project
+	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
+
+pages-watch:  ## Continuously regen + redeploy wrapper whenever the cloudflared origin rotates
+	$(PYTHON) scripts/watch_pages_wrapper.py
+
+pages-watch-once:  ## One-shot: regen + redeploy iff origin differs from last manifest
+	$(PYTHON) scripts/watch_pages_wrapper.py --once
+
+share-live:  ## Continuously supervise local dashboard+quick-share and republish wrapper on tunnel restart
+	bash scripts/share_dashboard.sh --continuous --mode quick
+
 # ─── Backup ──────────────────────────────────────────────────────────────────
 
 verify-backup:  ## Verify secure server backup integrity
@@ -102,6 +147,10 @@ clean:  ## Remove Python cache files and test artifacts
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null; true
 	find . -type f -name ".coverage" -delete 2>/dev/null; true
 	@echo "✓ Cleaned Python cache and test artifacts."
+
+
+docker-health:  ## Check Docker daemon and Compose service health
+	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url http://127.0.0.1:8080/dashboard/ --json
 
 clean-all: clean  ## Remove virtualenv and all generated files
 	rm -rf $(VENV)

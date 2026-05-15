@@ -178,6 +178,126 @@ cp .env.example .env
 #   REDCAP_API_URL=https://redcap.sc.edu/api/
 ```
 
+## Live Dashboard
+
+The repository now includes a live dashboard runtime that serves the repo,
+rebuilds `dashboard/data/dashboard_data.json` when source inputs change, and
+automatically indexes new PDFs added under `ESD Lab readings/`.
+
+```bash
+# Start the live dashboard
+docker compose up --build dashboard
+
+# Open it locally
+open http://localhost:8080/dashboard/
+```
+
+Useful shortcuts:
+
+```bash
+make dashboard-refresh
+make dashboard-up
+make dashboard-smoke
+make dashboard-logs
+```
+
+If the secure data mount is unavailable, the runtime falls back to synthetic
+dashboard data so the UI and the readings library still render cleanly.
+
+### Dev Container
+
+This repository can also be opened in a VS Code dev container. The dev container:
+
+- uses Python 3.11 plus R so the main Python, notebook, and R bridge workflows work in one environment
+- keeps its virtualenv under `.devcontainer/.venv` so it does not overwrite a host-side `.venv`
+- runs `.devcontainer/post-create.sh` on first create to install Python dependencies and bootstrap `renv`
+
+To reopen the current workspace in the container, use the VS Code command palette and run `Dev Containers: Reopen in Container` after Docker Desktop is running.
+
+Current stable public entrypoints:
+
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Direct dashboard origin: the current `make dashboard-share` URL printed for the active Cloudflare quick tunnel session
+
+### Shareable Public Links
+
+You can expose the live dashboard publicly with:
+
+```bash
+make dashboard-share
+```
+
+For continuous supervision (recommended while actively editing localhost):
+
+```bash
+make share-live
+```
+
+`make share-live` runs in continuous quick-tunnel mode, keeps the local dashboard
+runtime and cloudflared tunnel alive, auto-restarts them if they stop, and rewrites
+the Pages wrapper target whenever the quick-tunnel hostname rotates so
+`https://esd-lab-namo.pages.dev/` stays current.
+
+That command starts the dashboard, starts the tunnel sidecar, and prints the
+active public dashboard URL for the current session.
+
+The Cloudflare-hosted links currently used for sharing this repository are:
+
+- Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- Active direct dashboard URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
+
+The Pages wrapper is the preferred public link, but on this machine it still
+depends on the currently active Cloudflare quick tunnel because no local named
+tunnel token/hostname pair is configured.
+
+By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
+printed public URL is temporary and the hostname is random. Do not document or
+bookmark a previous quick-tunnel URL as a permanent dashboard address, because
+it changes when the tunnel is recreated, and update the Pages wrapper if you
+need the embedded public page to keep working after a tunnel restart.
+
+For temporary sharing, always rerun `make dashboard-share` and send only the
+latest quick-share URL printed by the script.
+
+To move from the current quick-tunnel-backed wrapper to a stable branded
+hostname such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS
+zone to the Cloudflare account, create a named public hostname, and set these
+variables in `.env` before running the same command:
+
+```bash
+CLOUDFLARE_TUNNEL_TOKEN=...
+DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
+```
+
+After that, `make dashboard-share` switches to the `dashboard-share-named`
+service and can print the custom-domain link instead of a random
+`trycloudflare.com` URL.
+
+The share link stays live while the Docker services keep running.
+
+To verify the runtime is still healthy and auto-rebuilding continuously:
+
+```bash
+make dashboard-smoke
+```
+
+---
+
+## Docker/Compose Health Check
+
+Before sharing or running the dashboard, you can verify Docker and Compose service health:
+
+```bash
+make docker-health
+```
+
+This checks:
+- Docker daemon is running
+- Compose services (dashboard, dashboard-share, dashboard-share-named) are up and healthy
+- The dashboard endpoint is reachable
+
+This is automatically run as a pre-step in `make dashboard-share`.
+
 ---
 
 ## Contributing

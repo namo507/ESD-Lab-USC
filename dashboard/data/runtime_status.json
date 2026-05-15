@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-05-15T16:54:29",
+  "status": "ok",
+  "build_count": 4,
+  "last_build_reason": "source-change",
+  "last_build_started_at": "2026-05-15T16:53:38",
+  "last_build_finished_at": "2026-05-15T16:54:29",
+  "last_successful_build_finished_at": "2026-05-15T16:54:29",
+  "watch_interval_seconds": 20,
+  "fallback_synthetic": true,
+  "dashboard": {
+    "generated_at": "2026-05-15T16:54:26",
+    "data_source": "repo_demo_inputs",
+    "pipeline_commit": "unknown",
+    "study": {
+      "name": "NANO Study",
+      "long_name": "Neurodevelopment of Autonomic and Neural Organization",
+      "pi": "Jessica Bradshaw, PhD",
+      "institution": "Early Social Development Lab \u00b7 University of South Carolina",
+      "funder": "NIH R01",
+      "duration_years": 5,
+      "n_target": 260
+    }
+  },
+  "readings": {
+    "generated_at": "2026-05-15T16:54:29",
+    "source_dir": "ESD Lab readings",
+    "total_readings": 20,
+    "latest_modified_at": "2026-04-18T01:12:08",
+    "pdf_metadata_enabled": true,
+    "total_size_mb": 24.24,
+    "total_pages": 634,
+    "categories": [
+      {
+        "label": "Front Matter",
+        "count": 15
+      },
+      {
+        "label": "Grant Materials",
+        "count": 5
+      }
+    ],
+    "years": [
+      {
+        "year": "2025",
+        "count": 15
+      },
+      {
+        "year": "2022",
+        "count": 1
+      }
+    ],
+    "sources": [
+      {
+        "label": "Advances in Child Development and Behavior",
+        "count": 16
+      },
+      {
+        "label": "Grant Materials",
+        "count": 3
+      },
+      {
+        "label": "Child Development Perspectives",
+        "count": 1
+      }
+    ],
+    "formats": [
+      {
+        "label": "pdf",
+        "count": 20
+      }
+    ]
+  },
+  "watched_inputs": [
+    "ESD Lab readings",
+    "config/paths.yml",
+    "config/study_parameters.yml",
+    "data/data_dictionary/NANO_master_data_dictionary.csv",
+    "dashboard/pipelines/build_dashboard_data.py",
+    "dashboard/pipelines/build_org_site_data.py",
+    "dashboard/pipelines/generate_synthetic_dashboard_data.py",
+    "dashboard/pipelines/build_readings_index.py",
+    "data/data_dictionary/NANO_master_data_dictionary.csv",
+    "data/processed/redcap_latest.parquet",
+    "data/processed/redcap_latest.csv",
+    "data/processed/feature_matrix.parquet",
+    "data/processed/feature_matrix.csv",
+    "models/_metrics.json",
+    "dashboard/pipelines/bootstrap_dashboard_demo_inputs.py"
+  ],
+  "errors": []
+}

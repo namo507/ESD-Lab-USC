@@ -33,7 +33,9 @@ NANO_ID_*
 participant_*
 
 # ─── Directories with raw/sensitive data ────────────────────
-raw/
+# Ignore raw data contents but allow .gitkeep tracker
+raw/**
+!raw/.gitkeep
 secure_data/
 credentials/
 
@@ -113,6 +115,7 @@ desktop.ini
 *.swp
 *.swo
 *~
+.devcontainer/.venv/
 
 # ─── Compiled / Binary ──────────────────────────────────────
 *.pyc
@@ -143,3 +146,8 @@ temp/
 *.tmp
 *.bak
 *.orig
+dashboard/data/.readings_cache.json
+
+# ─── Models (large binary files; store locally or in LFS) ────
+models/local_llms/
+models/_metrics.json

@@ -1,0 +1,23 @@
+# ⚠️  NEVER COMMIT RAW DATA ⚠️
+#
+# This directory is a placeholder only.
+# All raw physiological, behavioral, and clinical data is stored on
+# the USC Secure Research Server and accessed via encrypted external drive.
+#
+# To mount the secure data drive, see: config/paths.yml
+# Set NANO_DATA_ROOT environment variable in your .env file.
+#
+# Raw data types stored externally (NEVER in this repo):
+#   - ECG R-R intervals:    raw/ecg/     (Actiheart-5, HeRO; .ecg, .csv)
+#   - Temperature logs:     raw/temp/    (Squirrel datalogger; .csv)
+#   - Behavioral video:     raw/video/   (.mp4, .mov, .avi)
+#   - DataVyu exports:      raw/datavyu/ (.csv, .opf)
+#   - REDCap exports:       raw/redcap/  (.csv, .xlsx)
+#   - Eye-tracking:         raw/eyetrack/ (.tsv, .csv)
+#   - NICU EMR extracts:    raw/emr/     (.csv, .xlsx)
+#
+# HIPAA NOTICE: Raw data contains Protected Health Information (PHI).
+# Unauthorized access or disclosure is prohibited under HIPAA Privacy Rule.
+# All data use must comply with IRB Protocol #Pro00123456 and DUA #2024-001.
+#
+# Questions? Contact: PI Dr. Jessica Bradshaw <bradshawj@mailbox.sc.edu>

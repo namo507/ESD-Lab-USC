@@ -1,0 +1,184 @@
+/* Global app styles. Token references only — no HEX literals. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Extended tokens — additions only; tokens.css is the verbatim master. */
+:root {
+  --on-gold: #3a2a00;
+  --on-info: #2f4a7a;
+  --on-ok:   #2a5f37;
+  --on-fail: #7a2f33;
+  --on-pending: #4b3b75;
+  --asib-bg: #3b2966;
+  --warn-fg: #5c4500;
+
+  --amber: #d97706;        /* SQI 0.3-0.5 */
+  --amber-warn: #a06000;   /* ectopic / motion stroke */
+
+  --tile-accept-bg: #f0f7f1;
+  --tile-accept-border: #b9d6c0;
+  --tile-reject-bg: #faf0f0;
+  --tile-reject-border: #e0b7b9;
+
+  --gold-hover: #ffd633;
+  --hipaa-bg: #faf2f2;
+  --ecg-grid: #1f2228;
+  --terminal-fg: #e8e6e2;
+
+  /* Warm dashboard palette (design package: sage / ocean / sand / mint) */
+  --sage:      #5b9577;
+  --sage-tint: #eaf0eb;
+  --sage-ring: #85a892;
+  --ocean:     #6b8bb8;
+  --ocean-tint:#eaf0f8;
+  --ocean-ring:#9bb8e0;
+  --sand:      #c79026;
+  --sand-tint: #fbf6ec;
+  --sand-ring: #d4b676;
+  --mint:      #5b9577;
+  --mint-tint: #e7f1ea;
+  --mint-ring: #7dc59a;
+
+  --warm-bg:    #fafaf8;
+  --warm-card:  #ffffff;
+  --warm-border:#ececea;
+  --warm-rule:  #f1efeb;
+  --warm-fg1:   #1c1a18;
+  --warm-fg2:   #3d3a36;
+  --warm-fg3:   #6f6b66;
+  --warm-fg4:   #9c9893;
+  --warm-fg5:   #c9c7c2;
+  --warm-pill:  #f6f4ef;
+
+  --vpt-bg: #fae8ea; --vpt-fg: #73000a;
+  --asib-bg2: #ece4f0; --asib-fg: #5e3776;
+  --td-bg: #e8efe9; --td-fg: #3d6650;
+}
+
+/* Glass panel + utilities used by the warm dashboard surfaces */
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--warm-border);
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  }
+  .glass-header {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .agentic-panel {
+    background: linear-gradient(160deg, var(--warm-fg1) 0%, #2a2622 100%);
+    border-radius: 24px;
+    color: var(--terminal-fg);
+    box-shadow: 0 12px 40px rgba(28, 26, 24, 0.18);
+  }
+  .agentic-glow::before {
+    content: "";
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 204, 0, 0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .accent-wash-sage  { background: linear-gradient(135deg, rgba(227,232,228,0.85) 0%, rgba(227,232,228,0.25) 60%, rgba(255,255,255,0) 100%); }
+  .accent-wash-ocean { background: linear-gradient(135deg, rgba(224,232,245,0.85) 0%, rgba(224,232,245,0.25) 60%, rgba(255,255,255,0) 100%); }
+  .accent-wash-sand  { background: linear-gradient(135deg, rgba(249,246,240,1) 0%, rgba(249,246,240,0.4) 60%, rgba(255,255,255,0) 100%); }
+  .accent-wash-mint  { background: linear-gradient(135deg, rgba(218,236,225,0.85) 0%, rgba(218,236,225,0.25) 60%, rgba(255,255,255,0) 100%); }
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+  color: var(--fg1);
+}
+
+/* Page-level layout */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  max-width: 1400px;
+  padding: 28px 32px;
+}
+.app-main.compact { padding: 20px 24px; }
+
+.app-footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-micro);
+  color: var(--slate-400);
+  font-family: var(--font-mono);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* Animations */
+.pulse-dot { animation: nano-pulse 1.6s ease-in-out infinite; }
+@keyframes nano-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+.flow-line { stroke-dashoffset: 0; animation: dashflow 1.2s linear infinite; }
+@keyframes dashflow { to { stroke-dashoffset: -16; } }
+
+/* Focus rings — gold per spec, never suppressed */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-ring);
+  border-radius: var(--r-2);
+}
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-page), 0 0 0 4px var(--usc-gold);
+}
+input:focus-visible {
+  outline: none;
+  border-color: var(--usc-garnet);
+  box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.4);
+}
+select:focus-visible {
+  outline: none;
+  border-color: var(--usc-garnet);
+}
+
+/* Visually hidden table caption (a11y) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot, .flow-line { animation: none !important; }
+  * { transition: none !important; }
+}

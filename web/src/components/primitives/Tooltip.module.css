@@ -1,0 +1,28 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.body {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-inverse);
+  color: var(--fg-on-brand);
+  font-size: var(--text-small);
+  line-height: 1.45;
+  font-weight: var(--w-regular);
+  padding: 8px 11px;
+  border-radius: var(--r-2);
+  width: max-content;
+  text-align: left;
+  letter-spacing: 0;
+  font-family: var(--font-sans);
+  box-shadow: var(--shadow-overlay);
+  z-index: 50;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.top    { bottom: calc(100% + 6px); }
+.bottom { top: calc(100% + 6px); }
