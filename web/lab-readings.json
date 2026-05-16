@@ -1,0 +1,422 @@
+{
+  "generated_at": "2026-05-15T16:54:29",
+  "summary": {
+    "count": 20,
+    "total_pages": 634,
+    "total_size_mb": 24.24,
+    "by_category": {
+      "Front Matter": 15,
+      "Grant Materials": 5
+    },
+    "by_year": {
+      "2025": 15,
+      "2022": 1,
+      "None": 4
+    },
+    "by_bucket": {
+      "Front Matter · 2025": 14,
+      "Grant Materials · 2025": 1,
+      "Grant Materials · 2022": 1,
+      "Grant Materials · n/a": 3,
+      "Front Matter · n/a": 1
+    }
+  },
+  "readings": [
+    {
+      "id": "volume-sixty-nine-advances-in-child-development-and-behavior-edited-by",
+      "title": "VOLUME SIXTY NINE ADVANCES IN CHILD DEVELOPMENT AND BEHAVIOR Edited by",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "sixty",
+        "nine",
+        "austin",
+        "jeffrey",
+        "lockman",
+        "human"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 1,
+      "size_mb": 0.21,
+      "href": "../ESD%20Lab%20readings/Full-title-page_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "volume-sixty-nine-advances-in-child-development-and-behavior",
+      "title": "VOLUME SIXTY NINE ADVANCES IN CHILD DEVELOPMENT AND BEHAVIOR",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "sixty",
+        "nine"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 1,
+      "size_mb": 0.09,
+      "href": "../ESD%20Lab%20readings/Half-title-page_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "the-sound-of-words-model-a-developmental-perspective-of-phonolexical-acquisition",
+      "title": "The sound-of-words model: A developmental perspective of phonolexical acquisition",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "acquisition",
+        "model",
+        "developmental",
+        "languages",
+        "language",
+        "lexical"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 26,
+      "size_mb": 1.17,
+      "href": "../ESD%20Lab%20readings/The-sound-of-words-model--A-developmental-persp_2025_Advances-in-Child-Devel.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "the-role-of-parenting-in-children-s-math-learning-a-dual-pathway-model-eva-m-pomerantz",
+      "title": "The role of parenting in children’s math learning: A dual-pathway model Eva M. Pomerantz *",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "math",
+        "parenting",
+        "learning",
+        "practices",
+        "cognitive",
+        "model"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 29,
+      "size_mb": 0.71,
+      "href": "../ESD%20Lab%20readings/The-role-of-parenting-in-children-s-math-lea_2025_Advances-in-Child-Developm.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "preparing-for-equitable-family-and-community-engagement-through-home-visiting-linking-culturally-responsive-sustaining-pedagogy-and-developmental-frameworks",
+      "title": "Preparing for equitable family and community engagement through home visiting: linking culturally responsive/sustaining pedagogy and developmental frameworks",
+      "year": 2025,
+      "category": "Grant Materials",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "home",
+        "visiting",
+        "family",
+        "responsive",
+        "engagement",
+        "developmental"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on grant materials.",
+      "page_count": 24,
+      "size_mb": 0.43,
+      "href": "../ESD%20Lab%20readings/Preparing-for-equitable-family-and-community-engagement-_2025_Advances-in-Ch.pdf",
+      "bucket": "Grant Materials · 2025"
+    },
+    {
+      "id": "emotion-understanding-in-infants-and-young-children-how-input-shapes-emotional-development",
+      "title": "Emotion understanding in infants and young children: How input shapes emotional development",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "emotion",
+        "emotional",
+        "emotions",
+        "infants",
+        "young",
+        "input"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 30,
+      "size_mb": 0.61,
+      "href": "../ESD%20Lab%20readings/Emotion-understanding-in-infants-and-young-child_2025_Advances-in-Child-Deve.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "copyright-page-2025-advances-in-child-development-and-behavior",
+      "title": "Copyright page 2025 Advances in Child Development and Behavior",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "including",
+        "rights",
+        "reserved",
+        "those",
+        "text",
+        "data"
+      ],
+      "abstract": "All rights are reserved, including those for text and data mining, AI training, and similar technologies. Publisher’s note: Elsevier takes a neutral position with respect to territorial disputes or jurisdictional claims in its published content, including in maps and institutional affiliations...",
+      "page_count": 1,
+      "size_mb": 0.19,
+      "href": "../ESD%20Lab%20readings/Copyright-page_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "contributors-2025-advances-in-child-development-and-behavior",
+      "title": "Contributors 2025 Advances in Child Development and Behavior",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "carolina",
+        "columbia",
+        "psychology",
+        "contributors",
+        "south",
+        "autism"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 2,
+      "size_mb": 0.08,
+      "href": "../ESD%20Lab%20readings/Contributors_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "contents-2025-advances-in-child-development-and-behavior",
+      "title": "Contents 2025 Advances in Child Development and Behavior",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "latent",
+        "structure",
+        "antecedents",
+        "sequalae",
+        "stability",
+        "change"
+      ],
+      "abstract": "40 2. Assessment 41 3. Latent structure 43 4. Antecedents 45 5. Sequalae 48 6. Stability and change 55 7. Conclusion: Promise and prospect 58 References 60 . Emotion understanding in infants and young children: How input shapes emotional development Vanessa LoBue, Marianella Casasola, and Lisa M...",
+      "page_count": 3,
+      "size_mb": 0.08,
+      "href": "../ESD%20Lab%20readings/Contents_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "children-s-ability-concepts-their-developmen-2025-advances-in-child-develop",
+      "title": "Children s ability concepts Their developmen 2025 Advances in Child Develop",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "ability",
+        "concepts",
+        "developmen",
+        "content",
+        "consequences",
+        "melis"
+      ],
+      "abstract": "Children’s ability concepts: Their development, content, and consequences Melis Muradoglu a, b, *, Carol S...",
+      "page_count": 31,
+      "size_mb": 0.93,
+      "href": "../ESD%20Lab%20readings/Children-s-ability-concepts--Their-developmen_2025_Advances-in-Child-Develop.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "childhood-essentialism",
+      "title": "Childhood essentialism",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "essentialism",
+        "childhood",
+        "social",
+        "that",
+        "important",
+        "including"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 38,
+      "size_mb": 0.84,
+      "href": "../ESD%20Lab%20readings/Childhood-essentialism_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "autonomic-and-attentional-pathways-in-the-emergence-2025-advances-in-child",
+      "title": "Autonomic and attentional pathways in the emergence 2025 Advances in Child",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "attention",
+        "autonomic",
+        "developmental",
+        "early",
+        "emergence",
+        "attentional"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 35,
+      "size_mb": 0.86,
+      "href": "../ESD%20Lab%20readings/Autonomic-and-attentional-pathways-in-the-emergence-_2025_Advances-in-Child-.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "assessing-children-s-spatial-thinking-insights-challenges-and-implications",
+      "title": "Assessing children’s spatial thinking: Insights, challenges, and implications",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "spatial",
+        "thinking",
+        "assessments",
+        "challenges",
+        "implications",
+        "stem"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 32,
+      "size_mb": 0.78,
+      "href": "../ESD%20Lab%20readings/Assessing-children-s-spatial-thinking--Insight_2025_Advances-in-Child-Develo.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "advances-in-child-development-and-behavior-series",
+      "title": "ADVANCES IN CHILD DEVELOPMENT AND BEHAVIOR Series",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "austin",
+        "jeffrey",
+        "lockman",
+        "human",
+        "family",
+        "sciences"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 1,
+      "size_mb": 0.05,
+      "href": "../ESD%20Lab%20readings/Series-page_2025_Advances-in-Child-Development-and-Behavior.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "a-secure-base-script-perspective-on-attachment-progress-promise-and-prospects-theodore-e-a-waters-a-victoria-l-zhu-b-glenn-i-roisman-b-a",
+      "title": "A secure base script perspective on attachment: progress, promise, and prospects Theodore E.A. Waters a, *, Victoria L. Zhu b, Glenn I. Roisman b a",
+      "year": 2025,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "attachment",
+        "waters",
+        "bowlby",
+        "roisman",
+        "theory",
+        "progress"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 29,
+      "size_mb": 0.58,
+      "href": "../ESD%20Lab%20readings/A-secure-base-script-perspective-on-attachment_2025_Advances-in-Child-Develo.pdf",
+      "bucket": "Front Matter · 2025"
+    },
+    {
+      "id": "capturing-the-complexity-of-autism-applying-a-developmental-cascades-framework",
+      "title": "Capturing the complexity of autism: Applying a developmental cascades framework",
+      "year": 2022,
+      "category": "Grant Materials",
+      "source": "Child Development Perspectives",
+      "keywords": [
+        "developmental",
+        "capturing",
+        "complexity",
+        "autism",
+        "cascades",
+        "change"
+      ],
+      "abstract": "Developmental change emerges from dynamic interactions among networks of neu- ral activity, behavior systems, and experience- dependent processes...",
+      "page_count": 9,
+      "size_mb": 0.62,
+      "href": "../ESD%20Lab%20readings/Child%20Dev%20Perspectives%20-%202022%20-%20Bradshaw%20-%20Capturing%20the%20complexity%20of%20autism%20%20Applying%20a%20developmental%20cascades%20framework.pdf",
+      "bucket": "Grant Materials · 2022"
+    },
+    {
+      "id": "specific-aims-atypical-attention-is-among-the-earliest-emerging-lifelong-features-of-autism-spectrum-disorder-asd-and-a-particularly-compelling-candidate-for",
+      "title": "SPECIFIC AIMS Atypical attention is among the earliest-emerging, lifelong features of autism spectrum disorder (ASD) and a particularly compelling candidate for",
+      "year": null,
+      "category": "Grant Materials",
+      "source": "Grant Materials",
+      "keywords": [
+        "attention",
+        "autonomic",
+        "regulation",
+        "asibs",
+        "will",
+        "specific"
+      ],
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 1,
+      "size_mb": 0.18,
+      "href": "../ESD%20Lab%20readings/SpecificAims_BradshawR01_A1.pdf",
+      "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "significance-earlier-intervention",
+      "title": "SIGNIFICANCE Earlier Intervention",
+      "year": null,
+      "category": "Grant Materials",
+      "source": "Grant Materials",
+      "keywords": [
+        "attention",
+        "that",
+        "intervention",
+        "early",
+        "earlier",
+        "lifelong"
+      ],
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 12,
+      "size_mb": 1.03,
+      "href": "../ESD%20Lab%20readings/ResearchStrategy_BradshawR01_A1.pdf",
+      "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "microsoft-word-specific-aims-and-research-strategy-linked-robin-only-unlinked",
+      "title": "Microsoft Word - specific aims and research strategy linked_ROBIN ONLY_unlinked",
+      "year": null,
+      "category": "Grant Materials",
+      "source": "Grant Materials",
+      "keywords": [
+        "infants",
+        "outcomes",
+        "dysfunction",
+        "intervention",
+        "that",
+        "specific"
+      ],
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 12,
+      "size_mb": 1.21,
+      "href": "../ESD%20Lab%20readings/ResearchStrategy_Final.pdf",
+      "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "a-secure-base-script-perspective-on-attachment-progress-promise-and-prospects",
+      "title": "A secure base script perspective on attachment: progress, promise, and prospects",
+      "year": null,
+      "category": "Front Matter",
+      "source": "Advances in Child Development and Behavior",
+      "keywords": [
+        "fitted",
+        "attachment",
+        "bowlby",
+        "theory",
+        "progress",
+        "promise"
+      ],
+      "abstract": "Indexed reading from Advances in Child Development and Behavior focused on front matter.",
+      "page_count": 317,
+      "size_mb": 13.59,
+      "href": "../ESD%20Lab%20readings/Combined%20Papers.pdf",
+      "bucket": "Front Matter · n/a"
+    }
+  ]
+}

@@ -50,6 +50,7 @@ DEFAULT_SOURCE = REPO_ROOT / "web" / "dashboard-source.html"
 DEFAULT_CSS = REPO_ROOT / "web" / "pages-overlay.css"
 DEFAULT_JS = REPO_ROOT / "web" / "pages-overlay.js"
 DEFAULT_OUT = REPO_ROOT / "dist" / "pages-wrapper" / "index.html"
+DEFAULT_READINGS = REPO_ROOT / "web" / "lab-readings.json"
 
 
 def _read(path: pathlib.Path) -> str:
@@ -67,14 +68,28 @@ def build(
     css_path: pathlib.Path = DEFAULT_CSS,
     js_path: pathlib.Path = DEFAULT_JS,
     out_path: pathlib.Path = DEFAULT_OUT,
+    readings_path: pathlib.Path = DEFAULT_READINGS,
     stamp: str | None = None,
 ) -> pathlib.Path:
     html = _read(source_path)
     css = _read(css_path)
     js = _read(js_path)
 
+    # Lab readings JSON gets inlined as a global so the overlay's
+    # Knowledge Hub + AI chatbot retrieval layer have data on first
+    # paint, no fetch round-trip.
+    readings_json = ""
+    if readings_path.exists():
+        readings_json = readings_path.read_text(encoding="utf-8").strip()
+    else:
+        readings_json = '{"summary":{"count":0},"readings":[]}'
+
     stamp = stamp or dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    build_sha = _short_sha(css + js + html[:4096])
+    build_sha = _short_sha(css + js + html[:4096] + readings_json[:1024])
+
+    # Escape </script> inside the JSON to avoid prematurely closing
+    # the inline script tag.
+    readings_inline = readings_json.replace("</", "<\\/")
 
     head_inject = (
         f'\n<meta name="esd-deploy-stamp" content="{stamp}">\n'
@@ -83,7 +98,10 @@ def build(
     )
 
     body_inject = (
-        f'\n<script id="esd-pages-overlay-js">\n{js}\n</script>\n'
+        f'\n<script id="esd-readings-data">\n'
+        f'window.__ESD_READINGS__ = {readings_inline};\n'
+        f'</script>\n'
+        f'<script id="esd-pages-overlay-js">\n{js}\n</script>\n'
     )
 
     if "</head>" not in html:
@@ -113,6 +131,7 @@ def main() -> int:
     parser.add_argument("--css", type=pathlib.Path, default=DEFAULT_CSS)
     parser.add_argument("--js", type=pathlib.Path, default=DEFAULT_JS)
     parser.add_argument("--out", type=pathlib.Path, default=DEFAULT_OUT)
+    parser.add_argument("--readings", type=pathlib.Path, default=DEFAULT_READINGS)
     parser.add_argument("--stamp", type=str, default=None)
     args = parser.parse_args()
 
@@ -121,6 +140,7 @@ def main() -> int:
         css_path=args.css,
         js_path=args.js,
         out_path=args.out,
+        readings_path=args.readings,
         stamp=args.stamp,
     )
     return 0

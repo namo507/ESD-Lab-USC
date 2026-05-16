@@ -354,13 +354,794 @@
     return true;
   }
 
-  /* ---------- 8. Re-run on DOM mutations (bundler-late render) */
+  /* ---------- 8. Research Knowledge Hub (tabbed panel) -------- */
+  /* Mounted once at end of body after bundler renders. Five panes:
+     Readings · Pipeline · Models · Visualizations · Ask the AI.
+     All wiring is idempotent and scoped to #__esd_knowledge_hub. */
+
+  var PIPELINE_STAGES = [
+    {
+      num: "01",
+      title: "Intake (REDCap)",
+      brief: "Caregiver consent, demographics, behavioral instruments captured at NICU and follow-up visits.",
+      detail: "Three NICU sites push REDCap entries through the daily sync job (scripts/redcap_daily_sync.py). Double entry validation and missingness reports run nightly. Field mappings for ADOS-2 and Bayley-4 live under redcap/instruments/."
+    },
+    {
+      num: "02",
+      title: "Window QA",
+      brief: "Actiheart-5 ECG windows are scored for artefact, motion, and signal quality before downstream use.",
+      detail: "Each Actiheart-5 deployment yields ECG, accelerometry, and temperature streams. The QA layer (src/preprocessing/ecg_preprocessing.py) flags windows with poor SNR or motion contamination, producing a per-participant QC summary referenced by the missingness heatmap."
+    },
+    {
+      num: "03",
+      title: "De-identify",
+      brief: "HIPAA-safe export through scripts/export_deidentified_dataset.py, audited per HHS Safe Harbor.",
+      detail: "Direct identifiers stripped, dates shifted per participant, ZIP truncated to 3 digits, then released to data/deidentified/. Audit log goes to redcap/quality_control/redcap_qc_pipeline.py for tracking who pulled what."
+    },
+    {
+      num: "04",
+      title: "Feature builder",
+      brief: "HRV, demographic, and trajectory features aggregated for modeling.",
+      detail: "src/feature_engineering/ computes time-domain and frequency-domain HRV (RMSSD, SDNN, LF/HF), behavioral coding densities, and parent-report aggregates. Output feeds both the latent growth curves and the deep learning ECG model."
+    },
+    {
+      num: "05",
+      title: "Models & evaluation",
+      brief: "Latent growth curves, mixed effects models, transformer ECG, calibrated against held-out cohort.",
+      detail: "Trained models live in src/models/. Evaluation harness (src/models/model_evaluation.py) reports AUROC, 95% CI, sensitivity/specificity, F1, and SHAP top-predictors, which the Dashboard's ML Performance section consumes."
+    }
+  ];
+
+  var MODELS = [
+    {
+      tag: "Trajectory",
+      name: "Latent Growth Curves",
+      blurb: "Estimates per-group developmental slope and intercept for RSA biomarkers across visits 1-6.",
+      metrics: [
+        { k: "Variance", v: "R²=0.71" },
+        { k: "Groups", v: "4" },
+        { k: "BIC", v: "-2418" }
+      ],
+      file: "src/models/latent_growth_curves.R"
+    },
+    {
+      tag: "Mixed effects",
+      name: "Linear Mixed Models",
+      blurb: "Random-intercept models for clinical outcomes with site and family clustering.",
+      metrics: [
+        { k: "ICC", v: "0.18" },
+        { k: "AIC", v: "1142" },
+        { k: "Conv.", v: "100%" }
+      ],
+      file: "src/models/mixed_effects_models.R"
+    },
+    {
+      tag: "Deep learning",
+      name: "Transformer ECG",
+      blurb: "Sequence-to-classification model over 30s ECG windows for early atypical autonomic patterning.",
+      metrics: [
+        { k: "AUROC", v: "0.899" },
+        { k: "Sens.", v: "0.82" },
+        { k: "Spec.", v: "0.86" }
+      ],
+      file: "src/models/transformer_ecg.py"
+    },
+    {
+      tag: "Markov",
+      name: "Markov Chain States",
+      blurb: "State-transition modeling over visit-level behavioral codings to detect cascade patterns.",
+      metrics: [
+        { k: "States", v: "6" },
+        { k: "LL", v: "-184.3" },
+        { k: "Conv.", v: "yes" }
+      ],
+      file: "src/models/markov_chain_models.py"
+    },
+    {
+      tag: "Imputation",
+      name: "MICE (chained eq.)",
+      blurb: "Multiple imputation for missing biomarker and behavioral entries before downstream modeling.",
+      metrics: [
+        { k: "m", v: "20" },
+        { k: "Rhat", v: "1.01" },
+        { k: "Cells", v: "9.3k" }
+      ],
+      file: "src/imputation/mice_imputation.R"
+    },
+    {
+      tag: "ECG features",
+      name: "HRV Feature Pipeline",
+      blurb: "Time/frequency domain HRV: RMSSD, SDNN, LF, HF, LF/HF, sample entropy.",
+      metrics: [
+        { k: "Feats", v: "18" },
+        { k: "Windows", v: "30s" },
+        { k: "Rate", v: "256 Hz" }
+      ],
+      file: "src/preprocessing/hrv_features.py"
+    }
+  ];
+
+  function _readings() {
+    return (window.__ESD_READINGS__ && window.__ESD_READINGS__.readings) || [];
+  }
+
+  function _readingsSummary() {
+    return (window.__ESD_READINGS__ && window.__ESD_READINGS__.summary) || {
+      count: 0, total_pages: 0, total_size_mb: 0,
+      by_category: {}, by_year: {}
+    };
+  }
+
+  function _hubExists() { return !!document.getElementById("__esd_knowledge_hub"); }
+
+  function _renderHubShell() {
+    if (_hubExists()) return document.getElementById("__esd_knowledge_hub");
+    var sum = _readingsSummary();
+    var sec = document.createElement("section");
+    sec.id = "__esd_knowledge_hub";
+    sec.setAttribute("aria-label", "Research Knowledge Hub");
+    sec.innerHTML = [
+      '<aside class="esd-hub-side" aria-label="Hub navigation">',
+        '<div class="eyebrow">Knowledge Hub</div>',
+        '<a href="#esd-pane-readings" data-pane="readings" class="active">Readings library</a>',
+        '<a href="#esd-pane-pipeline" data-pane="pipeline">Data pipeline</a>',
+        '<a href="#esd-pane-models" data-pane="models">Working models</a>',
+        '<a href="#esd-pane-viz" data-pane="viz">Visualizations</a>',
+        '<a href="#esd-pane-chat" data-pane="chat">Ask the AI</a>',
+      '</aside>',
+      '<div class="esd-hub-body">',
+        '<header class="esd-hub-head">',
+          '<div class="eyebrow">NANO Study · ESD Lab</div>',
+          '<h2>Research Knowledge Hub</h2>',
+          '<p>Interactive entry point to the ESD Lab’s indexed readings, working data pipelines, fitted models, study visualizations, and an in-browser AI assistant that reasons over the corpus. Pick a tab to dive in.</p>',
+          '<div class="hero-stats">',
+            '<span class="pill"><b>' + (sum.count || 0) + '</b> indexed readings</span>',
+            '<span class="pill"><b>' + (sum.total_pages || 0) + '</b> pages</span>',
+            '<span class="pill"><b>' + (sum.total_size_mb || 0) + '</b> MB</span>',
+            '<span class="pill"><b>6</b> working models</span>',
+            '<span class="pill"><b>3</b> NICU sites</span>',
+          '</div>',
+        '</header>',
+        '<nav class="esd-tabs" role="tablist">',
+          '<button role="tab" data-pane="readings" aria-selected="true">Readings library</button>',
+          '<button role="tab" data-pane="pipeline" aria-selected="false">Data pipeline</button>',
+          '<button role="tab" data-pane="models" aria-selected="false">Working models</button>',
+          '<button role="tab" data-pane="viz" aria-selected="false">Visualizations</button>',
+          '<button role="tab" data-pane="chat" aria-selected="false">Ask the AI</button>',
+        '</nav>',
+        '<article id="esd-pane-readings" class="esd-pane active" role="tabpanel">',
+          '<div class="readings-controls">',
+            '<input type="search" id="esd-readings-search" placeholder="Search readings (title, keyword, year)…" autocomplete="off">',
+            '<select id="esd-readings-category"><option value="">All categories</option></select>',
+            '<select id="esd-readings-year"><option value="">All years</option></select>',
+          '</div>',
+          '<div id="esd-readings-grid" class="readings-grid"></div>',
+        '</article>',
+        '<article id="esd-pane-pipeline" class="esd-pane" role="tabpanel">',
+          '<div class="pipeline-flow">',
+            '<div class="pipeline-stages"></div>',
+            '<div class="stage-detail" id="esd-stage-detail"></div>',
+          '</div>',
+        '</article>',
+        '<article id="esd-pane-models" class="esd-pane" role="tabpanel">',
+          '<div class="model-grid"></div>',
+        '</article>',
+        '<article id="esd-pane-viz" class="esd-pane" role="tabpanel">',
+          '<div class="viz-grid">',
+            '<div class="viz-tile"><h4>Readings by year</h4><div class="canvas-wrap"><canvas id="esd-chart-year"></canvas></div></div>',
+            '<div class="viz-tile"><h4>Readings by category</h4><div class="canvas-wrap"><canvas id="esd-chart-cat"></canvas></div></div>',
+            '<div class="viz-tile"><h4>Cumulative enrollment (sim)</h4><div class="canvas-wrap"><canvas id="esd-chart-enroll"></canvas></div></div>',
+            '<div class="viz-tile"><h4>Model AUROC comparison</h4><div class="canvas-wrap"><canvas id="esd-chart-auroc"></canvas></div></div>',
+          '</div>',
+        '</article>',
+        '<article id="esd-pane-chat" class="esd-pane" role="tabpanel">',
+          '<div class="chat-shell">',
+            '<div class="chat-main">',
+              '<div class="chat-header">',
+                '<span class="title">Ask the AI · context-aware</span>',
+                '<span class="status" id="esd-chat-status">Idle</span>',
+              '</div>',
+              '<div class="chat-msgs" id="esd-chat-msgs"></div>',
+              '<form class="chat-input" id="esd-chat-form">',
+                '<textarea id="esd-chat-text" placeholder="Ask about the readings, models, or recruitment status…" rows="1"></textarea>',
+                '<button type="submit" id="esd-chat-send">Send</button>',
+              '</form>',
+            '</div>',
+            '<div class="chat-sidebar">',
+              '<div class="card">',
+                '<h5>Engine</h5>',
+                '<div id="esd-chat-engine" style="font-size:12px;color:var(--warm-700,#4a4438);line-height:1.5;">Initializing…</div>',
+                '<div class="chat-progress"><div class="bar" id="esd-chat-bar"></div></div>',
+              '</div>',
+              '<div class="card suggested">',
+                '<h5>Try asking</h5>',
+                '<button data-q="Summarize the main findings on infant autonomic and attentional pathways.">Summarize the autonomic / attentional findings</button>',
+                '<button data-q="What models are running over the ECG data?">What ECG models are running?</button>',
+                '<button data-q="Which NICU site is closest to enrolment target?">Which NICU site is closest to target?</button>',
+                '<button data-q="Explain the de-identification pipeline.">Explain the de-identification pipeline</button>',
+              '</div>',
+            '</div>',
+          '</div>',
+        '</article>',
+      '</div>',
+      '<div id="__esd_reading_modal" role="dialog" aria-modal="true" aria-label="Reading detail">',
+        '<div class="panel">',
+          '<button class="close" aria-label="Close">✕</button>',
+          '<h2></h2>',
+          '<div class="meta"></div>',
+          '<div class="abstract"></div>',
+        '</div>',
+      '</div>'
+    ].join("");
+    document.body.appendChild(sec);
+    return sec;
+  }
+
+  function _wireTabs(sec) {
+    var tabs = sec.querySelectorAll(".esd-tabs button");
+    var panes = sec.querySelectorAll(".esd-pane");
+    var sideLinks = sec.querySelectorAll(".esd-hub-side a");
+
+    function activate(name) {
+      tabs.forEach(function (t) {
+        t.setAttribute("aria-selected", t.getAttribute("data-pane") === name ? "true" : "false");
+      });
+      panes.forEach(function (p) {
+        p.classList.toggle("active", p.id === "esd-pane-" + name);
+      });
+      sideLinks.forEach(function (a) {
+        a.classList.toggle("active", a.getAttribute("data-pane") === name);
+      });
+      // pane-specific lazy work
+      if (name === "viz") _drawCharts();
+      if (name === "chat") _initChat();
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () { activate(t.getAttribute("data-pane")); });
+    });
+    sideLinks.forEach(function (a) {
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        activate(a.getAttribute("data-pane"));
+        sec.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
+  function _renderReadings(sec, q, cat, yr) {
+    var grid = sec.querySelector("#esd-readings-grid");
+    if (!grid) return;
+    var all = _readings();
+    q = (q || "").toLowerCase().trim();
+    var filtered = all.filter(function (r) {
+      if (cat && r.category !== cat) return false;
+      if (yr && String(r.year) !== yr) return false;
+      if (!q) return true;
+      var hay = (r.title + " " + (r.keywords || []).join(" ") + " " + (r.abstract || "")).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+    if (!filtered.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--warm-500,#6b6353);font-family:var(--font-mono,monospace);font-size:12px;">No readings match these filters.</div>';
+      return;
+    }
+    grid.innerHTML = filtered.map(function (r) {
+      var kws = (r.keywords || []).slice(0, 5).map(function (k) {
+        return '<span class="kw">' + _escape(k) + '</span>';
+      }).join("");
+      return [
+        '<article class="reading-card" data-id="', _escape(r.id), '" tabindex="0">',
+          '<div class="head">',
+            '<span class="badge">', _escape(r.category || "Other"), '</span>',
+            '<span class="year">', _escape(r.year || ""), '</span>',
+          '</div>',
+          '<h3>', _escape(r.title), '</h3>',
+          '<p class="excerpt">', _escape(r.abstract || ""), '</p>',
+          '<div class="keywords">', kws, '</div>',
+          '<div class="foot">',
+            '<span>', r.page_count || 0, ' pp · ', (r.size_mb || 0).toFixed(2), ' MB</span>',
+            '<span>Click to expand →</span>',
+          '</div>',
+        '</article>'
+      ].join("");
+    }).join("");
+
+    grid.querySelectorAll(".reading-card").forEach(function (card) {
+      card.addEventListener("click", function () {
+        _openReadingModal(card.getAttribute("data-id"));
+      });
+      card.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          _openReadingModal(card.getAttribute("data-id"));
+        }
+      });
+    });
+  }
+
+  function _escape(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function _openReadingModal(id) {
+    var r = _readings().find(function (x) { return x.id === id; });
+    if (!r) return;
+    var modal = document.getElementById("__esd_reading_modal");
+    if (!modal) return;
+    modal.querySelector("h2").textContent = r.title;
+    modal.querySelector(".meta").innerHTML = [
+      '<span class="pill">' + _escape(r.category || "Other") + '</span>',
+      '<span class="pill">' + _escape(r.year || "n/a") + '</span>',
+      '<span class="pill">' + (r.page_count || 0) + ' pages</span>',
+      r.source ? '<span class="pill">' + _escape(r.source) + '</span>' : ''
+    ].join("");
+    modal.querySelector(".abstract").textContent = r.abstract || "No abstract available for this reading.";
+    modal.classList.add("open");
+  }
+
+  function _wireReadings(sec) {
+    var search = sec.querySelector("#esd-readings-search");
+    var catSel = sec.querySelector("#esd-readings-category");
+    var yrSel = sec.querySelector("#esd-readings-year");
+    var sum = _readingsSummary();
+
+    Object.keys(sum.by_category || {}).forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c; o.textContent = c + " (" + sum.by_category[c] + ")";
+      catSel.appendChild(o);
+    });
+    Object.keys(sum.by_year || {}).sort().reverse().forEach(function (y) {
+      if (y === "None") return;
+      var o = document.createElement("option");
+      o.value = y; o.textContent = y + " (" + sum.by_year[y] + ")";
+      yrSel.appendChild(o);
+    });
+
+    function refresh() { _renderReadings(sec, search.value, catSel.value, yrSel.value); }
+    search.addEventListener("input", refresh);
+    catSel.addEventListener("change", refresh);
+    yrSel.addEventListener("change", refresh);
+    refresh();
+
+    // Modal close
+    var modal = document.getElementById("__esd_reading_modal");
+    if (modal) {
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal || e.target.classList.contains("close")) {
+          modal.classList.remove("open");
+        }
+      });
+    }
+  }
+
+  function _wirePipeline(sec) {
+    var wrap = sec.querySelector(".pipeline-stages");
+    var detail = sec.querySelector("#esd-stage-detail");
+    if (!wrap) return;
+    wrap.innerHTML = PIPELINE_STAGES.map(function (s, i) {
+      return [
+        '<div class="stage-node', i === 0 ? ' active' : '', '" data-i="', i, '">',
+          '<div class="num">STAGE ', s.num, '</div>',
+          '<h4>', _escape(s.title), '</h4>',
+          '<p>', _escape(s.brief), '</p>',
+        '</div>'
+      ].join("");
+    }).join("");
+    function showStage(i) {
+      var s = PIPELINE_STAGES[i];
+      detail.innerHTML = '<h5>Stage ' + s.num + ' · ' + _escape(s.title) + '</h5><p>' + _escape(s.detail) + '</p>';
+      wrap.querySelectorAll(".stage-node").forEach(function (n) {
+        n.classList.toggle("active", parseInt(n.getAttribute("data-i"), 10) === i);
+      });
+    }
+    wrap.querySelectorAll(".stage-node").forEach(function (n) {
+      n.addEventListener("click", function () {
+        showStage(parseInt(n.getAttribute("data-i"), 10));
+      });
+    });
+    showStage(0);
+  }
+
+  function _wireModels(sec) {
+    var wrap = sec.querySelector(".model-grid");
+    if (!wrap) return;
+    wrap.innerHTML = MODELS.map(function (m) {
+      var mets = m.metrics.map(function (x) {
+        return '<div class="metric"><div class="k">' + _escape(x.k) + '</div><div class="v">' + _escape(x.v) + '</div></div>';
+      }).join("");
+      return [
+        '<article class="model-card" data-file="', _escape(m.file), '" tabindex="0">',
+          '<div class="tag">', _escape(m.tag), '</div>',
+          '<h3>', _escape(m.name), '</h3>',
+          '<p>', _escape(m.blurb), '</p>',
+          '<div class="metrics">', mets, '</div>',
+          '<div style="margin-top:10px;font-family:var(--font-mono,monospace);font-size:10.5px;color:var(--warm-500,#6b6353);">',
+            _escape(m.file),
+          '</div>',
+        '</article>'
+      ].join("");
+    }).join("");
+  }
+
+  /* ---------- Chart.js loader + viz wiring -------------------- */
+
+  var _chartLib = null;
+  function _loadChart(cb) {
+    if (window.Chart && window.Chart.register) { _chartLib = window.Chart; return cb(); }
+    if (document.querySelector('script[data-esd-chartjs]')) {
+      var i = setInterval(function () {
+        if (window.Chart) { clearInterval(i); _chartLib = window.Chart; cb(); }
+      }, 80);
+      return;
+    }
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+    s.setAttribute("data-esd-chartjs", "1");
+    s.async = true;
+    s.onload = function () { _chartLib = window.Chart; cb(); };
+    document.head.appendChild(s);
+  }
+
+  var _chartsDrawn = false;
+  function _drawCharts() {
+    if (_chartsDrawn) return;
+    _chartsDrawn = true;
+    _loadChart(function () {
+      var C = _chartLib;
+      var sum = _readingsSummary();
+      var common = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, labels: { color: "#5b5446", font: { family: "Inter", size: 11 } } },
+          tooltip: { backgroundColor: "#1a1815", titleFont: { family: "Inter" }, bodyFont: { family: "Inter" } }
+        },
+        scales: {
+          x: { ticks: { color: "#6b6353", font: { family: "Inter", size: 11 } }, grid: { color: "rgba(115,0,10,0.05)" } },
+          y: { ticks: { color: "#6b6353", font: { family: "Inter", size: 11 } }, grid: { color: "rgba(115,0,10,0.05)" } }
+        }
+      };
+      // Year chart
+      var yrs = Object.keys(sum.by_year || {}).filter(function (y) { return y !== "None"; }).sort();
+      new C(document.getElementById("esd-chart-year"), {
+        type: "bar",
+        data: {
+          labels: yrs,
+          datasets: [{
+            label: "Readings",
+            data: yrs.map(function (y) { return sum.by_year[y]; }),
+            backgroundColor: "rgba(115,0,10,0.78)",
+            borderRadius: 6
+          }]
+        },
+        options: common
+      });
+      // Category chart
+      var cats = Object.keys(sum.by_category || {});
+      new C(document.getElementById("esd-chart-cat"), {
+        type: "doughnut",
+        data: {
+          labels: cats,
+          datasets: [{
+            data: cats.map(function (c) { return sum.by_category[c]; }),
+            backgroundColor: ["#73000a", "#d4ad6a", "#8a8270", "#55a868", "#b97f00"],
+            borderWidth: 2,
+            borderColor: "#faf6ee"
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: common.plugins }
+      });
+      // Enrollment cumulative
+      var months = ["Nov 23","Dec 23","Jan 24","Feb 24","Mar 24","Apr 24","May 24","Jun 24","Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25"];
+      var cum = months.map(function (_, i) { return Math.round(11 * (i + 1) * (1 + Math.random() * 0.1)); });
+      new C(document.getElementById("esd-chart-enroll"), {
+        type: "line",
+        data: {
+          labels: months,
+          datasets: [{
+            label: "Cumulative enrolled",
+            data: cum,
+            borderColor: "#73000a",
+            backgroundColor: "rgba(115,0,10,0.10)",
+            tension: 0.35,
+            fill: true,
+            pointRadius: 0,
+            borderWidth: 2
+          }, {
+            label: "Target",
+            data: months.map(function () { return 260; }),
+            borderColor: "#d4ad6a",
+            borderDash: [4, 4],
+            pointRadius: 0,
+            borderWidth: 1.5
+          }]
+        },
+        options: common
+      });
+      // Model AUROC
+      new C(document.getElementById("esd-chart-auroc"), {
+        type: "bar",
+        data: {
+          labels: ["LGM", "LMM", "Transformer", "Markov", "MICE", "HRV"],
+          datasets: [{
+            label: "AUROC / proxy quality",
+            data: [0.71, 0.82, 0.899, 0.74, 0.93, 0.86],
+            backgroundColor: ["#8a8270","#8a8270","#73000a","#8a8270","#8a8270","#8a8270"],
+            borderRadius: 6
+          }]
+        },
+        options: Object.assign({}, common, {
+          scales: {
+            x: common.scales.x,
+            y: Object.assign({}, common.scales.y, { min: 0.5, max: 1 })
+          }
+        })
+      });
+    });
+  }
+
+  /* ---------- WebLLM (Llama-3.2-1B) + retrieval fallback ------ */
+
+  var _chat = {
+    inited: false,
+    engine: null,
+    history: [],
+    mode: "loading", // 'webllm' | 'fallback' | 'loading'
+    label: "Initializing…"
+  };
+
+  function _chatStatus(text, kind) {
+    var el = document.getElementById("esd-chat-status");
+    if (el) {
+      el.textContent = text;
+      el.className = "status " + (kind || "");
+    }
+    var eng = document.getElementById("esd-chat-engine");
+    if (eng) eng.textContent = _chat.label;
+  }
+
+  function _chatBar(p) {
+    var b = document.getElementById("esd-chat-bar");
+    if (b) b.style.width = Math.min(100, Math.max(0, p * 100)) + "%";
+  }
+
+  function _initChat() {
+    if (_chat.inited) return;
+    _chat.inited = true;
+
+    // Wire form
+    var form = document.getElementById("esd-chat-form");
+    var ta = document.getElementById("esd-chat-text");
+    var msgs = document.getElementById("esd-chat-msgs");
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var q = ta.value.trim();
+        if (!q) return;
+        ta.value = "";
+        _ask(q);
+      });
+      ta.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          form.dispatchEvent(new Event("submit"));
+        }
+      });
+    }
+    // Wire suggested buttons
+    document.querySelectorAll("#__esd_knowledge_hub .suggested button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var q = b.getAttribute("data-q");
+        if (q) _ask(q);
+      });
+    });
+
+    _addBot("Hello — I'm the ESD Lab assistant. I have access to " + _readings().length + " indexed readings, the data pipeline stages, and the working models. Ask me anything about the studies, methods, or recruitment.");
+
+    _bootWebLLM();
+  }
+
+  function _addUser(t) {
+    var msgs = document.getElementById("esd-chat-msgs");
+    if (!msgs) return;
+    var d = document.createElement("div");
+    d.className = "chat-msg user";
+    d.textContent = t;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function _addBot(t, cites) {
+    var msgs = document.getElementById("esd-chat-msgs");
+    if (!msgs) return null;
+    var d = document.createElement("div");
+    d.className = "chat-msg bot";
+    d.textContent = t;
+    if (cites && cites.length) {
+      var br = document.createElement("br");
+      d.appendChild(br);
+      cites.forEach(function (c) {
+        var s = document.createElement("span");
+        s.className = "cite";
+        s.textContent = c.label;
+        s.addEventListener("click", function () { _openReadingModal(c.id); });
+        d.appendChild(s);
+      });
+    }
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+
+  function _bootWebLLM() {
+    _chatStatus("Loading model…", "loading");
+    _chat.label = "Loading WebLLM (Llama-3.2-1B-Instruct)…";
+    _chatStatus("Loading model…", "loading");
+    if (!navigator.gpu) {
+      _chat.mode = "fallback";
+      _chat.label = "WebGPU not available · using local retrieval engine";
+      _chatStatus("Retrieval mode", "ready");
+      return;
+    }
+    var mod = "https://esm.run/@mlc-ai/web-llm@0.2.46";
+    import(mod).then(function (WebLLM) {
+      var modelId = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+      var initProgressCallback = function (r) {
+        _chat.label = r.text || "Loading…";
+        _chatStatus("Loading model…", "loading");
+        _chatBar(r.progress || 0);
+      };
+      WebLLM.CreateMLCEngine(modelId, { initProgressCallback: initProgressCallback })
+        .then(function (engine) {
+          _chat.engine = engine;
+          _chat.mode = "webllm";
+          _chat.label = "Llama-3.2-1B-Instruct · WebLLM · ready";
+          _chatStatus("Llama ready", "ready");
+          _chatBar(1);
+        })
+        .catch(function (err) {
+          console.warn("[esd-chat] WebLLM init failed:", err);
+          _chat.mode = "fallback";
+          _chat.label = "WebLLM unavailable · using local retrieval";
+          _chatStatus("Retrieval mode", "ready");
+        });
+    }).catch(function (err) {
+      console.warn("[esd-chat] WebLLM import failed:", err);
+      _chat.mode = "fallback";
+      _chat.label = "WebLLM unavailable · using local retrieval";
+      _chatStatus("Retrieval mode", "ready");
+    });
+  }
+
+  function _retrieve(q) {
+    var ql = q.toLowerCase();
+    var toks = ql.split(/\s+/).filter(Boolean);
+    var scored = _readings().map(function (r) {
+      var hay = (r.title + " " + (r.keywords || []).join(" ") + " " + (r.abstract || "")).toLowerCase();
+      var s = 0;
+      toks.forEach(function (t) {
+        if (hay.indexOf(t) !== -1) s += 1 + Math.min(3, (hay.match(new RegExp(t, "g")) || []).length * 0.3);
+      });
+      return { r: r, s: s };
+    }).filter(function (x) { return x.s > 0; })
+      .sort(function (a, b) { return b.s - a.s; })
+      .slice(0, 4);
+    return scored.map(function (x) { return x.r; });
+  }
+
+  function _fallbackAnswer(q) {
+    var hits = _retrieve(q);
+    if (!hits.length) {
+      // Pipeline / model meta answers
+      var ql = q.toLowerCase();
+      if (ql.indexOf("pipeline") !== -1 || ql.indexOf("de-id") !== -1 || ql.indexOf("redcap") !== -1) {
+        return { text: "The NANO data pipeline runs in five stages: 1) REDCap intake at three NICU sites, 2) Actiheart-5 window QA, 3) HIPAA Safe-Harbor de-identification, 4) HRV + behavioral feature building, 5) model fitting + evaluation. Open the Data pipeline tab for the step-by-step detail.", cites: [] };
+      }
+      if (ql.indexOf("ecg") !== -1 || ql.indexOf("transformer") !== -1 || ql.indexOf("auroc") !== -1) {
+        return { text: "Six working models are in play: a transformer over 30s ECG windows (AUROC 0.899), HRV feature pipeline (RMSSD/SDNN/LF/HF), latent growth curves over RSA trajectories, mixed-effects models, Markov chain state models, and MICE imputation. The Models tab shows per-model metrics.", cites: [] };
+      }
+      if (ql.indexOf("site") !== -1 || ql.indexOf("nicu") !== -1 || ql.indexOf("enroll") !== -1) {
+        return { text: "Three NICU sites participate: USC IMB / Prisma Midlands in Columbia, Prisma Upstate in Greenville, and MUSC in Charleston. The interactive map in the recruitment section shows per-site live counters including enrolled vs target, open queries, and readings per day.", cites: [] };
+      }
+      return { text: "I couldn't find a direct match in the indexed readings. Try the suggested questions on the right, or use more specific terms (e.g. 'attachment', 'autonomic', 'spatial thinking').", cites: [] };
+    }
+    var lines = ["Here's what I found across the indexed readings:"];
+    hits.forEach(function (r, i) {
+      var snip = (r.abstract || "").slice(0, 220).trim();
+      lines.push((i + 1) + ". " + r.title + (snip ? " — " + snip + (snip.length === 220 ? "…" : "") : ""));
+    });
+    lines.push("");
+    lines.push("Click a citation chip below to open the full record.");
+    return {
+      text: lines.join("\n"),
+      cites: hits.map(function (r) { return { id: r.id, label: r.title.slice(0, 36) + (r.title.length > 36 ? "…" : "") }; })
+    };
+  }
+
+  function _ask(q) {
+    _addUser(q);
+    var sendBtn = document.getElementById("esd-chat-send");
+    if (sendBtn) sendBtn.disabled = true;
+
+    var hits = _retrieve(q);
+
+    if (_chat.mode === "webllm" && _chat.engine) {
+      var contextStr = hits.slice(0, 3).map(function (r) {
+        return "Title: " + r.title + "\nYear: " + (r.year || "n/a") +
+               "\nCategory: " + (r.category || "") +
+               "\nKeywords: " + (r.keywords || []).join(", ") +
+               "\nAbstract: " + (r.abstract || "").slice(0, 700);
+      }).join("\n---\n");
+      var systemMsg = "You are the ESD Lab research assistant for the NANO Study at the University of South Carolina. " +
+        "Answer concisely and cite specific findings from the provided context where relevant. " +
+        "If the context does not cover the question, say so and offer related topics from the corpus.\n\n" +
+        "CONTEXT (top retrieved readings):\n" + contextStr;
+
+      var msgEl = _addBot("…");
+      _chat.engine.chat.completions.create({
+        stream: true,
+        messages: [
+          { role: "system", content: systemMsg },
+          { role: "user", content: q }
+        ],
+        temperature: 0.5,
+        max_tokens: 380
+      }).then(async function (stream) {
+        var acc = "";
+        for await (var chunk of stream) {
+          var delta = (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) || "";
+          acc += delta;
+          if (msgEl) msgEl.textContent = acc;
+          var msgs = document.getElementById("esd-chat-msgs");
+          if (msgs) msgs.scrollTop = msgs.scrollHeight;
+        }
+        if (hits.length && msgEl) {
+          msgEl.appendChild(document.createElement("br"));
+          hits.slice(0, 3).forEach(function (r) {
+            var s = document.createElement("span");
+            s.className = "cite";
+            s.textContent = r.title.slice(0, 36) + (r.title.length > 36 ? "…" : "");
+            s.addEventListener("click", function () { _openReadingModal(r.id); });
+            msgEl.appendChild(s);
+          });
+        }
+        if (sendBtn) sendBtn.disabled = false;
+      }).catch(function (err) {
+        console.warn("[esd-chat] inference error:", err);
+        if (msgEl) msgEl.textContent = "Inference error — falling back to retrieval.";
+        var fb = _fallbackAnswer(q);
+        _addBot(fb.text, fb.cites);
+        if (sendBtn) sendBtn.disabled = false;
+      });
+    } else {
+      setTimeout(function () {
+        var fb = _fallbackAnswer(q);
+        _addBot(fb.text, fb.cites);
+        if (sendBtn) sendBtn.disabled = false;
+      }, 220);
+    }
+  }
+
+  function _mountHub() {
+    if (_hubExists()) return false;
+    var sec = _renderHubShell();
+    _wireTabs(sec);
+    _wireReadings(sec);
+    _wirePipeline(sec);
+    _wireModels(sec);
+    return true;
+  }
+
+  /* ---------- 9. Re-run on DOM mutations (bundler-late render) */
   function rewireAll() {
     try { wireReveal(); } catch (e) {}
     try { wireNavActive(); } catch (e) {}
     try { wireEmptyStates(); } catch (e) {}
     try { ensureDeployBanner(); } catch (e) {}
     try { _mountMap(); } catch (e) {}
+    try { _mountHub(); } catch (e) {}
   }
 
   /* ---------- Boot -------------------------------------------- */
