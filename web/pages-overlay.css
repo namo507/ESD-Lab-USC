@@ -1155,6 +1155,109 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- 21b. Layer toggle + site chips ---------------------- */
+
+#__esd_nicu_map_wrap .nicu-map-layer-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--glass-200, rgba(255,255,255,0.45));
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+}
+#__esd_nicu_map_wrap .nicu-map-layer-toggle button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warm-600, #5b5446);
+  cursor: pointer;
+  transition: background 140ms cubic-bezier(0.22,1,0.36,1),
+              color 140ms cubic-bezier(0.22,1,0.36,1),
+              transform 140ms cubic-bezier(0.22,1,0.36,1);
+}
+#__esd_nicu_map_wrap .nicu-map-layer-toggle button:hover {
+  background: rgba(255,255,255,0.6);
+  transform: translateY(-1px);
+}
+#__esd_nicu_map_wrap .nicu-map-layer-toggle button.active {
+  background: var(--usc-garnet, #73000a);
+  color: #fff8eb;
+  box-shadow: 0 4px 12px rgba(115,0,10,0.22);
+}
+
+#__esd_nicu_map_wrap .nicu-site-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+#__esd_nicu_map_wrap .nicu-site-chips button {
+  appearance: none;
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6));
+  background: var(--glass-200, rgba(255,255,255,0.45));
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--warm-700, #4a4438);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.22,1,0.36,1),
+              background 140ms cubic-bezier(0.22,1,0.36,1);
+}
+#__esd_nicu_map_wrap .nicu-site-chips button:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.7);
+}
+#__esd_nicu_map_wrap .nicu-site-chips button .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--usc-garnet, #73000a);
+  box-shadow: 0 0 0 0 rgba(115,0,10,0.45);
+}
+#__esd_nicu_map_wrap .nicu-site-chips button.active {
+  background: rgba(115,0,10,0.08);
+  border-color: rgba(115,0,10,0.30);
+  color: var(--usc-garnet, #73000a);
+  font-weight: 600;
+}
+#__esd_nicu_map_wrap .nicu-site-chips button.active .dot {
+  animation: esdPulse 1.4s ease-in-out infinite;
+}
+
+/* Marker pin pop on hover */
+#__esd_nicu_map .leaflet-marker-icon { transition: opacity 320ms ease-out; }
+#__esd_nicu_map .leaflet-marker-icon:hover .esd-nicu-pin { transform: translate(-9px, -28px) scale(1.12); }
+
+/* Make Leaflet's default zoom + attribution match the warm palette */
+#__esd_nicu_map .leaflet-control-zoom {
+  border: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.6)) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: var(--glass-shadow, 0 6px 18px rgba(0,0,0,0.08)) !important;
+}
+#__esd_nicu_map .leaflet-control-zoom a {
+  background: var(--glass-400, rgba(255,255,255,0.78)) !important;
+  color: var(--usc-garnet, #73000a) !important;
+  border-bottom: 1px solid var(--glass-stroke-soft, rgba(255,255,255,0.5)) !important;
+}
+#__esd_nicu_map .leaflet-control-attribution {
+  background: rgba(255,248,235,0.75) !important;
+  color: var(--warm-600, #5b5446) !important;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 9.5px !important;
+  border-radius: 8px;
+}
+
 /* ====================================================================
    22. Research Knowledge Hub panel (tabbed, post-bundle)
    ==================================================================== */

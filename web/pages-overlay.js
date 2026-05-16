@@ -185,32 +185,74 @@
     }
   ];
 
-  function _loadLeaflet(cb) {
-    if (window.L && window.L.map) return cb();
+  /* Leaflet loader: try cdnjs first (more reliable from CF Pages),
+     fall back to unpkg, then to jsdelivr. SRI removed because version
+     pinning + integrity caused silent load failures when the CDN
+     served a slightly different file. */
+  var _LEAFLET_CSS = [
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css",
+    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+  ];
+  var _LEAFLET_JS = [
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js",
+    "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+    "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+  ];
+
+  function _injectCss(href, attr) {
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.setAttribute(attr, "1");
+    link.crossOrigin = "";
+    document.head.appendChild(link);
+  }
+
+  function _injectJs(src, attr, onload, onerror) {
+    var s = document.createElement("script");
+    s.src = src;
+    s.setAttribute(attr, "1");
+    s.crossOrigin = "";
+    s.async = true;
+    s.onload = onload;
+    s.onerror = onerror;
+    document.head.appendChild(s);
+  }
+
+  function _loadLeaflet(onReady, onFail) {
+    if (window.L && window.L.map) return onReady();
+    // load CSS once (try all hrefs in parallel — first to land wins)
     if (!document.querySelector('link[data-esd-leaflet]')) {
-      var link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      link.setAttribute("data-esd-leaflet", "1");
-      link.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
-      link.crossOrigin = "";
-      document.head.appendChild(link);
+      _LEAFLET_CSS.forEach(function (h) { _injectCss(h, "data-esd-leaflet"); });
     }
-    if (!document.querySelector('script[data-esd-leaflet]')) {
-      var s = document.createElement("script");
-      s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      s.setAttribute("data-esd-leaflet", "1");
-      s.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
-      s.crossOrigin = "";
-      s.async = true;
-      s.onload = function () { cb(); };
-      document.head.appendChild(s);
-    } else {
-      // already loading
-      var i = setInterval(function () {
-        if (window.L && window.L.map) { clearInterval(i); cb(); }
-      }, 100);
+    // already a script loading? poll until ready
+    if (document.querySelector('script[data-esd-leaflet]')) {
+      var n = 0;
+      var poll = setInterval(function () {
+        if (window.L && window.L.map) { clearInterval(poll); onReady(); }
+        else if (++n > 120) { clearInterval(poll); if (onFail) onFail(); }
+      }, 80);
+      return;
     }
+    var idx = 0;
+    function tryNext() {
+      if (idx >= _LEAFLET_JS.length) { if (onFail) onFail(); return; }
+      var src = _LEAFLET_JS[idx++];
+      _injectJs(
+        src,
+        "data-esd-leaflet",
+        function () {
+          if (window.L && window.L.map) onReady();
+          else if (onFail) onFail();
+        },
+        function () {
+          console.warn("[esd-map] Leaflet load failed:", src);
+          tryNext();
+        }
+      );
+    }
+    tryNext();
   }
 
   function _findNicuSection() {
@@ -218,11 +260,24 @@
     var heads = document.querySelectorAll("h1, h2, h3");
     for (var i = 0; i < heads.length; i++) {
       var t = (heads[i].textContent || "").toLowerCase();
-      if (t.indexOf("three nicus") !== -1 || t.indexOf("south carolina") !== -1 && t.indexOf("nicus") !== -1) {
+      if (t.indexOf("three nicus") !== -1 || (t.indexOf("south carolina") !== -1 && t.indexOf("nicus") !== -1)) {
         return heads[i];
       }
     }
     return null;
+  }
+
+  function _findScene(node) {
+    // Walk up to nearest .scene / section / article so we can append at
+    // the end of the section rather than between heading and cards.
+    var n = node;
+    while (n && n !== document.body) {
+      var cls = n.className || "";
+      if (typeof cls === "string" && /(^|\s)(scene|sites|site-grid)(\s|$)/.test(cls)) return n;
+      if (n.tagName === "SECTION" || n.tagName === "ARTICLE") return n;
+      n = n.parentElement;
+    }
+    return node.parentElement;
   }
 
   function _formatPct(n) { return (n * 100).toFixed(1) + "%"; }
@@ -241,36 +296,87 @@
     ].join("");
   }
 
+  function _renderSvgFallback(host) {
+    // Static SC SVG with 3 pins — last-resort when Leaflet/tiles fail.
+    host.innerHTML = [
+      '<svg viewBox="0 0 600 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block;">',
+        '<defs>',
+          '<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">',
+            '<stop offset="0%" stop-color="#f6efe2"/>',
+            '<stop offset="100%" stop-color="#efe5d2"/>',
+          '</linearGradient>',
+        '</defs>',
+        '<rect width="600" height="380" fill="url(#bg)"/>',
+        // very rough SC outline
+        '<path d="M70 240 L160 130 L260 80 L370 90 L470 130 L520 200 L500 280 L420 320 L300 330 L200 320 L120 290 Z" ',
+              'fill="#fff8eb" stroke="rgba(115,0,10,0.18)" stroke-width="1.4"/>',
+        // pins (relative coords)
+        '<g transform="translate(220,200)"><circle r="6" fill="#73000a"/><text y="-12" text-anchor="middle" font-family="Inter" font-size="11" fill="#73000a" font-weight="600">Columbia</text></g>',
+        '<g transform="translate(150,170)"><circle r="6" fill="#73000a"/><text y="-12" text-anchor="middle" font-family="Inter" font-size="11" fill="#73000a" font-weight="600">Greenville</text></g>',
+        '<g transform="translate(370,265)"><circle r="6" fill="#73000a"/><text y="-12" text-anchor="middle" font-family="Inter" font-size="11" fill="#73000a" font-weight="600">Charleston</text></g>',
+        '<text x="300" y="356" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a8270" letter-spacing="2">FALLBACK MAP · interactive tiles unavailable</text>',
+      '</svg>'
+    ].join("");
+  }
+
   function _mountMap() {
     var headNode = _findNicuSection();
     if (!headNode) return false;
+    if (document.getElementById("__esd_nicu_map_wrap")) return false;
 
-    var anchor = headNode.parentElement;
-    // try to insert after the description paragraph if there is one
-    var sibling = headNode.nextElementSibling;
-    if (sibling && /^p$|description|t-body/i.test(sibling.tagName + " " + sibling.className)) {
-      anchor = sibling.parentElement;
-      headNode = sibling;
-    }
+    var scene = _findScene(headNode);
 
     var wrap = document.createElement("div");
     wrap.id = "__esd_nicu_map_wrap";
+    wrap.style.cssText = "display:block;width:100%;max-width:1280px;margin-left:auto;margin-right:auto;";
     wrap.innerHTML = [
       '<div class="nicu-map-head">',
         '<span class="nicu-map-eyebrow">Live recruitment map · 3 sites · South Carolina</span>',
+        '<span class="nicu-map-layer-toggle" role="group" aria-label="Map style">',
+          '<button type="button" data-layer="positron" class="active">Cream</button>',
+          '<button type="button" data-layer="streets">Streets</button>',
+          '<button type="button" data-layer="satellite">Satellite</button>',
+        '</span>',
         '<span class="nicu-map-live">LIVE · updates every 5s</span>',
       '</div>',
       '<div id="__esd_nicu_map" role="region" aria-label="Interactive NICU recruitment map"></div>',
       '<div class="nicu-legend">',
-        '<span class="item"><span class="swatch"></span> Active study site</span>',
-        '<span class="item">Click a pin for live metadata</span>',
+        '<span class="item"><span class="swatch"></span><span>Active study site</span></span>',
+        '<span class="item"><span class="swatch" style="background:#d4ad6a;"></span><span>Click a pin for live metadata</span></span>',
+        '<span class="item"><span class="swatch" style="background:#55a868;"></span><span>Auto-refresh every 5 s</span></span>',
       '</div>',
       '<div class="nicu-summary"></div>'
     ].join("");
 
-    headNode.parentNode.insertBefore(wrap, headNode.nextSibling);
+    // Append at end of the surrounding scene so the map sits after the
+    // SITE cards instead of squeezing between the heading and grid.
+    if (scene && scene !== document.body) {
+      scene.appendChild(wrap);
+    } else {
+      headNode.parentNode.insertBefore(wrap, headNode.nextSibling);
+    }
+
+    // Inline-fallback CSS for the legend gap so even if the overlay
+    // <style> hasn't loaded yet (rare race), items don't run together.
+    wrap.querySelectorAll(".nicu-legend .item").forEach(function (el) {
+      el.style.display = "inline-flex";
+      el.style.alignItems = "center";
+      el.style.gap = "6px";
+      el.style.marginRight = "12px";
+    });
+
+    var loadFailed = false;
+    var failTimer = setTimeout(function () {
+      // If Leaflet didn't initialize in 6 s, swap in SVG fallback.
+      if (!window.L || !document.querySelector("#__esd_nicu_map .leaflet-container")) {
+        loadFailed = true;
+        _renderSvgFallback(document.getElementById("__esd_nicu_map"));
+      }
+    }, 6000);
 
     _loadLeaflet(function () {
+      clearTimeout(failTimer);
+      if (loadFailed) return;
       var L = window.L;
       var map = L.map("__esd_nicu_map", {
         scrollWheelZoom: false,
@@ -279,12 +385,46 @@
         attributionControl: true
       });
 
-      // Cream-toned tile layer — Carto positron, very light
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 18,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: "abcd"
-      }).addTo(map);
+      var layers = {
+        positron: L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+          {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: "abcd"
+          }
+        ),
+        streets: L.tileLayer(
+          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }
+        ),
+        satellite: L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+          }
+        )
+      };
+      layers.positron.addTo(map);
+      var current = "positron";
+
+      // Layer toggle
+      wrap.querySelectorAll(".nicu-map-layer-toggle button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var k = b.getAttribute("data-layer");
+          if (k === current) return;
+          map.removeLayer(layers[current]);
+          layers[k].addTo(map);
+          current = k;
+          wrap.querySelectorAll(".nicu-map-layer-toggle button").forEach(function (x) {
+            x.classList.toggle("active", x === b);
+          });
+        });
+      });
 
       var pinIcon = L.divIcon({
         className: "",
@@ -296,20 +436,57 @@
 
       var markers = {};
       var bounds = [];
-      NICU_SITES.forEach(function (s) {
-        var m = L.marker([s.lat, s.lng], { icon: pinIcon, title: s.name + " — " + s.partner })
+      NICU_SITES.forEach(function (s, idx) {
+        var m = L.marker([s.lat, s.lng], {
+          icon: pinIcon,
+          title: s.name + " — " + s.partner,
+          opacity: 0   // hidden, faded in for stagger animation
+        })
           .addTo(map)
           .bindPopup(_popupHtml(s), { closeButton: true, autoPan: true, maxWidth: 280 });
         markers[s.key] = m;
         bounds.push([s.lat, s.lng]);
-        m.on("click", function () { /* popup opens automatically */ });
+        // staggered fade-in
+        setTimeout(function () {
+          var el = m.getElement();
+          if (el) {
+            el.style.transition = "opacity 380ms cubic-bezier(0.22,1,0.36,1), transform 380ms cubic-bezier(0.22,1,0.36,1)";
+            el.style.transform = el.style.transform || "translate3d(0,0,0)";
+            m.setOpacity(1);
+          }
+        }, 360 + idx * 180);
       });
 
-      map.fitBounds(bounds, { padding: [42, 42] });
-      setTimeout(function () { map.invalidateSize(); }, 60);
+      // Bound the map view to South Carolina then ease in
+      map.fitBounds(bounds, { padding: [56, 56] });
+      setTimeout(function () { map.invalidateSize(); }, 80);
 
-      // open Columbia by default for first paint
-      if (markers.columbia) markers.columbia.openPopup();
+      // Auto-open Columbia popup once the marker fades in
+      setTimeout(function () {
+        if (markers.columbia) markers.columbia.openPopup();
+      }, 1000);
+
+      // Sites strip — clickable chips that flyTo
+      var strip = document.createElement("div");
+      strip.className = "nicu-site-chips";
+      strip.innerHTML = NICU_SITES.map(function (s) {
+        return '<button type="button" data-site="' + s.key + '">' +
+                 '<span class="dot"></span>' + s.name + ' · ' + s.partner +
+               '</button>';
+      }).join("");
+      wrap.insertBefore(strip, wrap.querySelector(".nicu-summary"));
+      strip.addEventListener("click", function (e) {
+        var b = e.target.closest("button[data-site]");
+        if (!b) return;
+        var k = b.getAttribute("data-site");
+        var s = NICU_SITES.find(function (x) { return x.key === k; });
+        if (!s || !markers[k]) return;
+        map.flyTo([s.lat, s.lng], 11, { duration: 1.1, easeLinearity: 0.25 });
+        setTimeout(function () { markers[k].openPopup(); }, 900);
+        strip.querySelectorAll("button").forEach(function (x) {
+          x.classList.toggle("active", x === b);
+        });
+      });
 
       // Update summary cells + tick live counters
       function renderSummary() {
@@ -326,18 +503,17 @@
           '<div class="cell"><span class="k">Open queries</span><span class="v">' + totalQ + '</span></div>',
           '<div class="cell"><span class="k">Readings / day</span><span class="v">' + totalR + '</span></div>'
         ].join("");
+        // inline gap + display so it always reads as a grid even if
+        // overlay CSS arrives late
+        sum.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px;";
+        sum.querySelectorAll(".cell .k, .cell .v").forEach(function (n) { n.style.display = "block"; });
       }
       renderSummary();
 
-      // Tick live counters: small random walk on queries + readings,
-      // monotone increase on enrolled (bounded by target).
       function tick() {
         NICU_SITES.forEach(function (s) {
-          // queries: ±1 random walk, clamp 0..40
           s.queries = Math.max(0, Math.min(40, s.queries + (Math.random() < 0.45 ? -1 : Math.random() < 0.6 ? 0 : 1)));
-          // readings: ±1 random walk, clamp 0..20
           s.readings = Math.max(0, Math.min(20, s.readings + (Math.random() < 0.4 ? -1 : Math.random() < 0.6 ? 0 : 1)));
-          // enrolled: chance to +1 if below target
           if (s.enrolled < s.target && Math.random() < 0.25) s.enrolled += 1;
           s.ready = Math.min(1, s.enrolled / s.target * (0.9 + Math.random() * 0.08));
           if (markers[s.key]) {
@@ -346,9 +522,12 @@
         });
         renderSummary();
       }
-      // store timer on the wrap so re-runs don't double-tick
       if (wrap.__esd_tick) clearInterval(wrap.__esd_tick);
       wrap.__esd_tick = setInterval(tick, 5000);
+    }, function () {
+      // hard-failure path — render SVG fallback immediately
+      clearTimeout(failTimer);
+      _renderSvgFallback(document.getElementById("__esd_nicu_map"));
     });
 
     return true;
