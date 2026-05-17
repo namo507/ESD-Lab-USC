@@ -1,13 +1,14 @@
 """
-Render the Cloudflare Pages wrapper from a tracked template.
+Render the Cloudflare Pages runtime wrapper from a tracked template.
 
 Why this exists
 ---------------
-The Pages-hosted public link `https://esd-lab-namo.pages.dev/` is the
-operator's *canonical* shareable URL. It iframes the live dashboard origin —
-either a stable named-tunnel hostname (e.g. https://dashboard.esdlabsc.com)
-or, when no named tunnel is configured, the rotating quick-tunnel URL
-(`https://<random>.trycloudflare.com/dashboard/`).
+The wrapper gives the local runtime a stable Pages-hosted preview URL on a
+non-production branch, while the main `esd-lab-namo.pages.dev` alias is now
+reserved for the canonical static site built by `scripts/build_pages_site.py`.
+It iframes the live dashboard origin — either a stable named-tunnel hostname
+(e.g. https://dashboard.esdlabsc.com) or, when no named tunnel is configured,
+the rotating quick-tunnel URL (`https://<random>.trycloudflare.com/dashboard/`).
 
 Before this script, the wrapper HTML at `temp/pages-wrapper/index.html` had a
 specific quick-tunnel hostname *baked in*. Every restart of the share script
@@ -22,7 +23,7 @@ This script replaces that pattern with a deterministic build:
     Optional origin metadata tokens may also be present for non-visual uses.
 3. Write to two outputs:
      - `dashboard/public/pages_wrapper/index.html` (committable preview)
-     - `dist/pages-wrapper/index.html` (deploy artifact for `wrangler pages deploy`)
+    - `dist/pages-runtime-wrapper/index.html` (deploy artifact for runtime preview deploys)
 4. Write a JSON manifest with origin URL + timestamp + tunnel kind so the
    share script can detect drift.
 
@@ -41,6 +42,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -48,7 +50,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "dashboard" / "public" / "pages_wrapper" / "template.html"
 PREVIEW = ROOT / "dashboard" / "public" / "pages_wrapper" / "index.html"
-DEPLOY_DIR = ROOT / "dist" / "pages-wrapper"
+DEPLOY_DIR = ROOT / "dist" / "pages-runtime-wrapper"
 DEPLOY = DEPLOY_DIR / "index.html"
 MANIFEST = ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
 
@@ -56,6 +58,12 @@ REQUIRED_TOKENS = {
     "{{DASHBOARD_URL}}",
     "{{GENERATED_AT}}",
 }
+
+
+def _runtime_pages_url() -> str:
+    project = os.environ.get("CLOUDFLARE_RUNTIME_PAGES_PROJECT", "esd-lab-namo")
+    branch = os.environ.get("CLOUDFLARE_RUNTIME_PAGES_BRANCH", "runtime-share")
+    return f"https://{branch}.{project}.pages.dev/"
 
 
 def _ensure_dashboard_path(origin: str) -> str:
@@ -106,7 +114,7 @@ def render(origin: str, kind: str | None) -> tuple[str, dict[str, str]]:
         "origin_host": display,
         "tunnel_kind": kind or ("named" if "trycloudflare.com" not in display else "quick"),
         "generated_at": generated_at,
-        "wrapper_canonical": "https://esd-lab-namo.pages.dev/",
+        "wrapper_canonical": _runtime_pages_url(),
     }
     return rendered, manifest
 
@@ -150,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  deploy:  {DEPLOY.relative_to(ROOT)}")
     print(f"  manifest: {MANIFEST.relative_to(ROOT)}")
     print()
-    print(f"canonical Pages wrapper → https://esd-lab-namo.pages.dev/")
+    print(f"runtime Pages preview    → {_runtime_pages_url()}")
     print(f"target origin            → {manifest['dashboard_url']}")
     print(f"tunnel kind              → {manifest['tunnel_kind']}")
     return 0

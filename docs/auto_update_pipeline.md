@@ -63,14 +63,16 @@ python scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
 For a public share link from a local machine:
 
 ```bash
-make dashboard-share      # auto mode: prefer named tunnel, fall back to Pages wrapper
+make dashboard-share      # auto mode: prefer named tunnel, fall back to Pages runtime preview
 make share-named          # require stable named tunnel; fail if .env incomplete
-make share-quick          # one-off random hostname (no wrapper deploy)
+make share-quick          # one-off random hostname + runtime preview branch
 ```
 
-The canonical public URL is the **Cloudflare Pages wrapper** at
-`https://esd-lab-namo.pages.dev/`. The wrapper iframes whichever cloudflared
-origin is currently live; the wrapper URL itself never rotates.
+The canonical static-site URL is `https://esd-lab-namo.pages.dev/` and is now
+built from `web/dashboard-source.html` plus the Pages overlay. Local quick-share
+runtime publishing is separate: the wrapper goes to a non-production Pages
+preview branch, `https://runtime-share.esd-lab-namo.pages.dev/` by default,
+so tunnel restarts cannot overwrite the main site.
 
 When auto/quick mode runs, the script:
 
@@ -78,22 +80,29 @@ When auto/quick mode runs, the script:
 2. starts the cloudflared tunnel.
 3. captures the new origin URL.
 4. **regenerates** `dashboard/public/pages_wrapper/index.html` and
-   `dist/pages-wrapper/index.html` so the iframe target is fresh.
-5. prints a `Canonical public URL` block plus an `Ephemeral cloudflared
+   `dist/pages-runtime-wrapper/index.html` so the iframe target is fresh.
+5. prints a `Stable runtime preview URL` block plus an `Ephemeral cloudflared
    origin` block separately. Only the canonical URL should ever be published.
 
 After every quick-tunnel run, the share script auto-deploys the regenerated
-wrapper to Pages when `CLOUDFLARE_API_TOKEN` is available. If that token is
-not present, deploy the wrapper manually:
+runtime wrapper preview when `CLOUDFLARE_API_TOKEN` is available. If that token
+is not present, deploy the runtime wrapper manually:
 
 ```bash
 # Requires CLOUDFLARE_API_TOKEN with Pages:Edit + Account:Read scopes.
-# Targets the production alias on the project's main branch by default.
-make pages-deploy
-# = wrangler@3.112.0 pages deploy dist/pages-wrapper \
-#       --project-name $CLOUDFLARE_PAGES_PROJECT \
-#       --branch $CLOUDFLARE_PAGES_BRANCH (default main) \
+# Targets the runtime preview branch by default.
+make pages-runtime-deploy
+# = wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper \
+#       --project-name $CLOUDFLARE_RUNTIME_PAGES_PROJECT \
+#       --branch $CLOUDFLARE_RUNTIME_PAGES_BRANCH (default runtime-share) \
 #       --commit-dirty=true
+```
+
+To auto-publish the canonical Pages site from local `web/` edits instead of the
+runtime wrapper, run:
+
+```bash
+make pages-watch
 ```
 
 To promote to Tier 1 (a stable branded hostname instead of the wrapper),
@@ -116,7 +125,7 @@ Cloudflare account prerequisites required for the named-tunnel path:
 
 If those prerequisites are missing, the share script never silently degrades
 — it warns explicitly that it is falling back to a quick tunnel behind the
-Pages wrapper.
+Pages runtime preview.
 
 ## 4. Running it manually
 

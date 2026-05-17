@@ -41,26 +41,27 @@ docker compose up --build dashboard
 Then open `http://localhost:8080/dashboard/`.
 
 If you need to share the dashboard with someone outside your machine, the
-canonical public URL is:
+canonical static-site URL is:
 
 > **https://esd-lab-namo.pages.dev/** (Cloudflare Pages wrapper · stable)
 
-The wrapper iframes the live cloudflared origin. Run one of:
+For a live local runtime share, the quick-tunnel wrapper now uses a separate
+Pages preview branch so it cannot overwrite the canonical site. Run one of:
 
 ```bash
 make share-named         # use the stable named tunnel hostname (preferred)
-make dashboard-share     # auto: named when configured, otherwise quick + Pages wrapper
-make share-quick         # one-off random hostname, no wrapper
+make dashboard-share     # auto: named when configured, otherwise quick + Pages runtime preview
+make share-quick         # one-off random hostname + runtime preview
 ```
 
-Output prints a clearly-labelled `Canonical public URL` plus, in
+Output prints a clearly-labelled `Stable runtime preview URL` plus, in
 quick-tunnel mode, an `Ephemeral cloudflared origin` line that **must not be
 published**. When `CLOUDFLARE_API_TOKEN` is exported, the quick-tunnel path
-auto-deploys the regenerated wrapper to Pages. Without that token, deploy the
-wrapper manually:
+auto-deploys the regenerated runtime wrapper preview to Pages. Without that
+token, deploy the wrapper manually:
 
 ```bash
-make pages-deploy
+make pages-runtime-deploy
 ```
 
 For a stable branded hostname (e.g. `https://dashboard.esdlabsc.com/dashboard/`),
@@ -78,8 +79,8 @@ Cloudflare account prerequisites for Tier 1 (named tunnel):
 3. The Tunnel token copied into `.env`.
 
 If those prerequisites are not in place, the auto mode falls back to the
-Pages wrapper (Tier 2) — the wrapper URL stays the same; only the hidden
-iframe target rotates, and the share script regenerates the wrapper on
+Pages runtime preview (Tier 2) — the preview URL stays the same; only the
+hidden iframe target rotates, and the share script regenerates the wrapper on
 every run.
 
 ### Option C — From a URL (if you host it)

@@ -3,6 +3,8 @@
    - Scroll progress indicator
    - IntersectionObserver re-tune for .reveal (threshold 0.15)
    - Mousemove sheen wiring (--mx / --my on .glass-card)
+  - Handoff-style shell motion: custom cursor, magnetic CTAs, hero char-rise
+  - Scroll-reactive nav + dock chrome
    - Nav active-section highlighter
    - Watcher for chart tiles with empty/blank canvases
    ============================================================= */
@@ -83,7 +85,247 @@
     }, { passive: true });
   }
 
-  /* ---------- 4. Nav active highlight on scroll --------------- */
+  /* ---------- 4. Handoff shell motion ------------------------ */
+  function ensureCursorNodes() {
+    if (!window.matchMedia || window.matchMedia("(hover: none), (pointer: coarse)").matches) {
+      return null;
+    }
+    var ring = document.querySelector(".cursor-ring");
+    var dot = document.querySelector(".cursor-dot");
+    if (!ring) {
+      ring = document.createElement("div");
+      ring.className = "cursor-ring";
+      document.body.appendChild(ring);
+    }
+    if (!dot) {
+      dot = document.createElement("div");
+      dot.className = "cursor-dot";
+      document.body.appendChild(dot);
+    }
+    return { ring: ring, dot: dot };
+  }
+
+  function wireCustomCursor() {
+    if (window.__ESD_CURSOR_WIRED__) return;
+    var nodes = ensureCursorNodes();
+    if (!nodes) return;
+    window.__ESD_CURSOR_WIRED__ = true;
+
+    var dot = nodes.dot;
+    var ring = nodes.ring;
+    var mx = window.innerWidth / 2;
+    var my = window.innerHeight / 2;
+    var dx = mx;
+    var dy = my;
+    var rx = mx;
+    var ry = my;
+    var raf = 0;
+
+    function onMove(e) {
+      mx = e.clientX;
+      my = e.clientY;
+    }
+
+    function onDown() {
+      ring.classList.add("hover");
+    }
+
+    function onUp() {
+      ring.classList.remove("hover");
+    }
+
+    function onOver(e) {
+      var node = e.target && e.target.nodeType === 1 ? e.target : e.target && e.target.parentElement;
+      var target = node && node.closest ? node.closest("[data-cursor],a,button,[role=button],input,[data-magnetic]") : null;
+      if (!target) {
+        ring.classList.remove("hover");
+        ring.classList.remove("text");
+        return;
+      }
+      var kind = target.getAttribute("data-cursor");
+      ring.classList.toggle("text", kind === "text");
+      ring.classList.toggle("hover", kind !== "text");
+    }
+
+    function tick() {
+      dx += (mx - dx) * 0.55;
+      dy += (my - dy) * 0.55;
+      rx += (mx - rx) * 0.18;
+      ry += (my - ry) * 0.18;
+      dot.style.transform = "translate3d(" + (dx - 3).toFixed(2) + "px," + (dy - 3).toFixed(2) + "px,0)";
+      ring.style.transform = "translate3d(" + (rx - 16).toFixed(2) + "px," + (ry - 16).toFixed(2) + "px,0)";
+      raf = requestAnimationFrame(tick);
+    }
+
+    raf = requestAnimationFrame(tick);
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mouseover", onOver, { passive: true });
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("blur", onUp);
+
+    window.__ESD_CURSOR_CLEANUP__ = function () {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseover", onOver);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("blur", onUp);
+    };
+  }
+
+  function _markCursorTargets() {
+    document.querySelectorAll(".gloss").forEach(function (el) {
+      if (!el.getAttribute("data-cursor")) el.setAttribute("data-cursor", "text");
+    });
+    document.querySelectorAll(".flow-row, .group-tag, .kpi, .stage-node, .glass-card, .reading-card, .model-card, .viz-tile, .dock .dock-item, .nav-link").forEach(function (el) {
+      if (!el.getAttribute("data-cursor")) el.setAttribute("data-cursor", "hover");
+    });
+  }
+
+  function _wrapMagneticTarget(el) {
+    if (!el || !el.parentNode) return null;
+    if (el.closest("[data-magnetic]")) return el.closest("[data-magnetic]");
+    var wrap = document.createElement("span");
+    wrap.setAttribute("data-magnetic", "1");
+    wrap.setAttribute("data-esd-magnetic-wrap", "1");
+    wrap.style.display = "inline-block";
+    if (el.parentElement && window.getComputedStyle(el.parentElement).display.indexOf("flex") !== -1) {
+      wrap.style.flex = "0 0 auto";
+    }
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    return wrap;
+  }
+
+  function _ensureMagneticTargets() {
+    _markCursorTargets();
+    document.querySelectorAll(".nav-cta, .actions a, .dock button, .scene-header button, .scene-header a, .hero button, .hero a").forEach(function (el) {
+      _wrapMagneticTarget(el);
+    });
+  }
+
+  function wireMagnetic() {
+    if (!window.matchMedia || window.matchMedia("(hover: none), (pointer: coarse)").matches) {
+      return;
+    }
+    _ensureMagneticTargets();
+    document.querySelectorAll("[data-magnetic]:not([data-esd-magnetic])").forEach(function (el) {
+      el.setAttribute("data-esd-magnetic", "1");
+      var tx = 0;
+      var ty = 0;
+      var cx = 0;
+      var cy = 0;
+      var raf = 0;
+      var strength = parseFloat(el.getAttribute("data-magnetic-strength") || "0.24");
+
+      function onMove(e) {
+        var rect = el.getBoundingClientRect();
+        tx = (e.clientX - (rect.left + rect.width / 2)) * strength;
+        ty = (e.clientY - (rect.top + rect.height / 2)) * strength;
+      }
+
+      function onLeave() {
+        tx = 0;
+        ty = 0;
+      }
+
+      function tick() {
+        if (!document.body.contains(el)) return;
+        cx += (tx - cx) * 0.18;
+        cy += (ty - cy) * 0.18;
+        el.style.transform = "translate3d(" + cx.toFixed(2) + "px," + cy.toFixed(2) + "px,0)";
+        raf = requestAnimationFrame(tick);
+      }
+
+      el.addEventListener("mousemove", onMove);
+      el.addEventListener("mouseleave", onLeave);
+      raf = requestAnimationFrame(tick);
+      el.__esdMagCleanup = function () {
+        cancelAnimationFrame(raf);
+        el.removeEventListener("mousemove", onMove);
+        el.removeEventListener("mouseleave", onLeave);
+      };
+    });
+  }
+
+  function _escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function _applyCharRise(el, italicMatch) {
+    if (!el || el.dataset.esdCharRise || el.querySelector(".char-rise")) return;
+    var text = (el.textContent || "").replace(/\s+/g, " ").trim();
+    if (!text) return;
+    var ci = 0;
+    var html = ['<span class="char-rise" aria-hidden="true">'];
+    text.split(" ").forEach(function (word, wi, words) {
+      var isItalic = italicMatch && italicMatch.test(word);
+      html.push('<span style="white-space:nowrap"' + (isItalic ? ' class="italic"' : '') + '>');
+      word.split("").forEach(function (ch) {
+        html.push('<span class="ch" style="--ci:' + (ci++) + '">' + _escapeHtml(ch) + '</span>');
+      });
+      if (wi < words.length - 1) {
+        html.push('<span class="ch" style="--ci:' + (ci++) + '">&nbsp;</span>');
+      }
+      html.push("</span>");
+    });
+    html.push("</span>");
+    el.setAttribute("aria-label", text);
+    el.innerHTML = html.join("");
+    el.dataset.esdCharRise = "1";
+  }
+
+  function wireHeroTitle() {
+    var candidates = Array.prototype.slice.call(document.querySelectorAll(".hero .t-display, .hero h1, .title strong"));
+    var target = null;
+    candidates.some(function (el) {
+      var txt = (el.textContent || "").toLowerCase();
+      if (txt.indexOf("heartbeat") !== -1 || txt.indexOf("baby") !== -1 || txt.indexOf("first year") !== -1) {
+        target = el;
+        return true;
+      }
+      return false;
+    });
+    if (target) _applyCharRise(target, /first/i);
+  }
+
+  function wireNavChrome() {
+    if (window.__ESD_NAV_CHROME_WIRED__) return;
+    window.__ESD_NAV_CHROME_WIRED__ = true;
+    var lastY = window.scrollY || 0;
+
+    function syncChrome() {
+      var y = window.scrollY || 0;
+      var goingDown = y > lastY && y > 120;
+      var nav = document.querySelector(".nav");
+      var dock = document.querySelector(".dock");
+      if (nav) {
+        var navShift = Math.ceil(nav.getBoundingClientRect().height + 24);
+        nav.classList.toggle("hidden", goingDown);
+        nav.style.transform = goingDown
+          ? "translateX(-50%) translateY(-" + navShift + "px)"
+          : "translateX(-50%) translateY(0px)";
+      }
+      if (dock) {
+        var dockShift = Math.ceil(dock.getBoundingClientRect().height + 28);
+        dock.style.transform = goingDown
+          ? "translateX(-50%) translateY(" + dockShift + "px)"
+          : "translateX(-50%) translateY(0px)";
+      }
+      lastY = y;
+    }
+
+    window.addEventListener("scroll", syncChrome, { passive: true });
+    syncChrome();
+  }
+
+  /* ---------- 5. Nav active highlight on scroll --------------- */
   function wireNavActive() {
     var sections = Array.prototype.slice.call(
       document.querySelectorAll("section[id], section[data-section-id], .scene[id]")
@@ -114,7 +356,7 @@
     sections.forEach(function (s) { io.observe(s); });
   }
 
-  /* ---------- 5. Empty audit table detection ------------------ */
+  /* ---------- 6. Empty audit table detection ------------------ */
   function wireEmptyStates() {
     document.querySelectorAll(".audit-table").forEach(function (tbl) {
       var rows = tbl.querySelectorAll("tbody tr");
@@ -122,7 +364,7 @@
     });
   }
 
-  /* ---------- 6. Deploy banner -------------------------------- */
+  /* ---------- 7. Deploy banner -------------------------------- */
   function ensureDeployBanner() {
     if (document.getElementById("__esd_deploy_banner")) return;
     var meta = document.querySelector('meta[name="esd-deploy-stamp"]');
@@ -134,7 +376,7 @@
     document.body.appendChild(b);
   }
 
-  /* ---------- 7. NICU geospatial map injection ---------------- */
+  /* ---------- 8. NICU geospatial map injection ---------------- */
   /* Finds the "South Carolina, three NICUs" section by heading text,
      loads Leaflet from CDN once, mounts an interactive map with the
      three study sites (USC IMB Columbia, Prisma Upstate Greenville,
@@ -2465,7 +2707,10 @@
 
   /* ---------- 9. Re-run on DOM mutations (bundler-late render) */
   function rewireAll() {
+    try { wireMagnetic(); } catch (e) {}
+    try { wireHeroTitle(); } catch (e) {}
     try { wireReveal(); } catch (e) {}
+    try { wireNavChrome(); } catch (e) {}
     try { wireNavActive(); } catch (e) {}
     try { wireEmptyStates(); } catch (e) {}
     try { ensureDeployBanner(); } catch (e) {}
@@ -2481,7 +2726,9 @@
   function boot() {
     ensureScrollBar();
     updateScroll();
+    wireCustomCursor();
     wireSheen();
+    wireNavChrome();
     rewireAll();
     window.addEventListener("scroll", updateScroll, { passive: true });
     window.addEventListener("resize", updateScroll);

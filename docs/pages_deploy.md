@@ -11,13 +11,18 @@ under `web/` reaches production within a couple of minutes of pushing to
 |------|------|
 | `web/dashboard-source.html` | Standalone Dashboard ESD v2 bundle. Source of truth for the dashboard payload. |
 | `web/pages-overlay.css` | Layout audit fix bundle. Applies the warm-glass design system corrections on top of the bundle. |
-| `web/pages-overlay.js` | Runtime patches — scroll progress, IntersectionObserver re-tune, glass-card sheen, nav active state, empty-state handling. |
+| `web/pages-overlay.js` | Runtime patches — scroll progress, reveal tuning, shell motion, nav/dock behavior, hub injection, empty-state handling. |
 | `scripts/build_pages_site.py` | Stitches source + overlays into `dist/pages-wrapper/index.html`. |
+| `scripts/watch_pages_site.py` | Watches the canonical Pages inputs and rebuilds/redeploys `dist/pages-wrapper/` on local changes. |
 | `scripts/check_site_health.py` | Health probe used by the uptime workflow and runnable locally. |
 | `.github/workflows/deploy-pages.yml` | On push to `main` (or manual / repository_dispatch), builds the artifact and runs `wrangler pages deploy`. |
 | `.github/workflows/uptime-monitor.yml` | Cron every 15 min — probes the live URL, opens an issue on failure, fires `repository_dispatch: redeploy-pages` to auto-recover. |
 
 `dist/pages-wrapper/` is git-ignored; the workflow regenerates it on every run.
+
+The old cloudflared runtime wrapper is now separate. It builds to
+`dist/pages-runtime-wrapper/` and can be published to a non-production Pages
+preview branch without touching the canonical `main` deployment.
 
 ## How a change reaches production
 
@@ -73,8 +78,20 @@ workflow ships a pre-built directory, so Pages does no build of its own.
 Rebuild the artifact:
 
 ```bash
-python scripts/build_pages_site.py
+make pages-build
 open dist/pages-wrapper/index.html
+```
+
+Watch local `web/` edits and auto-publish them to the canonical Pages site:
+
+```bash
+make pages-watch
+```
+
+Build only, without a deploy:
+
+```bash
+python scripts/watch_pages_site.py --once --no-deploy
 ```
 
 Probe production:
@@ -98,6 +115,9 @@ gh workflow run deploy-pages.yml
 - **Layout fixes live as an overlay**, not as a fork of the bundle. When a
   new dashboard export drops, only `web/dashboard-source.html` changes — the
   overlay CSS and JS continue to apply.
+- **Local auto-publish now watches the canonical site inputs directly.** The
+  runtime quick-share wrapper lives on its own preview branch, so quick-share
+  restarts can no longer overwrite the production Pages alias.
 - **Self-healing via the uptime monitor.** A transient edge failure or a
   missing recent deploy stamp triggers a fresh `wrangler pages deploy`
   automatically.

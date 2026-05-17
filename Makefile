@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-deploy pages-watch pages-watch-once share-live
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -120,16 +120,28 @@ dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	fi
 	bash scripts/share_dashboard.sh
 
-pages-deploy:  ## Deploy the Pages wrapper to the canonical Cloudflare Pages project
+pages-build:  ## Build the canonical Cloudflare Pages dashboard artifact locally
+	$(PYTHON) scripts/build_pages_site.py
+
+pages-deploy: pages-build  ## Build + deploy the canonical Cloudflare Pages dashboard site
 	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
 
-pages-watch:  ## Continuously regen + redeploy wrapper whenever the cloudflared origin rotates
+pages-watch:  ## Watch the canonical Pages dashboard inputs and redeploy on change
+	$(PYTHON) scripts/watch_pages_site.py
+
+pages-watch-once:  ## One-shot build + deploy of the canonical Pages dashboard site
+	$(PYTHON) scripts/watch_pages_site.py --once
+
+pages-runtime-deploy:  ## Deploy the tunnel runtime wrapper to a non-production Pages preview branch
+	npx --yes wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper --project-name $${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share} --commit-dirty=true
+
+pages-runtime-watch:  ## Continuously regen + redeploy the tunnel runtime wrapper preview on origin rotation
 	$(PYTHON) scripts/watch_pages_wrapper.py
 
-pages-watch-once:  ## One-shot: regen + redeploy iff origin differs from last manifest
+pages-runtime-watch-once:  ## One-shot runtime wrapper sync to the preview branch
 	$(PYTHON) scripts/watch_pages_wrapper.py --once
 
-share-live:  ## Continuously supervise local dashboard+quick-share and republish wrapper on tunnel restart
+share-live:  ## Continuously supervise local dashboard+quick-share and republish the runtime wrapper preview on tunnel restart
 	bash scripts/share_dashboard.sh --continuous --mode quick
 
 # ─── Backup ──────────────────────────────────────────────────────────────────

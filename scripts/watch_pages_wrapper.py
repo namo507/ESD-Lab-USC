@@ -1,6 +1,6 @@
 """
-Continuously keep the Cloudflare Pages wrapper in sync with the live
-local cloudflared origin.
+Continuously keep the Cloudflare Pages runtime wrapper preview in sync with the
+live local cloudflared origin.
 
 What this watcher does
 ----------------------
@@ -8,13 +8,13 @@ What this watcher does
    (rewritten by `scripts/share_dashboard.sh` every time it brings up
    a tunnel).
 2. When the origin URL there differs from the URL embedded in the
-   deployed wrapper (`dashboard/public/pages_wrapper/manifest.json`),
+    deployed wrapper (`dashboard/public/pages_wrapper/manifest.json`),
    it:
      a. Reruns `scripts/build_pages_wrapper.py --origin <new>`.
-     b. Reruns `wrangler@3.112.0 pages deploy dist/pages-wrapper`
-        with `--branch main --commit-dirty=true` so the production
-        alias at https://esd-lab-namo.pages.dev/ is updated, not a
-        preview hostname.
+      b. Reruns `wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper`
+          with `--branch runtime-share --commit-dirty=true` so the runtime
+          wrapper stays on its own preview URL and never clobbers the main
+          static site alias.
 3. Backs off on failure (exponential up to 60 s) so a flapping tunnel
    never spins wrangler at full speed.
 
@@ -49,7 +49,7 @@ from typing import Optional
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
-DEPLOY_ARTIFACT = ROOT / "dist" / "pages-wrapper" / "index.html"
+DEPLOY_ARTIFACT = ROOT / "dist" / "pages-runtime-wrapper" / "index.html"
 
 
 def _runtime_dir() -> Path:
@@ -148,16 +148,16 @@ def _build_wrapper(origin: str, quiet: bool) -> bool:
     return True
 
 
-def _deploy(quiet: bool) -> bool:
+def _deploy(quiet: bool) -> Optional[str]:
     if not DEPLOY_ARTIFACT.exists():
         _log("error", f"deploy artifact missing: {DEPLOY_ARTIFACT.relative_to(ROOT)}")
-        return False
+        return None
     npx = shutil.which("npx")
     if not npx:
         _log("error", "npx not found in PATH; wrangler cannot run")
-        return False
-    project = os.environ.get("CLOUDFLARE_PAGES_PROJECT", "esd-lab-namo")
-    branch = os.environ.get("CLOUDFLARE_PAGES_BRANCH", "main")
+        return None
+    project = os.environ.get("CLOUDFLARE_RUNTIME_PAGES_PROJECT", "esd-lab-namo")
+    branch = os.environ.get("CLOUDFLARE_RUNTIME_PAGES_BRANCH", "runtime-share")
     cmd = [
         npx,
         "--yes",
@@ -175,16 +175,16 @@ def _deploy(quiet: bool) -> bool:
         proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
     except OSError as e:
         _log("error", f"wrangler invocation failed: {e}")
-        return False
+        return None
     if proc.returncode != 0:
         # Surface stderr but redact anything looking like a token (sequences ≥ 20 hex/base64 chars)
         err = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
         _log("error", "wrangler deploy failed: " + " | ".join(err))
-        return False
+        return None
     # Wrangler prints the per-deploy preview URL on the last line; surface it for ops.
     last_line = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else "(no stdout)"
     _log("info", f"deploy ok · {last_line[:140]}")
-    return True
+    return _extract_preview_url(proc.stdout or "") or f"https://{branch}.{project}.pages.dev/"
 
 
 def _extract_preview_url(stdout: str) -> str:
@@ -218,8 +218,10 @@ def watch_once(quiet: bool = False) -> int:
     _log("info", f"origin changed → {current}")
     if not _build_wrapper(current, quiet):
         return 1
-    if not _deploy(quiet):
+    deploy_url = _deploy(quiet)
+    if not deploy_url:
         return 1
+    _record_deploy_success(current, deploy_url)
     return 0
 
 

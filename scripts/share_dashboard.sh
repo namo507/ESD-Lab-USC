@@ -14,9 +14,10 @@
 #                            a quick tunnel).
 #
 # After a quick tunnel comes up, this script automatically regenerates the
-# Cloudflare Pages wrapper at `dashboard/public/pages_wrapper/` so the
-# canonical wrapper URL embeds the new origin. When CLOUDFLARE_API_TOKEN is
-# available, it also deploys the refreshed wrapper to Pages automatically.
+# Cloudflare Pages runtime wrapper at `dashboard/public/pages_wrapper/` so a
+# stable preview URL can embed the new origin. When CLOUDFLARE_API_TOKEN is
+# available, it also deploys the refreshed runtime wrapper preview to Pages
+# automatically without touching the canonical static site alias.
 
 set -euo pipefail
 
@@ -34,7 +35,9 @@ TUNNEL_PID_FILE="$STATE_DIR/cloudflared.pid"
 TUNNEL_LOG_FILE="$STATE_DIR/cloudflared.log"
 ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
 
-PAGES_WRAPPER_CANONICAL="https://esd-lab-namo.pages.dev/"
+PAGES_RUNTIME_PROJECT="${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo}}"
+PAGES_RUNTIME_BRANCH="${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share}"
+PAGES_RUNTIME_PREVIEW="https://${PAGES_RUNTIME_BRANCH}.${PAGES_RUNTIME_PROJECT}.pages.dev/"
 
 mode="auto"
 continuous="false"
@@ -226,12 +229,12 @@ auto_deploy_pages_wrapper() {
 
   local deploy_log
   deploy_log="$STATE_DIR/pages_deploy.log"
-  if make pages-deploy >"$deploy_log" 2>&1; then
-    echo "rebuilt and auto-deployed to ${PAGES_WRAPPER_CANONICAL}"
+  if make pages-runtime-deploy >"$deploy_log" 2>&1; then
+    echo "rebuilt and auto-deployed to ${PAGES_RUNTIME_PREVIEW}"
     return 0
   fi
 
-  echo "WARNING: rebuilt, but auto-deploy failed; see ${deploy_log} or run 'make pages-deploy' manually"
+  echo "WARNING: rebuilt, but auto-deploy failed; see ${deploy_log} or run 'make pages-runtime-deploy' manually"
   return 1
 }
 
@@ -252,8 +255,8 @@ emit_result() {
     echo "  Canonical public URL (stable, named Cloudflare tunnel)"
     echo "  → ${origin_url}"
   else
-    echo "  Canonical public URL (Cloudflare Pages wrapper · stable)"
-    echo "  → ${PAGES_WRAPPER_CANONICAL}"
+    echo "  Stable runtime preview URL (Cloudflare Pages branch preview)"
+    echo "  → ${PAGES_RUNTIME_PREVIEW}"
     echo
     echo "  Ephemeral cloudflared origin (rotating quick tunnel — do NOT publish)"
     echo "  → ${origin_url}"
@@ -265,7 +268,7 @@ emit_result() {
   python_bin="$(resolve_python)" || python_bin=""
   if [[ -n "$python_bin" ]]; then
     if "$python_bin" scripts/build_pages_wrapper.py --origin "$origin_url" --kind "$kind" >/dev/null; then
-      rebuild_msg="rebuilt: dashboard/public/pages_wrapper/index.html and dist/pages-wrapper/index.html"
+      rebuild_msg="rebuilt: dashboard/public/pages_wrapper/index.html and dist/pages-runtime-wrapper/index.html"
       if [[ "$kind" == "quick" ]]; then
         if rebuild_msg="$(auto_deploy_pages_wrapper)"; then
           if [[ "$rebuild_msg" == rebuilt\ and\ auto-deployed* ]]; then
@@ -291,20 +294,20 @@ emit_result() {
       cat <<EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
-  2. Open ${PAGES_WRAPPER_CANONICAL} in a browser.
+  2. Open ${PAGES_RUNTIME_PREVIEW} in a browser.
 
-This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.
+This quick-tunnel hostname is temporary; only the Pages runtime preview URL is stable.
 EOF
     else
       cat <<EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
-  2. Deploy the regenerated wrapper to the production alias:
-       make pages-deploy       # = wrangler@3.112.0 pages deploy --branch main --commit-dirty=true
+  2. Deploy the regenerated runtime wrapper preview:
+       make pages-runtime-deploy       # = wrangler@3.112.0 pages deploy --branch ${PAGES_RUNTIME_BRANCH} --commit-dirty=true
        (set CLOUDFLARE_API_TOKEN first; or push to the git-connected branch)
-  3. Open ${PAGES_WRAPPER_CANONICAL} in a browser.
+  3. Open ${PAGES_RUNTIME_PREVIEW} in a browser.
 
-This quick-tunnel hostname is temporary; only the Pages wrapper URL is stable.
+This quick-tunnel hostname is temporary; only the Pages runtime preview URL is stable.
 EOF
     fi
   else
