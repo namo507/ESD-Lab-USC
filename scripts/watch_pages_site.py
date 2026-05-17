@@ -43,6 +43,7 @@ WATCH_FILES = [
     ROOT / "web" / "pages-overlay.css",
     ROOT / "web" / "pages-overlay.js",
     ROOT / "web" / "lab-readings.json",
+    ROOT / "scripts" / "build_pages_site.py",
 ]
 
 
