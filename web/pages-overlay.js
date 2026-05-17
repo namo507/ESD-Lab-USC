@@ -688,6 +688,67 @@
     }
   ];
 
+  var COHORT_ROWS = [
+    { id: 'NANO-0231', group: 'VPT', ga: 28.4, bw: 1180, complete: 88, qc: 'ok', site: 'Greenville' },
+    { id: 'NANO-0230', group: 'TD', ga: 39.1, bw: 3220, complete: 96, qc: 'ok', site: 'Columbia' },
+    { id: 'NANO-0229', group: 'ASIB', ga: 38.8, bw: 3080, complete: 64, qc: 'review', site: 'Columbia' },
+    { id: 'NANO-0228', group: 'VPT', ga: 27.6, bw: 980, complete: 42, qc: 'review', site: 'Charleston' },
+    { id: 'NANO-0227', group: 'TD', ga: 39.6, bw: 3410, complete: 100, qc: 'ok', site: 'Greenville' },
+    { id: 'NANO-0226', group: 'ASIB', ga: 39.0, bw: 3160, complete: 78, qc: 'ok', site: 'Columbia' },
+    { id: 'NANO-0225', group: 'VPT', ga: 29.2, bw: 1340, complete: 91, qc: 'ok', site: 'Columbia' },
+    { id: 'NANO-0224', group: 'VPT', ga: 26.8, bw: 870, complete: 28, qc: 'flag', site: 'Charleston' },
+    { id: 'NANO-0223', group: 'TD', ga: 40.2, bw: 3550, complete: 100, qc: 'ok', site: 'Columbia' },
+    { id: 'NANO-0222', group: 'ASIB', ga: 38.4, bw: 2980, complete: 72, qc: 'ok', site: 'Greenville' }
+  ];
+
+  var PIPELINE_RUNS = [
+    { id: 'run_2026_115_a', scope: 'HRV refresh', trigger: 'auto', initiator: 'cron', status: 'running', duration: '08:14' },
+    { id: 'run_2026_114_c', scope: 'de-id export', trigger: 'nightly', initiator: 'cron', status: 'done', duration: '12:08' },
+    { id: 'run_2026_114_b', scope: 'model recalibration', trigger: 'manual', initiator: 'jbradshaw', status: 'done', duration: '03:42' },
+    { id: 'run_2026_114_a', scope: 'REDCap retry', trigger: 'auto', initiator: 'cron', status: 'review', duration: '05:31' }
+  ];
+
+  var OPS_ALERTS = [
+    { term: 'QA', text: 'NANO-0173 · cga_6mo shows ectopic beats in 14 of 64 epochs — surfaced for human review.' },
+    { term: 'forms', text: '2 intake forms missing DOB · NANO-0228, NANO-0231 · auto-paged S. Patel at 09:14.' },
+    { term: 'flow', text: 'Pipeline throughput is 312 windows / h — 18% above the 7-day median.' },
+    { term: 'PHI', text: 'REDCap field-map check passed for medical_history_v1 — all 6 PHI columns gated.' }
+  ];
+
+  var VALIDATION_SHAP = [
+    { feat: 'RMSSD · cga_3mo', val: 0.142, group: 'HRV' },
+    { feat: 'LF/HF · cga_6mo', val: 0.118, group: 'HRV' },
+    { feat: 'CGA at recording', val: 0.094, group: 'Demo' },
+    { feat: 'HDA % sustained', val: 0.081, group: 'HDA' },
+    { feat: 'pNN50 · cga_3mo', val: 0.067, group: 'HRV' },
+    { feat: 'Birth weight', val: 0.054, group: 'Demo' },
+    { feat: 'NICU days', val: 0.048, group: 'Demo' }
+  ];
+
+  var MODEL_STUDIO = {
+    name: 'nano-risk-v0.3',
+    algorithm: 'XGBoost · 600 trees · max-depth 4 · learning rate 0.04',
+    trained_on: '184 infants · 3 visits each (1mo, 3mo, 6mo) · 552 visit rows',
+    validation: 'Held-out 20% · stratified by group',
+    features_in: 24,
+    outputs: 'P(ASD symptoms ≥ ADOS-T threshold at age 3)',
+    metrics: { auroc: 0.899, f1: 0.853, precision: 0.809, recall: 0.905, ece: 0.041, brier: 0.094 },
+    feature_groups: [
+      { id: 'hrv', label: 'HRV (RMSSD / HF / pNN50)', count: 12, color: 'var(--usc-garnet)' },
+      { id: 'hda', label: 'HDA phase composition', count: 6, color: '#8172B2' },
+      { id: 'demo', label: 'Demographics', count: 4, color: 'var(--warm-500)' },
+      { id: 'site', label: 'Site / recording quality', count: 2, color: '#4C72B0' }
+    ]
+  };
+
+  var MODEL_STUDIO_INPUTS = [
+    { id: 'rmssd_3m', label: 'RMSSD @ 3mo (ms)', min: 15, max: 60, step: 0.5, default: 38.4, weight: -0.32 },
+    { id: 'pct_sustained', label: '% time in sustained HDA', min: 10, max: 80, step: 1, default: 52, weight: -0.28 },
+    { id: 'hr_decel', label: 'Max HR deceleration (bpm)', min: 1, max: 14, step: 0.5, default: 7.2, weight: -0.18 },
+    { id: 'cga_3m_visit', label: 'CGA at 3mo visit (wk)', min: 36, max: 56, step: 0.5, default: 49, weight: 0.04 },
+    { id: 'ectopic', label: 'Ectopic %', min: 0, max: 25, step: 0.5, default: 1.3, weight: 0.14 }
+  ];
+
   function _readings() {
     return (window.__ESD_READINGS__ && window.__ESD_READINGS__.readings) || [];
   }
@@ -771,19 +832,21 @@
         '<div class="eyebrow">Knowledge Hub</div>',
         '<a href="#esd-pane-readings" data-pane="readings" class="active">Readings library</a>',
         '<a href="#esd-pane-pipeline" data-pane="pipeline">Data pipeline</a>',
+        '<a href="#esd-pane-cohort" data-pane="cohort">Cohort snapshot</a>',
         '<a href="#esd-pane-models" data-pane="models">Working models</a>',
-        '<a href="#esd-pane-viz" data-pane="viz">Visualizations</a>',
+        '<a href="#esd-pane-viz" data-pane="viz">Validation lab</a>',
         '<a href="#esd-pane-chat" data-pane="chat">Ask the AI</a>',
       '</aside>',
       '<div class="esd-hub-body">',
         '<header class="esd-hub-head">',
           '<div class="eyebrow">NANO Study · ESD Lab</div>',
           '<h2>Research Knowledge Hub</h2>',
-          '<p>Interactive entry point to the ESD Lab’s indexed readings, working data pipelines, fitted models, study visualizations, and an in-browser AI assistant that reasons over the corpus. Pick a tab to dive in.</p>',
+          '<p>Interactive entry point to the ESD Lab’s indexed readings, cohort operations, working models, validation surfaces, and an in-browser AI assistant that reasons over the synced corpus. Pick a tab to dive in.</p>',
           '<div class="hero-stats">',
             '<span class="pill"><b>' + (sum.count || 0) + '</b> indexed readings</span>',
             '<span class="pill"><b>' + (sum.total_pages || 0) + '</b> pages</span>',
             '<span class="pill"><b>' + (sum.total_size_mb || 0) + '</b> MB</span>',
+            '<span class="pill"><b>' + COHORT_ROWS.length + '</b> cohort rows</span>',
             '<span class="pill"><b>' + MODELS.length + '</b> working models</span>',
             '<span class="pill"><b>' + PIPELINE_STAGES.length + '</b> pipeline stages</span>',
             '<span class="pill"><b>' + NICU_SITES.length + '</b> NICU sites</span>',
@@ -792,8 +855,9 @@
         '<nav class="esd-tabs" role="tablist">',
           '<button role="tab" data-pane="readings" aria-selected="true">Readings library</button>',
           '<button role="tab" data-pane="pipeline" aria-selected="false">Data pipeline</button>',
+          '<button role="tab" data-pane="cohort" aria-selected="false">Cohort snapshot</button>',
           '<button role="tab" data-pane="models" aria-selected="false">Working models</button>',
-          '<button role="tab" data-pane="viz" aria-selected="false">Visualizations</button>',
+          '<button role="tab" data-pane="viz" aria-selected="false">Validation lab</button>',
           '<button role="tab" data-pane="chat" aria-selected="false">Ask the AI</button>',
         '</nav>',
         '<article id="esd-pane-readings" class="esd-pane active" role="tabpanel">',
@@ -808,13 +872,74 @@
           '<div class="pipeline-flow">',
             '<div class="pipeline-stages"></div>',
             '<div class="stage-detail" id="esd-stage-detail"></div>',
+            '<div class="ops-grid">',
+              '<div class="ops-card">',
+                '<h5>Recent runs</h5>',
+                '<div class="run-list" id="esd-run-list"></div>',
+              '</div>',
+              '<div class="ops-card">',
+                '<h5>QA watchlist</h5>',
+                '<div class="alert-list" id="esd-alert-list"></div>',
+              '</div>',
+            '</div>',
+          '</div>',
+        '</article>',
+        '<article id="esd-pane-cohort" class="esd-pane" role="tabpanel">',
+          '<div class="cohort-shell">',
+            '<div class="cohort-head">',
+              '<div class="cohort-copy">',
+                '<div class="eyebrow">Cohort snapshot</div>',
+                '<h4>Every infant, every visit.</h4>',
+                '<p>Grounded participant roster from the Dashboard ESD v2 handoff: VPT, ASIB, and TD infants with gestational age, birth weight, completion, QC state, and site readiness in one scan-friendly view.</p>',
+              '</div>',
+              '<div class="cohort-summary" id="esd-cohort-summary"></div>',
+            '</div>',
+            '<div class="cohort-controls">',
+              '<select id="esd-cohort-group">',
+                '<option value="all">All groups</option>',
+                '<option value="VPT">VPT</option>',
+                '<option value="ASIB">ASIB</option>',
+                '<option value="TD">TD</option>',
+              '</select>',
+              '<select id="esd-cohort-qc">',
+                '<option value="all">All QC states</option>',
+                '<option value="ok">OK</option>',
+                '<option value="review">Review</option>',
+                '<option value="flag">Flag</option>',
+              '</select>',
+              '<button type="button" id="esd-cohort-reset">Reset filters</button>',
+            '</div>',
+            '<div class="cohort-table-wrap">',
+              '<table class="cohort-table" id="esd-cohort-table"></table>',
+            '</div>',
           '</div>',
         '</article>',
         '<article id="esd-pane-models" class="esd-pane" role="tabpanel">',
           '<div class="model-grid"></div>',
           '<div class="model-detail" id="esd-model-detail"></div>',
+          '<div class="studio-shell" id="esd-model-studio"></div>',
         '</article>',
         '<article id="esd-pane-viz" class="esd-pane" role="tabpanel">',
+          '<div class="validation-shell">',
+            '<div class="validation-head">',
+              '<div>',
+                '<div class="eyebrow">Validation lab</div>',
+                '<h4>Aim 3 classifier diagnostics, grounded in the v2 prototype.</h4>',
+                '<p>Held-out ROC, SHAP-ranked contributors, confusion matrix, and calibration metrics now sit beside the live corpus charts on the public dashboard.</p>',
+              '</div>',
+              '<div class="validation-pills">',
+                '<span class="pill"><b>' + MODEL_STUDIO.metrics.auroc.toFixed(3) + '</b> AUROC</span>',
+                '<span class="pill"><b>' + MODEL_STUDIO.metrics.f1.toFixed(3) + '</b> F1</span>',
+                '<span class="pill"><b>' + MODEL_STUDIO.metrics.ece.toFixed(3) + '</b> ECE</span>',
+              '</div>',
+            '</div>',
+            '<div class="validation-grid">',
+              '<div class="validation-card" id="esd-viz-roc"></div>',
+              '<div class="validation-card" id="esd-viz-shap"></div>',
+              '<div class="validation-card" id="esd-viz-conf"></div>',
+              '<div class="validation-card" id="esd-viz-metrics"></div>',
+            '</div>',
+          '</div>',
           '<div class="viz-grid">',
             '<div class="viz-tile"><h4>Readings by year</h4><div class="canvas-wrap"><canvas id="esd-chart-year"></canvas></div></div>',
             '<div class="viz-tile"><h4>Readings by category</h4><div class="canvas-wrap"><canvas id="esd-chart-cat"></canvas></div></div>',
@@ -854,8 +979,8 @@
               '<div class="card suggested">',
                 '<h5>Try asking</h5>',
                 '<button data-q="Summarize the main findings on infant autonomic and attentional pathways.">Summarize the autonomic / attentional findings</button>',
-                '<button data-q="What models are running over the ECG data?">What ECG models are running?</button>',
-                '<button data-q="Which NICU site is closest to enrolment target?">Which NICU site is closest to target?</button>',
+                '<button data-q="Which cohort participants still need QA review or form cleanup?">Which participants need review?</button>',
+                '<button data-q="What drives the age-3 risk classifier, and how strong is it?">What drives the risk classifier?</button>',
                 '<button data-q="Explain the de-identification pipeline.">Explain the de-identification pipeline</button>',
               '</div>',
             '</div>',
@@ -910,6 +1035,8 @@
   function _renderReadings(sec, q, cat, yr) {
     var grid = sec.querySelector("#esd-readings-grid");
     if (!grid) return;
+    // Inline-style fallback so layout holds even if overlay CSS is overridden
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:stretch;";
     var all = _readings();
     q = (q || "").toLowerCase().trim();
     var filtered = all.filter(function (r) {
@@ -920,25 +1047,36 @@
       return hay.indexOf(q) !== -1;
     });
     if (!filtered.length) {
-      grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--warm-500,#6b6353);font-family:var(--font-mono,monospace);font-size:12px;">No readings match these filters.</div>';
+      grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:#6b6353;font-family:JetBrains Mono,monospace;font-size:12px;">No readings match these filters.</div>';
       return;
     }
+    // Strong inline style strings to immunize against host CSS overrides.
+    var CARD_STYLE = "position:relative;display:flex;flex-direction:column;gap:8px;min-height:280px;padding:18px;border-radius:20px;background:rgba(255,248,235,0.78);border:1px solid rgba(115,0,10,0.10);box-shadow:0 12px 32px rgba(28,25,22,0.10);cursor:pointer;backdrop-filter:blur(14px);transition:transform 160ms cubic-bezier(0.22,1,0.36,1),box-shadow 160ms,border-color 160ms;";
+    var HEAD_STYLE = "display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;";
+    var BADGE_STYLE = "display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,0.7);border:1px solid rgba(115,0,10,0.10);font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6353;";
+    var YEAR_STYLE = "font-family:JetBrains Mono,monospace;font-size:11px;color:#73000a;font-weight:600;";
+    var H3_STYLE = "margin:4px 0 6px 0;font-family:Source Serif 4,Georgia,serif;font-size:16px;line-height:1.28;letter-spacing:-0.012em;font-weight:600;color:#1a1815;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;";
+    var EXCERPT_STYLE = "margin:0 0 10px 0;font-size:12.5px;line-height:1.5;color:#5b5446;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;";
+    var KWS_STYLE = "display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:8px;";
+    var KW_STYLE = "display:inline-block;padding:3px 10px;border-radius:999px;background:rgba(115,0,10,0.06);font-family:JetBrains Mono,monospace;font-size:10px;line-height:1.4;color:#73000a;";
+    var FOOT_STYLE = "display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:12px;border-top:1px solid rgba(115,0,10,0.08);font-family:JetBrains Mono,monospace;font-size:10.5px;color:#6b6353;";
+
     grid.innerHTML = filtered.map(function (r, index) {
       var kws = (r.keywords || []).slice(0, 5).map(function (k) {
-        return '<span class="kw">' + _escape(k) + '</span>';
+        return '<span class="kw" style="' + KW_STYLE + '">' + _escape(k) + '</span>';
       }).join("");
       return [
-        '<article class="reading-card reveal" data-id="', _escape(r.id), '" tabindex="0" style="--reveal-delay:', ((index % 8) * 36), 'ms">',
-          '<div class="head">',
-            '<span class="badge">', _escape(r.category || "Other"), '</span>',
-            '<span class="year">', _escape(r.year || ""), '</span>',
+        '<article class="reading-card reveal" data-id="', _escape(r.id), '" tabindex="0" style="', CARD_STYLE, '--reveal-delay:', ((index % 8) * 36), 'ms">',
+          '<div class="head" style="', HEAD_STYLE, '">',
+            '<span class="badge" style="', BADGE_STYLE, '">', _escape(r.category || "Other"), '</span>',
+            '<span class="year" style="', YEAR_STYLE, '">', _escape(r.year || "n/a"), '</span>',
           '</div>',
-          '<h3>', _escape(r.title), '</h3>',
-          '<p class="excerpt">', _escape(r.abstract || ""), '</p>',
-          '<div class="keywords">', kws, '</div>',
-          '<div class="foot">',
+          '<h3 style="', H3_STYLE, '">', _escape(r.title), '</h3>',
+          '<p class="excerpt" style="', EXCERPT_STYLE, '">', _escape((r.abstract || "").slice(0, 280)), '</p>',
+          '<div class="keywords" style="', KWS_STYLE, '">', kws, '</div>',
+          '<div class="foot" style="', FOOT_STYLE, '">',
             '<span>', r.page_count || 0, ' pp · ', (r.size_mb || 0).toFixed(2), ' MB</span>',
-            '<span>Click to expand →</span>',
+            '<span style="color:#73000a;font-weight:600;">Click to expand →</span>',
           '</div>',
         '</article>'
       ].join("");
@@ -1081,6 +1219,36 @@
       showStage(index, { focus: true });
     };
     showStage(0);
+
+    var runs = sec.querySelector('#esd-run-list');
+    if (runs) {
+      runs.innerHTML = PIPELINE_RUNS.map(function (run) {
+        return [
+          '<div class="run-row">',
+            '<div class="run-main">',
+              '<div class="run-id">', _escape(run.id), '</div>',
+              '<div class="run-meta">', _escape(run.scope), ' · ', _escape(run.trigger), ' · ', _escape(run.initiator), '</div>',
+            '</div>',
+            '<div class="run-side">',
+              '<span class="status-pill ', _escape(run.status), '">', _escape(run.status), '</span>',
+              '<span class="run-duration">', _escape(run.duration), '</span>',
+            '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+    }
+
+    var alerts = sec.querySelector('#esd-alert-list');
+    if (alerts) {
+      alerts.innerHTML = OPS_ALERTS.map(function (alert) {
+        return [
+          '<div class="alert-row feed-row">',
+            '<span class="term">', _escape(alert.term), '</span>',
+            '<span class="msg">', _escape(alert.text), '</span>',
+          '</div>'
+        ].join('');
+      }).join('');
+    }
   }
 
   function _wireModels(sec) {
@@ -1163,6 +1331,358 @@
       showModel(index, { focus: true });
     };
     showModel(0);
+    _wireModelStudio(sec);
+  }
+
+  function _wireCohort(sec) {
+    var groupSel = sec.querySelector('#esd-cohort-group');
+    var qcSel = sec.querySelector('#esd-cohort-qc');
+    var resetBtn = sec.querySelector('#esd-cohort-reset');
+    var summary = sec.querySelector('#esd-cohort-summary');
+    var table = sec.querySelector('#esd-cohort-table');
+    if (!groupSel || !qcSel || !summary || !table) return;
+
+    var state = { group: 'all', qc: 'all', sortKey: 'complete', sortDir: 'desc' };
+    var columns = [
+      { key: 'id', label: 'Participant' },
+      { key: 'group', label: 'Group' },
+      { key: 'ga', label: 'GA (wk)', numeric: true },
+      { key: 'bw', label: 'Birth wt (g)', numeric: true },
+      { key: 'complete', label: 'Complete %', numeric: true },
+      { key: 'qc', label: 'QC' },
+      { key: 'site', label: 'Site' }
+    ];
+
+    function filteredRows() {
+      var rows = COHORT_ROWS.filter(function (row) {
+        if (state.group !== 'all' && row.group !== state.group) return false;
+        if (state.qc !== 'all' && row.qc !== state.qc) return false;
+        return true;
+      }).slice();
+      rows.sort(function (a, b) {
+        var left = a[state.sortKey];
+        var right = b[state.sortKey];
+        var dir = state.sortDir === 'desc' ? -1 : 1;
+        if (typeof left === 'number' && typeof right === 'number') return (left - right) * dir;
+        return String(left).localeCompare(String(right)) * dir;
+      });
+      return rows;
+    }
+
+    function render() {
+      var rows = filteredRows();
+      var reviewCount = rows.filter(function (row) { return row.qc !== 'ok'; }).length;
+      var completeCount = rows.filter(function (row) { return row.complete >= 80; }).length;
+      var sites = {};
+      rows.forEach(function (row) { sites[row.site] = true; });
+
+      summary.innerHTML = [
+        '<div class="cell"><span class="k">Visible</span><span class="v">' + rows.length + '</span></div>',
+        '<div class="cell"><span class="k">Needs review</span><span class="v">' + reviewCount + '</span></div>',
+        '<div class="cell"><span class="k">≥ 80% complete</span><span class="v">' + completeCount + '</span></div>',
+        '<div class="cell"><span class="k">Sites</span><span class="v">' + Object.keys(sites).length + '</span></div>'
+      ].join('');
+
+      table.innerHTML = [
+        '<thead><tr>',
+          columns.map(function (col) {
+            var arrow = state.sortKey === col.key ? (state.sortDir === 'desc' ? '↓' : '↑') : '';
+            return '<th' + (col.numeric ? ' class="num" data-numeric="true"' : '') + '><button type="button" class="cohort-sort" data-key="' + _escape(col.key) + '">' + _escape(col.label) + '<span>' + arrow + '</span></button></th>';
+          }).join(''),
+        '</tr></thead>',
+        '<tbody>',
+          rows.map(function (row) {
+            return [
+              '<tr>',
+                '<td class="id">', _escape(row.id), '</td>',
+                '<td><span class="cohort-tag" data-group="', _escape(row.group), '">', _escape(row.group), '</span></td>',
+                '<td class="num" data-numeric="true">', row.ga.toFixed(1), '</td>',
+                '<td class="num" data-numeric="true">', row.bw.toLocaleString(), '</td>',
+                '<td class="num" data-numeric="true">', row.complete, '%</td>',
+                '<td><span class="qc-pill ', _escape(row.qc), '">', _escape(row.qc.toUpperCase()), '</span></td>',
+                '<td>', _escape(row.site), '</td>',
+              '</tr>'
+            ].join('');
+          }).join(''),
+        '</tbody>'
+      ].join('');
+
+      table.querySelectorAll('.cohort-sort').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var key = btn.getAttribute('data-key');
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = key === 'id' || key === 'group' || key === 'site' || key === 'qc' ? 'asc' : 'desc';
+          }
+          render();
+        });
+      });
+    }
+
+    groupSel.addEventListener('change', function () {
+      state.group = groupSel.value || 'all';
+      render();
+    });
+    qcSel.addEventListener('change', function () {
+      state.qc = qcSel.value || 'all';
+      render();
+    });
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        state.group = 'all';
+        state.qc = 'all';
+        state.sortKey = 'complete';
+        state.sortDir = 'desc';
+        groupSel.value = 'all';
+        qcSel.value = 'all';
+        render();
+      });
+    }
+    render();
+  }
+
+  function _rocPath(points, width, height, padL, padB, padT, padR) {
+    function sx(x) { return padL + x * (width - padL - padR); }
+    function sy(y) { return height - padB - y * (height - padB - padT); }
+    return points.map(function (pair, index) {
+      return (index ? 'L' : 'M') + sx(pair[0]).toFixed(1) + ' ' + sy(pair[1]).toFixed(1);
+    }).join(' ');
+  }
+
+  function _gaugeArc(start, end) {
+    var width = 240;
+    var height = 140;
+    var cx = width / 2;
+    var cy = 124;
+    var radius = 96;
+    var startX = cx + radius * Math.cos(Math.PI - (Math.PI * start));
+    var startY = cy - radius * Math.sin(Math.PI - (Math.PI * start));
+    var endX = cx + radius * Math.cos(Math.PI - (Math.PI * end));
+    var endY = cy - radius * Math.sin(Math.PI - (Math.PI * end));
+    var largeArc = end - start > 0.5 ? 1 : 0;
+    return 'M ' + startX + ' ' + startY + ' A ' + radius + ' ' + radius + ' 0 ' + largeArc + ' 1 ' + endX + ' ' + endY;
+  }
+
+  function _studioProbability(values) {
+    var baseline = -0.55;
+    var z = baseline;
+    MODEL_STUDIO_INPUTS.forEach(function (input) {
+      var current = values[input.id];
+      var midpoint = (input.min + input.max) / 2;
+      var span = (input.max - input.min) / 2;
+      var normalized = (current - midpoint) / span;
+      z += normalized * (input.weight || 0) * 5;
+    });
+    return 1 / (1 + Math.exp(-z));
+  }
+
+  function _gaugeMarkup(probability) {
+    var safe = Math.max(0, Math.min(1, probability));
+    var band = safe < 0.33 ? 'lower risk' : safe < 0.66 ? 'monitor' : 'elevated risk';
+    return [
+      '<div class="gauge-wrap">',
+        '<svg class="gauge-svg" viewBox="0 0 240 140" aria-hidden="true">',
+          '<defs>',
+            '<linearGradient id="esd-gauge-grad" x1="0" y1="0" x2="1" y2="0">',
+              '<stop offset="0%" stop-color="#55A868"></stop>',
+              '<stop offset="50%" stop-color="#d18a3a"></stop>',
+              '<stop offset="100%" stop-color="#C44E52"></stop>',
+            '</linearGradient>',
+          '</defs>',
+          '<path d="', _gaugeArc(0, 1), '" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="18" stroke-linecap="round"></path>',
+          '<path d="', _gaugeArc(0, safe), '" fill="none" stroke="url(#esd-gauge-grad)" stroke-width="18" stroke-linecap="round"></path>',
+        '</svg>',
+        '<div class="v">', (safe * 100).toFixed(1), '<span>%</span></div>',
+        '<div class="lbl">P(ASD symptoms @ age 3)</div>',
+        '<div class="v-band">', band, '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function _wireModelStudio(sec) {
+    var shell = sec.querySelector('#esd-model-studio');
+    if (!shell) return;
+    shell.innerHTML = [
+      '<div class="studio-head">',
+        '<div>',
+          '<div class="eyebrow">Model studio · Aim 3 classifier</div>',
+          '<h4>What if you adjust the infant\'s data?</h4>',
+          '<p>Risk-gauge prototype from Dashboard ESD v2, grounded in HRV, HDA, CGA, and ectopic burden. This is illustrative public-surface logic, not live clinical inference.</p>',
+        '</div>',
+        '<div class="studio-presets">',
+          '<button type="button" data-preset="low">Low-risk preset</button>',
+          '<button type="button" data-preset="high">High-risk preset</button>',
+          '<button type="button" data-preset="reset">Reset</button>',
+        '</div>',
+      '</div>',
+      '<div class="studio-grid">',
+        '<div class="studio-card">',
+          '<div class="studio-card-head">',
+            '<div>',
+              '<div class="eyebrow">Input features</div>',
+              '<h5>Per-infant predictors</h5>',
+            '</div>',
+            '<span class="count">', MODEL_STUDIO_INPUTS.length, ' of ', MODEL_STUDIO.features_in, '</span>',
+          '</div>',
+          '<div class="studio-sliders" id="esd-studio-sliders"></div>',
+          '<div class="model-card-strip">',
+            '<div class="metric-tile"><span class="lbl">AUROC</span><span class="v">', MODEL_STUDIO.metrics.auroc.toFixed(3), '</span></div>',
+            '<div class="metric-tile"><span class="lbl">F1</span><span class="v">', MODEL_STUDIO.metrics.f1.toFixed(3), '</span></div>',
+            '<div class="metric-tile"><span class="lbl">ECE</span><span class="v">', MODEL_STUDIO.metrics.ece.toFixed(3), '</span></div>',
+            '<div class="metric-tile"><span class="lbl">Brier</span><span class="v">', MODEL_STUDIO.metrics.brier.toFixed(3), '</span></div>',
+          '</div>',
+        '</div>',
+        '<div class="studio-card studio-card-gauge">',
+          '<div id="esd-studio-gauge"></div>',
+          '<div class="studio-meta">',
+            '<div><span class="eyebrow">Model</span><strong>', _escape(MODEL_STUDIO.name), '</strong></div>',
+            '<div><span class="eyebrow">Trained on</span><strong>', _escape(MODEL_STUDIO.trained_on), '</strong></div>',
+          '</div>',
+        '</div>',
+      '</div>',
+      '<div class="studio-card studio-card-wide">',
+        '<div class="studio-card-head">',
+          '<div>',
+            '<div class="eyebrow">How it\'s built</div>',
+            '<h5>Training pipeline</h5>',
+          '</div>',
+          '<span class="count">', _escape(MODEL_STUDIO.algorithm), '</span>',
+        '</div>',
+        '<div class="train-stages">',
+          '<div class="train-stage"><div class="n">Stage 1 · Train</div><h6>Stratified gradient boosting</h6><p>80% of visits, stratified by group and outcome. Five-fold cross-validation drives hyperparameter search.</p></div>',
+          '<div class="train-stage"><div class="n">Stage 2 · Validate</div><h6>Held-out 20% by participant</h6><p>No leakage across visits of the same infant. Reports group-stratified AUROC, F1, and calibration.</p></div>',
+          '<div class="train-stage"><div class="n">Stage 3 · Calibrate</div><h6>Platt scaling per group</h6><p>Probabilities recalibrated per cohort. ECE ', MODEL_STUDIO.metrics.ece.toFixed(3), ' after calibration with Brier ', MODEL_STUDIO.metrics.brier.toFixed(3), '.</p></div>',
+        '</div>',
+        '<div class="feature-stack">',
+          MODEL_STUDIO.feature_groups.map(function (group) {
+            var total = MODEL_STUDIO.feature_groups.reduce(function (sum, item) { return sum + item.count; }, 0);
+            return '<span style="width:' + ((group.count / total) * 100).toFixed(2) + '%;background:' + group.color + '"></span>';
+          }).join(''),
+        '</div>',
+        '<div class="feature-legend">',
+          MODEL_STUDIO.feature_groups.map(function (group) {
+            return '<span><i style="background:' + group.color + '"></i>' + _escape(group.label) + '<strong>' + group.count + '</strong></span>';
+          }).join(''),
+        '</div>',
+      '</div>'
+    ].join('');
+
+    var values = {};
+    MODEL_STUDIO_INPUTS.forEach(function (input) {
+      values[input.id] = input.default;
+    });
+
+    var sliderWrap = shell.querySelector('#esd-studio-sliders');
+    var gaugeWrap = shell.querySelector('#esd-studio-gauge');
+
+    function renderSliders() {
+      sliderWrap.innerHTML = MODEL_STUDIO_INPUTS.map(function (input) {
+        return [
+          '<label class="slider-row">',
+            '<span class="slider-copy">',
+              '<span class="slider-label">', _escape(input.label), '</span>',
+              '<input class="studio-slider" type="range" min="', input.min, '" max="', input.max, '" step="', input.step, '" value="', values[input.id], '" data-id="', _escape(input.id), '">',
+            '</span>',
+            '<span class="slider-value">', Number(values[input.id]).toFixed(input.step < 1 ? 1 : 0), '</span>',
+          '</label>'
+        ].join('');
+      }).join('');
+
+      sliderWrap.querySelectorAll('.studio-slider').forEach(function (slider) {
+        slider.addEventListener('input', function () {
+          values[slider.getAttribute('data-id')] = parseFloat(slider.value);
+          renderSliders();
+          renderGauge();
+        });
+      });
+    }
+
+    function renderGauge() {
+      gaugeWrap.innerHTML = _gaugeMarkup(_studioProbability(values));
+    }
+
+    shell.querySelectorAll('.studio-presets button').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var preset = button.getAttribute('data-preset');
+        MODEL_STUDIO_INPUTS.forEach(function (input) {
+          var sign = (input.weight || 0) >= 0 ? 1 : -1;
+          if (preset === 'reset') {
+            values[input.id] = input.default;
+            return;
+          }
+          if (preset === 'low') {
+            values[input.id] = sign > 0 ? input.min + (input.max - input.min) * 0.18 : input.min + (input.max - input.min) * 0.85;
+            return;
+          }
+          values[input.id] = sign > 0 ? input.min + (input.max - input.min) * 0.85 : input.min + (input.max - input.min) * 0.15;
+        });
+        renderSliders();
+        renderGauge();
+      });
+    });
+
+    renderSliders();
+    renderGauge();
+  }
+
+  function _wireValidation(sec) {
+    var roc = sec.querySelector('#esd-viz-roc');
+    var shap = sec.querySelector('#esd-viz-shap');
+    var conf = sec.querySelector('#esd-viz-conf');
+    var metrics = sec.querySelector('#esd-viz-metrics');
+    if (!roc || !shap || !conf || !metrics) return;
+
+    var points = [[0, 0], [0.02, 0.18], [0.05, 0.38], [0.09, 0.58], [0.14, 0.74], [0.21, 0.83], [0.32, 0.9], [0.52, 0.95], [1, 1]];
+    var width = 360;
+    var height = 240;
+    var padL = 38;
+    var padB = 32;
+    var padT = 18;
+    var padR = 14;
+    var path = _rocPath(points, width, height, padL, padB, padT, padR);
+    var maxShap = VALIDATION_SHAP.reduce(function (max, item) { return Math.max(max, item.val); }, 0);
+
+    roc.innerHTML = [
+      '<div class="viz-card-head"><div><div class="eyebrow">ROC curve</div><h5>Validation hold-out</h5></div><div class="metric-badge"><span>AUROC</span><strong>', MODEL_STUDIO.metrics.auroc.toFixed(3), '</strong></div></div>',
+      '<svg class="roc-chart" viewBox="0 0 360 240" preserveAspectRatio="none">',
+        '<line x1="38" y1="208" x2="346" y2="18" stroke="var(--warm-400,#a59c8d)" stroke-dasharray="4 4"></line>',
+        '<path d="', path, ' L 346 208 Z" fill="rgba(115,0,10,0.10)"></path>',
+        '<path d="', path, '" fill="none" stroke="#73000a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>',
+      '</svg>',
+      '<p>Held-out 20% by participant, group-stratified, calibrated per cohort. The public wrapper now surfaces the same diagnostic readout the v2 prototype used.</p>'
+    ].join('');
+
+    shap.innerHTML = [
+      '<div class="viz-card-head"><div><div class="eyebrow">SHAP · top predictors</div><h5>What drives the classifier</h5></div></div>',
+      '<div class="shap-rows">',
+        VALIDATION_SHAP.map(function (item) {
+          return '<div class="shap-row"><span class="label">' + _escape(item.feat) + '</span><span class="bar"><i style="width:' + ((item.val / maxShap) * 100).toFixed(1) + '%"></i></span><span class="value">' + (item.val * 100).toFixed(1) + '%</span></div>';
+        }).join(''),
+      '</div>'
+    ].join('');
+
+    conf.innerHTML = [
+      '<div class="viz-card-head"><div><div class="eyebrow">Confusion matrix · summary</div><h5>Threshold @ 0.42</h5></div></div>',
+      '<div class="confmat">',
+        '<div class="cell tp"><span>True positive</span><strong>38</strong></div>',
+        '<div class="cell fn"><span>False negative</span><strong>4</strong></div>',
+        '<div class="cell fp"><span>False positive</span><strong>9</strong></div>',
+        '<div class="cell tn"><span>True negative</span><strong>181</strong></div>',
+      '</div>'
+    ].join('');
+
+    metrics.innerHTML = [
+      '<div class="viz-card-head"><div><div class="eyebrow">Calibration + metrics</div><h5>', _escape(MODEL_STUDIO.name), '</h5></div><span class="count">', _escape(MODEL_STUDIO.validation), '</span></div>',
+      '<div class="metric-grid">',
+        '<div class="metric-cell"><span>Precision</span><strong>', MODEL_STUDIO.metrics.precision.toFixed(3), '</strong></div>',
+        '<div class="metric-cell"><span>Recall</span><strong>', MODEL_STUDIO.metrics.recall.toFixed(3), '</strong></div>',
+        '<div class="metric-cell"><span>ECE</span><strong>', MODEL_STUDIO.metrics.ece.toFixed(3), '</strong></div>',
+        '<div class="metric-cell"><span>Brier</span><strong>', MODEL_STUDIO.metrics.brier.toFixed(3), '</strong></div>',
+      '</div>',
+      '<p>Outputs target ', _escape(MODEL_STUDIO.outputs), '. Feature groups are dominated by HRV and HDA-derived inputs, with demographic and site quality controls layered in.</p>'
+    ].join('');
   }
 
   function _tokenizeQuery(text) {
@@ -1190,6 +1710,44 @@
         cite: { type: 'pane', pane: 'readings', label: 'Knowledge Hub' }
       }
     ];
+
+    docs.push({
+      type: 'cohort',
+      title: 'Cohort snapshot',
+      body: 'The cohort snapshot tracks ' + COHORT_ROWS.length + ' grounded participant rows across VPT, ASIB, and TD groups. It surfaces gestational age, birth weight, completion percentage, QC state, and site across Columbia, Greenville, and Charleston.',
+      keywords: ['cohort', 'participants', 'vpt', 'asib', 'td', 'qc', 'review', 'site', 'gestational age', 'birth weight'],
+      cite: { type: 'pane', pane: 'cohort', label: 'Cohort snapshot' }
+    });
+
+    COHORT_ROWS.forEach(function (row) {
+      docs.push({
+        type: 'cohort',
+        title: row.id + ' cohort row',
+        body: [row.group, 'gestational age', row.ga, 'birth weight', row.bw, 'complete', row.complete + '%', 'QC', row.qc, 'site', row.site].join(' '),
+        keywords: ['participant', row.id, row.group, row.qc, row.site, 'cohort', 'qc', 'review'],
+        cite: { type: 'pane', pane: 'cohort', label: row.id }
+      });
+    });
+
+    docs.push({
+      type: 'validation',
+      title: 'Aim 3 validation lab',
+      body: 'The public validation lab surfaces nano-risk-v0.3 with AUROC ' + MODEL_STUDIO.metrics.auroc.toFixed(3) + ', F1 ' + MODEL_STUDIO.metrics.f1.toFixed(3) + ', precision ' + MODEL_STUDIO.metrics.precision.toFixed(3) + ', recall ' + MODEL_STUDIO.metrics.recall.toFixed(3) + ', calibration ECE ' + MODEL_STUDIO.metrics.ece.toFixed(3) + ', and Brier ' + MODEL_STUDIO.metrics.brier.toFixed(3) + '. SHAP-ranked drivers emphasize RMSSD, LF/HF, HDA sustained attention, birth weight, and NICU days.',
+      keywords: ['validation', 'auroc', 'roc', 'shap', 'calibration', 'ece', 'brier', 'classifier', 'risk', 'aim 3'],
+      cite: { type: 'pane', pane: 'viz', label: 'Validation lab' }
+    });
+
+    docs.push({
+      type: 'ops',
+      title: 'Recent pipeline runs and QA watchlist',
+      body: PIPELINE_RUNS.map(function (run) {
+        return [run.id, run.scope, run.trigger, run.initiator, run.status, run.duration].join(' ');
+      }).concat(OPS_ALERTS.map(function (alert) {
+        return [alert.term, alert.text].join(' ');
+      })).join(' '),
+      keywords: ['run', 'pipeline', 'qa', 'watchlist', 'alert', 'sync', 'recalibration', 'cron', 'review'],
+      cite: { type: 'pane', pane: 'pipeline', label: 'Pipeline ops' }
+    });
 
     PIPELINE_STAGES.forEach(function (stage, index) {
       docs.push({
@@ -1272,6 +1830,9 @@
     if (doc.type === 'model' && /(model|ecg|transformer|auroc|auc|mixed|markov|latent|mice|rmssd|sdnn|hf|lf)/.test(questionLower)) score += 6;
     if (doc.type === 'site' && /(site|nicu|columbia|greenville|charleston|recruit|enroll|target|midlands|musc|prisma)/.test(questionLower)) score += 6;
     if (doc.type === 'reading' && /(reading|paper|article|literature|study|attachment|autonomic|attention|emotion|spatial|math|parenting|autism)/.test(questionLower)) score += 4;
+    if (doc.type === 'cohort' && /(cohort|participant|vpt|asib|td|birth weight|gestational|visit|review|flag|qc)/.test(questionLower)) score += 6;
+    if (doc.type === 'validation' && /(validation|risk|classifier|auroc|auc|roc|shap|calibration|ece|brier|precision|recall|aim 3)/.test(questionLower)) score += 6;
+    if (doc.type === 'ops' && /(run|watchlist|alert|qa|cron|sync|throughput)/.test(questionLower)) score += 5;
     if (doc.type === 'overview' && /(website|hub|knowledge|dashboard|what can you answer|what is this)/.test(questionLower)) score += 5;
     return score;
   }
@@ -1453,7 +2014,7 @@
       });
     });
 
-    _addBot("Hello — I'm the ESD Lab assistant. I have access to " + _readings().length + " indexed readings, the data pipeline stages, and the working models. Ask me anything about the studies, methods, or recruitment.");
+    _addBot("Hello — I'm the ESD Lab assistant. I have access to " + _readings().length + " indexed readings, the pipeline stages, the cohort snapshot, validation lab diagnostics, and the working models. Ask me anything about the studies, methods, recruitment, or the public dashboard surfaces.");
 
     _bootWebLLM();
   }
@@ -1559,6 +2120,18 @@
           cites: [{ type: 'pane', pane: 'models', label: 'Working models' }]
         };
       }
+      if (/(participant|cohort|qc|review|birth weight|gestational|vpt|asib|td)/.test(ql)) {
+        return {
+          text: "The cohort snapshot tracks 10 grounded participant rows spanning VPT, ASIB, and TD infants. In the current public slice, NANO-0228 and NANO-0229 still need review, while NANO-0224 remains flagged. Use the Cohort snapshot tab to sort by completion, QC state, site, gestational age, or birth weight.",
+          cites: [{ type: 'pane', pane: 'cohort', label: 'Cohort snapshot' }]
+        };
+      }
+      if (/(classifier|risk|shap|calibration|ece|brier|precision|recall)/.test(ql)) {
+        return {
+          text: "The Validation lab surfaces the Aim 3 classifier diagnostics from Dashboard ESD v2: AUROC 0.899, F1 0.853, precision 0.809, recall 0.905, calibration ECE 0.041, and Brier 0.094. The strongest public-facing drivers are RMSSD at 3 months, LF/HF at 6 months, sustained HDA, birth weight, and NICU days.",
+          cites: [{ type: 'pane', pane: 'viz', label: 'Validation lab' }, { type: 'pane', pane: 'models', label: 'Model studio' }]
+        };
+      }
       if (ql.indexOf("site") !== -1 || ql.indexOf("nicu") !== -1 || ql.indexOf("enroll") !== -1) {
         return {
           text: "Three NICU sites participate: USC IMB / Prisma Midlands in Columbia, Prisma Upstate in Greenville, and MUSC in Charleston. The interactive map in the recruitment section shows per-site live counters including enrolled vs target, open queries, and readings per day.",
@@ -1594,6 +2167,9 @@
         if (doc.type === 'pipeline') meta.push('pipeline stage');
         if (doc.type === 'model') meta.push('working model');
         if (doc.type === 'site') meta.push('NICU site');
+        if (doc.type === 'cohort') meta.push('cohort snapshot');
+        if (doc.type === 'validation') meta.push('validation lab');
+        if (doc.type === 'ops') meta.push('pipeline ops');
         return "Title: " + doc.title +
                (doc.year ? "\nYear: " + doc.year : "") +
                (doc.category ? "\nCategory: " + doc.category : "") +
@@ -1654,13 +2230,236 @@
     }
   }
 
+  function _enforceHubLayout(sec) {
+    // Walk critical containers and apply inline styles so bundler-injected
+    // CSS resets cannot strip layout (display/grid/gap/flex/padding/bg).
+    var rules = {
+      "": "display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;max-width:1480px;margin:64px auto 96px;padding:32px clamp(20px,4vw,56px);box-sizing:border-box;color:#1a1815;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;",
+      ".esd-hub-side": "position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;gap:6px;padding:18px 16px;border-radius:28px;background:rgba(255,255,255,0.62);border:1px solid rgba(115,0,10,0.10);box-shadow:0 16px 44px rgba(28,25,22,0.08);backdrop-filter:blur(18px);box-sizing:border-box;",
+      ".esd-hub-body": "display:flex;flex-direction:column;gap:22px;min-width:0;",
+      ".esd-hub-head": "padding:28px 32px;border-radius:28px;background:linear-gradient(135deg,rgba(255,255,255,0.78),rgba(244,232,211,0.62));border:1px solid rgba(115,0,10,0.10);box-shadow:0 22px 60px rgba(28,25,22,0.10);box-sizing:border-box;",
+      ".esd-tabs": "display:flex;flex-wrap:wrap;gap:8px;padding:10px;border-radius:999px;background:rgba(255,255,255,0.5);border:1px solid rgba(115,0,10,0.10);backdrop-filter:blur(14px);box-sizing:border-box;",
+      ".readings-controls": "display:grid;grid-template-columns:1fr auto auto;gap:10px;margin-bottom:16px;",
+      ".cohort-head": "display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);gap:18px;align-items:start;margin-bottom:18px;",
+      ".cohort-controls": "display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;",
+      ".cohort-summary": "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;",
+      ".cohort-table-wrap": "overflow:auto;",
+      ".pipeline-flow": "padding:24px;border-radius:28px;background:rgba(255,255,255,0.6);border:1px solid rgba(115,0,10,0.10);box-sizing:border-box;",
+      ".pipeline-stages": "display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;",
+      ".stage-detail": "margin-top:18px;padding:18px 20px;border-radius:18px;background:linear-gradient(135deg,rgba(115,0,10,0.06),rgba(212,173,106,0.05));border:1px solid rgba(115,0,10,0.10);",
+      ".ops-grid": "display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-top:18px;",
+      ".model-grid": "display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;",
+      ".studio-grid": "display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,0.8fr);gap:18px;",
+      ".model-card-strip": "display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:16px;",
+      ".train-stages": "display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;",
+      ".feature-legend": "display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;",
+      ".validation-head": "display:grid;grid-template-columns:minmax(0,1fr) max-content;gap:18px;align-items:end;margin-bottom:16px;",
+      ".validation-grid": "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:16px;",
+      ".viz-grid": "display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;",
+      ".chat-shell": "display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px;",
+      ".chat-main": "display:flex;flex-direction:column;height:540px;border-radius:22px;background:rgba(255,255,255,0.6);border:1px solid rgba(115,0,10,0.10);overflow:hidden;",
+      ".chat-msgs": "flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px;",
+      ".chat-sidebar": "display:flex;flex-direction:column;gap:12px;",
+      ".esd-hub-head .hero-stats": "display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;",
+      ".readings-grid": "display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:stretch;"
+    };
+    sec.style.cssText = rules[""];
+    Object.keys(rules).forEach(function (sel) {
+      if (!sel) return;
+      sec.querySelectorAll(sel).forEach(function (el) {
+        // Merge — don't blow away inline `--reveal-delay` etc.
+        var prev = el.getAttribute("style") || "";
+        if (prev.indexOf(rules[sel].slice(0, 18)) === -1) {
+          el.setAttribute("style", rules[sel] + ";" + prev);
+        }
+      });
+    });
+    // Tab buttons: pill styling
+    sec.querySelectorAll(".esd-tabs button").forEach(function (b) {
+      var sel = b.getAttribute("aria-selected") === "true";
+      b.style.cssText = "appearance:none;border:0;background:" + (sel ? "#73000a" : "transparent") +
+        ";color:" + (sel ? "#fff8eb" : "#5b5446") +
+        ";padding:8px 16px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:background 140ms,color 140ms,transform 140ms;" +
+        (sel ? "box-shadow:0 4px 12px rgba(115,0,10,0.22);" : "");
+    });
+    // Side-nav anchors
+    sec.querySelectorAll(".esd-hub-side a").forEach(function (a) {
+      var sel = a.classList.contains("active");
+      a.style.cssText = "display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;text-decoration:none;font-size:12.5px;color:" +
+        (sel ? "#73000a" : "#4a4438") + ";background:" + (sel ? "rgba(115,0,10,0.06)" : "transparent") + ";font-weight:" + (sel ? "600" : "400") + ";";
+    });
+    // Side-nav eyebrow
+    sec.querySelectorAll(".esd-hub-side .eyebrow").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#6b6353;margin-bottom:6px;";
+    });
+    // Hub head eyebrow + title + p
+    sec.querySelectorAll(".esd-hub-head .eyebrow").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b6353;";
+    });
+    sec.querySelectorAll(".esd-hub-head h2").forEach(function (n) {
+      n.style.cssText = "font-family:Source Serif 4,Georgia,serif;font-size:clamp(32px,4vw,52px);line-height:1.02;letter-spacing:-0.025em;font-weight:600;margin:6px 0 8px 0;color:#1a1815;";
+    });
+    sec.querySelectorAll(".esd-hub-head p").forEach(function (n) {
+      n.style.cssText = "margin:0;max-width:64ch;color:#5b5446;font-size:14.5px;line-height:1.55;";
+    });
+    sec.querySelectorAll(".esd-hub-head .pill").forEach(function (n) {
+      n.style.cssText = "padding:6px 14px;border-radius:999px;background:rgba(255,255,255,0.55);border:1px solid rgba(115,0,10,0.10);font-family:JetBrains Mono,monospace;font-size:11px;color:#5b5446;";
+    });
+    sec.querySelectorAll(".readings-controls input, .readings-controls select, .cohort-controls select, .cohort-controls button").forEach(function (n) {
+      n.style.cssText = "background:rgba(255,255,255,0.65);border:1px solid rgba(115,0,10,0.10);border-radius:999px;padding:10px 16px;font:inherit;font-size:13px;color:#1a1815;box-shadow:0 6px 18px rgba(0,0,0,0.06);appearance:none;";
+    });
+    sec.querySelectorAll(".cohort-summary .cell, .ops-card, .validation-card, .studio-card, .studio-shell").forEach(function (n) {
+      var prev = n.getAttribute('style') || '';
+      if (prev.indexOf('border-radius:22px') === -1) {
+        n.setAttribute('style', 'padding:18px 20px;border-radius:22px;background:rgba(255,255,255,0.62);border:1px solid rgba(115,0,10,0.10);box-sizing:border-box;' + prev);
+      }
+    });
+
+    // Pipeline stage cards
+    sec.querySelectorAll(".stage-node").forEach(function (n) {
+      var active = n.classList.contains("active");
+      n.style.cssText = "appearance:none;text-align:left;font:inherit;display:flex;flex-direction:column;gap:6px;position:relative;padding:16px 18px;border-radius:18px;background:rgba(255,255,255,0.55);border:1px solid " +
+        (active ? "rgba(115,0,10,0.40)" : "rgba(115,0,10,0.10)") +
+        ";cursor:pointer;transition:transform 140ms cubic-bezier(0.22,1,0.36,1),border-color 140ms;color:#1a1815;" +
+        (active ? "box-shadow:0 8px 24px rgba(115,0,10,0.14);" : "");
+    });
+    sec.querySelectorAll(".stage-node .num").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:10.5px;letter-spacing:0.18em;color:#73000a;text-transform:uppercase;";
+    });
+    sec.querySelectorAll(".stage-node h4").forEach(function (n) {
+      n.style.cssText = "margin:4px 0 6px 0;font-family:Source Serif 4,Georgia,serif;font-size:16px;letter-spacing:-0.012em;color:#1a1815;";
+    });
+    sec.querySelectorAll(".stage-node .stage-summary, .stage-node p").forEach(function (n) {
+      n.style.cssText = "margin:0;font-size:11.5px;line-height:1.5;color:#5b5446;";
+    });
+    sec.querySelectorAll(".stage-foot").forEach(function (n) {
+      n.style.cssText = "display:flex;align-items:center;gap:8px;margin-top:8px;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6353;";
+    });
+    sec.querySelectorAll(".detail-head, #esd-stage-detail .detail-head").forEach(function (n) {
+      n.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:8px;";
+    });
+    sec.querySelectorAll(".detail-kicker").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#73000a;";
+    });
+    sec.querySelectorAll("#esd-stage-detail h5").forEach(function (n) {
+      n.style.cssText = "margin:4px 0 8px 0;font-family:Source Serif 4,Georgia,serif;font-size:18px;letter-spacing:-0.012em;color:#1a1815;";
+    });
+    sec.querySelectorAll(".detail-brief, #esd-stage-detail p").forEach(function (n) {
+      if (!n.style.cssText.indexOf("font-size:13px") === 0)
+        n.style.cssText = "margin:0 0 10px 0;font-size:13px;line-height:1.6;color:#4a4438;";
+    });
+    sec.querySelectorAll(".detail-meta").forEach(function (n) {
+      n.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;";
+    });
+    sec.querySelectorAll(".detail-pill").forEach(function (n) {
+      n.style.cssText = "padding:6px 12px;border-radius:999px;background:rgba(255,255,255,0.55);border:1px solid rgba(115,0,10,0.10);font-family:JetBrains Mono,monospace;font-size:10.5px;color:#4a4438;letter-spacing:0.04em;";
+    });
+
+    // Model cards
+    sec.querySelectorAll(".model-card").forEach(function (n) {
+      n.style.cssText = "appearance:none;text-align:left;font:inherit;padding:20px 22px;border-radius:22px;background:rgba(255,255,255,0.62);border:1px solid rgba(115,0,10,0.10);transition:transform 160ms cubic-bezier(0.22,1,0.36,1),box-shadow 160ms;cursor:pointer;color:#1a1815;display:flex;flex-direction:column;gap:10px;";
+    });
+    sec.querySelectorAll(".model-card .tag").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#73000a;";
+    });
+    sec.querySelectorAll(".model-card h3").forEach(function (n) {
+      n.style.cssText = "margin:4px 0 8px 0;font-family:Source Serif 4,Georgia,serif;font-size:20px;letter-spacing:-0.015em;color:#1a1815;";
+    });
+    sec.querySelectorAll(".model-card p").forEach(function (n) {
+      n.style.cssText = "margin:0 0 14px 0;font-size:13px;line-height:1.55;color:#5b5446;";
+    });
+    sec.querySelectorAll(".model-card .metrics").forEach(function (n) {
+      n.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:8px;";
+    });
+    sec.querySelectorAll(".model-card .metric").forEach(function (n) {
+      n.style.cssText = "padding:8px 10px;border-radius:12px;background:rgba(255,255,255,0.55);border:1px solid rgba(115,0,10,0.10);text-align:center;";
+    });
+    sec.querySelectorAll(".model-card .metric .k").forEach(function (n) {
+      n.style.cssText = "font-family:JetBrains Mono,monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#6b6353;";
+    });
+    sec.querySelectorAll(".model-card .metric .v").forEach(function (n) {
+      n.style.cssText = "font-family:Source Serif 4,Georgia,serif;font-size:18px;font-weight:600;letter-spacing:-0.02em;color:#73000a;font-variant-numeric:tabular-nums;";
+    });
+
+    // Viz tiles
+    sec.querySelectorAll(".viz-tile").forEach(function (n) {
+      n.style.cssText = "padding:18px 20px;border-radius:22px;background:rgba(255,255,255,0.62);border:1px solid rgba(115,0,10,0.10);min-height:320px;display:flex;flex-direction:column;";
+    });
+    sec.querySelectorAll(".viz-tile h4").forEach(function (n) {
+      n.style.cssText = "margin:0 0 10px 0;font-family:Source Serif 4,Georgia,serif;font-size:16px;letter-spacing:-0.012em;color:#1a1815;";
+    });
+    sec.querySelectorAll(".viz-tile .canvas-wrap").forEach(function (n) {
+      n.style.cssText = "flex:1;min-height:240px;position:relative;";
+    });
+
+    // Chat shell
+    sec.querySelectorAll(".chat-header").forEach(function (n) {
+      n.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(115,0,10,0.10);background:rgba(255,255,255,0.45);";
+    });
+    sec.querySelectorAll(".chat-header .title").forEach(function (n) {
+      n.style.cssText = "font-family:Source Serif 4,Georgia,serif;font-size:16px;font-weight:600;letter-spacing:-0.012em;color:#1a1815;";
+    });
+    sec.querySelectorAll(".chat-input").forEach(function (n) {
+      n.style.cssText = "display:flex;gap:10px;padding:12px 14px;border-top:1px solid rgba(115,0,10,0.10);background:rgba(255,255,255,0.45);";
+    });
+    sec.querySelectorAll(".chat-input textarea").forEach(function (n) {
+      n.style.cssText = "flex:1;resize:none;height:44px;padding:10px 14px;border-radius:14px;border:1px solid rgba(115,0,10,0.10);background:rgba(255,255,255,0.78);font:inherit;font-size:13px;line-height:1.4;color:#1a1815;";
+    });
+    sec.querySelectorAll(".chat-input button").forEach(function (n) {
+      n.style.cssText = "appearance:none;border:0;padding:0 18px;border-radius:14px;background:#73000a;color:#fff8eb;font:inherit;font-weight:600;letter-spacing:0.02em;cursor:pointer;";
+    });
+    sec.querySelectorAll(".chat-sidebar .card").forEach(function (n) {
+      n.style.cssText = "padding:14px 16px;border-radius:18px;background:rgba(255,255,255,0.6);border:1px solid rgba(115,0,10,0.10);";
+    });
+    sec.querySelectorAll(".chat-sidebar h5").forEach(function (n) {
+      n.style.cssText = "margin:0 0 8px 0;font-family:JetBrains Mono,monospace;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:#6b6353;";
+    });
+    sec.querySelectorAll(".chat-sidebar .suggested button").forEach(function (n) {
+      n.style.cssText = "display:block;width:100%;text-align:left;margin-bottom:6px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.55);border:1px solid rgba(115,0,10,0.10);font-family:inherit;font-size:12px;line-height:1.45;color:#4a4438;cursor:pointer;";
+    });
+    sec.querySelectorAll(".chat-progress").forEach(function (n) {
+      n.style.cssText = "height:4px;border-radius:999px;background:rgba(115,0,10,0.10);overflow:hidden;margin-top:8px;";
+    });
+    sec.querySelectorAll(".chat-progress .bar").forEach(function (n) {
+      var w = n.style.width || "0%";
+      n.style.cssText = "height:100%;width:" + w + ";background:linear-gradient(90deg,#73000a,#d4ad6a);transition:width 160ms cubic-bezier(0.22,1,0.36,1);";
+    });
+    sec.querySelectorAll(".sync-grid").forEach(function (n) {
+      n.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;";
+    });
+    sec.querySelectorAll(".sync-grid .cell").forEach(function (n) {
+      n.style.cssText = "padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.5);border:1px solid rgba(115,0,10,0.10);";
+    });
+    sec.querySelectorAll(".sync-grid .cell .k").forEach(function (n) {
+      n.style.cssText = "display:block;font-family:JetBrains Mono,monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#6b6353;";
+    });
+    sec.querySelectorAll(".sync-grid .cell .v").forEach(function (n) {
+      n.style.cssText = "display:block;font-family:Source Serif 4,Georgia,serif;font-size:16px;font-weight:600;color:#73000a;font-variant-numeric:tabular-nums;margin-top:2px;";
+    });
+
+    // Hide modal by default
+    var modal = sec.querySelector("#__esd_reading_modal");
+    if (modal && !modal.classList.contains("open")) {
+      modal.style.cssText = "position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:rgba(28,24,21,0.5);backdrop-filter:blur(8px);z-index:10000;";
+    }
+  }
+
   function _mountHub() {
     if (_hubExists()) return false;
     var sec = _renderHubShell();
     _wireTabs(sec);
     _wireReadings(sec);
     _wirePipeline(sec);
+    _wireCohort(sec);
     _wireModels(sec);
+    _wireValidation(sec);
+    _enforceHubLayout(sec);
+    // Re-enforce on every tab change too
+    sec.addEventListener("click", function (e) {
+      if (e.target.matches(".esd-tabs button, .esd-hub-side a")) {
+        requestAnimationFrame(function () { _enforceHubLayout(sec); });
+      }
+    });
     return true;
   }
 
