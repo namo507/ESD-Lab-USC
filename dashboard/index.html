@@ -1787,6 +1787,21 @@
   </div>
 </div>
 
-  <script src="app.js?v=20260513-glass-overhaul" defer></script>
+  <div id="esd-scroll-progress" class="esd-scroll-progress" aria-hidden="true"></div>
+
+  <div class="esd-dock" id="esd-dock" aria-label="Status bar">
+    <span class="esd-dock-item">
+      <span class="esd-dot" style="background:var(--green,#55A868);box-shadow:0 0 8px rgba(85,168,104,0.6)"></span>
+      <span class="esd-gloss" data-term="HIPAA">HIPAA</span>&nbsp;session
+    </span>
+    <span class="esd-dock-item">
+      <span class="esd-dot" style="background:var(--blue,#4C72B0);box-shadow:0 0 8px rgba(76,114,176,0.6)"></span>
+      pipeline · live
+    </span>
+    <span class="esd-dock-item esd-dock-clock" id="esd-dock-clock">--:--:--</span>
+  </div>
+
+  <script src="primitives.js?v=20260517-buddy-feature" defer></script>
+  <script src="app.js?v=20260517-buddy-feature" defer></script>
 </body>
 </html>

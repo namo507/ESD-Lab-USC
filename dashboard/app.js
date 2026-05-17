@@ -389,6 +389,10 @@ async function bootstrap() {
   setupAssistant();
   initBuddy();
   initEsdChat();
+  if (typeof initScrollProgress === 'function') initScrollProgress();
+  if (typeof initDockClock === 'function') initDockClock();
+  if (typeof initGlossTooltips === 'function') initGlossTooltips();
+  if (typeof initRevealObserver === 'function') initRevealObserver();
   await syncData({ force: true });
   if (ASSISTANT_STATUS_POLL_ENABLED) {
     try {
