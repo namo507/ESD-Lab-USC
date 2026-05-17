@@ -41,7 +41,9 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = REPO_ROOT / "dashboard" / "data" / "readings_data.json"
 OUT = REPO_ROOT / "web" / "lab-readings.json"
-PDF_DIR = REPO_ROOT.parent / "ESD Lab readings"
+PDF_DIR = REPO_ROOT / "ESD Lab readings"
+if not PDF_DIR.exists():
+    PDF_DIR = REPO_ROOT.parent / "ESD Lab readings"
 
 
 _STRIP_PUNCT = re.compile(r"[^\w\s\-]+")

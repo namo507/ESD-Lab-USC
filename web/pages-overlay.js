@@ -543,31 +543,61 @@
       num: "01",
       title: "Intake (REDCap)",
       brief: "Caregiver consent, demographics, behavioral instruments captured at NICU and follow-up visits.",
-      detail: "Three NICU sites push REDCap entries through the daily sync job (scripts/redcap_daily_sync.py). Double entry validation and missingness reports run nightly. Field mappings for ADOS-2 and Bayley-4 live under redcap/instruments/."
+      detail: "Three NICU sites push REDCap entries through the daily sync job (scripts/redcap_daily_sync.py). Double entry validation and missingness reports run nightly. Field mappings for ADOS-2 and Bayley-4 live under redcap/instruments/.",
+      input: "Consent packets, caregiver forms, NICU intake logs",
+      output: "Validated REDCap events with nightly discrepancy checks",
+      artifact: "scripts/redcap_daily_sync.py · redcap/instruments/",
+      focus: "Recruitment, caregiver measures, and visit scheduling are locked before downstream analysis.",
+      surface: "forms",
+      tone: "garnet"
     },
     {
       num: "02",
       title: "Window QA",
       brief: "Actiheart-5 ECG windows are scored for artefact, motion, and signal quality before downstream use.",
-      detail: "Each Actiheart-5 deployment yields ECG, accelerometry, and temperature streams. The QA layer (src/preprocessing/ecg_preprocessing.py) flags windows with poor SNR or motion contamination, producing a per-participant QC summary referenced by the missingness heatmap."
+      detail: "Each Actiheart-5 deployment yields ECG, accelerometry, and temperature streams. The QA layer (src/preprocessing/ecg_preprocessing.py) flags windows with poor SNR or motion contamination, producing a per-participant QC summary referenced by the missingness heatmap.",
+      input: "Raw ECG, accelerometry, and temperature windows",
+      output: "Per-window artefact calls and participant QC summaries",
+      artifact: "src/preprocessing/ecg_preprocessing.py",
+      focus: "This is the gating layer that keeps noisy physiology out of every chart and model pane.",
+      surface: "quality",
+      tone: "ocean"
     },
     {
       num: "03",
       title: "De-identify",
       brief: "HIPAA-safe export through scripts/export_deidentified_dataset.py, audited per HHS Safe Harbor.",
-      detail: "Direct identifiers stripped, dates shifted per participant, ZIP truncated to 3 digits, then released to data/deidentified/. Audit log goes to redcap/quality_control/redcap_qc_pipeline.py for tracking who pulled what."
+      detail: "Direct identifiers stripped, dates shifted per participant, ZIP truncated to 3 digits, then released to data/deidentified/. Audit log goes to redcap/quality_control/redcap_qc_pipeline.py for tracking who pulled what.",
+      input: "QC-approved subject records with date-bearing events",
+      output: "HIPAA Safe Harbor export under data/deidentified/",
+      artifact: "scripts/export_deidentified_dataset.py",
+      focus: "Every downstream visualization and assistant answer depends on this privacy-preserving release step.",
+      surface: "privacy",
+      tone: "sand"
     },
     {
       num: "04",
       title: "Feature builder",
       brief: "HRV, demographic, and trajectory features aggregated for modeling.",
-      detail: "src/feature_engineering/ computes time-domain and frequency-domain HRV (RMSSD, SDNN, LF/HF), behavioral coding densities, and parent-report aggregates. Output feeds both the latent growth curves and the deep learning ECG model."
+      detail: "src/feature_engineering/ computes time-domain and frequency-domain HRV (RMSSD, SDNN, LF/HF), behavioral coding densities, and parent-report aggregates. Output feeds both the latent growth curves and the deep learning ECG model.",
+      input: "De-identified physiology, demographics, and coded behavior",
+      output: "RMSSD, SDNN, LF/HF, trajectories, and report aggregates",
+      artifact: "src/feature_engineering/",
+      focus: "This stage translates the raw visits into the shared feature language used by trajectories and ECG inference.",
+      surface: "features",
+      tone: "sage"
     },
     {
       num: "05",
       title: "Models & evaluation",
       brief: "Latent growth curves, mixed effects models, transformer ECG, calibrated against held-out cohort.",
-      detail: "Trained models live in src/models/. Evaluation harness (src/models/model_evaluation.py) reports AUROC, 95% CI, sensitivity/specificity, F1, and SHAP top-predictors, which the Dashboard's ML Performance section consumes."
+      detail: "Trained models live in src/models/. Evaluation harness (src/models/model_evaluation.py) reports AUROC, 95% CI, sensitivity/specificity, F1, and SHAP top-predictors, which the Dashboard's ML Performance section consumes.",
+      input: "Feature tensors, longitudinal tables, and held-out validation cohorts",
+      output: "Calibrated metrics, SHAP drivers, and model comparison surfaces",
+      artifact: "src/models/model_evaluation.py",
+      focus: "The model layer closes the loop by feeding the dashboard with scored predictions and interpretable diagnostics.",
+      surface: "models",
+      tone: "garnet"
     }
   ];
 
@@ -576,6 +606,9 @@
       tag: "Trajectory",
       name: "Latent Growth Curves",
       blurb: "Estimates per-group developmental slope and intercept for RSA biomarkers across visits 1-6.",
+      focus: "Longitudinal group separation in autonomic maturation across repeated visits.",
+      bestFor: "Questions about slope, intercept, or whether VPT / ASIB / TD groups diverge over time.",
+      tone: "garnet",
       metrics: [
         { k: "Variance", v: "R²=0.71" },
         { k: "Groups", v: "4" },
@@ -587,6 +620,9 @@
       tag: "Mixed effects",
       name: "Linear Mixed Models",
       blurb: "Random-intercept models for clinical outcomes with site and family clustering.",
+      focus: "Repeated-measures inference that respects site, family, and visit-level clustering.",
+      bestFor: "Clinical questions where fixed effects matter but family or site variance cannot be ignored.",
+      tone: "sand",
       metrics: [
         { k: "ICC", v: "0.18" },
         { k: "AIC", v: "1142" },
@@ -598,6 +634,9 @@
       tag: "Deep learning",
       name: "Transformer ECG",
       blurb: "Sequence-to-classification model over 30s ECG windows for early atypical autonomic patterning.",
+      focus: "Direct representation learning over short ECG segments for early atypical pattern detection.",
+      bestFor: "Highest-performing binary classification over windowed physiology, especially when timing dynamics matter.",
+      tone: "ocean",
       metrics: [
         { k: "AUROC", v: "0.899" },
         { k: "Sens.", v: "0.82" },
@@ -609,6 +648,9 @@
       tag: "Markov",
       name: "Markov Chain States",
       blurb: "State-transition modeling over visit-level behavioral codings to detect cascade patterns.",
+      focus: "Behavioral state switching and cascade pathways across visits.",
+      bestFor: "Asking which coded states lead to later outcomes or which transitions appear unstable.",
+      tone: "sage",
       metrics: [
         { k: "States", v: "6" },
         { k: "LL", v: "-184.3" },
@@ -620,6 +662,9 @@
       tag: "Imputation",
       name: "MICE (chained eq.)",
       blurb: "Multiple imputation for missing biomarker and behavioral entries before downstream modeling.",
+      focus: "Repairing sparse physiology and questionnaire cells before fitting downstream models.",
+      bestFor: "Questions about missingness handling, sensitivity checks, or whether a model used imputed cells.",
+      tone: "sand",
       metrics: [
         { k: "m", v: "20" },
         { k: "Rhat", v: "1.01" },
@@ -631,6 +676,9 @@
       tag: "ECG features",
       name: "HRV Feature Pipeline",
       blurb: "Time/frequency domain HRV: RMSSD, SDNN, LF, HF, LF/HF, sample entropy.",
+      focus: "Human-readable physiology features that feed both descriptive plots and model training tables.",
+      bestFor: "Explaining what features exist, how ECG windows become metrics, and which HRV signals are tracked.",
+      tone: "ocean",
       metrics: [
         { k: "Feats", v: "18" },
         { k: "Windows", v: "30s" },
@@ -651,7 +699,66 @@
     };
   }
 
+  function _readingsGeneratedAt() {
+    return (window.__ESD_READINGS__ && window.__ESD_READINGS__.generated_at) || "";
+  }
+
+  var _hubControls = {
+    activate: null,
+    showStage: null,
+    showModel: null
+  };
+
   function _hubExists() { return !!document.getElementById("__esd_knowledge_hub"); }
+
+  function _activateHubPane(name) {
+    if (typeof _hubControls.activate === "function") {
+      _hubControls.activate(name);
+    }
+  }
+
+  function _focusHubTarget(node) {
+    if (!node) return;
+    if (typeof node.focus === "function") {
+      try {
+        node.focus({ preventScroll: true });
+      } catch (_err) {
+        node.focus();
+      }
+    }
+    if (typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+  }
+
+  function _openHubCitation(cite) {
+    if (!cite) return;
+    if (cite.type === "reading") {
+      _activateHubPane("readings");
+      _openReadingModal(cite.id);
+      return;
+    }
+    if (cite.type === "pipeline" && typeof _hubControls.showStage === "function") {
+      _hubControls.showStage(cite.index || 0);
+      return;
+    }
+    if (cite.type === "model" && typeof _hubControls.showModel === "function") {
+      _hubControls.showModel(cite.index || 0);
+      return;
+    }
+    if (cite.type === "site") {
+      var mapWrap = document.getElementById("__esd_nicu_map_wrap");
+      if (mapWrap) {
+        mapWrap.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+    if (cite.type === "pane") {
+      _activateHubPane(cite.pane || "readings");
+      var hub = document.getElementById("__esd_knowledge_hub");
+      if (hub) hub.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   function _renderHubShell() {
     if (_hubExists()) return document.getElementById("__esd_knowledge_hub");
@@ -677,8 +784,9 @@
             '<span class="pill"><b>' + (sum.count || 0) + '</b> indexed readings</span>',
             '<span class="pill"><b>' + (sum.total_pages || 0) + '</b> pages</span>',
             '<span class="pill"><b>' + (sum.total_size_mb || 0) + '</b> MB</span>',
-            '<span class="pill"><b>6</b> working models</span>',
-            '<span class="pill"><b>3</b> NICU sites</span>',
+            '<span class="pill"><b>' + MODELS.length + '</b> working models</span>',
+            '<span class="pill"><b>' + PIPELINE_STAGES.length + '</b> pipeline stages</span>',
+            '<span class="pill"><b>' + NICU_SITES.length + '</b> NICU sites</span>',
           '</div>',
         '</header>',
         '<nav class="esd-tabs" role="tablist">',
@@ -704,6 +812,7 @@
         '</article>',
         '<article id="esd-pane-models" class="esd-pane" role="tabpanel">',
           '<div class="model-grid"></div>',
+          '<div class="model-detail" id="esd-model-detail"></div>',
         '</article>',
         '<article id="esd-pane-viz" class="esd-pane" role="tabpanel">',
           '<div class="viz-grid">',
@@ -731,6 +840,16 @@
                 '<h5>Engine</h5>',
                 '<div id="esd-chat-engine" style="font-size:12px;color:var(--warm-700,#4a4438);line-height:1.5;">Initializing…</div>',
                 '<div class="chat-progress"><div class="bar" id="esd-chat-bar"></div></div>',
+              '</div>',
+              '<div class="card corpus">',
+                '<h5>Knowledge sync</h5>',
+                '<div class="sync-grid">',
+                  '<div class="cell"><span class="k">Readings</span><span class="v">' + (sum.count || 0) + '</span></div>',
+                  '<div class="cell"><span class="k">Models</span><span class="v">' + MODELS.length + '</span></div>',
+                  '<div class="cell"><span class="k">Stages</span><span class="v">' + PIPELINE_STAGES.length + '</span></div>',
+                  '<div class="cell"><span class="k">Sites</span><span class="v">' + NICU_SITES.length + '</span></div>',
+                '</div>',
+                '<p id="esd-chat-sync-note">Readings snapshot · ' + _escape(_readingsGeneratedAt() || 'pending refresh') + '</p>',
               '</div>',
               '<div class="card suggested">',
                 '<h5>Try asking</h5>',
@@ -775,6 +894,7 @@
       if (name === "viz") _drawCharts();
       if (name === "chat") _initChat();
     }
+    _hubControls.activate = activate;
     tabs.forEach(function (t) {
       t.addEventListener("click", function () { activate(t.getAttribute("data-pane")); });
     });
@@ -803,12 +923,12 @@
       grid.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--warm-500,#6b6353);font-family:var(--font-mono,monospace);font-size:12px;">No readings match these filters.</div>';
       return;
     }
-    grid.innerHTML = filtered.map(function (r) {
+    grid.innerHTML = filtered.map(function (r, index) {
       var kws = (r.keywords || []).slice(0, 5).map(function (k) {
         return '<span class="kw">' + _escape(k) + '</span>';
       }).join("");
       return [
-        '<article class="reading-card" data-id="', _escape(r.id), '" tabindex="0">',
+        '<article class="reading-card reveal" data-id="', _escape(r.id), '" tabindex="0" style="--reveal-delay:', ((index % 8) * 36), 'ms">',
           '<div class="head">',
             '<span class="badge">', _escape(r.category || "Other"), '</span>',
             '<span class="year">', _escape(r.year || ""), '</span>',
@@ -899,50 +1019,265 @@
   function _wirePipeline(sec) {
     var wrap = sec.querySelector(".pipeline-stages");
     var detail = sec.querySelector("#esd-stage-detail");
-    if (!wrap) return;
+    if (!wrap || !detail) return;
     wrap.innerHTML = PIPELINE_STAGES.map(function (s, i) {
       return [
-        '<div class="stage-node', i === 0 ? ' active' : '', '" data-i="', i, '">',
-          '<div class="num">STAGE ', s.num, '</div>',
+        '<button type="button" class="stage-node reveal', i === 0 ? ' active' : '', '" data-i="', i, '" data-tone="', _escape(s.tone || 'garnet'), '" style="--reveal-delay:', (i * 70), 'ms">',
+          '<div class="stage-node-head">',
+            '<div class="num">STAGE ', s.num, '</div>',
+            '<span class="stage-pill">', _escape(s.surface || 'stage'), '</span>',
+          '</div>',
           '<h4>', _escape(s.title), '</h4>',
-          '<p>', _escape(s.brief), '</p>',
-        '</div>'
+          '<p class="stage-summary">', _escape(s.brief), '</p>',
+          '<div class="stage-foot">',
+            '<span class="stage-signal"></span>',
+            '<span>', _escape(s.artifact || s.output || 'Open stage detail'), '</span>',
+          '</div>',
+        '</button>'
       ].join("");
     }).join("");
-    function showStage(i) {
+    function showStage(i, options) {
+      if (i < 0 || i >= PIPELINE_STAGES.length) return;
       var s = PIPELINE_STAGES[i];
-      detail.innerHTML = '<h5>Stage ' + s.num + ' · ' + _escape(s.title) + '</h5><p>' + _escape(s.detail) + '</p>';
+      detail.innerHTML = [
+        '<div class="detail-head">',
+          '<div>',
+            '<div class="detail-kicker">Stage ', s.num, ' · ', _escape(s.title), '</div>',
+            '<h5>', _escape(s.focus || s.title), '</h5>',
+          '</div>',
+          '<span class="detail-state">Synced</span>',
+        '</div>',
+        '<p class="detail-brief">', _escape(s.brief), '</p>',
+        '<p>', _escape(s.detail), '</p>',
+        '<div class="detail-meta">',
+          '<span class="detail-pill"><strong>Input</strong> ', _escape(s.input || 'Pipeline inputs'), '</span>',
+          '<span class="detail-pill"><strong>Output</strong> ', _escape(s.output || 'Dashboard artifacts'), '</span>',
+          '<span class="detail-pill"><strong>Artifact</strong> ', _escape(s.artifact || 'Repository surface'), '</span>',
+        '</div>'
+      ].join('');
       wrap.querySelectorAll(".stage-node").forEach(function (n) {
-        n.classList.toggle("active", parseInt(n.getAttribute("data-i"), 10) === i);
+        var active = parseInt(n.getAttribute("data-i"), 10) === i;
+        n.classList.toggle("active", active);
+        n.setAttribute("aria-pressed", active ? "true" : "false");
       });
+      if (options && options.focus) {
+        _focusHubTarget(wrap.querySelector('.stage-node[data-i="' + i + '"]'));
+      }
     }
     wrap.querySelectorAll(".stage-node").forEach(function (n) {
       n.addEventListener("click", function () {
         showStage(parseInt(n.getAttribute("data-i"), 10));
       });
+      n.addEventListener("keydown", function (e) {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        e.preventDefault();
+        var current = parseInt(n.getAttribute("data-i"), 10);
+        var next = (current + (e.key === "ArrowRight" ? 1 : -1) + PIPELINE_STAGES.length) % PIPELINE_STAGES.length;
+        showStage(next, { focus: true });
+      });
     });
+    _hubControls.showStage = function (index) {
+      _activateHubPane("pipeline");
+      showStage(index, { focus: true });
+    };
     showStage(0);
   }
 
   function _wireModels(sec) {
     var wrap = sec.querySelector(".model-grid");
-    if (!wrap) return;
+    var detail = sec.querySelector("#esd-model-detail");
+    if (!wrap || !detail) return;
     wrap.innerHTML = MODELS.map(function (m) {
+      var index = MODELS.indexOf(m);
       var mets = m.metrics.map(function (x) {
         return '<div class="metric"><div class="k">' + _escape(x.k) + '</div><div class="v">' + _escape(x.v) + '</div></div>';
       }).join("");
       return [
-        '<article class="model-card" data-file="', _escape(m.file), '" tabindex="0">',
-          '<div class="tag">', _escape(m.tag), '</div>',
-          '<h3>', _escape(m.name), '</h3>',
-          '<p>', _escape(m.blurb), '</p>',
-          '<div class="metrics">', mets, '</div>',
-          '<div style="margin-top:10px;font-family:var(--font-mono,monospace);font-size:10.5px;color:var(--warm-500,#6b6353);">',
-            _escape(m.file),
+        '<button type="button" class="model-card reveal', index === 0 ? ' active' : '', '" data-i="', index, '" data-file="', _escape(m.file), '" data-tone="', _escape(m.tone || 'garnet'), '" style="--reveal-delay:', (index * 58), 'ms">',
+          '<div class="card-head">',
+            '<div>',
+              '<div class="tag">', _escape(m.tag), '</div>',
+              '<h3>', _escape(m.name), '</h3>',
+            '</div>',
+            '<span class="card-index">', String(index + 1).padStart(2, '0'), '</span>',
           '</div>',
-        '</article>'
+          '<p>', _escape(m.blurb), '</p>',
+          '<div class="model-note">', _escape(m.focus || 'Model spotlight'), '</div>',
+          '<div class="metrics">', mets, '</div>',
+          '<div class="model-foot">',
+            '<span class="file-pill">', _escape(m.file), '</span>',
+            '<span class="detail-link">Inspect →</span>',
+          '</div>',
+        '</button>'
       ].join("");
     }).join("");
+
+    function showModel(i, options) {
+      if (i < 0 || i >= MODELS.length) return;
+      var m = MODELS[i];
+      var metricLine = m.metrics.map(function (x) {
+        return x.k + ' ' + x.v;
+      }).join(' · ');
+      detail.innerHTML = [
+        '<div class="detail-head model-head">',
+          '<div>',
+            '<div class="detail-kicker">', _escape(m.tag), '</div>',
+            '<h5>', _escape(m.name), '</h5>',
+          '</div>',
+          '<span class="detail-state">Live surface</span>',
+        '</div>',
+        '<p class="detail-brief">', _escape(m.blurb), '</p>',
+        '<p>', _escape(m.bestFor || m.focus || 'Grounded model context'), '</p>',
+        '<div class="detail-meta">',
+          '<span class="detail-pill"><strong>Focus</strong> ', _escape(m.focus || 'Model behavior'), '</span>',
+          '<span class="detail-pill"><strong>Best for</strong> ', _escape(m.bestFor || 'Grounded QA'), '</span>',
+          '<span class="detail-pill"><strong>Source</strong> ', _escape(m.file), '</span>',
+          '<span class="detail-pill"><strong>Key metrics</strong> ', _escape(metricLine), '</span>',
+        '</div>'
+      ].join('');
+      wrap.querySelectorAll('.model-card').forEach(function (n) {
+        var active = parseInt(n.getAttribute('data-i'), 10) === i;
+        n.classList.toggle('active', active);
+        n.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      if (options && options.focus) {
+        _focusHubTarget(wrap.querySelector('.model-card[data-i="' + i + '"]'));
+      }
+    }
+
+    wrap.querySelectorAll('.model-card').forEach(function (card) {
+      card.addEventListener('click', function () {
+        showModel(parseInt(card.getAttribute('data-i'), 10));
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        var current = parseInt(card.getAttribute('data-i'), 10);
+        var next = (current + (e.key === 'ArrowRight' ? 1 : -1) + MODELS.length) % MODELS.length;
+        showModel(next, { focus: true });
+      });
+    });
+
+    _hubControls.showModel = function (index) {
+      _activateHubPane('models');
+      showModel(index, { focus: true });
+    };
+    showModel(0);
+  }
+
+  function _tokenizeQuery(text) {
+    return String(text || '').toLowerCase().match(/[a-z0-9][a-z0-9/-]*/g) || [];
+  }
+
+  function _escapeRegExp(text) {
+    return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function _clip(text, maxChars) {
+    var cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+    if (cleaned.length <= maxChars) return cleaned;
+    return cleaned.slice(0, Math.max(0, maxChars - 1)).trim() + '…';
+  }
+
+  function _knowledgeDocs() {
+    var sum = _readingsSummary();
+    var docs = [
+      {
+        type: 'overview',
+        title: 'ESD Lab knowledge hub overview',
+        body: 'The NANO study knowledge hub indexes ' + (sum.count || 0) + ' readings, ' + PIPELINE_STAGES.length + ' pipeline stages, ' + MODELS.length + ' working models, and ' + NICU_SITES.length + ' NICU sites for the public website and assistant.',
+        keywords: ['overview', 'knowledge hub', 'website', 'dashboard', 'NANO', 'ESD Lab'],
+        cite: { type: 'pane', pane: 'readings', label: 'Knowledge Hub' }
+      }
+    ];
+
+    PIPELINE_STAGES.forEach(function (stage, index) {
+      docs.push({
+        type: 'pipeline',
+        title: 'Pipeline stage ' + stage.num + ' · ' + stage.title,
+        body: [stage.brief, stage.detail, stage.input, stage.output, stage.artifact, stage.focus].join(' '),
+        keywords: ['pipeline', 'stage', stage.num, stage.title, stage.surface, 'redcap', 'hipaa', 'hrv'],
+        cite: { type: 'pipeline', index: index, label: 'Stage ' + stage.num }
+      });
+    });
+
+    MODELS.forEach(function (model, index) {
+      docs.push({
+        type: 'model',
+        title: model.name,
+        body: [
+          model.tag,
+          model.blurb,
+          model.focus,
+          model.bestFor,
+          model.file,
+          model.metrics.map(function (metric) { return metric.k + ' ' + metric.v; }).join(' ')
+        ].join(' '),
+        keywords: ['model', model.tag, model.name, model.file, 'auroc', 'ecg', 'rmssd', 'rsa'],
+        cite: { type: 'model', index: index, label: _clip(model.name, 28) }
+      });
+    });
+
+    NICU_SITES.forEach(function (site) {
+      docs.push({
+        type: 'site',
+        title: site.name + ' NICU site',
+        body: [
+          site.partner,
+          site.role,
+          site.address,
+          'Enrolled',
+          site.enrolled,
+          'Target',
+          site.target,
+          'Queries',
+          site.queries,
+          'Readings per day',
+          site.readings,
+          'Readiness',
+          _formatPct(site.ready)
+        ].join(' '),
+        keywords: ['site', 'nicu', site.name, site.partner, site.role, 'enrollment', 'target', 'queries'],
+        cite: { type: 'site', key: site.key, label: site.name }
+      });
+    });
+
+    _readings().forEach(function (reading) {
+      docs.push({
+        type: 'reading',
+        title: reading.title,
+        year: reading.year,
+        category: reading.category,
+        source: reading.source,
+        body: [reading.abstract || '', reading.source || '', reading.category || '', reading.year || ''].join(' '),
+        keywords: (reading.keywords || []).concat([reading.category || '', reading.source || '', String(reading.year || '')]),
+        cite: { type: 'reading', id: reading.id, label: _clip(reading.title, 36) }
+      });
+    });
+
+    return docs;
+  }
+
+  function _scoreDoc(doc, tokens, questionLower) {
+    var hay = (doc.title + ' ' + doc.body + ' ' + (doc.keywords || []).join(' ')).toLowerCase();
+    var title = String(doc.title || '').toLowerCase();
+    var score = 0;
+    tokens.forEach(function (token) {
+      if (hay.indexOf(token) === -1) return;
+      var matches = hay.match(new RegExp(_escapeRegExp(token), 'g')) || [];
+      score += title.indexOf(token) !== -1 ? 4 : 2;
+      score += Math.min(3, matches.length * 0.5);
+    });
+    if (doc.type === 'pipeline' && /(pipeline|redcap|hipaa|de-ident|deident|window|qa|feature|stage|sync)/.test(questionLower)) score += 6;
+    if (doc.type === 'model' && /(model|ecg|transformer|auroc|auc|mixed|markov|latent|mice|rmssd|sdnn|hf|lf)/.test(questionLower)) score += 6;
+    if (doc.type === 'site' && /(site|nicu|columbia|greenville|charleston|recruit|enroll|target|midlands|musc|prisma)/.test(questionLower)) score += 6;
+    if (doc.type === 'reading' && /(reading|paper|article|literature|study|attachment|autonomic|attention|emotion|spatial|math|parenting|autism)/.test(questionLower)) score += 4;
+    if (doc.type === 'overview' && /(website|hub|knowledge|dashboard|what can you answer|what is this)/.test(questionLower)) score += 5;
+    return score;
+  }
+
+  function _docSnippet(doc) {
+    return _clip(doc.body, doc.type === 'reading' ? 220 : 180);
   }
 
   /* ---------- Chart.js loader + viz wiring -------------------- */
@@ -1145,7 +1480,7 @@
         var s = document.createElement("span");
         s.className = "cite";
         s.textContent = c.label;
-        s.addEventListener("click", function () { _openReadingModal(c.id); });
+        s.addEventListener("click", function () { _openHubCitation(c); });
         d.appendChild(s);
       });
     }
@@ -1195,19 +1530,16 @@
   }
 
   function _retrieve(q) {
-    var ql = q.toLowerCase();
-    var toks = ql.split(/\s+/).filter(Boolean);
-    var scored = _readings().map(function (r) {
-      var hay = (r.title + " " + (r.keywords || []).join(" ") + " " + (r.abstract || "")).toLowerCase();
-      var s = 0;
-      toks.forEach(function (t) {
-        if (hay.indexOf(t) !== -1) s += 1 + Math.min(3, (hay.match(new RegExp(t, "g")) || []).length * 0.3);
-      });
-      return { r: r, s: s };
-    }).filter(function (x) { return x.s > 0; })
+    var ql = String(q || '').toLowerCase();
+    var toks = _tokenizeQuery(ql);
+    return _knowledgeDocs()
+      .map(function (doc) {
+        return { doc: doc, s: _scoreDoc(doc, toks, ql) };
+      })
+      .filter(function (entry) { return entry.s > 0; })
       .sort(function (a, b) { return b.s - a.s; })
-      .slice(0, 4);
-    return scored.map(function (x) { return x.r; });
+      .slice(0, 6)
+      .map(function (entry) { return entry.doc; });
   }
 
   function _fallbackAnswer(q) {
@@ -1216,26 +1548,34 @@
       // Pipeline / model meta answers
       var ql = q.toLowerCase();
       if (ql.indexOf("pipeline") !== -1 || ql.indexOf("de-id") !== -1 || ql.indexOf("redcap") !== -1) {
-        return { text: "The NANO data pipeline runs in five stages: 1) REDCap intake at three NICU sites, 2) Actiheart-5 window QA, 3) HIPAA Safe-Harbor de-identification, 4) HRV + behavioral feature building, 5) model fitting + evaluation. Open the Data pipeline tab for the step-by-step detail.", cites: [] };
+        return {
+          text: "The NANO data pipeline runs in five stages: 1) REDCap intake at three NICU sites, 2) Actiheart-5 window QA, 3) HIPAA Safe-Harbor de-identification, 4) HRV + behavioral feature building, 5) model fitting + evaluation. Open the Data pipeline tab for the step-by-step detail.",
+          cites: [{ type: 'pane', pane: 'pipeline', label: 'Data pipeline' }]
+        };
       }
       if (ql.indexOf("ecg") !== -1 || ql.indexOf("transformer") !== -1 || ql.indexOf("auroc") !== -1) {
-        return { text: "Six working models are in play: a transformer over 30s ECG windows (AUROC 0.899), HRV feature pipeline (RMSSD/SDNN/LF/HF), latent growth curves over RSA trajectories, mixed-effects models, Markov chain state models, and MICE imputation. The Models tab shows per-model metrics.", cites: [] };
+        return {
+          text: "Six working models are in play: a transformer over 30s ECG windows (AUROC 0.899), HRV feature pipeline (RMSSD/SDNN/LF/HF), latent growth curves over RSA trajectories, mixed-effects models, Markov chain state models, and MICE imputation. The Models tab shows per-model metrics.",
+          cites: [{ type: 'pane', pane: 'models', label: 'Working models' }]
+        };
       }
       if (ql.indexOf("site") !== -1 || ql.indexOf("nicu") !== -1 || ql.indexOf("enroll") !== -1) {
-        return { text: "Three NICU sites participate: USC IMB / Prisma Midlands in Columbia, Prisma Upstate in Greenville, and MUSC in Charleston. The interactive map in the recruitment section shows per-site live counters including enrolled vs target, open queries, and readings per day.", cites: [] };
+        return {
+          text: "Three NICU sites participate: USC IMB / Prisma Midlands in Columbia, Prisma Upstate in Greenville, and MUSC in Charleston. The interactive map in the recruitment section shows per-site live counters including enrolled vs target, open queries, and readings per day.",
+          cites: [{ type: 'site', key: 'columbia', label: 'NICU sites' }]
+        };
       }
       return { text: "I couldn't find a direct match in the indexed readings. Try the suggested questions on the right, or use more specific terms (e.g. 'attachment', 'autonomic', 'spatial thinking').", cites: [] };
     }
-    var lines = ["Here's what I found across the indexed readings:"];
-    hits.forEach(function (r, i) {
-      var snip = (r.abstract || "").slice(0, 220).trim();
-      lines.push((i + 1) + ". " + r.title + (snip ? " — " + snip + (snip.length === 220 ? "…" : "") : ""));
+    var lines = ["Here's what I found across the synced knowledge base:"];
+    hits.slice(0, 4).forEach(function (doc, i) {
+      lines.push((i + 1) + ". [" + doc.type + "] " + doc.title + " — " + _docSnippet(doc));
     });
     lines.push("");
     lines.push("Click a citation chip below to open the full record.");
     return {
       text: lines.join("\n"),
-      cites: hits.map(function (r) { return { id: r.id, label: r.title.slice(0, 36) + (r.title.length > 36 ? "…" : "") }; })
+      cites: hits.slice(0, 4).map(function (doc) { return doc.cite; }).filter(Boolean)
     };
   }
 
@@ -1247,16 +1587,26 @@
     var hits = _retrieve(q);
 
     if (_chat.mode === "webllm" && _chat.engine) {
-      var contextStr = hits.slice(0, 3).map(function (r) {
-        return "Title: " + r.title + "\nYear: " + (r.year || "n/a") +
-               "\nCategory: " + (r.category || "") +
-               "\nKeywords: " + (r.keywords || []).join(", ") +
-               "\nAbstract: " + (r.abstract || "").slice(0, 700);
+      var contextDocs = hits.slice(0, 4);
+      var contextStr = contextDocs.map(function (doc) {
+        var meta = [];
+        if (doc.type === 'reading') meta.push('reading corpus');
+        if (doc.type === 'pipeline') meta.push('pipeline stage');
+        if (doc.type === 'model') meta.push('working model');
+        if (doc.type === 'site') meta.push('NICU site');
+        return "Title: " + doc.title +
+               (doc.year ? "\nYear: " + doc.year : "") +
+               (doc.category ? "\nCategory: " + doc.category : "") +
+               (doc.source ? "\nSource: " + doc.source : "") +
+               "\nType: " + doc.type +
+               (meta.length ? "\nMeta: " + meta.join(' · ') : "") +
+               "\nKeywords: " + (doc.keywords || []).join(", ") +
+               "\nContent: " + _clip(doc.body || '', 700);
       }).join("\n---\n");
       var systemMsg = "You are the ESD Lab research assistant for the NANO Study at the University of South Carolina. " +
-        "Answer concisely and cite specific findings from the provided context where relevant. " +
+        "Answer concisely and only from the provided context, which may include indexed readings, pipeline stages, working models, and site metadata from the website. " +
         "If the context does not cover the question, say so and offer related topics from the corpus.\n\n" +
-        "CONTEXT (top retrieved readings):\n" + contextStr;
+        "CONTEXT (top retrieved records):\n" + contextStr;
 
       var msgEl = _addBot("…");
       _chat.engine.chat.completions.create({
@@ -1276,13 +1626,14 @@
           var msgs = document.getElementById("esd-chat-msgs");
           if (msgs) msgs.scrollTop = msgs.scrollHeight;
         }
-        if (hits.length && msgEl) {
+        if (contextDocs.length && msgEl) {
           msgEl.appendChild(document.createElement("br"));
-          hits.slice(0, 3).forEach(function (r) {
+          contextDocs.forEach(function (doc) {
+            if (!doc.cite) return;
             var s = document.createElement("span");
             s.className = "cite";
-            s.textContent = r.title.slice(0, 36) + (r.title.length > 36 ? "…" : "");
-            s.addEventListener("click", function () { _openReadingModal(r.id); });
+            s.textContent = doc.cite.label;
+            s.addEventListener("click", function () { _openHubCitation(doc.cite); });
             msgEl.appendChild(s);
           });
         }
@@ -1320,7 +1671,11 @@
     try { wireEmptyStates(); } catch (e) {}
     try { ensureDeployBanner(); } catch (e) {}
     try { _mountMap(); } catch (e) {}
-    try { _mountHub(); } catch (e) {}
+    var mountedHub = false;
+    try { mountedHub = _mountHub(); } catch (e) {}
+    if (mountedHub) {
+      try { wireReveal(); } catch (e) {}
+    }
   }
 
   /* ---------- Boot -------------------------------------------- */
