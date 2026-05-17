@@ -1,0 +1,1505 @@
+CHAPTER FOUR
+Autonomic and attentional
+pathways in the emergence of
+autism: bridging mechanisms
+and real-world contexts in
+infancy
+Jessica Bradshaw a,b,∗, Emma Platt a,b, Julia Yurkovic-Harding a,b,
+Samuel Harding a,b, Xiaoxue Fu a,b
+a University of South Carolina, Columbia, SC, USA
+b Carolina Autism and Neurodevelopment Research Center, Columbia, SC, USA
+∗Corresponding author: e-mail address: jbradshaw@sc.edu.
+Contents
+1. Developmental cascades and the emergence of ASD 	103
+2. The role of autonomic nervous system function as an early regulatory mechanism
+in ASD 	105
+2.1 Autonomic dysfunction and autism in preterm infants 	107
+3. The role of attention as an early regulatory mechanism in ASD 	109
+4. The coupling of ANS and attention: autonomic regulation of attention 	111
+4.1 Developmental course of autonomic regulation of attention 	112
+4.2 Autonomic regulation of attention and ASD: a developmental framework 	114
+5. ANS and attention: cascading consequences in ASD 	116
+6. Multimodal methods in naturalistic contexts: an approach to understanding
+heterogeneity in ASD 	117
+6.1 Naturalistic studies of attention and ANS 	118
+6.2 Feasibility of head-mounted eye tracking in very young infants 	118
+6.3 Gaze patterns in naturalistic contexts in young infants at elevated likelihood
+for ASD 	121
+6.4 A synchronized system for studying physiological regulation of attention in
+naturalistic settings 	122
+7. In-Home studies as a representative and inclusive approach to science 	123
+8. Conclusions 	126
+References 	126
+99	Advances in Child Development and Behavior, Volume 69
+ISSN 0065-2407
+https://doi.org/10.1016/bs.acdb.2025.07.006
+Copyright © 2025 Elsevier Inc. All
+rights are reserved, including those
+for text and data mining, AI
+training, and similar technologies.
+
+-- 1 of 35 --
+
+100 	Jessica Bradshaw et al.
+Abstract
+Autism spectrum disorder (ASD) unfolds over the first two years of life through complex
+interactions among developmental systems. Attention and autonomic nervous system
+(ANS) regulation represent foundational processes critical for adaptive engagement with
+the environment. Disruptions in these systems during early infancy may initiate develop-
+mental cascades that contribute to core ASD features, including social-communication
+challenges and restricted and repetitive behaviors, as well as the vast heterogeneity
+found within ASD. This chapter reviews our approach to integrating mechanistic research
+and real-world methodologies to explore autonomic and attentional pathways in the
+early development of ASD.
+We conduct prospective, longitudinal studies to track how ANS regulation and attention
+unfold in infancy in infants at elevated and low familial likelihood for ASD. By integrating
+multimethod approaches to study these functions in naturalistic contexts, we demon-
+strate that autonomically regulated attention mechanisms support key developmental
+milestones and may play an important role in the emergence of ASD. Findings presented
+provide preliminary support for the theory that infants later diagnosed with ASD ex-
+hibit early disruptions in parasympathetic modulation of arousal and attention across
+responses to social and nonsocial contexts.
+This work emphasizes the value of leveraging portable, non-invasive technologies to
+study early autonomic and attention processes in naturalistic contexts. By using this ap-
+proach to uncover formative mechanisms underlying ASD, we enhance the translational
+potential of this research while addressing critical gaps in inclusivity and representation.
+Understanding autonomic and attentional systems in infancy provides an opportunity
+to identify cascading developmental divergences and promote adaptive developmental
+trajectories in ASD.
+Keywords: Autism, Autism spectrum disorder (ASD), Infancy, Dynamic systems, De-
+velopmental cascades, Respiratory sinus arrhythmia (RSA), Parasympathetic, Autonomic
+nervous system, Attention, sustained attention, social attention, Head-mounted eye
+tracking, Naturalistic
+Autism spectrum disorder (ASD) emerges from the complex interplay of
+developmental systems, where early differences cascade across developmental
+domains to shape growth and adaptation over time. Understanding these
+dynamic processes in the early development of ASD requires bridging
+theory with application to address critical questions: How do foundational
+developmental systems unfold in ASD? How do these early developing
+systems initiate cascading pathways that shape the emergence of ASD? How
+can our science most directly translate to actionable early identification and
+intervention strategies that can be implemented dur ing cr itical developmen-
+tal windows?
+The developmental emergence of core features of ASD occurs gradually
+over the first three years of life, with diagnostic certainty often achieved
+by age 2-3 years. Despite most diagnoses occurring between 2-5 years of
+
+-- 2 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	101
+age, robust evidence suggests that neurological processes underlying ASD
+are already underway shortly after birth (see (Dawson et al., 2023) for
+a review). Core features of ASD include delays and differences in social
+communication and interaction, alongside repetitive behaviors and restricted
+interests (American Psychiatric Association, 2013). Prospective longitudinal
+designs have been used to track the development of infant siblings of children
+with ASD, with the goal to identify early markers of ASD and advance
+early detection and intervention methods (Szatmari et al., 2016). These
+baby sibling research designs comprise cohorts of elevated likelihood infant
+siblings of children with ASD (EL) and low likelihood infants without
+a family history of ASD (LL). Approximately 20% of ASD siblings are
+diagnosed with ASD at age 2-3 years and an additional 30% exhibit atypical
+development and/or subclinical features of ASD (Ozonoff et al., 2011;
+Ozonoff et al., 2024). These research designs have been instrumental in
+advancing the field and bringing us closer to identifying mechanisms and
+pathways in ASD (Messinger et al., 2013; Ozonoff & Iosif, 2019; Szatmari
+et al., 2016; Zwaigenbaum et al., 2005; Zwaigenbaum et al., 2015). For
+example, as a result of infant sibling research, we have identified social-
+communication delays and repetitive behaviors as early as 9-12 months,
+revealing early iterative processes that shape and are shaped by subsequent
+skills and developmental outcomes (Bradshaw et al., 2021; Pileggi et al.,
+2021). Outside of core features of ASD, findings from such studies have
+reported even earlier differences in foundational developmental processes,
+like attention and autonomic nervous system (ANS) functions.
+Atypical attention is among the earliest of these developmental processes
+to characterize individuals with ASD and persists as a lifelong feature of ASD
+(Ness et al., 2019; Murias et al., 2018; Bradshaw et al., 2019; Kaliukhovich
+et al., 2020; Frazier et al., 2017). Research has demonstrated that atypical
+attention is not only detectable in early infancy but is also predictive of later
+developmental outcomes (Bradshaw et al., 2020; Di Giorgio et al., 2016;
+Jones & Klin, 2013). However, the biological mechanisms underlying these
+early disruptions remain poorly understood. One promising avenue of inves-
+tigation lies in another foundational system—the autonomic nervous system.
+ANS is an early-emerging bioregulatory system essential for regulating
+neonatal arousal and attention (Brazelton & Nugent, 2011; Feldman, 2006;
+Porges & Furman, 2011). Disruptions in the ANS’s regulation of attention, or
+“autonomic regulation of attention,” may initiate a series of cascading effects
+that influence social interaction, learning, and broader development. While
+general ANS dysfunction has been documented in older children diagnosed
+
+-- 3 of 35 --
+
+102 	Jessica Bradshaw et al.
+with ASD (Cheng et al., 2020), less research has focused on whether and
+when such dysfunction contributes to atypical attention in infancy and how
+early autonomic regulation predicts the emergence of ASD symptoms.
+Baby sibling research to date relies heavily on laboratory-based methods
+that pr ior itize exper imental control. These approaches, while valuable, sim-
+plify the complexities of infants’ natural environments, which are rich with
+experiential and adaptive factors critical to development. Naturalistic data
+collection—capturing behavior or specific neurodevelopmental processes
+in everyday environments—represents a conceptual shift in our scientific
+approach, embracing the dynamic, contextual factors that shape develop-
+ment, rather than removing them in lab-based experiments or controlling
+for them in statistical analyses (Tamis-LeMonda et al., 2024). By observing
+infants in their lived environments, researchers can access the very influences
+that drive developmental trajectories. Studying attention and ANS in these
+contexts, while leveraging portable, noninvasive technologies, not only
+advances knowledge of developmental mechanisms, but also bridges the gap
+between research and practice, facilitating earlier detection and intervention
+strategies that can be seamlessly implemented in real-world settings.
+Naturalistic methods also offer a pathway to address longstanding dispar-
+ities in participant representation by enabling research in a variety of home
+settings. Participants in baby sibling studies predominantly comprise white,
+higher-resource families. Descriptive data from the past three decades of
+autism intervention research show that white participants have the highest
+rate of participation, comprising 64.8% of sample cohorts (Steinbrenner
+et al., 2022). This underrepresentation limits understanding of ASD across
+diverse populations and addressing these disparities is essential, not only
+for equity, but also to fully capture the heterogeneity of developmental
+contributing to the phenotypic diversity of ASD.
+Building on emerging findings in attention, ANS regulation, and the
+dynamic interactions among these systems in the early emergence of
+ASD, we propose a unified framework that integrates existing literature
+and our findings to better understand how foundational systems in real-
+world settings initiate cascading effects in the emergence of ASD. First, we
+explore how cascading developmental processes—specifically, disruptions in
+attention and autonomic regulation—shape typically developing and ASD
+trajector ies dur ing infancy. Next, we highlight the promise of portable,
+noninvasive technologies like head-mounted eye tracking (HMET) and
+synchronized home-based systems to capture these processes in real-world
+settings. Finally, we address critical challenges in participant inclusion and
+
+-- 4 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	103
+representation, underscoring the importance of studying diverse populations
+to ensure findings are relevant and translatable to broader contexts. By
+bridging mechanistic research with innovative methodologies and inclusive
+approaches to research, we aim to contribute to the current understanding
+of ASD development in infancy and create more direct pathways toward
+early detection and intervention.
+1. Developmental cascades and the emergence of ASD
+A developmental cascades framework views development as contin-
+uous, cumulative interactions and transactions across various developmental
+domains, biological systems, and environmental contexts (Masten & Cic-
+chetti, 2010; Oakes & Rakison, 2019). It provides a lens for investigating how
+lower- or higher-level processes produce cross-domain,reciprocal effects that
+influence outcomes later in development. Importantly, cascades highlight
+both specific developmental mechanisms and the dynamic interactions
+among multiple mechanisms that unfold over time to shape development.
+Individual exper iences contr ibute to the divergence of developmental tra-
+jectories, creating opportunities for individualized input driven by the infant,
+which, in turn, influences future developmental pathways.
+Developmental cascades offer a useful framework for understanding the
+early development of ASD, comprised of cascading processes, where early
+differences in foundational systems, including autonomic and attentional
+systems, set off a ripple effect that can enrich or disrupt downstream
+developmental pathways (Bradshaw et al., 2022a; Iverson et al., 2023;
+Karmiloff-Smith, 1998; Thelen & Smith, 1995). Among these foundational
+systems, attention stands out as a particularly intriguing process that may be
+altered in individuals with ASD. Variability in early attentional processes can
+significantly influence later social, cognitive, and communicative develop-
+ment. In ASD, early attentional differences may contribute to the atypical
+development of social communication abilities (Bradshaw et al., 2022a).
+Early attentional processes undergo rapid development over the first few
+months of life (e.g., by 6–10 weeks), driven by a shift from subcortical to
+cortical control of behavior. Critical elements of early-developing attention
+processes—such as disengaging from stimuli, shifting focus, and filtering
+irrelevant information—are foundational for cognitive and behavioral de-
+velopment (Colombo, 2001; Xie, 2017; Conte & Richards, 2021; Hunnius,
+2007). Achievements of these early attentional milestones coupled with
+co-occurring achievements in other domains (e.g., motor and cognitive)
+
+-- 5 of 35 --
+
+104 	Jessica Bradshaw et al.
+for m a cr itical foundation for continued growth in social, language, and
+cognitive domains, making early attention a key focus for understanding the
+mechanisms underlying atypical developmental trajectories, including those
+observed in ASD.
+In ASD, atypical patterns of visual attention represent the result of, and
+contributor to, influential developmental cascades that begin in infancy.
+Reduced attention to socially relevant stimuli, such as eyes and faces, as
+well as more generalized difficulty disengaging from focal stimuli, emerge
+within the first year of life (Chawarska et al., 2013; Fu et al., 2024; Jones et
+al., 2016). These subtle variations in attention may not constitute diagnostic
+cr iter ia for ASD, but have broad implications for social development. For
+example, reduced visual saliency of the eyes of a face in early infancy could
+lead to diminished attention to eyes in later infancy, which may reduce the
+frequency and quality of interactions with caregivers, resulting in missed
+opportunities for social learning, and may reinforce nonsocial attentional
+preferences over time, as is observed in ASD (Pierce et al., 2016).
+Atypical visual attention is also evident in young EL infants, irrespective
+of their eventual diagnostic outcome (Di Giorgio et al., 2021; Di Giorgio
+et al., 2016). While these attentional differences may be transient (Bradshaw
+et al., 2020), they point to an underlying genetic basis for atypical social
+attention in ASD. Genetics strongly influence visual attention patterns
+throughout childhood (Kennedy et al., 2017; Constantino et al., 2017)
+which further influence information processing and social interactions.
+Together, these findings highlight the role that biological predispositions
+for social or nonsocial stimuli play in the developmental cascades that lead
+to ASD.ASD-specific differences in lower-level attention processes, such as
+attention orienting and disengagement, may stem from atypical neural and
+neurochemical development. Disruptions in arousal regulation and visual
+processing circuits have been proposed as potential early contributors to
+attentional variability in ASD (Artoni et al., 2020; Hazlett et al., 2017).
+Arousal regulation is driven by the sympathetic-parasympathetic balance of
+the autonomic nervous system. The parasympathetic branch of the ANS
+supports attention and readiness for cognitive engagement, pointing to
+the ANS as a critical biological factor in the development of attention,
+attentional control, and visual processing. Cascading effects of early ANS
+dysfunction are less well studied, but early differences in ANS and neural
+circuitry could initiate developmental cascades that affect both regulatory
+behavior and subsequent brain development, which may shape later pat-
+terns of social engagement and learning. For instance, difficulties with
+both arousal modulation and attention shifting may compound, negatively
+
+-- 6 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	105
+affecting infants’ ability to engage in triadic interactions with objects and
+caregivers. These interactions require a calm arousal state and effective
+attention shifting to facilitate entry into a shared space of joint attention and
+engagement. Such states of joint engagement with caregivers and objects
+are critical for language acquisition and higher-order cognitive integration
+(Adamson et al., 2019; Adamson et al., 2009; Thorp, 2006; Conway et al.,
+2018).
+Overall, the developmental cascades model frames development as a
+dynamic system, where interactions between biological predispositions, de-
+velopmental processes, and environmental inputs continuously shape un-
+folding trajectories. Early disruptions in the foundational systems discussed
+here, including autonomic regulation and visual attention, can cascade to
+affect social communication, motor development, and broader neurocog-
+nitive functions. Mechanistic frameworks for ASD therefore highlight the
+convergence of multiple subsystems and underscore the need for integrative,
+multimodal approaches to studying its emergence.
+2. The role of autonomic nervous system function as an
+early regulatory mechanism in ASD
+Systems-level biological factors known to distinguish those with vs.
+without ASD include genetics, brain development, and physiological arousal.
+Among these biological systems, the ANS plays a central role in regulating
+behaviors essential for social and cognitive development. Understanding
+parasympathetic function as a component of ANS provides insight into its
+contribution to developmental cascades in ASD. There is robust evidence
+that ANS-driven physiological systems support behavioral regulation, social
+engagement and interaction, and attention and cognitive processing (Porges
+& Furman, 2011; Heilman et al., 2007; Porges, 2003; Richards, 2010; Thayer
+et al., 2009; Whedon et al., 2018). This body of work lays the foundation
+for examining how developmental trajectories of autonomic and attentional
+mechanisms in infancy shape development, initiate cascades, and contribute
+to outcomes.
+ANS regulation is governed by the balance of sympathetic and parasym-
+pathetic activation, with the sympathetic nervous system activating during
+times of stress (“fight or flight”) and the parasympathetic nervous system
+activating during times of rest (“rest and digest”). This delicate balance enacts
+physiological changes in basic functions, such as decreasing heart rate or
+increasing body temperature to support infants’ healthy responsiveness and
+adaptation to environmental demands.
+
+-- 7 of 35 --
+
+106 	Jessica Bradshaw et al.
+In early prenatal development, physiological functions are driven primar-
+ily by sympathetic influence. Higher cortical processes begin to integrate
+autonomic control in the late prenatal and early postnatal period leading
+to increasing influence of the parasympathetic nervous system. As ANS
+matures, parasympathetic influences support calm states of alertness and
+sustained attention that are essential and provide countless opportunities for
+development across domains, including social and language learning. In this
+way, ANS is considered a “developmental resource” in the neonatal and early
+infant period that mediates infant-environment interactions.
+Physiological measures used to index parasympathetic function include
+heart rate variability (HRV) and respiratory sinus arrhythmia (RSA). Both
+HRV and RSA reflect variability in the influence of the parasympathetic
+system on the heart, with HRV reflecting variability in heart rate and RSA
+reflecting variability in heart rate at the frequency of respiration. An adaptive,
+regulated ANS involves continuous changes to heart rate, making increased
+variability (higher HRV and RSA) indices of parasympathetic influence
+over the heart. HRV and RSA undergo significant maturation in infancy
+and early childhood, and, when measured dur ing per iods of rest, our work
+demonstrates that the first six months of life is a period of particularly rapid
+growth (Fig. 1). Throughout development, higher HRV and RSA at rest
+reflect an infant’s readiness and capacity to regulate arousal and maintain
+engagement with their surroundings. During times of stress, RSA decreases
+due to the suppression of the parasympathetic system to make way for
+sympathetic influence. RSA suppression supports mobilization of the fight
+or flight system, which includes heightened arousal and cognitive focus.
+Evidence indicates that more RSA suppression in response to stress reflects
+a healthy, responsive neurophysiological system (Bazhenova et al., 2001;
+Porges et al., 1996). Studies that demonstrate links between RSA suppression
+and developmental outcomes, for example social interaction and language,
+strengthen these claims.
+To evaluate the link between RSA suppression and positive developmen-
+tal outcomes, we conducted a longitudinal study of infants at elevated and
+low likelihood for ASD (Bradshaw & Abney, 2021). RSA was measured in 3-
+4-month-old infants during a semi-structured infant-caregiver interaction.
+The structure of the interaction was modeled after the still-face procedure,
+but infants and parents were not constrained in terms of positioning or
+movement. The infant was placed in supine on the Table while the caregiver
+stood in front of them interacting as they normally would at home for
+5 minutes. At that time, the caregiver was cued to sit down and ignore
+
+-- 8 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	107
+Fig.  Trajectory of mean, resting RSA in typically developing infants from 2 to 24 months
+of age.
+their infant for 2 minutes while maintaining a neutral expression. Because
+they were no longer face-to-face during this time, both the infant and
+caregiver were free to visually explore their environment, and the infant
+was able to move as they liked. After this 2-min period, the caregiver
+interacted with their infant again for 2 min. RSA was measured during
+each phase of this interaction, and RSA suppression was indexed as the
+difference between RSA during the “play” phase and RSA during the
+“ignore” phase. We found that RSA suppression during this task at 3-4
+months positively associated with parent-reported social communication
+skills at 9 months. These findings suggest that appropriate parasympathetic
+responsivity to environmental demands, particularly those that are social in
+nature, may initiate developmental cascade that supports early social learning,
+which in turn fosters early social-communication development.
+. Autonomic dysfunction and autism in preterm infants
+Decreased parasympathetic influence on the heart, reflected in lower HRV
+and RSA, can signal underlying ANS dysfunction (Thayer et al., 2009;
+Mathewson et al., 2014; Propper, 2012). Consistent with studies of children
+
+-- 9 of 35 --
+
+108 	Jessica Bradshaw et al.
+and adults, and theoretical frameworks that describe ANS as a foundational
+regulatory function that is disrupted in ASD (Cheng et al., 2020; Patriquin
+et al., 2014; Sheinkopf et al., 2019), we have found differences in early
+ANS function and a high prevalence of ASD in infants born preterm.
+Preterm birth presents a unique context for studying ANS dysfunction, as
+these infants experience major challenges in early autonomic development.
+Substantial ANS maturation occurs in the second half of pregnancy, and
+preterm birth (born <37w GA) significantly disrupts the development of
+ANS, along with the overall functioning of the PT newborn (Mulkey &
+Plessis, 2018). The drastic transition to the extrauterine environment that
+occurs amidst ongoing ANS maturation is a clash that is compounded by
+exposure to medical stressors. As a result, autonomic maturation is impaired
+throughout the PT period, fails to normalize at term age equivalent (Fyfe
+et al., 2015), and may alter long-term temporal programming of ANS
+(Haraldsdottir et al., 2018). This early process initiates a developmental
+cascade that disrupts initial and subsequent physiological adaptations to the
+environment, and may affect the integration of autonomic control into
+later-developing, higher-level cortical processes important for social learn-
+ing and cognitive development, such as attention. These early disruptions
+may be a critical factor in the emergence of ASD features, leading to
+heightened likelihood of ASD in very PT infants compared to the general
+population.
+Building on the theoretical and empirical evidence linking ANS dys-
+function to PT infants and to ASD, we conducted a prospective, longitudinal
+pilot study of very preterm infants (born < 32 weeks gestational age) in
+which we examined the predictive link between neonatal ANS dysfunction
+and later-developing ASD symptoms (Bradshaw et al., 2024). In this study,
+we collected continuous, multimodal measures of ANS dysfunction. ANS
+measures comprised minute-by-minute thermal gradients,defined as the dif-
+ference in neonatal peripheral temperature and core temperature (Knobel-
+Dail et al., 2017), and hour-by-hour abnormal heart rate indices, measured
+using Heart Rate Characteristic (HRC) scores derived from HeRO Moni-
+tors, (Fairchild & Aschner, 2012). Heart Rate Characteristic Scores reflect an
+algorithm that considers beat-to-beat heart rate, heart rate variability, inter-
+beat interval (IBI) standard deviation, and IBI skewness (Fairchild & Aschner,
+2012). Thermal gradients and HRCs were collected for 28 days after
+birth (>40,000 samples/infant) in the neonatal intensive care unit (NICU).
+Throughout the 28 days, ANS dysfunction was characterized by an average
+HRC score >1 and abnormal negative thermal gradients for about 20%
+
+-- 10 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	109
+of the time (6 of 28 days). Following NICU discharge, comprehensive neu-
+rodevelopmental follow-up consisting of standardized measures of cognition,
+language, and motor skills were collected at adjusted ages 6, 9, and 12 months.
+Adjusted ages equate the neurological and physical development of preterm
+infants with that of full-term infants, whereas chronological age equates
+duration of time in the extrauterine environment with that of full-term
+infants. At 12 months adjusted age, assessments of social communication and
+early ASD symptoms were administered using the Systematic Observation
+Rating of Features of ASD (SORF; Dow et al., 2017).
+In this small pilot study of very preterm infants who were retained in the
+study and followed to 12 months, we observed that the neonatal abnormal
+heart rate characteristics were strongly correlated with ASD symptoms at
+12 months (r = 0.81, p<.01), as was birth gestational age, birth weight, and
+abnormal negative thermal g radients. A reg ression model including GA, BW,
+and HRC scores revealed a significant, unique predictive effect of abnormal
+heart rate indices on ASD outcomes (model r = 0.86, p=.017; HRC Score:
+r=.72, p=.029). Overall, these results show a surprisingly high association
+between ANS dysfunction in the neonatal period and ASD features at 1
+year of age in very PT infants. This study provides compelling evidence for
+the role of ANS dysregulation and its cascading effects in the development
+of ASD. Whether this points to ANS as a catalyst for an ASD-specific
+developmental cascade, or reflects a developmental endpoint in an earlier
+cascade that serves as a more direct mechanistic pathway to ASD remains
+unknown, but highlights the need for further research into early autonomic
+mechanisms as predictors of ASD.
+3. The role of attention as an early regulatory
+mechanism in ASD
+Although atypical attention does not constitute a core feature of
+ASD, mounting evidence suggests impairments in attentional networks are
+pervasive and lifelong, constituting a central feature of ASD. Attentional
+disengagement is among the earliest reported features of ASD, particularly
+in EL infants (Zwaigenbaum et al., 2005; Elsabbagh et al., 2009). Attention
+disengagement is the process of shifting attention from one stimulus to
+another and serves as a regulatory mechanism that modulates arousal. A
+bidirectional relationship between arousal and disengagement would involve
+effective arousal modulation facilitating attention disengagement, and failure
+to disengage leading to further dysregulation.
+
+-- 11 of 35 --
+
+110 	Jessica Bradshaw et al.
+Our research demonstrates that atypical attention can be observed as early
+as three months of age in EL infants (Bradshaw et al., 2020) and infants who
+go on to develop ASD (Bradshaw et al., 2021). In these studies, we used
+a neonatal neurobehavioral exam to evaluate attention throughout the first
+five months of life. In the first study, we examined trajectories of visual and
+auditory attention to animate (faces and voices) and inanimate (objects) from
+1 week to 5 months of age in EL infants and compared them to LL infants.
+We also tested associations between early attention and 12-month social-
+communication and cognitive outcomes.
+Trajectories of attention across the first five months of life illustrated
+significant growth over time for both EL and LL infants. However, EL infants
+exhibited lower performance on the attention tasks at 2 and 3 months,
+particularly in visual attention tasks, compared to their LL peers. However,
+this difference was transient and by 4 and 5 months, their performance
+aligned with that of LL infants. Contrary to our expectations that social
+attention (i.e., animate attention tasks) would diverge most from that of LL
+infants, we found that attention to both animate and inanimate visual stimuli
+was lower dur ing this time per iod, highlighting generalized vulnerabilities
+in attention during early development. At 12 months, early attention at 3
+months was significantly associated with social-communication skills and, to
+a lesser extent, nonverbal cognitive skills.
+In a follow-up study, we compared the same attention measures in
+infants who went on to develop ASD with those of typically developing
+infants (Bradshaw et al., 2021). Based on our earlier findings (Bradshaw et
+al., 2020), we focused on attention at 1, 2, and 3 months. Results showed
+that attention development differentiated infants with ASD from their TD
+peers. At 1 month, attention scores were comparable between groups, but
+by 2 and 3 months, infants with ASD exhibited significantly diminished
+attention. Further exploration revealed that this finding was most robust
+for visual, inanimate, attention (attention to objects). The difference in
+inanimate attention at 3 months in infants later diagnosed with ASD may
+reflect disruptions in the transition from reflexive to volitional control of
+attention during a critical period of neurodevelopment.
+At birth, attention to visual stimuli is pr imar ily subserved by subcortical
+mechanisms that enable reflexive orienting. This allows the youngest of
+neonates to orient to and track objects and faces. By 2 to 3 months,
+however, cortical systems, particularly those in the parietal and prefrontal
+reg ions, beg in to mediate volitional attention and attentional shifting. This
+transition supports the development of more complex behaviors, such as
+
+-- 12 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	111
+joint engagement with objects and caregivers, which are foundational for
+social and communication skills. Infants with ASD may experience delays
+or disruptions in this cortical-driven process, resulting in diminished ability
+to orient to and sustain attention on inanimate stimuli. Moreover, orienting
+requires visual disengagement from other salient stimuli and visual tracking
+requires motor control and movement of head and neck that aligns with eye
+movements. Both attention disengagement and motor challenges, particu-
+larly head, neck, and trunk control (Bradshaw et al., 2023), are observed in
+very early development in ASD. These difficulties with attention disengage-
+ment from social or environmental stimuli, as well as impaired coordination
+between visual and motor systems, may also explain the attention differences
+observed in these studies. Together, these results emphasize the importance
+of attentional processes during the 2- to 3-month window, possibly the result
+of underlying neurodevelopmental or regulatory vulnerabilities, which may
+shape developmental pathways later observed in ASD.
+4. The coupling of ANS and attention: autonomic
+regulation of attention
+Attention and parasympathetic activation both serve as foundational
+regulatory functions throughout the lifespan. In infancy, the coupling of au-
+tonomic regulation and attention is a cornerstone of an adaptive engagement
+system, The ANS modulates attention by regulating heart rate responses
+dur ing infor mation processing, particularly through parasympathetic activity.
+A well-functioning ANS enables neonates to override metabolic demands
+and generate physiological responses, such as heart rate deceleration, which
+support sustained attention and enhance stimulus processing (Lester et al.,
+1996; Richards, 2004; Richards & Turner, 2001).
+Parasympathetic-driven attention responses underpin three distinct
+phases of attention—attention orienting, sustained attention, and attention
+termination—each linked to cognitive and learning processes (Richards,
+2010; Richards, 2004). Among these, sustained attention, plays a particularly
+crucial role in cognitive engagement. Characterized by prolonged look
+duration and heart rate deceleration, sustained attention facilitates pr ior iti-
+zation of relevant stimuli while reducing distractibility, resulting in selective
+information processing and recognition memory (Richards & Hunter, 1998;
+Reynolds & Richards, 2005).
+Heart rate measures of sustained attention represent a noninvasive
+method for understanding cognitive and neurological processes that underly
+
+-- 13 of 35 --
+
+112 	Jessica Bradshaw et al.
+sustained attention. During sustained attention, the heart rate slows and
+remains decelerated, signaling heightened cognitive engagement and infor-
+mation processing. As sustained attention shifts to the third phase, attention
+termination, heart rate returns to baseline, reflecting diminished arousal and
+increased distractibility (Richards, 2004). Sustained heart rate deceleration
+reflects the activation of arousal systems, crucial for maintaining attention,
+while the return to baseline during termination marks disengagement
+(Richards & Casey, 1992). Heart rate-defined sustained attention (HRDSA)
+can be indexed with duration of the heart rate deceleration, and the
+magnitude of the heart rate change, or the depth of deceleration. HRDSA is
+said to offer a more precise measure of information processing than looking
+behavior alone (Colombo, 2001; Reynolds et al., 2011; Xie & Richards,
+2016). This sequence highlights the dynamic role of parasympathetic activity
+in regulating attention and underscores the importance of HRDSA as a
+measure of meaningful attention and engagement during infancy.
+. Developmental course of autonomic regulation of
+attention
+Attention undergoes significant changes during the first two years of life,
+shaped by the maturation of attention networks. Early in infancy, posterior
+attention systems support visual orienting and disengagement, while anterior
+attention systems involved in executive control emerge after six months.
+These neurodevelopmental milestones contribute to varied trajectories in
+attention metrics. For instance, look duration, which indicates visual learning
+and encoding, follows a triphasic trajectory: increasing during the first two
+months, decreasing between three and six months, and rising again after six
+months (Colombo, 2001; Richards & Anderson, 2004).
+To further investigate the dynamic unfolding of these regulatory pro-
+cesses, and to comprehensively document the development of attention in
+context, we examined age- and context-dependent differences in looking
+behavior and physiologically-regulated sustained attention. In a two-year
+longitudinal study, we mapped trajectories of attention in over 50 infants
+from 1 to 24 months of age. To understand the effect of stimulus on
+attention patterns, we included four distinct stimulus conditions—social
+videos, nonsocial videos, social interactions, and nonsocial interactions—
+across multiple attention metrics that included overall looking time, mean
+look duration, percent time in HRDSA, and heart rate deceleration during
+HRDSA episodes.
+
+-- 14 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	113
+Results of this study showed that during the first six months, overall
+looking time increased across all conditions, with screen-based tasks eliciting
+more looking than live interactions. However, contrary to expectations,
+a drastic decline in attention to the caregiver’s face during the social
+interaction was observed between 4-6 months and was lower than all
+other stimuli by 6 months. The decline in face-looking coincides with
+developmental gains in motor skills and executive control of attention,
+which facilitates a broader, more dynamic exploration of the environment.
+The emergence of these skills is also closely tied to the maturation of
+cortical control of attention, particularly the development of the anterior
+attention network. This network underpins voluntary attention shifting and
+disengagement, processes that are crucial for adapting to and learning from
+a complex, multimodal environment. Importantly, our data showed that
+HRDSA during face-looking remained stable or increased slightly during
+this period, suggesting that while infants may look at caregivers’ faces less
+frequently between four and six months, these looks reflect stable cognitive
+engagement and efficient processing. This highlights the value of HRDSA
+as a measure of meaningful attention.
+In the second year of life (9–24 months), attention measures become
+more stable across all task conditions, with videos (both social and nonsocial)
+eliciting more sustained attention than live toy interactions. This may be
+due to the perceptual saliency and cognitively engaging content of videos
+compared to the real-world demands of interactive tasks, which require the
+infant to initiate the interaction and engage motor and cognitive resources
+for sustained engagement. Social videos elicited longer look durations
+compared to nonsocial videos during this period, suggesting an enhanced
+attention to social stimuli as infants’ communication and language skills
+develop.
+Findings from this study highlight the importance of considering both
+context and measurement method in studies of infant attention. Our results
+suggest that behavioral measures—percent looking and look duration—
+capture general behavioral trends, while HRDSA and heart rate deceler-
+ation provide deeper insights into cognitive engagement. The divergence
+between these attention measures demonstrates that reduced looking time
+does not necessarily indicate diminished attentional engagement, especially
+in dynamic, interactive contexts. This underscores the need for multi-
+method approaches to studying infant attention, particularly for identifying
+early markers of atypical development. Overall, this study establishes a
+multimethod-informed trajectory of typical infant attention over the first
+
+-- 15 of 35 --
+
+114 	Jessica Bradshaw et al.
+two years of life, providing a reference point for comparisons with other
+populations, such as EL infants or those with ASD.
+. Autonomic regulation of attention and ASD: a
+developmental framework
+The evidence is clear that physiological measures of attention, reflecting
+ANS’s regulation of attention, are related to cognition and learning. Early
+disruptions in autonomic regulation of attention then may have cascading
+consequences for interaction, learning, and development (Feldman, 2006;
+Porges & Furman, 2011; Bradshaw et al., 2022). Based on current liter-
+ature and our preliminary data, we propose a developmental framework
+that highlights the role of ANS dysregulation in attention very early in
+development and has cascading effects on learning and development. In
+this framework, global ANS function, which supports neonatal arousal and
+reactivity, appears intact at birth. Arousal and reactivity during this period are
+pr imar ily dr iven by sympathetic activation, allowing newborns to respond
+to environmental demands, such as crying in response to internal states like
+hunger and pain. However, as parasympathetic regulation matures during
+infancy, it has increasing influence over the heart and becomes critical for
+maintaining a calm state and modulating attention. Adaptive modulation
+of arousal and attention then supports sustained cognitive engagement and
+readiness for social interaction. In infants who develop ASD, this transition
+to effective parasympathetic regulation may be disrupted.
+This disruption may underly observed attention differences in the 2-
+3 month period (Bradshaw et al., 2020; Bradshaw et al., 2021), when
+parasympathetic modulation of attention becomes increasingly necessary for
+adaptive functioning. Ineffective parasympathetic modulation interferes with
+the ability to sustain attention to relevant stimuli and flexibly shift attention
+to novel, salient stimuli. This impairment may diminish the quality and
+frequency of learning experiences, particularly those that involve social and
+communicative interactions. Over time, the resulting cascade may contribute
+to the emergence of core ASD features, including difficulties in social
+communication and behavioral flexibility.
+Preliminary data that support this framework include trajectories of
+heart-defined sustained attention during naturalistic parent-infant interac-
+tions from 1-4 months across EL, LL, and PT infants. These trajectories
+are characterized by a significant increase in heart rate (HR) deceleration
+during sustained attention and point to a dampened HR deceleration that
+
+-- 16 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	115
+Fig.  a. Developmental trajectory of heart rate deceleration within periods of heart
+rate-defined sustained attention (HRDSA) during infant-caregiver interactions across
+ASD, TD, and PT infants. b. Association between deceleration within periods of HRDSA
+measured during infant-caregiver interactions at 3-4 months and social-communication
+skills measured at 9 months.
+is developmentally transient for PTs, but persistent for EL infants (Fig 2A;
+(Bradshaw et al., 2022b). Moreover, we have found that HR deceleration
+during sustained attention to caregivers at 3 months is associated with early-
+emerging symptoms of ASD (Bradshaw and Abney, 2021) (Fig. 2B).
+In a preliminary investigation and an extension of our previous work
+(Bradshaw et al., 2024), we examined physiological measures of attention to
+social and nonsocial videos across EL and LL infants from 1 to 24 months
+of age. While LL infants demonstrated an emerging distinction between
+social and nonsocial attention based on both behavioral and physiological
+
+-- 17 of 35 --
+
+116 	Jessica Bradshaw et al.
+measures in the second year of life, with greater attention to social stimuli,
+this differentiation was absent in EL infants. Specifically, for EL infants, the
+proportion of time spent looking to the screen and the proportion of looking
+classified as HRDSA were equivalent across both types of stimuli. This was
+not driven by diminished attention to both social and nonsocial stimuli,
+but rather high levels of both social and nonsocial attention. Trajectories of
+social attention between EL and LL infants did not differ. These findings
+suggest that from 12 to 24 months, LL infants exhibit enhanced attention
+to social stimuli or attenuated attention to nonsocial stimuli. In contrast, EL
+infants engage in equally high levels of attention to both social and nonsocial
+stimuli, reflecting a lack of differentiation in attentional pr ior itization that
+may underlie or reflect early disruptions in social engagement.
+5. ANS and attention: cascading consequences in ASD
+In ASD,the transition to effective parasympathetic modulation of ANS
+in the first year of life emerges as a critical developmental inflection point.
+ANS dysregulation during this period may limit the capacity for sustained
+attention and adaptive engagement. This framework has yet to be fully
+tested, but there are at least two alternative consequences to a dysregulated
+autonomic-attention system. First, instead of ANS dysregulation cascading
+into a less efficient attention control system, compensatory mechanisms
+may lead to the need for increased parasympathetic activity, evidenced by
+deeper heart rate decelerations and higher RSA, needed to achieve similar
+levels of regulation and attention as neurotypical infants. And second, there
+may be a decoupling of ANS regulation and attention mechanisms in
+ASD, meaning that other systems are employed to regulate attention and
+that parasympathetic influence over the heart may not necessarily serve to
+regulate attention or other processes. This may lead to the deployment of
+other systems and mechanisms to facilitate regulation. These other systems
+may not only be less effective, but may take away from resources allocated
+to other neurodevelopmental processes.
+Taken together, these findings emphasize the importance of examining
+parasympathetic function and autonomically regulated attention as both a
+developmental resource and a potential early marker of ASD. By integrating
+behavioral and physiological measures of attention, such as HRDSA, future
+research can refine models of neurodevelopment and identify early pathways
+leading to ASD. This approach offers promise for earlier detection and
+intervention strategies that target attention and autonomic regulation to
+
+-- 18 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	117
+mitigate developmental disruptions and promote adaptive learning and
+interaction.
+6. Multimodal methods in naturalistic contexts: an
+approach to understanding heterogeneity in ASD
+The phenotypic manifestation of ASD is strikingly variable across
+individuals. This heterogeneity is apparent in early developmental path-
+ways as well. While some infants exhibit clear trajectories toward an ASD
+diagnosis, others show more variable patterns, including transient symp-
+toms, or delayed onset of early ASD markers and behaviors (Landa et
+al., 2007). Through a developmental cascades framework, we understand
+environmental contexts play an important role in developmental trajectories
+and outcomes. The effect of environmental contexts on developmental
+trajectories of ASD is understudied, but interactions between biological and
+experiential factors likely influence the observed heterogeneity in outcomes.
+While statistical models can, and often do, control for context variables like
+socioeconomic status (SES) or early intervention history, these adjustments
+may not fully account for the nuanced variability observed in naturalistic
+social interactions or home environments. As an example, differences in
+motor actions and possibly motor skill development in infancy can be
+influenced by the home environment, even subtle features like furniture
+arrangement or flooring textures. For instance, a bedroom with limited
+furniture at the height level of an infant might lead to fewer opportunities for
+cruising behavior, an important bridge milestone to independent walking.
+Alternatively, an infant in this environment may benefit from enriched
+social interactions as caregivers provide support for the infant to cruise
+while they practice walking. The child’s behavior is therefore a result of
+the interaction between the child’s own abilities and the environmental
+opportunity to develop and express these abilities. Similarly, infant behavior
+and physiological regulation, measured with RSA, have been found to
+be modulated by maternal sensitivity (Girod et al., 2024), highlighting
+how physiological and behavioral differences emerge only under specific
+contextual conditions. Together, these examples highlight the need to study
+early markers situated within an individual’s environment, familial context,
+behavior, and biology. These nuanced, interconnected dynamics set the
+stage for examining how specific physiological and attentional mechanisms
+interact with environmental contexts to uncover specific developmental
+pathways of ASD.
+
+-- 19 of 35 --
+
+118 	Jessica Bradshaw et al.
+. Naturalistic studies of attention and ANS
+Thus far, we have discussed studies of physiological regulation and attention
+that occur in largely controlled, lab-based environments. While these studies
+provide valuable insights into the mechanisms underlying early differences
+in infants who develop ASD, they often fail to capture the dynamic and
+multifaceted nature of real-world infant experiences. In everyday life, infants
+are immersed in rich, complex environments where attention is constantly
+influenced by interactions with caregivers, fluctuating contextual demands,
+and evolving developmental capacities. These complex factors both shape
+and are shaped by the infant’s ongoing development. Naturalistic settings
+present challenges for researchers aiming to measure attention and other
+neurodevelopmental processes in a way that reflects their real-world func-
+tionality while maintaining methodological rigor.
+To address this gap, we have leveraged specialized approaches that bridge
+two highly valued features of developmental science: experimental control
+and naturalistic contexts. Advanced tools like head-mounted eye tracking
+(HMET) capture infants’ moment-to-moment visual engagement within
+everyday social environments. This method allows us to observe how infants
+allocate their attention to social and nonsocial features of their environment
+as they interact with their caregivers and surroundings. By applying this
+approach in infant sibling studies of ASD, we aim to uncover nuanced
+patterns of attention that are both influenced by and predictive of early
+developmental trajectories. These efforts provide a more comprehensive
+picture of how attention unfolds in the dynamic, real-world contexts shaped
+by social, motor, and cognitive development.
+. Feasibility of head-mounted eye tracking in very young
+infants
+Infant social attention develops within an intricate, embodied context
+shaped by dynamic interactions with caregivers, objects, and the broader
+environment. Traditional, lab-based approaches fail to capture the real-
+time, bidirectional processes through which caregivers scaffold infant be-
+havior and infants explore their surroundings. HMET technology offers
+an innovative lens to study infant social attention within naturalistic and
+even home-based contexts. Unlike traditional screen-based eye-tracking
+methods that constrain participants to fixed positions and controlled en-
+vironments, HMET provides the unique ability to capture real-time gaze
+patterns as individuals move, interact, and engage with their surroundings. By
+
+-- 20 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	119
+integrating lightweight cameras mounted on a headband or cap, researchers
+record both the wearer’s gaze and their field of view, enabling precise
+mapping of attention within three-dimensional, everyday environments.
+This approach is particularly valuable for studying infants, whose behaviors
+and interactions unfold in dynamic and unpredictable ways that cannot be
+fully captured in static laboratory settings (Bradshaw et al., 2023). Recording
+gaze behavior during naturalistic interactions facilitates the study of how
+attention is dynamically shaped by factors like body posture, movement,
+and environmental affordances. Moreover, HMET enables researchers to
+capture moment-to-moment coordination between individuals, such as how
+a caregiver’s gaze and actions influence an infant’s attention or how joint
+attention is established during shared activities. These capabilities make
+HMET an essential tool for understanding the embodied and interactive
+nature of attention, particularly in populations with atypical development,
+such as children with ASD,where traditional paradigms may not fully capture
+the nuances of their real-world social behavior.
+The first study to employ HMET with children diagnosed with ASD
+offered surprising results that challenge longstanding models of social at-
+tention deficits in ASD (Yurkovic-Harding et al., 2022). Contrary to the
+extensive literature emphasizing social attention deficits, in particular gaze
+patterns to faces, and impaired joint attention skills in children with ASD,
+this research revealed that children with ASD show no significant differences
+in real-world attention to faces during free play with a caregiver compared
+to their typically developing peers. Both TD children and those with ASD
+spent minimal time looking at their caregiver’s face during naturalistic play,
+with face-looking accounting for less than 2% of the interaction time.
+These results are particularly striking considering the vast research landscape
+illustrating social attention deficits in ASD that has guided our understanding
+and core models of ASD etiology.
+In addition, the study examined joint attention, or coordinated visual
+attention (CVA), between children and caregivers. CVA is defined by
+moments of child and caregiver simultaneous gaze to the same object.
+Again, both groups demonstrated comparable rates of CVA, predominantly
+via alternative pathways, such as manual interactions with objects. This
+observation also runs counter to prevailing notions that gaze to face is
+the primary conduit for establishing shared attention, or CVA. In the
+early ASD literature, joint attention, which involves CVA with a social
+partner for the explicit purpose of sharing attention to the same object or
+event, is predominantly characterized by discrete instances of child behavior,
+
+-- 21 of 35 --
+
+120 	Jessica Bradshaw et al.
+including point- and gaze-following (child response to joint attention), or
+distal pointing and/or two-point and three-point gaze shifts between faces
+and objects (child initiation of joint attention). These cues represent the
+primary pathways to joint attention. While deficits in these pathways are
+well-documented and clinically significant (Adamson et al., 2009; Dawson
+et al., 2004; Leekam & Ramsden, 2006; Naber et al., 2007; Nyström et al.,
+2019; Warreyn et al., 2007), Yurkovic-Harding et al. (2022) suggests they may
+represent reliable markers of ASD rather than causal mechanisms underlying
+the disorder.
+The study’s context—a naturalistic, free-flowing play environment—
+exemplifies the critical importance of context and advanced tools that
+effectively capture the breadth and impact of this context. Unlike the
+constrained settings of traditional laboratory-based paradigms, the use of
+HMET in this study captures the complexity of real-world interactions,
+during which infants and caregivers co-construct shared attention through
+dynamic, multimodal exchanges. By highlighting the potential for alternative
+pathways to support social and communicative development, this research
+opens new avenues for understanding developmental trajectories in ASD.
+Leveraging the strengths of HMET in naturalistic contexts, we have
+explored how this tool can be applied in the earliest stages of infancy to
+examine embodied attention in everyday environments. Existing HMET
+research has largely focused on toddlers and children, leaving a gap in how
+infants, particularly those as young as four months old, coordinate attention
+with their caregivers and surroundings. In a longitudinal study of infants at
+low and elevated familial likelihood for ASD, we evaluated the feasibility,
+acceptability, and data quality of using HMET with four- and eight-month-
+old infants (Bradshaw et al., 2023). These age points represent developmental
+per iods of motor ic transitions and achievement of key milestones, that is,
+reaching and crawling. The eight-month study age point also represents a
+formative developmental period just preceding the beginning emergence of
+social and communicative behaviors. By situating these investigations in the
+home environment, where infants engage in the vast majority of interactions
+with their caregivers, this study pushes the boundaries of what can be
+achieved with wearable eye-tracking technology. As such, a key goal of the
+study was to evaluate whether HMET could be successfully implemented
+in the home with younger infants who lack independent head control—a
+population previously understudied due to these technical challenges—and
+to assess the acceptability of these procedures for caregivers. Additionally, the
+study aimed to explore early developmental changes in infant gaze behavior,
+
+-- 22 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	121
+particularly shifts in attention between caregivers and objects, and how these
+patterns might vary by age or ASD likelihood.
+The application of HMET to infants as young as 4 months in the
+home environment proved to be highly feasible. A custom headband was
+designed for 4-month-olds that pr ior itized comfort and camera stability, as
+even slight shifts can have significant impacts on data quality. All infants
+tolerated the placement of the headset, and the data collected met established
+cr iter ia for accuracy and precision, with only minimal data loss across
+sessions. Importantly, caregivers reported high levels of acceptability, with
+most indicating that the experimental procedures did not disrupt their
+infant’s natural behavior. The retention rate from the 4-month to 8-month
+visit was also high, reflecting strong engagement from participating families.
+Together, these findings suggest that HMET, when paired with appropriate
+equipment and methodological adjustments, can be successfully adapted for
+use in a home setting and with young, possibly neurodivergent, infants—
+even those as young as four months of age.
+. Gaze patterns in naturalistic contexts in young infants at
+elevated likelihood for ASD
+Preliminary analyses of gaze behavior reveal intriguing developmental trends.
+At 4 months, infants spent significantly more time looking at their caregiver’s
+face compared to 8-month-olds, whose gaze was more frequently directed
+toward objects in the play environment. This pattern reflects developmental
+shifts in social and attentional pr ior ities, as younger infants rely heavily
+on face-to-face interactions while older infants begin to explore their
+surroundings more independently. Notably, these trends align with existing
+literature demonstrating a decline in face-looking and an increase in object-
+focused attention across the first year of life (e.g., Bradshaw et al., 2024).
+In addition, these results extend those of Yurkovic-Harding et al.
+(2022) showing that despite the availability of caregiver faces for the vast
+majority of the time during the 4-month-old infant-caregiver interactions
+(76%), their gaze to face was strikingly low (16%). At 8 months, availability of
+the caregiver’s face was dropped significantly (only 17% of the interaction)
+and proportion of time infant’s gazed to the caregiver’s face was only
+5%. These results seem to challenge long-standing assumptions driven by
+evidence of infants’ attentional bias toward faces in lab-based settings (e.g.,
+Leppänen, 2016; Peltola et al., 2018; Reynolds & Roth, 2018). While faces
+are often emphasized as highly salient in controlled settings, naturalistic
+data reveal more nuanced patterns of social attention, shaped by real-world
+
+-- 23 of 35 --
+
+122 	Jessica Bradshaw et al.
+complexities. The home environment offers a rich, dynamic backdrop for
+studying how infants and caregivers co-construct interactions, with care-
+givers often scaffolding attention through behaviors like naming, touching,
+and positioning objects. By capturing these behaviors in situ, HMET allows
+researchers to examine not only what infants attend to but also how their
+attention is guided and supported by their social partners.
+We have also explored CVA and the pathways into CVA among 8-
+month-old EL and LL infants. Analyses identified three key differences
+between the groups. We found that look durations to toys were greater
+for EL infants and bouts of CVA were fewer in EL infants compared
+to LL infants. This aligns with deficits in attention shifting and attention
+disengagement that is observed in infants and toddlers who later develop
+ASD. Additional analyses are needed to thoroughly interpret this preliminary
+finding, but it is likely that EL infants attend to the same toy for longer
+periods, and their caregiver follows their attention, leading to fewer CVA
+bouts. In addition, we see that EL infants’ CVA episodes are more often
+infant-initiated, with 66% of CVA bouts in the EL group being infant-led.
+That is, the CVA bout began with the infant directing their gaze toward a
+toy, followed by the parent coordinating their attention to the same toy. This
+proportion was significantly higher than that observed in LL infants, whose
+CVA episodes were more balanced between parent-led (47%) and infant-led
+(53%) pathways.
+Together, these studies offer new perspectives on how lab-based mech-
+anistic studies of infant attention may translate to and inform studies of
+attention allocation in real-world settings—the very contexts that shape
+and support development and learning. Leveraging HMET and other
+technologies to study embodied attention and natural behavior, we can
+further understand attention, not only as a set of discrete behaviors, (e.g.,
+attention disengagement, attentional social preference) but as an emergent
+property of dynamic interactions, offering new pathways to understanding
+how developmental trajectories take shape in both typical and atypical
+populations.
+. A synchronized system for studying physiological
+regulation of attention in naturalistic settings
+HMET is not the only advanced tool that can be made portable and imple-
+mented in the home to study developmental trends in infant development.
+In our longitudinal studies of EL and LL autonomic regulation of attention,
+
+-- 24 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	123
+we have used home-based data collection to study behavior in naturalistic
+contexts and to address barriers to access for research participants. Our
+team has developed the Lab2Home (L2H) system – a tailored, portable,
+and scalable apparatus designed to bring rigorous laboratory-quality data
+collection directly into participants’ homes. The L2H system is tailored for
+studies requiring synchronized data streams from multiple video angles and
+concurrent heart rate monitoring for both parent and child.Synchronization,
+a cornerstone of L2H, is achieved using a combination of custom-written
+and open-source software with redundant methods to ensure millisecond
+precision. Devices utilize a shared computer clock for alignment of time-
+stamped data, while a custom-built microcontroller triggers an LED array
+recorded by all cameras and logged into the experimental system for added
+accuracy. Additionally, visual time displays are embedded into recorded video
+streams to align seamlessly with heart rate data. These measures ensure that
+all data modalities remain synchronized throughout the procedure, even in
+diverse and variable home environments.
+L2H is compact, lightweight, and designed for rapid setup and break-
+down, reducing logistical overhead during testing. The system’s hardware
+includes three high-definition (1080p, 60fps) USB-C cameras mounted on
+adjustable tripods to accommodate a range of home layouts, from spacious
+living rooms to confined apartments. High-capacity portable power banks
+power the system for over 10 hours, allowing uninterrupted operation even
+in homes without access to reliable power. Heart rate data collection is
+facilitated by two CamnTech Actiheart-5 wireless monitors—one for the
+parent and one for the child—while a small-profile condenser microphone
+with preamp ensures high-quality audio recording and strategic placement.
+The central microcontroller, an Arduino UNO WiFi REV2 outfitted with
+a multicolor LED array, coordinates the system’s operations seamlessly.
+The L2H apparatus not only facilitates the collection of rich,high-quality
+data but also reduces the systemic barriers that often limit the participation of
+historically underrepresented populations in research. By enabling data col-
+lection in familiar home environments, L2H supports studies that aim to un-
+derstand developmental processes in the very contexts in which they unfold.
+7. In-Home studies as a representative and inclusive
+approach to science
+Naturalistic data collection, particularly in the home, offers a unique
+window into infant behavior and development in real-world contexts,
+
+-- 25 of 35 --
+
+124 	Jessica Bradshaw et al.
+affording the possibility of more ecologically valid data while maintaining
+high standards of rigor. Moreover, the cost of travel for participants, in terms
+of time, vehicle mileage, and gas expenses, decreases accessibility of research
+participation for families from diverse sociodemog raphic backg rounds, even
+when monetary compensation is provided. Inclusivity and representation
+are incredibly important to confirm our science to be representative of and
+generalizable to the broader population at large.
+To evaluate the experimental and ecological validity of in-home data
+collection, we administered parallel experimental and naturalistic tasks lon-
+gitudinally to two groups of infants who participated in in-lab study visits
+(n = 29, 63%) or in-home study visits (n = 17, 37%). Infants were seen
+from 2-24 months of age, resulting in a total of 167 lab visits and 106
+home visits. Following data collection, caregivers rated their child’s observed
+emotional and interactive states. Caregiver report of emotional reactivity
+dur ing exper imental and clinical procedures significantly differed by context
+(χ2(2) = 12.64, p = 0.002) with lab-based sessions yielding more parent-
+reported atypically negative emotional reactivity (n = 23; 13.8%) compared
+to home-based sessions (n = 4; 3.8%). Ratings of interest and attention
+during the tasks did not significantly differ by setting (χ2(2) = 2.76, p
+= 0.252). These findings suggest that the controlled lab environment may
+contribute to more atypical behavior, that is, negative emotional reactivity,
+suggesting more typical behavior in the home environment and possibly
+more representative and valid data. Experimental data from variables of
+interest was also comparable across home vs. lab contexts. The percentage
+of valid, usable behavioral and electrocardiogram (ECG) data was not
+significantly different (p = 0.73, p = 0.89, respectively).
+A home-based approach may also increase inclusivity and accessibility of
+participant cohorts. Traditional lab-based studies often fail to engage families
+living in rural areas or from underrepresented socioeconomic groups, such as
+Black, Indigenous, and people of color (BIPOC). By bringing research into
+the home, we expand the demographic reach of participants, paving the way
+for a representative, enriched dataset that includes diverse populations. In our
+analysis of a separate cohort of participants who opted to complete home vs.
+lab study visits (see Table 1), household income significantly differed (χ2(1)
+= 8.99, p = 0.003), with 40.7% of home-enrolled participants earning
+$60,000 or less annually compared to 11.1% of lab-enrolled participants—
+well below the state average household income (South Carolina; $92,833).
+As expected, the average distance from the participant’s home to the lab
+was significantly higher for the home-enrolled participants (t (131.5) =
+
+-- 26 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	125
+Table  Participant demographics of participants across lab vs. home-based data
+collection.
+Lab enrolled,
+N = 
+Home enrolled,
+N = 
+Test statistic
+(p value)b
+Child race
+White-non-Hispanic 	26 (65%) 	51 (49.5%) 	0.257
+Black or African American 	9 (22.5%) 	33 (32%)
+More than one race 	3 (7.5%) 	12 (11.7%)
+White-Hispanic 	1 (2.5%) 	4 (3.9%)
+Asian 	0 (0%) 	3 (2.9%)
+Other/Unknown 	1 (2.5%) 	0 (0%)
+Child racea
+Black, indigenous, and persons
+of color (BIPOC)
+14 (35%) 	52 (50.5%) 	0.139
+White 	26 (65%) 	51 (49.5%)
+Reported Primary Caregiver
+Mother 	37 (92.5%) 	102 (99%) 	0.119
+Father 	3 (7.5%) 	1 (1%)
+Primar y Careg iver Educationa
+High School/GED/some
+college
+12 (30%) 	47 (45.6%) 	0.129
+Bachelor/Graduate/Professional
+degree
+28 (70%) 	56 (54.4%)
+Not reported 	2 	0
+Annual Household Income∗
+<US$20,00–$60,000 	4 (11.1%) 	37 (40.7%) 	0.003
+US$60,001 or higher 	32 (88.9%) 	54 (59.3%)
+Not sure or prefer not to answer 	4 	12
+Distance from the Lab
+Average roundtrip mileage (SD) 	23 (22) 	73.5 (76.6) 	<0.001
+a Dichotomized groups and chi squared analyses.
+b Bold values indicate statistical significance at the p < .05 level.
+-6.0, p < 0.001). Results from these analyses suggest that distance to the
+lab stands as one of the barriers to lab-based participation and that offering
+in-home study visits increases accessibility of research participation for
+lower-resourced families.
+Confirming that findings from controlled, lab-based experiments com-
+pleted in the home are comparable to those completed in the lab, while
+also demonstrating differences in infant behavior and sociodemographic
+factors across the two contexts, underscores the feasibility and impact of
+in-home study visits. To continue this work, we have developed a sophisti-
+cated method using portable, synchronized technologies that can effectively
+
+-- 27 of 35 --
+
+126 	Jessica Bradshaw et al.
+capture synchronous behavioral and physiological data without disrupting
+the familial environment. By situating research in participants’ homes, with
+advanced technology explicitly designed for our study procedures, we aim
+to gain a deeper understanding of how early ASD markers manifest in nat-
+uralistic settings and reduce barriers for families from diverse demographic
+backgrounds.
+8. Conclusions
+The science of ASD in infancy is at an exciting stage, offering new
+opportunities to elucidate the mechanisms and developmental cascades un-
+derlying atypical neurodevelopment in real-word contexts. The naturalistic,
+behavioral, and non-invasive nature of this work elevates its potential for
+rapid translation to novel and, most importantly, actionable early detec-
+tion and intervention strateg ies. By integ rating a developmental cascades
+approach with prospective, longitudinal designs, innovative methodologies,
+and home-based data collection, we can illuminate new pathways that
+characterize early development of ASD. Grounded in both mechanistic
+insights and real-world applicability, we can understand how autonomic
+regulation and attentional processes shape developmental outcomes.
+Pr ior itizing inclusivity and ecological validity through home-based data
+collection not only broadens the scope of ASD research but also ensures
+its relevance to the lived experiences of diverse families. This multifaceted
+approach not only advances scientific understanding but also lays the
+groundwork for interventions that resonate with the complexities of infant
+development and with the cultural context of families traditionally under-
+represented in research. As ASD research continues to evolve, bridging the-
+ory, empirical findings, and methodological innovation will remain critical
+to transform outcomes for children and their families.
+References
+Adamson, L. B., Bakeman, R., Deckner, D. F., & Romski, M. (2009). Joint engagement and the
+emergence of language in children with autism and down syndrome. Journal of Autism
+and Developmental Disorders, 39(1), 84–96. https://doi.org/10.1007/s10803- 008- 0601- 7.
+Adamson, L. B., Bakeman, R., Suma, K., & Robins, D. L. (2019). An expanded view of joint
+attention: Skill, engagement, and language in typical development and autism. Child
+Development, 90(1), e1–e18. https://doi.org/10.1111/cdev.12973.
+Amer ican Psychiatr ic Association. (2013). Diagnostic and statistical manual of mental disorders
+(5th ed.).
+Artoni, P., Piffer, A., Vinci, V., LeBlanc, J., Nelson, C. A., Hensch, T. K., & Fagiolini, M. (2020).
+Deep learning of spontaneous arousal fluctuations detects early cholinergic defects across
+
+-- 28 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	127
+neurodevelopmental mouse models and patients. Proceedings of the National Academy of
+Sciences of the United States of America, 117(38), 23298–23303. https://doi.org/10.1073/
+pnas.1820847116.
+Bazhenova,O.V.,Plonskaia,O.,& Porges, S.W. (2001). Vagal reactivity and affective adjustment
+in infants during interaction challenges. Child Development, 72(5), 1314–1326. https://
+doi.org/10.1111/1467-8624.00350.
+Bradshaw, J., & Abney, D. H. (2021). Infant physiological activity and the early emergence of
+social communication. Developmental Psychobiology, 63(7). https://doi.org/10.1002/dev.
+22145.
+Bradshaw, J., Fu, X., & Richards, J. E. (2024). Infant sustained attention differs by context and
+social content in the first 2 years of life. Developmental Science, 27(4). https://doi.org/10.
+1111/desc.13500.
+Bradshaw, J., Fu, X., Yurkovic-Harding, J., & Abney, D. (2023a). Infant embodied at-
+tention in context: Feasibility of home-based head-mounted eye tracking in early
+infancy. Developmental Cognitive Neuroscience, 64. https://doi.org/10.1016/j.dcn.2023.
+101299.
+Bradshaw, J., Klin, A., Evans, L., Klaiman, C., Saulnier, C., & McCracken, C. (2020a).
+Development of attention from birth to 5 months in infants at risk for autism spec-
+trum disorder. Development and Psychopathology, 32(2), 491–501. https://doi.org/10.1017/
+S0954579419000233.
+Bradshaw, J., Klin, A., Evans, L., Klaiman, C., Saulnier, C., & McCracken, C. (2020b).
+Development of attention from birth to 5 months in infants at risk for autism spec-
+trum disorder. Development and Psychopathology, 32(2), 491–501. https://doi.org/10.1017/
+S0954579419000233.
+Bradshaw, J., McCracken, C., Pileggi, M., Brane, N., Delehanty, A., Day, T., Federico, A.,
+Klaiman, C., Saulnier, C., Klin, A., & Wetherby, A. (2021a). Early social communication
+development in infants with autism spectrum disorder. Child Development, 92(6), 2224–
+2234. https://doi.org/10.1111/cdev.13683.
+Bradshaw, J., O’Reilly, C., Everhart, K. C., Dixon, E., Vinyard, A., Tavakoli, A., &
+Dail, R. B. (2024). Neonatal autonomic regulation as a predictor of autism
+symptoms in very preterm infants. Journal of Perinatology. https://doi.org/10.1038/
+s41372- 024- 01942- 2.
+Bradshaw, J., Schwichtenberg, A. J., & Iverson, J. M. (2022a). Capturing the complexity of
+autism: Applying a developmental cascades framework. Child Development Perspectives,
+16(1), 18–26. https://doi.org/10.1111/cdep.12439.
+Bradshaw, J., Shi, D., Federico, A., Klaiman, C., & Saulnier, C. (2023b). The Pull-to-Sit Task:
+Examining infant postural development in autism spectrum disorder. Journal of Pediatrics,
+253, 225–231. e2 https://doi.org/10.1016/j.jpeds.2022.09.047 .
+Bradshaw, J.,Shi, D.,Hendrix, C.L.,Saulnier, C.,& Klaiman,C.(2021b).Neonatal neurobehav-
+ior in infants with autism spectrum disorder. Developmental Medicine and Child Neurology,
+64(5), 600–607. https://doi.org/10.1111/dmcn.15096.
+Bradshaw, J., Shic, F., Holden, A. N., Horowitz, E. J., Barrett, A. C., German, T. C., &
+Vernon, T. W. (2019). The Use of Eye Tracking as a Biomarker of Treatment Outcome
+in a Pilot Randomized Clinical Trial for Young Children with Autism. Autism Research,
+12(5), 779–793. https://doi.org/10.1002/AUR.2093.
+Bradshaw, J., Vinyard, A., Platt, E., & Abney, D. (2022b). Physiological Measures of Attention
+and Arousal During Dyadic Interactions as Predictors of Social Communication and
+ASD Symptoms. Multi-Level Dyadic Pathways Influence Infants’ Emotion Regulation across
+Prenatal and Postnatal Development.
+Brazelton, T. B., & Nugent, J. (2011). The Neonatal Behavioral Assessment Scale (4th ed.). Mac
+Keith Press.
+
+-- 29 of 35 --
+
+128 	Jessica Bradshaw et al.
+Chawarska, K.,Macari, S.,& Shic, F. (2013).Decreased spontaneous attention to social scenes in
+6-month-old infants later diagnosed with autism spectrum disorders. Biological Psychiatry,
+74(3), 195–203. https://doi.org/10.1016/j.biopsych.2012.11.022.
+Cheng, Y. C., Huang, Y. C., & Huang, W. L. (2020a). Heart rate variability in individuals with
+autism spectrum disorders: A meta-analysis, Neuroscience and Biobehavioral Reviews (118,
+pp. 463–471). Elsevier Ltd. https://doi.org/10.1016/j.neubiorev.2020.08.007.
+Cheng, Y. C., Huang, Y. C., & Huang, W. L. (2020b). Heart rate variability in individuals with
+autism spectrum disorders: A meta-analysis. Neuroscience and Biobehavioral Reviews, 118,
+463–471. https://doi.org/10.1016/j.neubiorev.2020.08.007.
+Colombo, J. (2001). The development of visual attention in infancy. Annual Review of
+Psychology, 52, 337–367. https://doi.org/10.1146/annurev.psych.52.1.337.
+Constantino, J. N., Kennon-McGill, S., Weichselbaum, C., Marrus, N., Haider, A., Glowin-
+ski, A. L., Gillespie, S., Klaiman, C., Klin, A., & Jones, W. (2017). Infant viewing of social
+scenes is under genetic control and is atypical in autism. Nature, 547(7663), 340–344.
+https://doi.org/10.1038/nature22999.
+Conte, S., & Richards, J. E. (2021). Attention in early development. Oxford Research Encyclo-
+pedia of Psychology.
+Conway, L. J., Levickis, P. A., Mensah, F., Smith, J. A., Wake, M., & Reilly, S. (2018). The role
+of joint engagement in the development of language in a community-derived sample of
+slow-to-talk children. Journal of Child Language, 45(6), 1275–1293. https://doi.org/10.
+1017/S030500091800017X.
+Dawson, G., Rieder, A. D., & 	Johnson, M. H. (2023). Prediction 	of 	autism
+in 	infants: 	progress 	and 	challenges. 	The 	Lancet 	Neurology, 	22(3), 	244–
+254. 	https://doi.org/10.1016/S1474- 4422(22)00407- 0/ATTACHMENT/
+9AA7738A- 517E- 409D- A4A7- 2438F0E60ABF/MMC1.PDF.
+Dawson, G., Toth, K., Abbott, R., Osterling, J., Munson, J., Estes, A., & Liaw, J. (2004). Early
+social attention impairments in autism: Social orienting, joint attention, and attention to
+distress. Developmental Psychology, 40(2), 271–283. https://doi.org/10.1037/0012-1649.
+40.2.271.
+Di Giorgio, E., Frasnelli, E., Rosa Salva, O., Maria Luisa, S., Puopolo, M., Tosoni, D., Simion, F.,
+Vallortigara, G., Apicella, F., Gagliano, A., Guzzetta, A., Molteni, M., Persico, A., Pioggia, G.,
+Valer i, G., & Vicar i, S. (2016a). Difference in Visual Social Predispositions Between
+Newborns at Low- and High-risk for Autism. Scientific Reports, 6(1), 1–9. https://doi.
+org/10.1038/srep26395.
+Di Giorgio, E., Frasnelli, E., Rosa Salva, O., Maria Luisa, S., Puopolo, M., Tosoni, D., Simion, F.,
+Vallortigara, G., Apicella, F., Gagliano, A., Guzzetta, A., Molteni, M., Persico, A., Pioggia, G.,
+Valer i, G., & Vicar i, S. (2016b). Difference in visual social predispositions between
+newborns at low-and high-risk for autism. Scientific Reports, 6. https://doi.org/10.1038/
+srep26395.
+Di Giorgio, E., Rosa-Salva, O., Frasnelli, E., Calcagnì, A., Lunghi, M., Scattoni, M. L., Simion, F.,
+& Vallortigara, G. (2021). Abnormal visual attention to simple social stimuli in 4-month-
+old infants at high risk for Autism. Scientific Reports,11(1),1–11. https://doi.org/10.1038/
+s41598- 021- 95418- 4.
+Dow, D., Guthrie, W., Stronach, S. T., & Wetherby, A. M. (2017). Psychometric analysis of the
+Systematic Observation of Red Flags for autism spectrum disorder in toddlers. Autism,
+21(3), 301–309. https://doi.org/10.1177/1362361316636760.
+Elsabbagh, M., Volein, A., Holmboe, K., Tucker, L., Csibra, G., Baron-Cohen, S., Bolton, P.,
+Charman, T., Baird, G., & Johnson, M. H. (2009). Visual orienting in the early broader
+autism phenotype: Disengagement and facilitation. Journal of Child Psychology and Psychi-
+atry and Allied Disciplines, 50(5), 637–642. https://doi.org/10.1111/j.1469-7610.2008.
+02051.x.
+Fairchild, K., & Aschner, J. (2012). HeRO monitoring to reduce mortality in NICU patients.
+Research and Reports in Neonatology, 65. https://doi.org/10.2147/r r n.s32570.
+
+-- 30 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	129
+Feldman, R. (2006). From biological rhythms to social rhythms: Physiological precursors of
+mother-infant synchrony. Developmental Psychology, 42(1), 175–188. https://doi.org/10.
+1037/0012-1649.42.1.175.
+Frazier, T. W., Strauss, M., Klingemier, E., Zetzer, E., Hardan, A. Y., Eng, C., &
+Youngstrom, E. A. (2017). A Meta-Analysis of Gaze Differences to Social and Nonsocial
+Information Between Individuals With and Without Autism. Journal of the American
+Academy of Child and Adolescent Psychiatry, 56(7), 546–555. https://doi.org/10.1016/J.
+JAAC.2017.05.005.
+Fu, X., Platt, E., Shic, F., & Bradshaw, J. (2024). Infant social attention associated with elevated
+likelihood for autism spectrum disorder: A multi-method comparison. Journal of Autism
+and Developmental Disorders. https://doi.org/10.1007/s10803- 024- 06360- z.
+Fyfe, K. L., Yiallourou, S. R., Wong, F. Y., Odoi, A., Walker, A. M., & Horne, R. S. C (2015).
+The effect of gestational age at birth on post-term maturation of heart rate variability.
+Sleep, 38(10), 1635–1644. https://doi.org/10.5665/sleep.5064.
+Girod, S., Leerkes, E., Chen, Y., Buehler, C., Shriver, L., & Wideman, L. (2024). Latent profiles
+of infant negative affect and respiratory sinus arrhythmia during the still-face paradigm:
+The role of maternal sensitivity. Infant and Child Development. https://doi.org/10.1002/
+icd.2532.
+Haraldsdottir, K., Watson, A. M., Goss, K. N., Beshish, A. G., Pegelow, D. F., Palta, M.,
+Tetri, L. H., Barton, G. P., Brix, M. D., Centanni, R. M., & Eldridge, M. W. (2018).
+Impaired autonomic function in adolescents born preterm. Physiological Reports, 6(6).
+https://doi.org/10.14814/phy2.13620.
+Hazlett, H. C., Gu, H., Munsell, B. C., Kim, S. H., Styner, M., Wolff, J. J., Elison, J. T.,
+Swanson, M. R., Zhu, H., Botteron, K. N., Collins, D. L., Constantino, J. N.,
+Dager, S. R., Estes, A. M., Evans, A. C., Fonov, V. S., Gerig, G., Kostopoulos, P., McK-
+instry, R. C., . . . Piven, J. (2017). Early brain development in infants at high risk for
+autism spectrum disorder. Nature, 542(7641), 348–351. https://doi.org/10.1038/nature
+21369.
+Heilman, K. J., Bal, E., Bazhenova, O. V., & Porges, S. W. (2007). Respiratory sinus arrhythmia
+and tympanic membrane compliance predict spontaneous eye gaze behaviors in young
+children: A pilot study. Developmental Psychobiology, 49(5), 531–542. https://doi.org/10.
+1002/dev.20237.
+Hunnius, S. (2007). The early development of visual attention and its implications for social
+and cognitive development. In C. von Hofsten, & K. Rosander (Eds.), Progress in Brain
+Research (164, pp. 187–209). https://doi.org/10.1016/S0079- 6123(07)64010- 2.
+Iverson, J. M., West, K. L., Schneider, J. L., Plate, S. N., Northrup, J. B., & Roemer
+Britsch, E. (2023). Early development in autism: How developmental cascades help us
+understand the emergence of developmental differences, Advances in Child Development
+and Behavior (64, pp. 109–134). Academic Press Inc. https://doi.org/10.1016/bs.acdb.
+2022.10.005.
+Jones, E. J. H., Venema, K., Earl, R., Lowy, R., Barnes, K., Estes, A., Dawson, G., &
+Webb, S. J. (2016). Reduced engagement with social stimuli in 6-month-old infants
+with later autism spectrum disorder: A longitudinal prospective study of infants at
+high familial risk. Journal of Neurodevelopmental Disorders, 8(1). https://doi.org/10.1186/
+s11689- 016- 9139- 8.
+Jones, W., & Klin, A. (2013). Attention to eyes is present but in decline in 2-6-month-
+old infants later diagnosed with autism. Nature, 504(7480), 427–431. https://doi.org/
+10.1038/nature12715.
+Kaliukhovich, D. A., Manyakov, N. V., Bangerter, A., Ness, S., Skalkin, A., Goodwin, M. S.,
+Dawson, G., Hendren, R. L., Leventhal, B., Hudac, C. M., Bradshaw, J., Shic, F., &
+Pandina, G. (2020). Social attention to activities in children and adults with autism
+spectrum disorder: effects of context and age. Molecular Autism, 11(1), 1–14. https:
+//doi.org/10.1186/S13229- 020- 00388- 5.
+
+-- 31 of 35 --
+
+130 	Jessica Bradshaw et al.
+Karmiloff-Smith, A. (1998). Development itself is the key to understanding developmental
+disorders. Trends in Cognitive Sciences, 2(10), 389–398.
+Kennedy, D. P., D’Onofrio, B. M., Quinn, P. D., Bölte, S., Lichtenstein, P., & Falck-Ytter, T
+(2017). Genetic Influence on Eye Movements to Complex Scenes at Short Timescales.
+Current Biology, 27(22), 3554–3560. e3 https://doi.org/10.1016/j.cub.2017.10.007 .
+Knobel-Dail, R. B., Sloane, R., Holditch-Davis, D., & Tanaka, D. T. (2017). Negative temper-
+ature differential in preterm infants less than 29 weeks gestational age: Associations with
+infection and maternal smoking. Nursing Research, 66(6), 442–453. https://doi.org/10.
+1097/NNR.0000000000000250.
+Landa, R. J., Holman, K. C., & Garrett-Mayer, E. (2007). Social and communication develop-
+ment in toddlers with early and later diagnosis of autism spectrum disorders. Arch Gen
+Psychiatry, 7(64), 853–864. https://doi.org/10.1001/archpsyc.64.7.853.
+Leekam, S. R., & Ramsden, C. A. H. (2006). Dyadic orienting and joint attention in preschool
+children with autism. Journal of Autism and Developmental Disorders, 36(2), 185–197. https:
+//doi.org/10.1007/s10803- 005- 0054- 1.
+Leppänen, J. M. (2016). Using eye tracking to understand infants’ attentional bias for faces.
+Child Development Perspectives, 10(3), 161–165. https://doi.org/10.1111/cdep.12180.
+Lester, B. M., Boukydis, C. F. Z., & Lagasse, L. (1996). Cardiorespiratory reactivity during the
+Brazelton scale in term and preterm infants. Journal of Pediatric Psychology, 21(6), 771–783.
+https://academic.oup.com/jpepsy/article/21/6/771/908977.
+Masten, A.S.,& Cicchetti, D.(2010). Developmental cascades. Development and Psychopathology,
+22(3), 491–495. https://doi.org/10.1017/S0954579410000222.
+Mathewson, K. J., Van Lieshout, R. J., Saigal, S., Boyle, M. H., & Schmidt, L. A. (2014). Reduced
+respiratory sinus arrhythmia in adults born at extremely low birth weight: Evidence of
+premature parasympathetic decline? International Journal of Psychophysiology, 93(2), 198–
+203. https://doi.org/10.1016/j.ijpsycho.2014.04.005.
+Messinger, D., Young, G. S., Ozonoff, S., Dobkins, K., Carter, A., Zwaigenbaum, L., Landa, R. J.,
+Charman, T., Stone, W. L., Constantino, J. N., Hutman, T., Carver, L. J., Bryson, S., Iver-
+son,J. M.,Strauss, M.S.,Rogers,S.J.,& Sigman,M.(2013).Beyond autism:A Baby Siblings
+Research Consortium study of high-risk children at three years of age. J. Am. Acad. Child
+Adolesc. Psychiatry, 52(3), 300–308. https://doi.org/10.1016/j.jaac.2012.12.011.
+Mulkey, S. B., & dú Plessis, A. (2018). The critical role of the central autonomic nervous
+system in fetal-neonatal transition. Seminars in Pediatric Neurology, 28, 29–37. https://doi.
+org/10.1016/j.spen.2018.05.004.
+Murias, M., Major, S., Davlantis, K., Franz, L., Harris, A., Rardin, B., Sabatos-DeVito, M., &
+Dawson, G. (2018). Validation of eye-tracking measures of social attention as a potential
+biomarker for autism clinical trials. Autism Research, 11(1), 166–174. https://doi.org/10.
+1002/aur.1894.
+Naber, F. B. A., Swinkels, S. H. N., Buitelaar, J. K., Dietz, C., Van Daalen, E., Bakermans-
+Kranenburg, M. J., Van IJzendoorn, M. H., & Van Engeland, H. (2007). Joint attention
+and attachment in toddlers with autism. Journal of Abnormal Child Psychology, 35(6), 899–
+911. https://doi.org/10.1007/s10802- 007- 9142- 3.
+Ness, S. L., Bangerter, A., Manyakov, N. V., Lewin, D., Boice, M., Skalkin, A., Jagannatha, S.,
+Chatterjee, M., Dawson, G., Goodwin, M. S., Hendren, R., Leventhal, B., Shic, F., Fra-
+zier, J. A., Janvier, Y., King, B. H., Miller, J. S., Smith, C. J., Tobe, R. H., & Pandina, G. (2019).
+An Observational Study With the Janssen Autism Knowledge Engine (JAKE®) in
+Individuals With Autism Spectrum Disorder. Frontiers in Neuroscience, 0(FEB), 111. https:
+//doi.org/10.3389/FNINS.2019.00111.
+Nyström, P., Thorup, E., Bölte, S., & Falck-Ytter, T. (2019). Joint attention in infancy and
+the emergence of autism. Biological Psychiatry, 86(8), 631–638. https://doi.org/10.1016/
+j.biopsych.2019.05.006.
+
+-- 32 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	131
+Oakes, L. M., & Rakison, D. H. (2019). Developmental Cascades: A New Framework to
+Understand Change. Developmental Cascades: Building the Infant Mind. Oxford Academic.
+Ozonoff, S., & Iosif , A. M. (2019). Changing conceptualizations of regression: What
+prospective studies reveal about the onset of autism spectrum disorder. Neuroscience and
+Biobehavioral Reviews, 100, 296–304. https://doi.org/10.1016/j.neubiorev.2019.03.012.
+Ozonoff, S., Young, G. S., Bradshaw, J., Charman, T., Chawarska, K., Iverson, J. M., Klaiman, C.,
+Landa, R. J., Mcdonald, N., Messinger, D., Schmidt, R. J., Wilkinson, C. L., & Zwaigen-
+baum, L. (2024). Familial recurrence of autism: Updates from the Baby Siblings Research
+Consortium. Pediatrics, 2(154). https://doi.org/10.1542/peds.2023-065297/1676681/
+peds.2023-065297.pdf .
+Ozonoff, S., Young, G. S., Carter, A., Messinger, D., Yirmiya, N., Zwaigenbaum, L., Bryson, S.,
+Carver, L. J., Constantino, J. N., Dobkins, K., Hutman, T., Iverson, J. M., Landa, R.,
+Rogers, S. J., Sigman, M., & Stone, W. L. (2011). Recurrence risk for autism spectrum
+disorders:A Baby Siblings Research Consortium Study.Pediatrics,128,e488–e495.http://
+publications.aap.org/pediatrics/article-pdf/128/3/e488/844109/zpe0091100e488.pdf .
+Patriquin, M. A., Lorenzi, J., Scarpa, A., & Bell, M. A. (2014). Developmental trajectories
+of respiratory sinus arrhythmia: Associations with social responsiveness. Developmental
+Psychobiology, 56(3), 317–326. https://doi.org/10.1002/dev.21100.
+Peltola, M. J., Yrttiaho, S., & Leppänen, J. M. (2018). Infants’ attention bias to faces as an early
+marker of social development. Developmental Science,21(6). https://doi.org/10.1111/desc.
+12687.
+Pierce, K., Marinero, S., Hazin, R., McKenna, B., Barnes, C. C., & Malige, A. (2016). Eye
+tracking reveals abnormal visual preference for geometric images as an early biomarker
+of an autism spectrum disorder subtype associated with increased symptom severity.
+Biological Psychiatry, 79(8), 657–666. https://doi.org/10.1016/j.biopsych.2015.03.032.
+Pileggi, M. L., Brane, N., Bradshaw, J., Delehanty, A., Day, T., McCracken, C., Stapel-Wax, J.,
+& Wetherby, A. M. (2021). Early observation of red flags in 12-month-old infant
+siblings later diagnosed with autism spectrum disorder.American Journal of Speech-Language
+Pathology, 30(4), 1846–1855. https://doi.org/10.1044/2020_AJSLP- 20- 00165.
+Porges, S. W. (2003). The Polyvagal Theory: Phylogenetic contributions to social behav-
+ior. Physiology and Behavior, 79(3), 503–513. https://doi.org/10.1016/S0031-9384(03)
+00156-2.
+Porges, S. W., Doussard-Roosevelt, J. A., Portales, A. L., & Greenspan, S. I. (1996). Infant
+regulation of the vagal ‘brake’predicts child behavior problems:A psychobiological model
+of social behavior. Developmental Psychobiology, 29(8), 697–712. https://doi.org/10.1002/
+(SICI)1098- 2302(199612)29:8〈697::AID- DEV5〉3.0.CO;2- O.
+Porges, S. W., & Furman, S. A. (2011). The early development of the autonomic nervous
+system provides a neural platform for social behaviour: A polyvagal perspective. Infant
+and Child Development, 20(1), 106–118. https://doi.org/10.1002/icd.688.
+Propper, C. (2012). The Early Development of Vagal Tone: Effects of Poverty and Elevated
+Contextual Risk. In R. King, & V. Maholmes (Eds.), The Oxford Handbook of Poverty
+and Child Development (pp. 1–768). Oxford University Press. https://doi.org/10.1093/
+oxfordhb/9780199769100.001.0001.
+Reynolds, G. D., Guy, M. W., & Zhang, D. (2011). Neural correlates of individual differences
+in infant visual attention and recognition memory. Infancy, 16(4), 368–391. https://doi.
+org/10.1111/j.1532-7078.2010.00060.x.
+Reynolds, G. D., & Richards, J. E. (2005). Familiarization, attention, and recognition memory
+in infancy: An event-related potential and cortical source localization study. Dev Psychol,
+41(4), 598–615.
+Reynolds, G. D., & Roth, K. C. (2018). The development of attentional biases for faces in
+infancy: A developmental systems perspective. Frontiers in Psychology, 9. https://doi.org/
+10.3389/fpsyg.2018.00222.
+
+-- 33 of 35 --
+
+132 	Jessica Bradshaw et al.
+Richards, J. E. (2004). The development of sustained attention in infants. In M. I. Posner (Ed.),
+Cognitive Neuroscience of Attention (pp. 342–356). Guilford Press.
+Richards, J. E. (2010). The development of attention to simple and complex visual stimuli in
+infants: Behavioral and psychophysiological measures. Developmental Review, 30(2), 203–
+219. https://doi.org/10.1016/j.dr.2010.03.005.
+Richards, J. E., & Anderson, D. R. (2004). Attentional inertia in children’s extended looking at
+television. In R. V. Kail (Ed.),Advances in Child Development and Behavior (32,pp.163–212).
+JAI. https://doi.org/10.1016/S0065- 2407(04)80007- 7.
+Richards, J. E., & Casey, B. J. (1992). The development of sustained visual attention in human
+infants. In B. Campbell, H. Hayne, & R. Richardson (Eds.), Information processing in infants
+and adults: Perspectives from human and animal research. Erlbaum Press.
+Richards, J. E., & Hunter, S. K. (1998). Attention and eye movement in young infants. Neural
+Control and Development (1st ed., p. 32). Psychology Press.
+Richards, J. E., & Turner, E. D. (2001). Extended visual fixation and distractibility in children
+from six to twenty-four months of age. Child Development, 72(4), 963–972. https://doi.
+org/10.1111/1467-8624.00328.
+Sheinkopf, S. J., Levine, T. P., McCormick, C. E. B., Puggioni, G., Conradt, E., Lagasse, L. L.,
+& Lester, B. M. (2019). Developmental trajectories of autonomic functioning in autism
+from birth to early childhood. Biological Psychology, 142, 13–18. https://doi.org/10.1016/
+j.biopsycho.2019.01.003.
+Steinbrenner, J. R., McIntyre, N., Rentschler, L. F., Pearson, J. N., Luelmo, P., Jaramillo, M. E.,
+Boyd, B. A., Wong, C., Nowell, S. W., Odom, S. L., & Hume, K. A. (2022). Patterns in
+reporting and participant inclusion related to race and ethnicity in autism intervention
+literature: Data from a large-scale systematic review of evidence-based practices. Autism,
+26(8), 2026–2040. https://doi.org/10.1177/13623613211072593.
+Szatmari, P., Chawarska, K., Dawson, G., Georgiades, S., Landa, R., Lord, C., Messinger, D. S.,
+Thurm, A., & Halladay, A. (2016). Prospective longitudinal studies of infant siblings of
+children with autism: Lessons learned and future directions. J Am Acad Child Adolesc
+Psychiatry, 55(3), 179–187. www.jaacap.org.
+Tamis-LeMonda, C. S., Swirbul, M. S., & Lai, K. H. (2024). Natural behavior in everyday
+settings. Advances in Child Development and Behavior, 66, 1–27. https://doi.org/10.1016/
+BS.ACDB.2024.04.001.
+Thayer, J. F., Hansen, A. L., Saus-Rose, E., & Johnsen, B. H. (2009). Heart rate variability,
+prefrontal neural function, and cognitive performance: The neurovisceral integration
+perspective on self-regulation, adaptation, and health. Annals of Behavioral Medicine, 37(2),
+141–153. https://doi.org/10.1007/s12160- 009- 9101- z.
+Thelen, E., & Smith, L. B. (1995). A Dynamic Systems Approach to the Development of
+Cognition and Action. Journal of Cognitive Neuroscience: 7 (4th ed.) https://doi.org/10.
+1162/jocn.1995.7.4.512.
+Thorp, D. M. (2006). Joint engagement and language development: Contributions of mother and infant.
+University of Miama.
+Warreyn, P., Roeyers, H., Van Wetswinkel, U., & De Groote, I. (2007). Temporal coor-
+dination of joint attention behavior in preschoolers with autism spectrum disorder.
+Journal of Autism and Developmental Disorders, 37(3), 501–512. https://doi.org/10.1007/
+s10803- 006- 0184- 0.
+Whedon, M., Perry, N. B., Calkins, S. D., & Bell, M. A. (2018). Cardiac vagal regulation in
+infancy predicts executive function and social competence in preschool: Indirect effects
+through language. Developmental Psychobiology, 60(5), 595–607. https://doi.org/10.1002/
+dev.21636.
+Xie, W. (2017). Development of Brain Functional Connectivity and Its Relation To Infant Sustained
+Attention In The First Year Of Life. https://scholarcommons.sc.edu/etd
+
+-- 34 of 35 --
+
+Autonomic and attentional pathways in the emergence of autism 	133
+Xie, W., & Richards, J. E. (2016). Effects of interstimulus intervals on behavioral, heart
+rate, and event-related potential indices of infant engagement and sustained attention.
+Psychophysiology, 53(8), 1128–1142. https://doi.org/10.1111/psyp.12670.
+Yurkovic-Harding, J., Lisandrelli, G., Shaffer, R. C., Dominick, K. C., Pedapati, E. V., Erick-
+son, C. A., Yu, C., & Kennedy, D. P. (2022). Children with ASD establish joint attention
+during free-flowing toy play without face looks. Current Biology, 32(12), 2739–2746. e4
+https://doi.org/10.1016/j.cub.2022.04.044 .
+Zwaigenbaum, L., Bauman, M. L., Stone, W. L., Yirmiya, N., Estes, A., Hansen, R. L.,
+McPartland, J. C., Natowicz, M. R., Choueiri, R., Fein, D., Kasari, C., Pierce, K., Buie, T.,
+Carter, A., Davis, P. A., Granpeesheh, D., Mailloux, Z., Newschaffer, C., Robins, D., . . .
+Wetherby, A. (2015). Early identification of autism spectrum disorder: Recommenda-
+tions for practice and research. Pediatrics, 136. http://publications.aap.org/pediatrics/
+article-pdf/136/Supplement_1/S10/895992/peds_2014-3667c.pdf .
+Zwaigenbaum, L., Bryson, S., Rogers, T., Roberts, W., Brian, J., & Szatmari, P. (2005). Behav-
+ioral manifestations of autism in the first year of life. International Journal of Developmental
+Neuroscience, 23(2-3 SPEC. ISS), 143–152. https://doi.org/10.1016/j.ijdevneu.2004.05.
+001.
+
+-- 35 of 35 --
+

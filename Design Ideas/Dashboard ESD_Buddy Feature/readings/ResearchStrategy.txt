@@ -1,0 +1,783 @@
+SIGNIFICANCE
+Earlier Intervention Necessitates Earlier Identification
+Autism spectrum disorder (ASD) is a lifelong condition that affects ~2.3% of the population and carries a lifelong
+financial cost of $1.4-2.4 million per individual, thus representing a pressing public health challenge 29,30. Early
+intervention plays a pivotal role in the lives of children and families affected by ASD – improving functional
+outcomes for the individual, enhancing the quality of life for the family, and reducing a lifelong financial cost 31,32.
+Unfortunately, with ASD diagnosis and therefore intervention onset occurring after age 4-6 years 33,34, we are
+missing out on critical periods of early intervention that could capitalize on peak neuroplasticity within the first 2
+years of life 35–37. This is a critical barrier in the field–earlier identification of ASD within the first year of life can
+catalyze the onset of very early intervention, leading to greater improvements in long-term outcomes. Addressing
+this critical barrier by identifying the earliest point of developmental divergence in ASD is a high priority.
+The search for biological and behavioral markers of ASD has resulted in increased understanding of altered
+neurodevelopmental pathways, and atypical attention is among the most promising biomarkers that persists
+across the lifespan 38–42 . Research on infant attention suggests that infants with ASD exhibit reduced neonatal
+attention 6,43 , diminished social monitoring 44,45, disrupted engagement of social sustained attention 46, and a
+developmental decline in eye-looking 7, all prior to diagnosis. Still, this evidence is limited to behavioral
+studies of attention, and few extend to earlier than 2-3 months of age. To advance our understanding of
+disrupted attention in ASD, there is a need to examine specific biological substrates associated with this
+developmentally persistent phenotypic feature. The timing and context-specificity of attention differences
+measured 	at 	multiple 	levels 	(e.g., 	behavioral, 	physiological) 	in 	early 	development 	may 	reveal 	key
+neurodevelopmental mechanisms in ASD. This project takes the critical next step in examining biological
+underpinnings of disrupted attention in ASD by testing whether reduced autonomic regulation of attention
+(“heart defined attention”) is a key early-emerging feature associated with ASD. Significantly, this work will:
+1. Advance current etiological theories of ASD that link, with heightened specificity, an established, lifelong
+cardinal feature of ASD – atypical attention – to autonomic regulation of attention in the first months of life.
+2. Pave the way for new developmental models of ASD wherein disrupted attention has proximal effects on
+interactive behavior that interferes with learning and has distal, cascading effects on long-term outcomes.
+3. Lead to the development of new models for earlier intervention that enrich early experiences and
+enhance learning opportunities from the first months of life, ultimately reducing lifelong costs and improving
+lifelong outcomes for individuals with ASD.
+There is an urgent need to test specific mechanistic hypotheses about precisely when attention patterns
+diverge in ASD, the neurobiological systems implicated in this disruption, and the in-the-moment
+influence of attention on interactive behaviors in infancy, prior to the emergence of symptoms.
+The First Three Months: A Critical Period of Neurodevelopment and Autonomic Maturation
+The brain undergoes faster structural and functional maturation, as well as significant cross-domain integration,
+from birth to 3 months of age than at any other postnatal time 47. From birth, the autonomic nervous system (ANS)
+plays a vital role in the adaptive competence of the newborn. ANS has two major component systems:
+sympathetic 	(“fight 	or 	flight”) 	and 	parasympathetic 	(“rest 	and 	digest”). 	In 	response 	to 	ever-changing
+environmental contexts, these systems enact physiological changes that regulate basic functions, such as heart
+rate and respiration. In early prenatal development, physiological functions are driven primarily by sympathetic
+influence. Higher cortical processes begin to integrate autonomic control in the late prenatal and early postnatal
+period leading to increasing influence of the parasympathetic system. As ANS matures, parasympathetic tone
+serves as the foundation for several higher-level behaviors that support calm states of alertness and sustained
+attention to people and objects, ultimately providing countless opportunities for social and language learning. In
+this way, ANS is considered a “developmental resource” in the neonatal and early infant period that mediates
+infant-environment interactions 11. While some neurodevelopmental models of ASD suggest atypical emergence
+of cortically-driven endogenous attention systems 48, the developmental course of parasympathetic influence
+on attention in ASD has never been investigated, representing a clear scientific gap to be filled 9,48,49,11. Current
+evidence that forms the scientific basis of this study includes: 1a) very early disrupted attention, measured
+behaviorally, in ASD, 1b) an ANS-regulated marker of attention that is well-studied in TDs, but not ASD, 2) a
+developmental profile of PT infants who experience very early ANS dysregulation, but not ASD (in most cases),
+and 3) some evidence of a dynamic, temporally coordinated, ANS-attention-behavioral system in TDs, but less
+in ASD. This strong scientific foundation (described in further detail below) calls for further research on the
+“physiological phenomena” of attention 49 and presents three specific gaps in prior research that prevent a full
+understanding of the role of autonomic regulation in atypical attention in ASD: (1) The maturational course of
+
+-- 1 of 12 --
+
+autonomically regulated attention and baseline autonomic functioning as it emerges within the first three months
+of life for infants at elevated genetic likelihood for ASD remains unknown. (2) The developmental course of (and
+relations between) autonomically regulated attention, baseline autonomic functioning, and ASD symptomology
+in infants who are born with baseline ANS dysfunction (PTs) has not been delineated. (3) The dynamic role of
+HDA in supporting interactive behavior, moment-by-moment, is entirely unexplored. These gaps have prevented
+our ability to test a full model of ASD wherein early autonomic dysregulation of attention within the first months
+of life has cascading effects on interactive behavior and the emergence of ASD symptoms. Examining this novel
+mechanistic hypothesis while capitalizing on an especially critical period of rapid neurodevelopment (1-3mos)
+will advance scientific knowledge of ASD pathogenesis, ultimately paving the way for novel paradigms of very
+early interventions.
+1. Autonomic Regulation of Attention: A Critical Opportunity for
+ASD 	Research. 	Autonomic 	regulation 	and 	attention 	are 	critical
+components of an adaptive engagement system that selects relevant
+features of the environment and creates rich opportunities for learning and
+social interaction 10. ANS serves a regulatory function in attention by
+modulating 	heart 	rate 	responses 	during 	periods 	of 	attention 	and
+information processing. In a healthy ANS-mediated attention system, a
+neonate 	overrides 	metabolic 	demands 	to 	generate 	a 	physiological
+response (heart rate deceleration) that facilitates and enhances attention
+and 	stimulus 	intake50. 	This 	parasympathetically-driven 	physiological
+response, termed here heart defined attention (HDA), 51 is characterized by 3 discrete attention phases (Fig 1)
+that are associated with cognitive and learning processes 52. Some
+argue that HDA indices are more precise measures of information
+processing than looking time alone 53–55 . Limited studies of infants later
+diagnosed 	with 	ASD 	show 	atypical 	behavioral 	measures 	of
+attention 7,43,56 in very early infancy (see PI’s work, Fig 2) 57 as well as
+atypical general autonomic functioning in later infancy 58,59, pointing to
+the possibility of autonomically-driven dysregulation of attention. Our
+pilot work, and that of others, show differences in HDA quantity
+(%SA: %time in heart-defined sustained attention) and quality (HR-
+decel: magnitude of heart rate deceleration; Fig 1) in infant siblings of
+children with autism (ASIBs) 24,49 (see Fig 4 below).
+2. Preterm (PT) Infants as a Model of Global ANS Dysfunction. Significant ANS maturation occurs in
+the second half of pregnancy, and preterm birth (born <37w gestation) significantly disrupts ANS development
+and the overall functioning of the PT newborn 60. For PTs, reduced ANS activity fails to normalize at term age
+equivalent 25,61 and may alter long-term temporal programming of ANS maturation 62. While the vast majority of
+PTs experience prolonged global ANS dysfunction, only a small minority of PTs develop ASD (7% in PTs vs.
+20% in ASIBs)16,17. Thus, inclusion of PTs as a model for global ANS dysfunction in this study allows for
+heightened precision and specificity in delineating the link between attention-specific ANS dysfunction (i.e., HDA)
+and ASD symptoms. Systematic, longitudinal examination of autonomic measures of attention (HDA) in
+infants with elevated liability for ASD (ASIBs) contrasted to PT and TD control groups is necessary to test
+our mechanistic hypothesis that disrupted autonomic regulation specific to attention (vs. global ANS dysfunction
+observed in PTs and measured in this study) carries critical consequences for learning and development 63 and
+is associated with ASD symptoms. Measurement of general, baseline autonomic function in addition to attention-
+specific autonomic regulation, as proposed in this study, will clearly show how autonomic regulation of attention
+differs across ASIBs, PTs, and TDs.
+3. Modeling Autonomic, Attentional, and Behavioral Dynamics in ASD. A healthy, regulated autonomic
+and attention system creates rich opportunities for learning and social interaction 10. After the third month of life,
+a newly emerging, cortically driven organization of behavior results in anticipation and preparation for interactions
+with people and objects. The dynamic coordination of autonomic arousal and attention affords calm states of
+alertness, an optimal context for learning 64. Quantification of the dynamics of this system65 can reveal how
+autonomic regulation of attention is associated with, and may even predict, interactive behaviors as they unfold,
+moment-by-moment, in infancy. Autonomic arousal can index “anticipatory readiness” for dynamic changes in
+attention and behavior 66,67 . Emerging research in ASD suggests unique patterns of ongoing physiological activity
+and attention during social tasks 68,69, however, there is a significant lack of data on temporal dynamics of
+HDA and ongoing behaviors70 in ASIBs in infancy as symptoms of ASD begin to unfold. Such ANS-driven
+Figure 1. Heart defined attention phases and
+proposed DVs: %SA, HR-decel
+heart rate
+deceleration
+(HR-decel)
+%time in
+sustained attention
+(%SA)
+(2)
+Sustained
+Attention
+(1)
+Attention
+Orienting
+(3)
+Attention
+Termination
+Figure 2. Infant attention scored from NICU
+Network Neurobehavioral (NNNS) exam. Higher
+score indiciates better performance.
+
+-- 2 of 12 --
+
+dynamics could facilitate ongoing social engagement, which may help to guide ongoing interactive behavior, and
+ultimately increase opportunities for learning. The proposed study will fill this gap with an analysis of temporal
+dynamics of infant gaze, heart rate changes, and behavior during naturalistic interactions between age 6-12
+months across ASIBs, PTs, and TDs. Critically, the direct link from physiology (heart-defined attention) to in-
+the-moment interactive behavior will enable translation of findings to pilot behavioral interventions and explore
+biofeedback tools 19,71,72 to directly target the quality and quantity of infant HDA during interactions.
+Model of ANS-Regulated Attention and ASD
+Based on current literature and our preliminary data, we propose a model of ASD wherein initial global ANS
+(primarily sympathetic) function supporting neonatal arousal and reactivity is intact at birth. Yet, subsequently
+emerging parasympathetic regulation of attention is disrupted. This disruption emerges over the first year of life
+and interferes with infant sustained attention and ensuing behavior, leading to decreased learning, especially
+social learning, opportunities, and increased ASD symptoms. Expected Outcomes by Group (see Fig 3):
+ASIBs, who have no/low global ANS dysfunction at birth (Fig 3a), will show emerging ANS dysregulation of
+attention over the first year (attenuated HDA from 1-3m, weakening HDA-behavior associations from 6-12m; Fig
+3b) leading to elevated ASD symptoms at
+age 3 (Fig 3c). PTs, who do have global
+ANS dysfunction at birth (Fig 3a), should
+show gradual improvement in HDA (1-3m)
+and HDA-behavior associations (6-12m),
+ultimately resulting in low ASD symptoms at
+age 3. The rate of ASD in PTs is higher than
+that 	of 	the 	general 	population, 	and 	we
+hypothesize that a small subset of PTs with
+elevated ASD symptoms at outcome will
+show both disrupted global ANS and ANS-
+dysregulated attention in early infancy. TDs
+(no 	global 	ANS 	dysfunction) 	will 	show
+no/low ANS dysregulation of attention and
+low ASD symptoms at age 3.
+Translation of Findings to Non-invasive Biomarkers of the ASD Phenotype
+Early intervention plays a pivotal role in the lives of children and families affected by ASD – improving functional
+outcomes for the child, enhancing quality of life for the family, and reducing lifelong financial burden 73. Very early
+onset of intervention enhances child gains, which has prompted the PI and others to develop and pilot
+interventions for at-risk infants, some as young as 6 months31,74–77. The nascent, but rapid, progress in the
+development of very early interventions demands innovative studies to identify early markers of social
+functioning. Offering intervention to all infants with genetic or congenital risk is likely not feasible. But a valid,
+cost-effective, non-invasive biomarker can help identify those who have the greatest likelihood of developing
+social-communication challenges and ASD, and thus are in greatest need. In a landmark study, Jones and Klin
+(2013) 7 identified altered trajectories of social attention (2-6 months) as the earliest known predictor of ASD.
+However, this exceptional study did not evaluate potential biological mechanisms underlying such an early
+disruption. Aim 3 of this project will leverage machine learning to test autonomic and attentional features from
+1-12 	months
+(Aims 	1-2) 	as
+viable biomarkers
+of ASD symptoms.
+Notably, Aim 3 is
+not contingent on
+significant 	results
+from Aims 1-2 as
+statistical
+significance is not
+a 	requisite 	for
+including 	these
+variables 	in
+feature 	selection
+Figure 3. Driving framework for expected outcomes to be tested (b) and (c) given
+initial global ANS function/dysfunction at birth (a). ANS dysregulation of attention
+(b) will be measured measured early (1-3 months) via heart defined sustained
+attention (%time in sustained attention, HR deceleration). ANS dysregulation of
+attention will be measured later (6-12 months) via HDA-behavior associations.
+Study Visits (participant age in months) Note: 24-month remote time point not depicted
+Heart
+Defined
+Attention
+Heart
+Defined
+Attention
+Heart
+Defined
+Attention
+Full set of features
+Feature
+Identification
+Feature Extraction ASD Symptoms
+at Outcome
+Aim 1
+Maturation of autonomic
+regulation of attention across
+ASIBs, PTs, and TDs
+Aim 2
+Temporal dynamics of physiology,
+attention, and interactive behavior
+across ASIBs, PTs, and TDs
+Aim 3
+Predicting ASD symptoms from
+autonomic and attentional
+features from ASIBs, PTs, and TDs
+6 	9 	12	1 	2 	3 	36
+Early Predictive Features
+(“Biomarkers
+”)
+Heart
+Defined
+Interactive
+Behavior
+Defined
+A�en�on
+Interactive
+Behavior
+Interactive
+Behavior
+Heart
+Defined
+Attention
+
+-- 3 of 12 --
+
+procedures. See study overview above.
+The proposed research will have a significant impact on the broader understanding of ASD by utilizing an
+innovative, developmentally informed framework: autonomic regulation of attention 78. We will generate linkages
+from ANS and attention to moment-by-moment infant behavior and utilize advanced analytic methods to predict
+ASD symptoms years later. The prior research and our preliminary data (see Prelim. Data below) provide support
+for the overall study premise to identify disrupted autonomic regulation of attention as an early indicator of ASD.
+The potential for translation of findings to actionable interventions is high; promising studies of behavioral
+interventions for PT infants show positive maturational shifts of autonomic regulation 79, suggesting malleability
+of this early-developing system. Developmentally informed interventions that target this rapidly maturing
+autonomic system of attention have the potential to make significant, sustained changes in attention, cognitive,
+and social outcomes for infants with an elevated likelihood for ASD.
+INNOVATION
+This proposal seeks to shift current research paradigms by studying novel indices of attention across three
+unique infant groups using advanced modeling of dynamic, moment-by-moment, behavior in the first year of life.
+Attention as an Autonomically-Regulated Process and Predictor of ASD. Atypical attention has been among
+the most promising early markers of ASD38,80, but the biological underpinnings of disrupted infant attention in
+ASD is currently unknown. This proposal will utilize an innovative, physiological measure of attention (HDA) in
+addition to a baseline autonomic marker (respiratory sinus arrhythmia, RSA) to test the hypothesis that disrupted
+attention is linked specifically to altered ANS-regulated attention and is associated with later-emerging ASD
+symptoms. Repeated measurement of RSA and of HDA across interactive contexts from the first months of life
+is an innovative approach that will provide an enriched dataset more powerful than previous studies. This
+innovation will allow us to understand mechanisms and roles of ANS and attention in the unfolding of ASD.
+Preterm Infants: Controlling for Global ANS Dysfunction. PT infants are born with an exceptionally immature
+autonomic regulatory system that may not fully develop until well after birth 13,81–83. Yet, the vast majority of PTs
+ultimately experience typical outcomes (~80-92% of PTs do not have ASD or developmental delays by preschool
+age 84,85). Thus, PT infants serve as a unique control group that experience early autonomic dysfunction and
+mostly typical, non-ASD outcomes. Measures of HDA and baseline RSA within this innovative three-group
+research design will allow us to delineate: 1) how global ANS dysfunction (in PTs) differs from autonomic
+dysfunction specific to attention (in ASIBs) and 2) how maturation and improvements in ANS over the first year
+of life for PTs may support interactive behavior and learning, potentially buffering against ASD-specific outcomes.
+Moment-by-Moment Measures of a Dynamic, Interactive System. Dynamic biological rhythms are central to
+the development of the infant 9. Physiological and social maturation are dynamic processes, and variability within
+this system during critical neurodevelopmental windows may predict later functioning 9,86. This proposal examines
+novel questions of how physiological correlates of attention (i.e., HDA) relate to infant interactive behavior. By
+measuring HDA during live interactions with people and objects, we will explore the dynamics of attention,
+physiology, and behavior in an integrated way that has never been done before. Aim 2 will capture this
+integration, generating a rich dataset that can inform the development of interventions.
+APPROACH
+Key empirical support for the proposed project include the PI and investigative team’s preliminary data and
+previous research on disrupted attention in infants who later develop ASD 6,44,45,48,87–89. However, prior research
+has been largely limited to behavioral measurement of attention in contrived experimental contexts (e.g., eye
+tracking) in later infancy (after 3-6 months). Moreover, very few studies have directly compared ANS or attention
+in ASIBs and PTs. And no studies have examined the temporal dynamics of autonomic regulation of attention
+and interactive behavior in these groups. These issues limit advancement of etiological theories of ASD and
+implications for treatment. This proposal details specific plans to address the gaps in prior research.
+Research Team. The project PI (Bradshaw) has >14 years of experience conducting research in largescale,
+NIH-funded, interdisciplinary, autism centers (Yale Child Study Center, UCSB, UCSD, Emory), resulting in 40
+publications. As an early-stage investigator (ESI), the PI is currently leading two NIH-funded studies (K23, R21),
+one Foundation award (James S. McDonnell Foundation), and two internally funded pilot studies. In the proposed
+project, the PI will be supported by five Co-Is and one psychologist (below), four of whom are senior investigators
+with an established track record of grants management (R01s) and successful mentorship of and collaboration
+with ESIs. In addition to regular individual meetings between the PI and Co-Is, regular meetings with the full
+investigative team (PI+Co-Is) will occur at key points throughout the project (>3x/year) to troubleshoot issues
+and think through larger project questions and plans from multiple perspectives. Jane Roberts (expertise in
+
+-- 4 of 12 --
+
+autonomic dysfunction in ASD/Fragile X; primary mentor for PI’s K23) has significant grants management
+experience and publications with the PI 90. John Richards (co-mentor on PI’s K23, collaborator on internal pilot
+grant) developed the theoretical model of heart-defined attention 52,91 and has led an R01 for >40 years focused
+on this model of infant attention in TD and PT infants. Robin Dail (expert in ANS in PT infants, collaborator on
+internal pilot grant) is leading a multisite R01 with PT infants in NICUs across North/South Carolina. Her expertise
+is critical for understanding ANS maturation in the context of PT birth and heightened medical morbidities. The
+PI’s collaborative conceptual work with Jana Iverson8 (expertise in TD and ASIB infant motor/communication
+development) on developmental cascades in ASD has led to the novel questions proposed in this study.
+Christian O’Reilly (expertise in computational modeling, early biomarkers, and signal processing) has worked
+with the PI using machine learning to predict ASD likelihood from heart activity (preliminary data for Aim 3).
+Finally, a licensed Clinical Psychologist with expertise in developmental psychology and autism (Dr. Emily
+Neger) will assist the PI with clinical training, supervision, reliability monitoring, and expert clinical judgements.
+The unique, complementary areas of expertise among the investigative team, along with diversity across stage
+of career and discipline, will enhance diverse perspectives, enrich expertise, foster ingenuity, and result in
+successful achievement of scientific aims.
+PRELIMINARY DATA
+ASD-Specific Differences in Behavioral Measures of Early Infant Attention. In the neonatal period, attention
+to the environment occurs during calm states of alertness, facilitated by optimal levels of autonomic regulation.
+Our recent set of studies (P50MH100029) 6,57 investigated behavioral measures of attention in 1-3-month-old
+ASIBs who later developed ASD. We identified specific timepoints, between 2-3 months of age, when maturation
+of attention in ASD (n=18) and ASIBs (n=41) lagged compared to TDs (n=39; Fig 2, above). These preliminary
+data highlight feasibility in recruitment and measurement of attention in neonates and quantifiable
+differences in behavioral measures of attention across groups. The current proposal will expand on these data
+by increasing sample size (n=75 ASIBs), adding a second comparison group (n=75 PTs), and examining a
+specific biological substrate of disrupted attention (heart-defined attention; HDA) as well as general autonomic
+integrity (baseline RSA). In addition, all data collection will occur in the home, which will greatly increase
+participant accessibility and enrollment (especially for communities of color and rural populations).
+Infant Autonomic Regulation of Attention is Associated with ASD Symptoms. Preliminary data related to
+Aim 1 include trajectories of HDA during naturalistic parent-infant interactions from 1-4 months of age across
+n=10 ASIBs, n=20 PTs, and n=30 TDs (K23MH120476; R21DC017252; PI: Bradshaw). These trajectories are
+characterized by a significant increase in heart rate (HR) deceleration during sustained attention (F=10.24, p <
+.001, Fig 4a) and point to a dampened HR deceleration that is developmentally transient for PTs, but persistent
+for ASIBs 23. 949260 Moreover, HR deceleration during sustained attention to people at 3 months is associated with
+early-emerging symptoms of ASD 26 (social-communication skills at 9mo 92; r=0.50; p<.05; Fig 4b). Our team’s
+past 	research 	also 	suggests
+dampened 	baseline 	RSA 	is
+present very early in PTs 93, but
+only later in ASD 90 (similar to other
+work 58). 	Building 	on 	these
+preliminary findings, we propose
+to 	test 	the 	hypothesis 	that
+autonomic 	dysregulation 	of
+attention is present early in ASIBs
+(Aim 	1), 	disrupts 	temporal
+dynamics of physiology, attention,
+and interactive behavior (Aim 2),
+and is associated with elevated
+ASD symptoms at age 3 (Aim 3).
+Feasibility of Time-Locking HDA Phases to Interactive Behavior. Our data show that HDA-related HR
+deceleration during a social interaction at 3 months is associated with social-communication outcomes at 9
+months 92 (see above, Fig 4b). One interpretation of this preliminary finding is that more sustained attention during
+social interaction reflects increased social engagement and learning, leading to better social-communication
+skills 6 months later. Yet these data also point to questions about whether and how increased autonomic
+regulation of attention may facilitate interactive behavior (and therefore learning) in the moment. Aim 2 will
+address this question. Utilizing full electrocardiogram (ECG) waveform recordings (1024Hz) and frame-by-frame
+Figure 4a. Trajectories of HDA
+deceleration during social interactions.
+Figure 4b. Association between HDA deceleration during
+social interaction at 3-4mos and 9mo communication.
+
+-- 5 of 12 --
+
+video coding of gaze fixation, ongoing heart-defined phases of attention (HDA) are identified epoched based on
+the onset of interactive behavior (also coded frame-by-frame from video). Our preliminary data (K23MH120476)
+demonstrate feasibility in capturing infant interactive behavior in 6-12-month-olds26,94 and synchronizing
+with HDA time-series data23.
+In a preliminary analysis of N=12 infants, we identified the onset of interactive behavior (object exploration) and
+calculated the proportion of time (i.e., relative frequency) of HDA phase in a time-series of 5 seconds prior to
+each behavior onset (Fig 5). Findings point to between-group differences (TD vs ASIB) in autonomic regulation
+of attention immediately preceding behavior. As expected, TD infants showed a consistent pattern of HDA
+change within the 2 seconds immediately preceding
+the 	behavior, 	characterized 	by 	an 	increase 	in
+attention (increased attention orienting, green and
+sustained attention, red). By contrast, ASIBs did
+not 	show 	a 	clear 	pattern 	of 	HDA 	change
+immediately 	preceding 	the 	behavior. 	Instead,
+attention patterns remained stable up to 5 seconds
+prior to the behavior, characterized by less overall
+attention (more inattention, grey; less attention
+orienting and sustained attention). The proposed
+project will build upon this preliminary work in a
+rigorous examination of moment-to-moment dynamics of HDA and interactive behavior across the first year.
+Prediction of ASD Symptoms using Measures of ANS and Attention. In collaboration with Co-I (O’Reilly),
+ECG data from 3-6-month-old ASIBs (N=7) and TDs (N=16) during interactions were collected and cleaned.
+Several features were extracted (e.g., mean inter-beat-interval (IBI), standard deviation, root-mean-square
+differences between adjacent IBI, discrete functional analysis, sample entropy) and an ablation study was used
+for optimal feature selection. A multilayer perceptron was used to classify ASD likelihood (ASIB vs. TD) with 86%
+accuracy (precision: 65%, sensitivity: 65%, specificity: 94%). These preliminary results compare advantageously
+with a previous study reporting a 75.3% accuracy 95 and demonstrate scientific and technical feasibility in
+feature extraction and application of machine learning models to predict ASD likelihood. In this proposal, we will
+develop a more nuanced analysis predicting ASD symptoms on continuous scales using newly developed deep
+neural implementation of mixed-effect linear models 96. The proposed project will use autonomic and attentional
+features collected for Aims 1 and 2 to better understand how HDA can be leveraged in the formulation of
+biomarkers in ASD. Our preliminary data suggest sufficient power for applying these methods to a sample
+size that is over ten times larger than that of this pilot study (N=200; n=75 ASIBs). Further, large effect sizes
+(detectable on relatively small samples) are critical for developing effective ASD biomarkers.
+Regression Over Continuous Scales Rather than Binary Diagnoses Classification. ASD symptoms will be
+captured using Autism Diagnostic Observation Schedule (ADOS-2) calibrated severity scores (CSS) 97. Our
+preliminary data (PI Bradshaw 57 and Co-I O’Reilly) suggest sufficient variability in CSS scores across groups of
+3-year-olds with and without ASD to determine meaningful associations between early infant biomarkers and
+ASD symptoms. In the current proposal, we will further build on this direction using ANS-related predictors.
+OVERALL EXPERIMENTAL DESIGN
+Participants. A total of 200 infants will be included in this study: 75 ASIBs, 75 PTs, and 50 TDs. Note that
+our analyses are not powered to detect associations between predictors and binary ASD classification.
+Rather, for Aim 3, our sample size is powered to detect associations with a continuous measure of ASD
+symptoms at age 3 (see Power Analysis below). Our power analyses, published studies, 57 and preliminary data
+suggest that this proposal is sufficiently powered to detect associations of infant biomarkers and ASD
+symptoms 6,57,92 . All participants will be followed longitudinally from 1 month to 3 years, at which point stable ASD
+symptoms can be quantified using ADOS CSS 98,99. In accordance with NIH guidelines for consideration of
+relevant biological variables, we acknowledge that ASD prevalence is higher in males; however, males and
+females will be recruited equally, and sex included as a covariate in all analyses.
+Inclusion Criteria: 1) ASIB: born fullterm (>37w), have a full biological sibling with ASD (confirmation of
+ASD in the older sibling: record review, direct clinical measures (SCQ100, CBCL 101 , SRS-2 102 ), expert clinical
+judgement by licensed psychologist with expertise in ASD); 2) TD: born fullterm, have a full biological TD sibling
+(confirmed with SCQ, CBCL, SRS, expert clinical judgment), no history of ASD in 1 st
+-3 rd degree relatives; 3) PT:
+gestational age (GA) at birth between 24 0/7–32 6/7 weeks, have a sibling, no family history of ASD in 1 st -3 rd degree
+relatives. GA Considerations: PTs will be evenly stratified into 3 GA bins to ensure relatively even distribution
+Figure 5. HDA
+phases (relative
+frequency of each
+attention phase)
+leading up to
+object exploration
+behavior for 9-
+month-olds.
+
+-- 6 of 12 --
+
+of risk for ANS dysfunction: (24-26w; 27-29w; 30-32w). GA at birth will be included as a covariate in all analyses,
+similar to our previous work 57,103. Exclusion criteria for all participants: failed newborn hearing screen, known
+major hearing or visual impairments, non-febrile seizure disorders, known genetic/chromosomal syndromes
+(e.g., Down Syndrome), congenital heart condition known to effect heart rate, severe brain hemorrhage and
+periventricular leukomalacia (PVL). PTs will provide medical records for accurate eligibility assessment. To
+maximize recruitment efforts of PTs, we are not excluding twins (but multiple birth will be considered in analyses).
+TDs or PTs with an ASD diagnosis at outcome will be included in analyses (while considering GA and genetic
+likelihood in models) to increase generalizability.
+Feasibility of Recruitment/Enrollment. The current project capitalizes on significant, established
+recruitment infrastructure, which has led to successful recruitment of ASIBs and PTs at USC. Resources include:
+the UofSC Neurodevelopment Registry (N>1,100; PIs: Roberts and Bradshaw), the USC Infants and Children
+Registry (N>150; PI: Richards, Bradshaw), multiple community partnerships (NICUs at the two largest hospital
+systems in the state, SC SPARK, CAN Center at USC, DDSN, Pediatric practices, autism services providers).
+USC investigators have direct outreach access to all children with ASD in the state of South Carolina (total
+N>8,000; n=6,700<8yrs) through the Department of Disabilities and Special Needs (DDSN). This outreach has
+been exceedingly successful for recruitment in the past (see Letters of Support). Our longitudinal studies
+(K23MH120476, R21DC017252) reflect consistent, successful recruitment and retention of ASIBs, PTs, TDs, 1-
+3 months of age with >95% retention. The PI’s lab consistently receives 30-50 referrals per week from
+interested research participants in the local community and the average enrollment rate for ASIB studies at USC
+is 12-18 participants/month. For 1-3-month-old ASIBs specifically, active recruitment in the PI’s lab and at USC
+results in enrollment of 4-6/month. This track record demonstrates feasibility regarding enrollment for the
+proposed project (target average:10-15 enrollments/month across all groups). Our outstanding recruitment
+records are bolstered by established connections to supportive networks in South Carolina (ASD service
+providers, schools, pediatricians, hospital NICUs) and state organizations serving ASD and PT populations have
+pledged tremendous recruitment support (see Letters of Support). To maximize enrollment, we will leverage
+in-home data collection for study visits. The investigative team has ~20 years of experience with in-home data
+collection (TDs, PTs, ASIBs age 1wk-3yrs; N>450) and our data evidence that 99% of families (446/450+) prefer
+in-home visits when given the choice of home vs. lab. This approach will significantly increase participant
+recruitment/retention rates and support access for families with limited resources or located in rural areas.
+Attrition. Resources for participant incentives and study visits include over-enrollment to account for
+expected attrition (rate of 5% based on current longitudinal studies of ASIBs, PTs, and TDs enrolling at 1-4
+months). This includes an additional N=16 participants to account for attrition (~5% lost to follow-up, n=10). Thus,
+power analyses (described below) are based on the final expected sample of N=200.
+Operational Considerations. The current project will capitalize on existing infrastructure and resources
+from the PIs ongoing NIH awards (K23MH120476, R21DC017252), foundation grants (James S. McDonnell
+Foundation), institutional awards, and institutional funds. The PI’s lab is staffed with 1 research assistant
+professor, 1 postdoc, 4.5 research specialists, 1 psychologist, 1 fulltime recruitment coordinator, and 4 graduate
+and 20 undergraduate students. Two current RAs are trained in most proposed data collection and processing
+procedures and will be dedicated to this project. Two more RAs will be hired specifically for this project (see
+Budget Justification). The PI and lab psychologist are licensed clinical psychologists and at least two research
+staff are trained and reliable in all clinical measures.
+EXPERIMENTAL PARADIGMS AND DATA COLLECTION
+Data Collection Overview. A key component of this longitudinal study is dense sampling of infant behavior
+to capture change during a rapid period of neurodevelopment. Accordingly, study visits will occur at months 1,
+2, 3, 6, 9, and 12, with an additional 24-month questionnaire-only check-in (which will also support retention),
+and a 36-month evaluation of ASD symptoms and overall development. Adjusted age will be used for all PT
+visits. At visit months 1-3, autonomic regulation of attention will be measured with simultaneous video and heart
+rate recording during administration of the well-established standardized neonatal measure NNNS-II (NICU
+Network Neurobehavioral Scales-II; see Early Infant Attention Task below) 104 . At visit months 6-12, trained
+research staff will video record two standardized infant interactions. Research staff will be masked to participant
+group; parents will be reminded at each visit to refrain from discussing any family or medical history with staff.
+All research staff will be trained to reliability (>80% agreement) in administration and scoring (where applicable)
+of the clinical and experimental measures; reliability will be monitored monthly by the project psychologist. A
+comprehensive evaluation of ASD symptoms and overall development will be administered at the 36-month time
+
+-- 7 of 12 --
+
+point. While study aims are not
+designed (nor powered) to use
+ASD 	diagnosis 	as 	a 	binary
+outcome, 	a 	clinical 	best
+estimate (CBE) procedure will
+be used to assign an overall
+diagnosis at 36 months in order
+to 	comprehensively
+characterize 	our 	sample.
+ADOS 	calibrated 	severity
+scores 	(RRB, 	Social 	Affect,
+Total) will be used as a metric
+of ASD symptoms for Aim 3,
+similar to our previous work 57. In addition, each study visit will begin with a 5-min baseline ECG recording while
+the infant is laying or sitting still watching a video of fractals with classical music (to encourage restfulness/
+reduce movement). As in previous work 58,59, baseline autonomic function will be indexed with respiratory sinus
+arrhythmia 	(RSA; 	a 	measure 	of 	cardiorespiratory 	control 	that 	reflects 	general 	autonomic 	integrity 105;
+CardioBatch 106 .
+Early Infant Attention Task from the NNNS-II (Aim 1). Attention will be measured from 1-3m during a
+standardized, readily translatable measure (NNNS-II) that is grounded in a developmental, neurobehavioral
+framework and aligns with study aims and hypotheses. The NNNS-II is a 15-20-minute direct evaluation of
+neurological functioning and behavioral adaptation of at-risk (e.g., medically compromised, preterm) and healthy
+neonates 107 . The PI has >6 years experience administering the NNNS, is a certified NNNS-II examiner and
+trainer, and has published on attention using the NNNS in TDs and ASIBs 6,57. Of interest to the current study are
+the NNNS-II Attention items, which examine the infant’s ability to block out external (and internal) stimuli and
+attend to visual and auditory stimuli. Six attention items include inanimate (ball and rattle) and animate (face and
+voice) stimuli that are presented visually with sound (rattle; face/voice), visually without sound (ball; face), and
+auditory only (rattle/voice out of sight). Administration is done with the examiner holding the infant in their lap in
+a flat or semi-elevated position. To obtain optimal performance, examiners implement handling strategies to
+keep the infant in a calm, alert state (handling strategies are recorded). Attention item administration = 3-6min.
+Infant Interaction Task (Aim 2). Infant HDA and interactive behavior will be recorded during two semi-
+structured, table-based infant interactions at 6, 9, and 12 months (see Fig 7 and our work using these protocols
+in 6-12-month-olds 26,94). To capture both social and object interactive behaviors, two interactions will be
+completed. The Social Interaction occurs with an examiner and caregiver (ecologically valid context for infants)
+and is designed to elicit social interaction behaviors, similar to common social-communication measures for
+infants (e.g., CSBS 108 ). The PI is a close
+collaborator of the CSBS author (Amy
+Wetherby) 26,75,109 and our research staff
+are trained and supervised in the CSBS-
+BS by Dr. Wetherby’s research staff. The
+Object 	Interaction 	(no 	caregivers) 	is
+designed to elicit independently initiated
+object 	exploration 	behavior. 	Our
+research 	team 	has 	successfully
+administered this experimental task to
+quantify object behaviors 94. Social and
+Object 	interactions 	are 	equated 	on
+duration 	and 	number 	of 	objects
+presented to the infant (n=5; Fig 7).
+Autism Symptoms (Aim 3). ASD symptoms at 36m will be captured using ADOS-2 calibrated severity
+scores (CSS): Social Affect, Restricted and Repetitive Behaviors (RRBs), and Total 97. ADOS examiners will be
+trained to research reliability and supervised by the PI and project psychologist. When the administering
+examiner is unintentionally unmasked on a study visit, a masked examiner will score the ADOS from video to
+ensure scientific rigor. CSSs range from 1-10 and represent an excellent measure of ASD symptoms, relatively
+independent from IQ and language abilities 97,110.
+Figure 7. Infant Interaction Protocol
+Figure 6. Data collection timeline and primary dependent variables. Note that some important
+measures are not depicted, including covariates (e.g., NICU-related morbidities, GA, motor skills).
+
+-- 8 of 12 --
+
+Data Processing
+Electrocardiogram (ECG) Recordings. ECG recordings will be collected at each time point between 1-12
+months via Actiheart 111 wireless heart rate monitors, sampled at 1024Hz. The research team has extensive
+experience using these monitors for successful, continuous recording of infant ECG. Video recordings of all
+experimental paradigms will be collected for synchronization of ECG recordings with behavioral events
+(behaviorally 	coded 	later 	from 	video). 	Specialized 	software 	programs, 	CardioPeakSegmenter 	and
+CardioEditPlus 106,112 , will be used for R peak detection, segmentation, and artifact removal.
+Baseline Autonomic Function will be indexed using overall RSA from a 5-min baseline recording 106 .
+Synchronization of ECG and Video Recordings. Actiheart wireless heart rate monitors are incredibly user-
+friendly and allow unrestricted movement for infants and caregivers. The start time of the ECG recording (based
+on a remote computer time) is used as the synchronization signal and is captured (video recorded) at the
+beginning of the experiment (i.e., the start time and run time of the ECG recording is captured on the video that
+will later be coded for infant behavior). Our custom data processing pipeline then crops the ECG recording to
+align ECG and Video start times (time 0(ECG)= time 0(Video)), allowing precise alignment of behavioral coding
+(described below) and ECG. This method has been used successfully in the PI’s lab for the past 4 years 23,92.
+Behavioral Coding of Infant Gaze. Coding of infant looking is needed to identify heart defined phases of
+attention. Thus, frame-by-frame video coding of infant looking using DataVyu software will be completed by
+trained and reliable undergraduate RAs masked to group. The PI has 16 years of experience in behavioral coding
+and the PI’s lab has established procedures and manuals for coding infant looking during interactions 23,92. Coders
+will identify the onset and offset of infant looks to pre-identified target stimuli (object, caregiver, examiner) during
+NNNS attention items (1-3m) and infant interactions (6-12m). For all interactions, only one object at a time will
+be presented. Our established training/reliability procedures ensure high research rigor.
+Behavioral Coding of Infant Interactive Behavior. The occurrence of infant interactive behaviors will be
+coded from video by masked RAs (Aim 2). Dr. Iverson (Co-I) is a renowned expert in capturing infant social 113–
+116 and object 117–119 interactive behavior in PTs 120,121 and ASIBs 114,117 and will assist with this process. Due to
+rapid development in social and object interaction skills from 6-12 months, behaviors will be categorized as
+“earlier” and “later” emerging (Fig 7 above). This will allow our measures to account for maturation in interactive
+behaviors and avoid floor and ceiling effects at each time point. For example, we expect no infants show “later”
+social acts at 6m (words and gestures) but many infants show “earlier” social acts at 6m and 12m (social smiles).
+HDA. The PI and Co-Is O’Reilly and Richards developed customized Matlab and Python scripts to
+synchronize heart rate (HR) with infant looking to calculate onsets and offset of HDA phases (sustained attention
+defined as 5 successive beats with HR slower than pre-look HR median 22,23,92). Summary variables calculated
+for analysis will include duration of sustained attention (%SA) and heart rate deceleration during sustained
+attention; these have been associated with enhanced learning 122 and will serve as the primary DVs (Aims 1-2).
+Covariates and Demographic Data. Sociodemographic data (race, ethnicity, income, education, home
+address) and medical history (pregnancy, birth, and early postnatal period) will be collected at the first visit. For
+PTs, morbidity scores 123 will be derived from medical records and in-depth NICU questionnaire (APGAR scores,
+overall time in NICU, presence/duration of medical supports (e.g., ventilator), neurological damage (IVH),
+infections, and surgeries). Due to the potential impact of NICU-related stimulation and stress on cardiorespiratory
+functions, these variables will be considered as covariates in analyses. Co-I Dail has expertise in evaluating and
+selecting relevant variables. Annual questionnaires about parental concerns, developmental milestones (ASQ-
+3 124 ), and any early intervention services will be collected. Given the impact of maternal depression on early
+social development, mothers will complete a depression measure (EPDS 125 ) at months 1, 3, and 6. The PI and
+project psychologist have the clinical expertise to evaluate and address clinical depression and will refer mothers
+for appropriate care. Motor questionnaires 126 will be completed at each visit to control for impact of motor delays
+on attention and interactive behavior. Outcome cognitive and motor skills will serve as covariates in all analyses.
+Data Management. Management of ECG, video, questionnaires, and behavioral assessments will be led by
+the Project Manager. Undergraduates will be trained in cleaning and editing of raw ECG files (CardioEdit,
+CardioBatch), video files will be recorded to SD cards and immediately transferred to our secure server. REDCap
+will be used for parent questionnaires and to store behavioral data (using double data entry/validation). Original
+forms will be scanned, stored on a secure server, and shredded to protect participant confidentiality.
+Experimental data will be processed and linked to demographic/behavioral data for statistical analysis.
+SPECIFIC AIM MEASURES AND ANALYSES
+Aim 1. Compare the maturation of autonomic regulation of attention in the early infant period (1-3m)
+across ASIBs, PTs, and TDs.
+
+-- 9 of 12 --
+
+Overview and Hypotheses. Behavioral measures of attention at 2-3 months reveal significant associations
+with ASD/ASD symptoms 6,7,57, but biological underpinnings have not been identified. Behavioral measures of
+looking coordinated with heart rate deceleration reflect focused attention, brain arousal system activation, and
+enhanced learning 78,122,127 . Thus, HDA in early infancy reflects physiological regulation required to attend to, and
+learn from, the environment. Aim 1 will directly test the hypothesis that the maturation of autonomic
+regulation of attention in young infants from 1-3 months is delayed for PTs and disrupted for ASIBs.
+Measures. Baseline autonomic function will be measured with RSA extracted from a 5-min baseline
+recording. Autonomic regulation of attention will be measured during the six Attention items of the NNNS-II (see
+Data Collection Overview above). Attention to each stimulus will be coded from video and temporally
+synchronized with ECG data to calculate: %time in heart-defined sustained attention (%SA = time in SA / task
+duration) and heart rate deceleration in sustained attention (HR-decel = maxHR–minHR during each SA phase).
+Analytic Plan. We will utilize latent growth curve models (LGCM) to characterize trajectories of HDA (%SA;
+HRdec) as well as baseline autonomic function (RSA) from 1-3 months. LGCMs can be considered comparable
+to multilevel models and, in many cases, they are numerically identical, however there are several specific
+advantages to LGCM approaches 128 . For a single manifest variable measured at a minimum of three time points,
+an LGCM can be fit to estimate two latent factors, i.e., intercept and slope. This approach is established within
+a structural equation model (SEM) framework, which allows us to take advantage of the flexibility and broadness
+of SEM models with the following added benefits: 1) ability to assess global model fit 128,129, 2) easy handling of
+missing data within and between visits using the full information maximum likelihood strategy 130, 3) inclusion of
+latent predictor(s)/outcome(s) in model 128,129,131. Recent research has confirmed that this technique can be
+applied to small sample sizes with missing data 130. We will first plot individual trajectories of HDA (%SA, HRdec)
+to explore differential patterns. The model fit will be determined using chi square tests and fit indices, such as
+the root mean square error of approximation and the comparative fit index. Mean values of growth factors
+(intercept, slope) will be estimated and compared across groups (TD, PT, ASIB). We will also examine the
+variance of the growth factors to test whether individuals share the same starting points and rate of change over
+time. Covariance between growth factors will provide information about individuals’ growth rates related to their
+starting point. Effects of baseline or outcome characteristics (e.g., gestational age at birth, NICU-related
+morbidity, biological sex, SES, cognitive outcomes) will be controlled for in all analyses. This is critical as a
+substantial minority of preterm infants also show cognitive delays 132 . Power Analysis. Estimated power for
+growth curve models was calculated following a simulation-based approach (1000 simulation replicates) 34.
+Power rates were computed by assuming 3 measurement occasions and linear growth. Population values used
+for the simulation were obtained by fitting the linear latent class models (LCM) to our pilot data. Given 200
+subjects, power rates to detect individual variability in intercepts and slopes were 0.99 and 0.99, respectively.
+To detect group differences in trajectories, we computed the power to detect a significant difference in terms of
+mean slopes between two groups (n=75, n=50) and estimated power was 0.81. Finally, given N=200, we can
+detect a medium effect (R 2=0.25) when predicting continuous outcomes (ASD severity) with 86% power.
+Expected Outcomes and Interpretation. Due to global ANS dysfunction at birth, PTs will show reduced
+baseline RSA and autonomic regulation of attention (less %SA and less HRdec) from 1-3 months compared to
+TDs (PT 1-3mo < TD1-3mo). Due to intact global ANS functioning for ASIBs at birth, baseline RSA for ASIBs will be
+comparable to TDs from 1-3 months. ASIB HDA, on the other hand, will be comparable to TDs at 1 month
+(ASIB1mo = TD1mo), but as attention and heart rate become increasingly coordinated over time, ASIBs will diverge
+from TDs by 3 months (ASIB 3mo < TD3mo), similar to our behavioral work 6,57. Due to the hypothesized attention-
+specific ANS deficit for ASIBs, HDA will be reduced for ASIBs by 3 months (ASIB3mo < PT 3mo < TD3mo).
+Aim 2. Determine the moment-to-moment influence of autonomic regulation of attention on interactive
+behavior across the first year (6m, 9m, 12m).
+Overview and Hypotheses. ASIBs26,117,133,134 and PTs135–137 follow unique developmental trajectories of
+interactive behavior. We have three hypotheses regarding the predictive association between HDA and in-the-
+moment interactive behaviors: 1) In alignment with our pilot data, TDs will show strong, consistent patterns of
+HDA that predict interactive behaviors, 2) PTs’ initially immature ANS will cause initially weak predictive
+associations that improve over time as ANS matures, 3) ASIBs will show disrupted associations that weaken
+(worsen) over time as ASD symptoms emerge. In addition, baseline ANS function trajectories will be compared.
+Measures. Interactive behavior will be recorded at 6, 9, and 12 months using a standardized protocol (see
+above, Infant Interaction Task, Fig 7). The onset of each interactive behavior will be
+recorded and synchronized with time series HDA to examine, with fine temporal
+resolution, 	the 	influence 	of 	HDA 	on 	interactive 	behavior. 	Because 	motor Figure 8. Possible transitions
+between HDA phases.
+
+-- 10 of 12 --
+
+differences/delays 	may 	influence 	the 	frequency/function 	of 	interactive 	behavior 138 , 	visit-specific 	motor
+questionnaires 126 will be included as a covariate.
+Analytic Plan. We will use HDA times series locked to behavior onsets to study the dynamics of the
+autonomic attentional system leading up to interactive behavior. We will compare modeling capability of the
+following alternative approaches: (1) Continuous-time Markov chain (CTMC): Our previous work has
+employed Markov chains to understand dynamics of social attention in toddlers with ASD 139 . A CTMC describes
+a continuous stochastic process in which the process changes state according to an exponential random
+variable, moving to a different state with probabilities specified for a Markovian process. We will use this
+approach to model the process of changing from one HDA phase to the next when moving backward in time,
+starting from a given action. The structure of the model is fixed given four HDA phases (not looking, orienting,
+sustained attention, termination) and includes one time constant per state and seven transition probabilities (see
+Fig 8), for a total of 11 parameters. These parameters will be estimated per subject and the distribution of these
+parameters will be compared between groups. Subject-specific parameters will be estimated in a Bayesian
+framework using the Markov Chain Monte Carlo (MCMC) approach. (2) Simple historical mean: We will
+compute the inter-beat-interval (IBI) historical mean and corresponding confidence intervals leading up to a
+behavior. These trajectories will be used to assess group differences in the historical mean and in its time
+derivatives (speed, acceleration, jerk) to assess group differences in autonomic-attention-action system
+dynamics. Cluster-based permutation tests will be used to determine periods of time showing statistical
+differences between groups while accounting for multiple comparisons. This approach is considered as a simpler
+approach to offer a benchmark for the other, more complex, approach, and previous studies show that simpler
+approaches often yield better outcomes 140 . Model Comparison. We will evaluate the effect size obtained with
+these approaches to determine which one best captures the dynamics of HDA leading to marked behaviors and
+extract relevant features (e.g., fitted modeling parameters, historical means over temporal windows, rate of
+decrease in predictability) as potential biomarkers for ASD symptoms (see Aim 3). Power Analysis. Between-
+group comparisons for the different parameters estimated (i.e., CTMC parameters, IBI means/derivatives over
+time windows) will be entered into growth models to evaluate this longitudinal data. We therefore expect the
+same statistical power as Aim 1: range of .81-.99 to detect a medium effect for N=200.
+Expected Outcomes and Interpretation: We hypothesize that: (1) baseline autonomic function (RSA) from
+6-9 months will be reduced in PTs compared to ASIBs and TDs, but show gradual improvement over time; (2)
+ASIB RSA will be largely similar to TDs (similar to previous work showing later-emerging RSA disruption in
+ASD58). In terms of HDA-behavior coordination, PTs (global ANS dysfunction at birth) will show initial reduced
+HDA-behavior coordination, and therefore weak HDA-behavior associations, compared to TDs. But the effect
+size of this group difference will decrease over time (PT 6mo<TD6mo  PT 12mo ~=TD12mo). ASIBs (hypothesized
+developmental cascade wherein attention-specific ANS deficits are present early, by 3 months, and contribute
+to disrupted emergence of interactive behavior 8) will show increasingly weak associations of HDA with interactive
+behaviors compared to TDs (ASIB6mo<TD6mo  ASIB12mo<<<TD12mo ). ASIBs’ autonomic-attention-behavior
+system dynamics may be initially comparable to PTs (ASIB6mo = PT 6mo < TD6mo) due to prolonged ANS
+dysfunction for PTs. But by 12 months, ASIBs will significantly diverge (ASIB 12mo < PT12mo ~= TD12mo).
+Aim 3. Predict ASD symptoms at age 3 years from infant autonomic and attentional features.
+Overview and Hypotheses. Univariate statistical methods for biomarker discovery may be inadequate for
+capturing the complexity of biological processes involved in a multifaceted, heterogeneous neurodevelopmental
+disorder 27. Machine learning (ML) provides unique tools for examining relationships binding multiple interacting
+variables 28. Many biomarker studies of ASD (blood, metabolic) have implications for elucidating pathophysiology
+and improving diagnostic accuracy 141–144, but the lack of conceptual or functional links from biomarker to
+behavior prevents direct translation to behavioral interventions. This aim will incorporate biobehavioral
+measures of baseline autonomic function (RSA) and autonomic regulation of attention (HDA) to predict ASD
+symptoms. We hypothesize features collected from 1-12 months will predict ASD symptoms at age 3 years.
+Measures. We will use a ML approach considering as features the variables and parameters estimated for
+Aims 1-2 (regardless of whether the impact of the variables has reach statistical significance for the specific
+analyses proposed in those aims), as well as simple additional statistics (e.g., overall time in HDA phases) and
+features established in our preliminary studies (i.e., statistics of heart rate variability, discrete functional analysis,
+sample entropy from pre-processed ECG with empirical mode decomposition and discrete wavelet transform).
+As in our previous work 57, ASD symptoms (36m) will be measured using the ADOS-2 Calibrated Severity Scores.
+Analytic Plan. To optimize the use of our sample while precluding overfitting and ensuring reproducibility on
+new data, performance regarding ASD symptom prediction will be cross-validated using a leave-one-subject-out
+approach. These cross-validated predictions will be compared against the traditional regression approach (i.e.,
+
+-- 11 of 12 --
+
+with no test-train split) to assess the degree of overfitting that would result from not splitting the dataset. If
+overfitting is negligible, this model will be considered final. Else, we will identify the subjects for which the cross-
+validation prediction is significantly different from the non-cross-validated model, reject the subjects, and re-test.
+Previous studies using ML in ASD with children and infants concentrated on diagnosis classification. They used
+various classification methods (support vector machine, k-nearest neighbors, naive Bayes, random forest) and
+obtained accuracy roughly in the 0.75-0.85 range 145–147. These studies vary widely with respect to the properties
+of their sample (e.g., large differences in sample size), their constructs (analysis of electroencephalogram versus
+spoken language), their objectives (diagnosis in infants versus in children), and their methods in general. As
+preliminary results, we showed that ANS properties assessed through ECG can be used for prediction by
+obtaining an 86% accuracy for the classification of ASD risk (ASIB vs TD) using a multilayer perceptron. In this
+proposal, we will use similar deep learning models in the context of regression96 to predict continuous
+phenotypic outcomes (autism symptomology; ADOS CSS scores). Continuous outcomes will be assessed
+through the goodness of fit of regression models (e.g., coefficient of determination, R 2). Power Analysis.
+Sufficient power in our sample is supported by our preliminary demonstration of high predictivity of ECG-derived
+features for capturing ASD likelihood (classification accuracy=.86 with only N=23). Clinical significance, rather
+than mere statistical significance, requires large effect sizes (e.g., large R 2). As opposed to p-values, effect sizes
+do not depend on power and sample size. Reliability of R 2 estimates will be determined using confidence intervals
+computed with bootstrapping. For a sample size of 200 infants, a single predictor (derived from the combination
+of many features), and an R 2=0.5, the expected 95% confidence interval (CI) goes from 0.40 to 0.60 (for R 2=0.6,
+95% CI = .51-.68). Thus, this study is well-sampled for reasonably narrow CIs on at least medium effect sizes.
+Aim 3 Expected Outcomes and Interpretation: We hypothesize that early autonomic-attentional features
+will predict ASD symptoms that do not emerge until age 2-3 years. Further, through ablation study, we will
+examine which features from which time points (e.g., 1-3mos vs. 6-12mos) contribute most to predictability. We
+expect predictability to be highest for attention-specific features and to increase with age.
+RIGOR AND REPRODUCIBILITY
+Rigor and reproducibility of this project is apparent in our prospective longitudinal design with masked examiners,
+monitoring of inter-rater reliability/agreement (>80%) for experimental and clinical measures, consideration of
+potential confounds (GA, medical morbidities, sex), sample size selected based on a priori power analyses, and
+an investigative team with expertise in grant management/physiology (Roberts, Richards), ANS/prematurity
+(Dail), infant behavior (Iverson), and signal processing, machine learning, computational neuroscience (O’Reilly).
+Potential Problems, Alternative Strategies, & Benchmarks for Success. This project will be initiated
+nearly upon funding as we have existing recruitment infrastructure and a team trained in most experimental and
+clinical measures. Activities will occur as follows: recruitment Y1-2, data collection/processing Y1-5, data
+analyses Y2-5, publications Y3-5 (see Human Subjects-Study Timeline). Recruitment and attrition are potential
+concerns for any longitudinal study. Considering past success of the PI and Co-Is in neonatal PT and ASIB
+recruitment, a plan to see participants in their home statewide, a large research staff, and significant resources
+dedicated to recruitment, we do not anticipate any difficulty with meeting enrollment targets. We will access
+institutional funds to support recruitment/retention, dedicate a fulltime recruitment coordinator solely to this
+project, utilize multiple state-specific autism databases, and employ retention strategies (frequent contact with
+families through social media and clinical feedback). It is highly possible that examiners may be unmasked to
+participant group during home visits. We mitigate this by: attempting to schedule visits when siblings are out of
+the home, reminding families to keep examiners masked to family history, collecting data on when examiners
+are unmasked (to explore in analytic models), process data using masked coders/psychologists (ECG data,
+attention data, behavioral data, ADOS scores). Our statistical design is robust to within and between-visit
+missing data, we will use state-of-the-art ECG artifact corrections using wavelet and empirical mode
+decomposition, and we rely on refined longitudinal modeling (i.e., growth curves). In order to ensure robust
+findings, we will cross-validate our results by employing additional analytic strategies (e.g., mixed effects
+regression, general linear models) when appropriate. GA in PTs: While recent evidence suggests that ANS
+dysfunction relates more to morbidity than GA 123 , we will stratify PT recruitment by three evenly divided birth GA
+bins (all <32w) to ensure sufficient ANS immaturity. Significant phenotypic heterogeneity is expected in ASIB
+and PT groups. Therefore, comprehensive characterization of ASD and developmental profiles at 36m for all
+participants will allow for analyses to extend beyond between-group comparisons (Aims 1-2) to include key
+covariates or stratifiers that can parse out heterogeneity and reveal complex, meaningful interactions. Aim 3 is
+not dependent on Aims 1-2 as significant results are not a requisite for including these variables in feature
+selection procedures (i.e., failure for a test to reach statistical significance does not prove the absence of useful
+predictive information) and, in fact, may elucidate novel findings above and beyond Aims 1-2.
+
+-- 12 of 12 --
+

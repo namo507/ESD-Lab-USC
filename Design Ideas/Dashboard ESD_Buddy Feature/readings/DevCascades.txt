@@ -1,0 +1,786 @@
+18 | 	Child Dev Perspect. 2022;16:18–26.	wileyonlinelibrary.com/journal/cdep
+I N T RODUC T ION
+Developmental research has historically focused on doc-
+umenting the timing and acquisition of specific skills
+and behaviors within established developmental do-
+mains. Infants reach by 5 months, crawl at 6 months, and
+walk at 12 months. Babbling emerges by 7 months and
+the first words can be heard by 1 year. Yet the onset of
+these skills varies significantly and their emergence does
+not occur in isolation. The onset of reaching and crawl-
+ing generate new opportunities for interactions with the
+world. The emergence of communication quickly estab-
+lishes a new motivation for locomotion. Developmental
+cascades describe how behavior and development in one
+domain (e.g., motor) have cascading, far-reaching effects
+on other, seemingly unrelated domains (e.g., language).
+The idea of developmental cascades stems from the
+work of key developmental scholars and theoretical
+models, including Gottlieb’s model of developmen-
+tal behavioral genetics (Gottlieb, 2003), Smith and
+Thelen’s work on developmental dynamics (Smith &
+Thelen, 2003), Sameroff’s transactional model of de-
+velopment (Sameroff, 2009), and Karmiloff- Smith’s
+neuroconstructivist approach to neurodevelopmental
+disorders (NDDs; Karmiloff-Smith, 1998). A develop-
+mental cascades framework considers development as
+the ongoing, cumulative consequence of transactions
+across developmental domains, biological systems,
+A R T I C L E
+Capturing the complexity of autism: Applying a developmental
+cascades framework
+Jessica Bradshaw1 | 	Amy J. Schwichtenberg 2 | 	Jana M. Iverson 3
+DOI: 10.1111/cdep.12439
+© 2022 The Authors. Child Development Perspectives © 2022 The Society for Research in Child Development
+Abbreviations: ASD, autism spectrum disorder; CSF, cerebral spinal fluid; NDD, neurodevelopmental disorder.
+1
+University of South Carolina, Columbia,
+South Carolina, USA
+2 Purdue University, West Lafayette,
+Indiana, USA
+3
+University of Pittsburgh, Pittsburgh,
+Pennsylvania, USA
+Correspondence
+Jessica Bradshaw, Department of
+Psychology, University of South Carolina,
+1800 Gervais St., Columbia, SC 29201,
+USA.
+Email: jbradshaw@sc.edu
+Funding information
+National Institute on Deafness and Other
+Communication Disorders, Grant/Award
+Number: R01DC016557 and R21DC071252;
+Eunice Kennedy Shriver National Institute
+of Child Health and Human Development,
+Grant/Award Number: R03HD104084;
+National Institute of Mental Health,
+Grant/Award Number: K23MH120476;
+James S. McDonnell Foundation
+Abstract
+Developmental change emerges from dynamic interactions among networks of neu-
+ral activity, behavior systems, and experience- dependent processes. A developmen-
+tal cascades framework captures the sequential, multilevel, cross- domain nature of
+human development and is ideal for demonstrating how interconnected systems
+have far-reaching effects in typical and atypical development. Neurodevelopmental
+disorders represent an intriguing application of this framework. Autism spectrum
+disorder (ASD) is complex and heterogeneous, with biological and behavioral fea-
+tures that cut across multiple developmental domains, including those that are
+motor, cognitive, sensory, and bioregulatory. Mapping developmental cascades in
+ASD can be transformational in elucidating how seemingly unrelated behaviors
+(e.g., those emerging at different points in development and occurring in multiple
+domains) are part of an interconnected neurodevelopmental pathway. In this ar-
+ticle, we review evidence for specific developmental cascades implicated in ASD
+and suggest that theoretical and empirical advances in etiology and change mecha-
+nisms can be accelerated using a developmental cascades framework.
+K E Y W O R D S
+autism spectrum disorder, developmental cascades, neurodevelopment
+
+-- 1 of 9 --
+
+| 19	DEVELOPMENTAL CASCADES IN ASD
+and environmental contexts (Masten & Cicchetti,
+2010). In this way, it allows researchers to examine how
+low-level (or high-level) features have cross- domain,
+far-reaching, bidirectional effects on processes later
+in development. Cascades enable the examination not
+only of specific developmental mechanisms, but also of
+how multiple mechanisms interact in the moment (and
+across time) to shape individual development and inter-
+active contexts. Individual developmental trajectories
+diverge in response to unique experiences and events,
+providing countless opportunities for rich input that is
+driven by the individual child and consequently shapes
+future input.
+A developmental cascades framework applied
+to the study of autism
+Recently, a surge of interest in developmental cas-
+cades has produced several robust models for explain-
+ing cross- domain effects on overall development (e.g.,
+Oakes & Rakison, 2019). From a developmental psy-
+chopathology perspective, these models have typically
+focused on older populations (e.g., Masten et al., 2005).
+The cascades framework provides an opportunity to ex-
+tend this work to infancy, a period of rapid neurodevel-
+opment and peak brain plasticity. In this context, such
+an extension may advance the discovery of etiological
+mechanisms and understanding of heterogenic variabil-
+ity in atypical developmental pathways, such as those
+observed in NDDs.
+Autism spectrum disorder (ASD) is one such NDD,
+with behavioral and biological differences that per-
+sist throughout the lifespan. The promise of early be-
+havioral interventions to support infants and toddlers
+with ASD has motivated mechanistic research to ad-
+vance early detection. However, the heterogeneity of
+the disorder is vast. Sensitive and specific biological
+or behavioral indicators of ASD prior to 12 months
+remain elusive. This is largely due to our current con-
+ceptualization of ASD wherein core features (i.e., so-
+cial communication differences and restricted interests/
+repetitive behaviors) are inherently developmental and
+do not fully manifest in a clearly observable way until
+after the first year. From a developmental cascades per-
+spective, these core features can be conceptualized as
+points on a cascade that represent the cumulative result
+of unique input and experience, driven by the interac-
+tion between individual and contextual differences and
+pre- and postnatal neurological variation. Accordingly,
+the search for etiological mechanisms in ASD must ex-
+tend beyond core features.
+Etiological theories of ASD, such as the social mo-
+tivation hypothesis (Chevallier et al., 2012; Dawson,
+2008) elegantly describe a core impairment (i.e., so-
+cial motivation) that explains the secondary (defining)
+characteristics of ASD. The recently developed anterior
+modifiers in the emergence of neurodevelopmental dis-
+orders (AMEND) framework (Johnson et al., 2021) take
+a systems biology approach to understanding NDDs.
+A developmental cascades framework builds on these
+theories and allows us to understand ASD within the
+context of broad, cross-system, normative develop-
+mental processes, leading to rich descriptions of phe-
+notypic heterogeneity within ASD across development.
+By considering the cross- domain effects of multiple ex-
+periences and behaviors that set the stage for specific
+developmental pathways, we can capture the complex-
+ity of neurodiversity, explain the variability and hetero-
+geneity within ASD, and pinpoint how the timing and
+quality of behaviors and bioregulatory processes carry
+to downstream effects in development. Delineation of
+these developmental pathways, including biological,
+behavioral, and contextual contributors, can drive early
+detection and intervention efforts.
+In some domains, infants with ASD may follow a
+unique developmental pathway that leads to a neurotyp-
+ical outcome. For example, communicative gestures are
+hypothesized to be a critical point on a developmental
+cascade that culminates in the acquisition of first words
+for typically developing infants, but the use of gestures
+may not be part of the language acquisition cascade in
+ASD. Conversely, infants with ASD may show similar
+developmental skills early on that, because of cross-
+domain effects of other emerging behaviors, lead to vastly
+different outcomes. For example, a low-level attentional
+preference for high- contrast features may lead to an at-
+tentional preference for eyes in infants without ASD, but
+to sensory-seeking behaviors and attentional preference
+for objects in infants with ASD. Developmental cascades
+emphasize a cumulative model with additive components
+rather than a one-to-one mapping of single deficits that
+lead to maladaptive outcomes. This framework provides
+a unique opportunity for interventions that target a vari-
+ety of domains at precise moments.
+In summary, assuming that all infants experience the
+same developmental pathways narrows the potential
+for mechanism discovery. Rather than asking when ob-
+servable features of ASD emerge, we can ask how they
+emerge. A developmental cascades framework expands
+our view of how cross- domain systems interact at mul-
+tiple levels to influence how individual infants both ex-
+perience and drive environmental input to shape their
+own development. Contextualizing ASD as the result of,
+and a contributor to, unique cascades of development
+that drive specific input and learning can transform and
+enrich our approach to research on ASD. Next, we il-
+lustrate potential developmental cascades in ASD that
+represent unique biobehavioral processes across three
+domains of development—infant sitting, visual atten-
+tion, and sleep—which may be avenues for early inter-
+vention. We close with an overview of methods for using
+the developmental cascades framework in research on
+ASD and other NDDs.
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 2 of 9 --
+
+20 |	BRADSHAW ET AL .
+DEV E L OPM E N TA L CA SCA DE S
+Infant sitting: A watershed moment in the first
+year of life
+In the early months of the first year, infants spend most
+of their time lying supine on their backs or prone on their
+bellies. Between 5 and 7 months, they spend more time
+seated in an upright position, first with support from ob-
+jects or their own hands. Over time, infants gain strength
+and improve their ability to balance in the sitting posi-
+tion, allowing them to remain upright without support
+for progressively longer periods.
+The transition to upright, independent sitting is a wa-
+tershed moment in the first year of life: It represents a
+significant advance in motor skill, but more importantly,
+it unleashes a cascade of effects in other behavioral do-
+mains (see Figure 1). This cascade provides infants with
+access to new experiences and opportunities for interac-
+tion with the objects and people in their environments.
+While infants lying supine or prone can see only the areas
+directly above or below the head, sitting infants have an
+expanded 180- degree panoramic view of their surround-
+ings (Luo & Franchak, 2020). Arm movements and the
+ability to manipulate objects are also more constrained
+in supine and prone positions. Supine infants must ex-
+tend their arms and work against gravity to hold an ob-
+ject in view. In a prone position, one arm is often used for
+balance and support. But in the sitting position, hands
+are free to move and they fall naturally within infants’
+visual fields, making it possible to coordinate looking at
+objects with acting on them (e.g., Soska & Adolph, 2014),
+an activity that supports the extraction of rich, multi-
+modal perceptual information.
+In addition to these cascading effects, the emergence
+of sitting also has downstream effects on the infant-
+caregiver dyad. Sitting infants and their caregivers spend
+more time with their bodies positioned at right angles to
+one another, effectively enlarging the space between them
+and providing new opportunities for caregivers to intro-
+duce objects into shared play (Schneider et al., 2021). The
+construction of a large shared dyadic play space creates
+ideal conditions for joint attention (e.g., caregiver and in-
+fant looking at the same toy at the same time). Indeed,
+F I G U R E 1 	The transition from lying prone or supine to upright sitting transforms infants’ experiences with objects and caregivers. Infants’
+ability to coordinate reaching and grasping objects with looking at a caregiver provides new opportunities for rich language input from the
+caregiver
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 3 of 9 --
+
+| 21	DEVELOPMENTAL CASCADES IN ASD
+dyads spend significantly more time in joint attention
+when infants are positioned in sitting compared to prone
+positions (Franchak et al., 2018). In addition, when care-
+givers provide rich language input about an object of
+interest, they create powerful opportunities for language
+learning.
+Developmental differences in gross and fine motor
+skills are becoming a recognized feature of emerging
+ASD (e.g., Licari et al., 2021). Infants with ASD experi-
+ence atypical head control compared to infants without
+ASD (Flanagan et al., 2012). On average, infants with
+ASD begin to sit independently later than their neuro-
+typically developing peers (Nickel et al., 2013). In addi-
+tion, even when they are able to sit independently, infants
+with ASD spend significantly more time in lying postures
+(prone, supine) than infants without ASD, likely because
+the sitting posture requires more protracted development
+of balance and control (Leezenbaum & Iverson, 2019).
+Less time spent sitting upright and slowed consolidation
+of sitting skills constrain opportunities for more sophis-
+ticated object manipulation and play. Moreover, because
+caregivers use infants’ manual actions as a pathway to
+joint attention (Yu & Smith, 2017) and are more likely
+to label objects their infant is holding, looking at, and
+actively manipulating (West & Iverson, 2017), less object
+manipulation in infants with ASD may translate into re-
+duced opportunities for joint attention and alterations
+in caregivers’ language input. Thus, while the develop-
+ment of sitting may appear to be unrelated to the devel-
+opment of social communication and language, evidence
+suggests that sitting has cascading developmental effects
+on behaviors within and beyond the motor domain, and
+within and beyond the infant. For infants with ASD, dif-
+ferences in the timing and consolidation of sitting and its
+integration with other behaviors (e.g., object manipula-
+tion) may affect the unfolding of the developmental cas-
+cade in ways that fundamentally alter their experiences
+with objects and people.
+Visual attention: A complex skill with
+cascading effects
+Endogenous attention develops rapidly over the first
+months of life. The emergence of volitional, selective
+attention by 6–10 weeks is subserved by a transition from
+subcortical to cortical control of behavior (Johnson et al.,
+1991). Efficient disengagement from salient stimuli, atten-
+tion shifting, and filtering of extraneous information are
+all critical components of selective attention (Atkinson
+et al., 1992). Developing attention in infancy is both a
+product of and a contributor to multiple cross- domain
+developmental cascades (see Figure 2). As described ear-
+lier, motoric achievements create new access to visual
+input. The coupling of motor and sensory systems,
+including coordination of eyes, head, hands, and body,
+is inherently linked to selective attention. Attention is
+affected by cognition and experience, and cognition is
+shaped in part by attention. The ubiquitous role of atten-
+tion, sensorimotor coupling, and experience on higher-
+and lower-order processes throughout development
+makes it an intriguing access point for understanding
+etiological mechanisms and unique developmental path-
+ways in ASD.
+Atypical visual attention patterns, particularly to so-
+cially relevant features of the environment, constitute an
+early- emerging and enduring feature of ASD across the
+lifespan (Frazier et al., 2017). Many mechanistic theories
+of autism incorporate attention differences as a core fea-
+ture of the ASD phenotype: social motivation (decreased
+social attention; Chevallier et al., 2012), central coher-
+ence (global vs. local visual processing; Happé & Frith,
+2006), 	executive 	function 	(attention 	disengagement;
+Pellicano, 2012). Differences in lower-level attention in
+ASD begin very early in development, evidenced by de-
+creased orienting to and tracking of faces and objects
+(Bradshaw et al., 2020, 2021), decreasing attention to the
+eyes and face (Jones & Klin, 2013), and difficulties with
+attentional disengagement and shifting (Elsabbagh et al.,
+2013). Atypical attention is not in itself a core diagnostic
+feature of ASD, but instead represents a subtle, early-
+emerging variation that has proximal and distal effects
+on individuals’ perception of and interaction with the
+environment.
+For example, eyes are visually salient and newborns
+demonstrate an attentional preference for eyes from the
+first hours of life. At a higher level, eyes are laden with
+rich social and communicative information, suggesting
+that decreased attentional preference for eyes in infancy
+can result in missed critical social learning opportu-
+nities. Moreover, because familiarity is an important
+component of selective attention, an early reduction in
+eye-looking may lead to increasingly diminished eye-
+looking over time, cumulatively resulting in reduced
+social attention and a nonsocial attentional preference
+(e.g., Pierce et al., 2016).
+What causes this early variability in such low-level
+attentional behaviors? Diminished attention disengage-
+ment has been associated with atypical neural circuitry
+and suggested as a domain-general starting point for a
+developmental cascade that leads to social-specific defi-
+cits in ASD (Baranek et al., 2018). Recent work suggests
+atypical neural and neurochemical circuitry specific to
+visual processing and arousal modulation, which may
+constitute an even earlier point in a developmental cas-
+cade related to attention differences in ASD (Artoni
+et al., 2020; Hazlett et al., 2017).
+Together, this research points to a potential cascade
+that crosses biology and behavior and begins shortly
+after birth. Differences in neurotransmitter levels and
+neural connectivity, particularly as they relate to arousal,
+attention, and sensory systems, may lead to behavioral
+variability in lower-order attentional processes, includ-
+ing attention orienting, disengagement, and shifting.
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 4 of 9 --
+
+22 |	BRADSHAW ET AL .
+These early, subtle attentional differences can have cas-
+cading effects on social interactions and learning. A
+reduced capacity for attention shifting in early infancy
+may decrease opportunities for triadic (caregiver-object-
+infant) interactions. This may interfere with integrating
+higher-order cognitive concepts, which requires jointly
+attending to both caregiver and object, and combining
+objects together in play— skills that are critical for lan-
+guage development. Infants drive caregiver-provided
+opportunities for learning and social interaction and, in
+ASD, individual differences in attention and the neural
+structures that support it may have cascading effects on
+social experience and learning.
+Sleep: A critical bidirectional, bioregulatory
+behavior in infancy
+Sleep is one of the first bioregulatory behaviors infants
+must master to support neurologic, digestive, and im-
+mune health. Infants with consistent sleep problems
+early in life are at elevated risk for problems across sev-
+eral developmental domains, including attention, learn-
+ing, memory, language, elevated adiposity, emotion
+regulation, and social skills. Sleep problems are well-
+documented across life for individuals with ASD (Cohen
+et al., 2014) but the potential and affiliated developmen-
+tal cascades are understudied. For example, the synaptic
+homeostasis hypothesis of sleep (Tononi & Cirelli, 2014)
+posits that a core function of sleep is to selectively prune
+synaptic connections to reinforce those used during the
+day, thus making established pathways more efficient.
+For children with ASD, applying a developmental cas-
+cade that starts with early sleep deficiency could help
+explain the mechanistic link between ASD and synaptic
+overgrowth (Courchesne et al., 2003), large brain volume
+and head size (Hazlett et al., 2017), and reduced synaptic
+efficiency (Just et al., 2012).
+For example, excess extra-axial cerebral spinal fluid
+(CSF) has been documented in three groups of infants
+who later received a diagnosis of ASD (Shen, 2018). This
+could reflect a cascade that starts with sleep dysfunction.
+F I G U R E 2 	The development of attention begins in the neonatal period with modulated levels of arousal and periods of quiet alertness.
+Subsequent motor, sensory, and cognitive development allow for triadic (infant- object- caregiver) interactions, which provide increased
+opportunities for social interaction and language
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 5 of 9 --
+
+| 23	DEVELOPMENTAL CASCADES IN ASD
+Circulation of CSF in the brain occurs predominately
+during sleep, specifically during slow-wave sleep or non-
+rapid eye movement stage 3 sleep (Fultz et al., 2019).
+Disrupted sleep may compromise efficient CSF circula-
+tion, possibly resulting in the atypical CSF disbursement
+observed in ASD. Indeed, recent studies of ASD in early
+infancy show altered sleep patterns and direct links be-
+tween early sleep problems and atypical brain develop-
+ment (MacDuffie et al., 2020).
+A developmental cascades approach to the connection
+between sleep and behavior in ASD could also inform our
+mechanistic understanding. Deficient sleep in ASD is as-
+sociated with the severity of core symptoms as well as co-
+occurring features (e.g., challenging behaviors, attention
+problems), with notable links to arousal and repetitive be-
+haviors (Cohen et al., 2014). Sleep deprivation affects arousal
+modulation profoundly. This association is characterized by
+an initial increase in arousal with the onset of sleep depri-
+vation, followed by a chronic state of underarousal with
+extended periods of deprivation (Tobaldini et al., 2017). In
+ASD, underarousal is associated with sleep dysregulation
+and challenging behaviors (Cohen et al., 2011).
+The field’s current practice of assessing behavior
+within domains (e.g., types of sleep problems, repetitive
+behavior profiles) can lead to missed opportunities to
+recognize developmental mechanistic pathways of in-
+fluence. Applying a developmental cascades framework
+explicitly draws us toward cross- domain mechanisms
+and helps us understand how these relations change and
+grow across development (see Figure 3). In this exam-
+ple, a chronic sleep deficit that emerges in infancy may
+feed into a dampened arousal system. Consequently, in
+an attempt to modulate arousal, individuals with ASD
+may exhibit elevated repetitive or challenging behaviors.
+Therefore, repetitive behaviors may be one behavioral
+manifestation of underlying disrupted arousal modula-
+tion, a bioregulatory process that is inherently linked to
+atypical sleep and brain development.
+R E SE A RC H M ET HOD S A N D
+A NA LY T IC MODE L S
+In developmental science, most agree that applying the-
+ory is a best practice when establishing questions of in-
+terest or testable models. However, analytic models (and
+their limitations) often drive the types of questions posed
+in research and how they are tested. To help in the appli-
+cation of a developmental cascades framework in ASD
+research, in the next section, we outline several analytic
+approaches that marry well with this framework. The list
+is not exhaustive, prescriptive, or specific to the cascades
+framework. Rather, it exemplifies how developmental
+cascades and analytic models can be symbiotic.
+F I G U R E 3 	Atypical sleep early in life can influence several elements of brain development (e.g., synaptic pattern formation and pruning,
+cerebrospinal fluid [CSF] circulation) and biosocial processes (e.g., arousal). Over- or underarousal, in turn, is associated with self-stimulatory
+behavior as individuals aim to modulate their arousal using behavioral/physical actions
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 6 of 9 --
+
+24 |	BRADSHAW ET AL .
+The initial application of a theoretical approach often
+includes mapping or specifying key factors or the pathway
+of interest. The accessible cause-outcome representation
+and notation system (Moore & George, 2011) is a tool for
+visualizing and modeling developmental pathways, in-
+cluding bidirectional effects, within- and cross- domain
+developmental change, and specifications for variance
+patterns and relative developmental timing. When test-
+ing a developmental cascade, researchers often use longi-
+tudinal designs and the most common analytic strategy
+is path model testing, which allows for simultaneously
+estimating several paths or associations with possible
+adjustments for model complexity, nesting, and auto-
+correlated features (e.g., Lynne-Landsman et al., 2010;
+Masten et al., 2005). For example, in one testable path-
+way model, sleep problems affected emotion-regulation
+difficulties persistently, which in turn affected atten-
+tion regulation (Williams et al., 2015). Not only did this
+model support a sleep- emotion-attention cascade, but it
+also revealed transactional processes, providing a clear
+example of how one analytic approach can be used to
+combine theoretical frameworks.
+When several cascades are possible, a compara-
+tive model approach can assess which model accounts
+for most of the variability in an outcome of interest. A
+supplemental approach that is sometimes used is a like-
+lihood assessment to index the likelihood of a target out-
+come (e.g., ASD diagnosis) with the presence, absence,
+or varying degrees of other independent variables. In
+one example, researchers assessed the percentage of chil-
+dren classified as being at elevated risk for a particular
+outcome (in this case, substance abuse) at each stage of
+the proposed cascade (Dodge et al., 2009). Ultimately,
+few children followed the entire specified cascade, but
+inflection points of risk were identified and later used
+to inform interventions. Finally, researchers have used
+regression-based models of mediation and moderation,
+but this approach is less common and typically tests rel-
+atively short cascades.
+CONC LUSION
+The search for etiological mechanisms of ASD has
+proven to be a challenge, largely driven by the heteroge-
+neous, cross- domain, developmental nature of the dis-
+order. Core features of ASD change with development
+and manifest differently as a result of unique individual
+experiences and skills. In other words, the ASD pheno-
+type is rich with variation across biological and behavio-
+ral domains. Studies of infants with ASD have expanded
+our understanding of the phenotype and highlighted
+nuanced, subtle variations in domains that do not nec-
+essarily constitute core features of the disorder. Novel
+discoveries can be made and the field advanced when the
+complexity of ASD is harnessed, rather than controlled
+for or reduced.
+In this article, we described three developmental
+cascades that can help transform our understanding of
+ASD and social development. The development of pos-
+tural control and the emergence of sitting influences
+attention, play, and communicative opportunities pro-
+foundly. Subtle differences in visual attention and under-
+lying neurological systems can have cascading effects on
+sensorimotor behavior, social attention, and communi-
+cation. Sleep is one of the most important bioregulatory
+processes that supports arousal modulation and may un-
+derlie some of the most challenging behaviors associated
+with ASD. Pathways within these cascades can occur
+bidirectionally in which higher-level systems (e.g., play
+skills) can affect lower-level systems (e.g., muscle devel-
+opment), and while not all domains at all levels can be
+measured in one study, this framework can be used to de-
+velop new studies that examine new mechanisms. These
+examples are intended to catalyze the use of developmen-
+tal cascades in how we conceptualize studies, analyze
+data, and interpret findings. While the cascades we have
+outlined were inspired by potential areas of disruption in
+ASD, they are not specific to ASD. A developmental cas-
+cades framework can inform the sequential, multilevel,
+cross- domain nature of autism and demonstrate how in-
+terconnected systems have far-reaching effects in typical
+and atypical development across the lifespan.
+AC K NOW L E D G M E N T S
+Work on this article was supported by grants from the
+National Institute of Mental Health (K23 MH120476 to
+Jessica Bradshaw), the National Institute of Deafness
+and Communication Disorders (R21 DC071252 to
+Jessica Bradshaw and R01DC016557 to Jana Iverson),
+and the Eunice Kennedy Shriver National Institute of
+Child Health and Human Development (R03 HD104084
+to Amy J. Schwichtenberg).
+ORC I D
+Jessica Bradshaw 	https://orcid.org/0000-0003-3003-3738
+R E F E R E NC E S
+Artoni, P., Piffer, A., Vinci, V., LeBlanc, J., Nelson, C. A., Hensch,
+T. K., & Fagiolini, M. (2020). Deep learning of spontaneous
+arousal fluctuations detects early cholinergic defects across neu-
+rodevelopmental mouse models and patients. Proceedings of the
+National Academy of Sciences of the United States of America,
+117(38), 23298–23303. https://doi.org/10.1073/PNAS.1820847116
+Atkinson, J., Hood, B., Wattam-Bell, J., & Braddick, O. (1992).
+Changes in infants’ ability to switch visual attention in the
+first three months of life. Perception, 21(5), 643– 653. https://doi.
+org/10.1068/p210643
+Baranek, G. T., Woynaroski, T. G., Nowell, S., Turner-Brown, L.,
+DuBay, M., Crais, E. R., & Watson, L. R. (2018). Cascading ef-
+fects of attention disengagement and sensory seeking on social
+symptoms in a community sample of infants at-risk for a future
+diagnosis of autism spectrum disorder. Developmental Cognitive
+Neuroscience, 	29(January), 	30– 40. 	https://doi.org/10.1016/j.
+dcn.2017.08.006
+Bradshaw, J., Klin, A., Evans, L., Klaiman, C., Saulnier, C., &
+McCracken, C. (2020). Development of attention from birth
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 7 of 9 --
+
+| 25	DEVELOPMENTAL CASCADES IN ASD
+to 5 months in infants at risk for autism spectrum disorder.
+Development and Psychopathology, 32(2), 491–501. https://doi.
+org/10.1017/S0954579419000233
+Bradshaw, J., Shi, D., Hendrix, C. L., Saulnier, C., & Klaiman, C.
+(2021). Neonatal neurobehavior in infants with autism spectrum
+disorder. Developmental Medicine & Child Neurology. https://doi.
+org/10.1111/dmcn.15096
+Chevallier, C., Kohls, G., Troiani, V., Brodkin, E. S., & Schultz, R. T.
+(2012). The social motivation theory of autism. Trends in Cognitive
+Sciences, 16(4), 231–239. https://doi.org/10.1016/J.TICS.2012.02.007
+Cohen, I. L., Yoo, J. H., Goodwin, M. S., & Moskowitz, L. (2011).
+Assessing challenging behaviors in autism spectrum disor-
+ders: Prevalence, rating scales, and autonomic indicators. In
+J. Matson & P. Sutmey (Eds.), International handbook of au-
+tism and pervasive developmental disorders. Autism and Child
+Psychopathologies Series (pp. 247–270). Springer. https://doi.
+org/10.1007/978-1- 4419-8065- 6_15
+Cohen, S., Conduit, R., Lockley, S. W., Rajaratnam, S. M., &
+Cornish, K. M. (2014). The relationship between sleep and be-
+havior in autism spectrum disorder (ASD): A review. Journal
+of 	Neurodevelopmental 	Disorders, 	6(1), 	1–10. 	https://doi.
+org/10.1186/1866-1955- 6- 44
+Courchesne, E., Carper, R., & Akshoomoff, N. (2003). Evidence of
+brain overgrowth in the first year of life in autism. Journal of
+the American Medical Association, 290(3), 337–344. https://doi.
+org/10.1001/JAMA.290.3.337
+Dawson, G. (2008). Early behavioral intervention, brain plasticity,
+and the prevention of autism spectrum disorder. Development
+and Psychopathology, 20(03), 775– 803. https://doi.org/10.1017/
+S0954579408000370
+Dodge, K. A., Malone, P. S., Lansford, J. E., Miller, S., Pettit, G.
+S., & Bates, J. E. (2009). A dynamic cascade model of the de-
+velopment of substance-use onset. Monographs of the Society
+for Research in Child Development, 74(3), vii–119. https://doi.
+org/10.1111/J.1540-5834.2009.00528.X
+Elsabbagh, M., Fernandes, J., Jane Webb, S., Dawson, G., Charman,
+T., Johnson, M. H.; British Autism Study of Infant Siblings Team.
+(2013). Disengagement of visual attention in infancy is associ-
+ated with emerging autism in toddlerhood. Biological Psychiatry,
+74(3), 189–194. https://doi.org/10.1016/j.biopsych.2012.11.030
+Flanagan, J. E., Landa, R., Bhat, A., & Bauman, M. (2012). Head
+lag in infants at risk for autism: A preliminary study. American
+Journal of Occupational Therapy, 66(5), 577–585. https://doi.
+org/10.5014/ajot.2012.004192
+Franchak, J. M., Kretch, K. S., & Adolph, K. E. (2018). See and be
+seen: Infant- caregiver social looking during locomotor free play.
+Developmental Science, 21(4), e12626. https://doi.org/10.1111/
+desc.12626
+Frazier, T. W., Strauss, M., Klingemier, E., Zetzer, E., Hardan, A. Y.,
+Eng, C., & Youngstrom, E. A. (2017). A meta-analysis of gaze
+differences to social and nonsocial information between individ-
+uals with and without autism. Journal of the American Academy
+of Child and Adolescent Psychiatry, 56(7), 546–555. https://doi.
+org/10.1016/J.JAAC.2017.05.005
+Fultz, N. E., Bonmassar, G., Setsompop, K., Stickgold, R. A., Rosen,
+B. R., Polimeni, J. R., & Lewis, L. D. (2019). Coupled electro-
+physiological, hemodynamic, and cerebrospinal fluid oscilla-
+tions in human sleep. Science, 366(6465), 628– 631. https://doi.
+org/10.1126/science.aax5440
+Gottlieb, G. (2003). On making behavioral genetics truly devel-
+opmental. Human Development, 46(6), 337–355. https://doi.
+org/10.1159/000073306
+Happé, F., & Frith, U. (2006). The weak coherence account: Detail-
+focused cognitive style in autism spectrum disorders. Journal
+of Autism and Developmental Disorders, 36(1), 5–25. https://doi.
+org/10.1007/S10803- 005- 0039- 0
+Hazlett, H. C., Gu, H., Munsell, B. C., Kim, S. H., Styner, M.,
+Wolff, J. J., Elison, J. T., Swanson, M. R., Zhu, H., Botteron,
+K. N., Collins, D. L., Constantino, J. N., Dager, S. R., Estes,
+A. M., Evans, A. C., Fonov, V. S., Gerig, G., Kostopoulos, P.,
+McKinstry, R. C., … Piven, J. (2017). Early brain development
+in infants at high risk for autism spectrum disorder. Nature,
+542(7641), 348–351. https://doi.org/10.1038/nature21369
+Johnson, M. H., Charman, T., Pickles, A., & Jones, E. J. H. (2021).
+Annual research review: Anterior Modifiers in the Emergence of
+Neurodevelopmental Disorders (AMEND)—A systems neuro-
+science approach to common developmental disorders. Journal
+of Child Psychology and Psychiatry, 62(5), 610– 630. https://doi.
+org/10.1111/jcpp.13372
+Johnson, M., Dziurawiec, S., Ellis, H., & Morton, J. (1991).
+Newborns’ preferential tracking of face-like stimuli and
+its subsequent decline. Cognition, 40(1–2), 1–19. https://doi.
+org/10.1016/0010- 0277(91)90045 - 6
+Jones, W., & Klin, A. (2013). Attention to eyes is present but in decline
+in 2– 6-month- old infants later diagnosed with autism. Nature,
+504(7480), 427– 431. https://doi.org/10.1038/nature12715
+Just, M. A., Keller, T. A., Malave, V. L., Kana, R. K., & Varma, S. (2012).
+Autism as a neural systems disorder: A theory of frontal-posterior
+underconnectivity. Neuroscience & Biobehavioral Reviews, 36(4),
+1292– 1313. https://doi.org/10.1016/j.neubi orev.2012.02.007
+Karmiloff-Smith, A. (1998). Development itself is the key to under-
+standing developmental disorders. Trends in Cognitive Sciences,
+2(10), 389–398. https://doi.org/10.1016/S1364 - 6613(98)01230 -3
+Leezenbaum, N. B., & Iverson, J. M. (2019). Trajectories of posture
+development in infants with and without familial risk for au-
+tism spectrum disorder. Journal of Autism and Developmental
+Disorders, 49(8), 3257–3277. https://doi.org/10.1007/s10803- 019-
+04048-3
+Licari, M. K., Varcin, K., Hudry, K., Leonard, H. C., Alvares, G. A.,
+Pillar, S. V., Stevenson, P. G., Cooper, M. N., Whitehouse, A. J. O.;
+the AICES Team. (2021). The course and prognostic capability of
+motor difficulties in infants showing early signs of autism. Autism
+Research, 14(8), 1759–1768. https://doi.org/10.1002/aur.2545
+Luo, C., & Franchak, J. M. (2020). Head and body structure in-
+fants’ visual experiences during mobile, naturalistic play.
+PLoS One, 15(11), e0242009. https://doi.org/10.1371/JOURN
+AL.PONE.0242009
+Lynne-Landsman, S. D., Bradshaw, C. P., & Ialongo, N. S. (2010).
+Testing a developmental cascade model of adolescent substance
+use trajectories and young adult adjustment. Development and
+Psychopathology, 22(4), 933–948. https://doi.org/10.1017/S0954
+579410000556
+MacDuffie, K. E., Shen, M. D., Dager, S. R., Styner, M. A., Kim, S.
+H., Paterson, S., Pandey, J., St. John, T., Elison, J. T., Wolff, J.
+J., Swanson, M. R., Botteron, K. N., Zwaigenbaum, L., Piven,
+J., & Estes, A. M. (2020). Sleep onset problems and subcortical
+development in infants later diagnosed with autism spectrum
+disorder. American Journal of Psychiatry, 177(6), 518–525. https://
+doi.org/10.1176/appi.ajp.2019.19060666
+Masten, A. S., & Cicchetti, D. (2010). Developmental cascades.
+Development and Psychopathology, 22(3), 491– 495. https://doi.
+org/10.1017/S0954579410000222
+Masten, A. S., Roisman, G. I., Long, J. D., Burt, K. B., Obradović,
+J., Riley, J. R., Boelcke-Stennes, K., & Tellegen, A. (2005).
+Developmental 	cascades: 	Linking 	academic 	achievement
+and externalizing and internalizing symptoms over 20 years.
+Developmental Psychology, 41(5), 733–746. https://doi.org/10.1037/
+0012-1649.41.5.733
+Moore, D. G., & George, R. (2011). ACORNS: A tool for the visu-
+alisation and modelling of atypical development. Journal of
+Intellectual Disability Research, 55(10), 956–972. https://doi.
+org/10.1111/J.1365-2788.2011.01471.X
+Nickel, L. R., Thatcher, A. R., Keller, F., Wozniak, R. H., & Iverson,
+J. M. (2013). Posture development in infants at heightened versus
+low risk for autism spectrum disorders. Infancy, 18(5), 639– 661.
+https://doi.org/10.1111/infa.12025
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 8 of 9 --
+
+26 |	BRADSHAW ET AL .
+Oakes, L., & Rakison, D. (2019). Developmental cascades: Building
+the infant mind. Oxford University Press. https://doi.org/10.1093/
+oso/9780195391893.003.0005
+Pellicano, E. (2012). The development of executive function in autism.
+Autism Research and Treatment, 2012(146132), 1– 8. https://doi.
+org/10.1155/2012/146132
+Pierce, K., Marinero, S., Hazin, R., McKenna, B., Barnes, C. C., &
+Malige, A. (2016). Eye tracking reveals abnormal visual prefer-
+ence for geometric images as an early biomarker of an autism
+spectrum disorder subtype associated with increased symp-
+tom severity. Biological Psychiatry, 79(8), 657– 666. https://doi.
+org/10.1016/j.biopsych.2015.03.032
+Sameroff, A. (2009). The transactional model. In A. Sameroff (Ed.),
+The transactional model of development: How children and con-
+texts shape each other (pp. 3–21). American Psychological
+Association. https://doi.org/10.1037/11877- 001
+Schneider, J. L., Roemer, E. J., Northrup, J. B., & Iverson, J. M. (2021).
+Dynamics of the dyad: How mothers and infants co- construct in-
+teraction spaces during object play [Manuscript in preparation].
+Department of Psychology, University of Pittsburgh.
+Shen, M. D. (2018). Cerebrospinal fluid and the early brain develop-
+ment of autism. Journal of Neurodevelopmental Disorders, 10(39),
+1–10. https://doi.org/10.1186/S11689- 018-9256-7
+Smith, L. B., & Thelen, E. (2003). Development as a dynamic sys-
+tem. Trends in Cognitive Sciences, 7(8), 343–348. https://doi.
+org/10.1016/S1364 - 6613(03)00156 - 6
+Soska, K. C., & Adolph, K. E. (2014). Postural position constrains
+multimodal object exploration in infants. Infancy, 19(2), 138–161.
+https://doi.org/10.1111/INFA.12039
+Tobaldini, E., Costantino, G., Solbiati, M., Cogliati, C., Kara, T.,
+Nobili, L., & Montano, N. (2017). Sleep, sleep deprivation,
+autonomic nervous system and cardiovascular diseases.
+Neuroscience & Biobehavioral Reviews, 74(March), 321–329.
+https://doi.org/10.1016/J.NEUBIOREV.2016.07.004
+Tononi, G., & Cirelli, C. (2014). Sleep and the price of plasticity: From
+synaptic and cellular homeostasis to memory consolidation
+and integration. Neuron, 81(1), 12–34. https://doi.org/10.1016/J.
+NEURON.2013.12.025
+West, K. L., & Iverson, J. M. (2017). Language learning is hands- on:
+Exploring links between infants’ object manipulation and ver-
+bal input. Cognitive Development, 43(July), 190–200. https://doi.
+org/10.1016/J.COGDEV.2017.05.004
+Williams, K. E., Berthelsen, D., Walker, S., & Nicholson, J. M. (2015).
+A developmental cascade model of behavioral sleep problems
+and emotional and attentional self-regulation across early
+childhood. Behavioral Sleep Medicine, 15(1), 1–21. https://doi.
+org/10.1080/15402002.2015.1065410
+Yu, C., & Smith, L. B. (2017). Multiple sensory-motor pathways lead
+to coordinated visual attention. Cognitive Science, 41(Suppl 1),
+5–31. https://doi.org/10.1111/cogs.12366
+How to cite this article: Bradshaw, J.,
+Schwichtenberg, A. J., & Iverson, J. M. (2022).
+Capturing the complexity of autism: Applying a
+developmental cascades framework. Child
+Development Perspectives, 16, 18–26. https://doi.
+org/10.1111/cdep.12439
+17508606, 2022, 1, Downloaded from https://srcd.onlinelibrary.wiley.com/doi/10.1111/cdep.12439 by Jessica Bradshaw - University Of South Carolina , Wiley Online Library on [20/10/2025]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+-- 9 of 9 --
+

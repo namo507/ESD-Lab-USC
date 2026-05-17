@@ -1,0 +1,57 @@
+SPECIFIC AIMS
+Atypical attention is among the earliest-emerging, lifelong features of autism spectrum disorder (ASD) and a
+particularly compelling candidate for an ASD biomarker 1–4. Our work, and that of others, suggests that disrupted
+attention may be detectable and developmentally predictive in early infancy 5–8, yet the biological underpinnings
+of this disruption remain unknown. The autonomic nervous system (ANS) is an early-emerging bioregulatory
+system critical for supporting neonatal arousal and infant attention 9–11. Early disruptions in ANS’s regulation of
+attention (“autonomic regulation of attention”) may have cascading consequences for interaction, learning, and
+development 8,9,11. Broad ANS dysfunction is observed in older children already diagnosed with ASD 12, but there
+remains a tremendous gap in knowledge regarding whether and when ANS dysfunction contributes to attention
+abnormalities and how infant autonomic regulation of attention predicts the emergence of ASD symptoms.
+The current study fills this gap by examining autonomic regulation of attention in the neonatal period and the
+developmental consequences therein for the emergence of ASD symptoms in infant siblings of children with
+ASD (ASIBs), infants born preterm (PTs), and typically developing (TD) infants. A critical innovation of this study
+is leveraging a comparison group of PTs who, intriguingly, experience global ANS dysfunction from birth 9,13–15.
+While PTs show slightly elevated rates of ASD (~7%) compared to the general population (~2%) 16, the vast
+majority of PTs do not develop ASD. In this study, inclusion of PT infants as a model for global ANS
+dysfunction will help investigate our hypothesis that early and broad ANS dysfunction (not specific to attention)
+does not lead to ASD-specific symptoms. This developmental process (broad ANS dysfunction  non-ASD
+specific outcomes) will be contrasted to ASIBs who experience significantly higher rates of ASD (~20%) 17.
+Contrasting PTs to ASIBs will help delineate how attention-specific ANS dysfunction predicts the emergence of
+ASD-specific symptoms. Thus, our innovative three-group research design will compare ASIBs to two control
+groups (PTs and TD infants) to determine the specificity of autonomic regulation of attention as a key, early
+emerging feature associated with ASD, with incredible translational potential for a cost-effective biomarker.
+Aim 1. Compare the maturation of autonomic regulation of attention in the early infant period (1-3m)
+across ASIBs, PTs, and TDs. Attention in the first months of life is supported by flexible modulation of arousal
+and alertness, regulated by the ANS 18–20 . Autonomic regulation allows for attention to salient features of the
+environment and inhibition of responses to irrelevant (internal or external) stimuli. ANS regulation of attention is
+vital for learning and can be measured using heart-defined attention (HDA) (i.e., coordination of heart rate
+changes within moments of visual attention 21,22). Maturation of ANS and attention
+systems across the first months of life lead to increasing coordination of heart rate
+with attention. Our pilot work with ASIBs shows differences in HDA quantity (%time in
+HDA) and quality (magnitude of heart rate deceleration) 23,24. Building upon this work,
+Aim 1 will test the hypothesis that ASIBs show typical HDA initially compared to
+TDs. Then from 1-3m, as ANS commands an increasingly larger role in regulating
+attention, the development of HDA for ASIBs will attenuate. In contrast, PTs will show
+delayed HDA maturation from 1-3m (adjusted age) due to broad ANS dysfunction 25.
+Aim 2. Determine the moment-to-moment influence of autonomic regulation of attention on interactive
+behavior across the first year (6m, 9m, 12m). Autonomic regulation of attention, measured via heart activity
+and contextualized within moment-by-moment behavior, has 	extraordinary 	potential 	to transform early
+identification of ASD by revealing specific mechanistic relations between ANS, attention, and interactive
+behavior. 	Our 	preliminary 	data 	suggests: 	(1) 	temporal
+coordination between HDA and interactive behavior in TDs
+and (2) reduced HDA-behavior coordination in ASIBs. Aim 2
+will test the hypothesis that ASIBs show weakening predictive
+associations between HDA and interactive behavior from 6-
+12 months, as early symptoms of ASD emerge 26. In contrast,
+we expect PTs to show initially weak associations that
+strengthen over time (with ANS and behavioral maturation) 25.
+Aim 3. Predict ASD symptoms at age 3 years from infant autonomic and attentional features.
+ASD biomarker discovery requires quantitative modeling techniques that adequately capture the complexity of
+biological processes involved in such a multifaceted, heterogeneous neurodevelopmental disorder 27,28. Aim 3
+will leverage machine learning techniques to develop a biomarker predicting the later emergence of ASD
+symptoms based on early (1-12 months) features of the autonomic and attentional systems (variables from Aims
+1-2). We hypothesize that features related to infant autonomic regulation of attention will predict ASD symptoms.
+
+-- 1 of 1 --
+
