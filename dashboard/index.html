@@ -704,35 +704,35 @@
           </div>
         </div>
         <div class="grid kpis">
-          <div class="card kpi kpi-card" data-kpi-tone="default">
+          <div class="card kpi kpi-card" data-kpi-tone="default" data-insight="kpi-enroll">
             <span class="hint">i</span>
             <div class="hint-popup">Total participants currently enrolled across all three groups (ASIB, PT, TD). Target: 260 over 5 years.</div>
             <div class="label t-label">Enrolled / Target</div>
             <div class="value t-kpi t-mono" id="kpi-enroll">—</div>
             <div class="delta ok t-caption" id="kpi-enroll-delta">—</div>
           </div>
-          <div class="card kpi kpi-card" data-kpi-tone="default">
+          <div class="card kpi kpi-card" data-kpi-tone="default" data-insight="kpi-active">
             <span class="hint">i</span>
             <div class="hint-popup">Records active in REDCap (have had ≥1 visit completed).</div>
             <div class="label t-label">Active Records</div>
             <div class="value t-kpi t-mono" id="kpi-active">—</div>
             <div class="delta t-caption" id="kpi-active-delta">—</div>
           </div>
-          <div class="card kpi kpi-card" data-kpi-tone="warn">
+          <div class="card kpi kpi-card" data-kpi-tone="warn" data-insight="kpi-queries">
             <span class="hint">i</span>
             <div class="hint-popup">Outstanding REDCap data queries awaiting resolution by the data team.</div>
             <div class="label t-label">Open Queries</div>
             <div class="value t-kpi t-mono" id="kpi-queries">—</div>
             <div class="delta warn t-caption">auto-assigned to RA team</div>
           </div>
-          <div class="card kpi kpi-card" data-kpi-tone="accent">
+          <div class="card kpi kpi-card" data-kpi-tone="accent" data-insight="kpi-auroc">
             <span class="hint">i</span>
             <div class="hint-popup">Best model's AUROC for predicting ADOS-2 positive screen at 12 months from NICU+infant biomarkers.</div>
             <div class="label t-label">Best Model AUROC</div>
             <div class="value t-kpi t-mono" id="kpi-auroc">—</div>
             <div class="delta ok t-caption" id="kpi-auroc-sub">—</div>
           </div>
-          <div class="card kpi kpi-card" data-kpi-tone="warn">
+          <div class="card kpi kpi-card" data-kpi-tone="warn" data-insight="kpi-completeness">
             <span class="hint">i</span>
             <div class="hint-popup">Average fraction of REDCap fields completed per participant per visit.</div>
             <div class="label t-label">Mean Completeness</div>
@@ -1718,6 +1718,72 @@
         </div>
       </form>
     </section>
+  </div>
+
+  <!-- ─── ESD Buddy — interactive SVG assistant ─── -->
+  <div class="buddy-stage" id="buddy-stage" aria-hidden="true">
+    <div class="buddy-bubble" id="buddy-bubble">
+      <div class="buddy-term-tag" id="buddy-term">NANO</div>
+      <div class="buddy-body-text" id="buddy-text">Hi! I'm ESD Buddy. Hover any highlighted tile and I'll explain what it means.</div>
+    </div>
+    <div class="buddy" id="buddy" title="Click to dismiss">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Antenna -->
+        <path class="buddy-antenna" d="M50 18 Q 48 4, 54 2" />
+        <circle class="buddy-antenna-dot" cx="54" cy="2" r="3.5" />
+        <!-- Heart pulse behind body -->
+        <path class="buddy-heart-pulse" d="M50 32 c-0.6-0.6-1.6-0.6-2.2 0-1.4 1.4-5 3.4-5 6.3 0 2.8 3.6 4.8 5 6.3l2.2-2.2 2.2 2.2c1.4-1.5 5-3.5 5-6.3s-3.6-4.9-5-6.3c-0.6-0.6-1.6-0.6-2.2 0z" />
+        <!-- Body -->
+        <ellipse class="buddy-body" cx="50" cy="58" rx="30" ry="34" />
+        <!-- Blush marks -->
+        <ellipse class="buddy-blush" cx="32" cy="62" rx="6" ry="3.5" />
+        <ellipse class="buddy-blush" cx="68" cy="62" rx="6" ry="3.5" />
+        <!-- Eyes -->
+        <g id="buddy-eye-left">
+          <circle cx="40" cy="52" r="6" fill="white" stroke="#1a1815" stroke-width="1" />
+          <circle class="buddy-eye buddy-pupil-l" cx="40" cy="52" r="2.8" />
+        </g>
+        <g id="buddy-eye-right">
+          <circle cx="60" cy="52" r="6" fill="white" stroke="#1a1815" stroke-width="1" />
+          <circle class="buddy-eye buddy-pupil-r" cx="60" cy="52" r="2.8" />
+        </g>
+        <!-- Mouth -->
+        <path class="buddy-mouth" id="buddy-mouth" d="M44 68 Q 50 74, 56 68" />
+      </svg>
+    </div>
+  </div>
+
+  <!-- ─── AI Chat FAB + Panel ─── -->
+  <button type="button" class="esd-chat-fab" id="esd-chat-fab" aria-label="Open AI chat" aria-expanded="false" aria-controls="esd-chat-panel">
+    <span class="chat-fab-icon" aria-hidden="true">✦</span>
+  </button>
+
+  <div class="esd-chat-panel" id="esd-chat-panel" role="dialog" aria-label="NANO AI assistant">
+    <div class="esd-chat-head">
+      <div>
+        <h2 class="esd-chat-title">Ask the lab</h2>
+        <div class="esd-chat-sub">NANO study · AI assistant</div>
+      </div>
+      <button type="button" class="esd-chat-close" id="esd-chat-close" aria-label="Close chat">✕</button>
+    </div>
+    <div class="esd-chat-body" id="esd-chat-body">
+      <div class="esd-chat-msg bot">
+        <div class="esd-chat-avatar">AI</div>
+        <div class="esd-chat-bubble">
+          I'm the NANO study assistant. I can answer questions about enrollment, the data pipeline, HRV features, model performance, and the reading library. What would you like to know?
+        </div>
+      </div>
+    </div>
+    <div class="esd-chat-suggestions" id="esd-chat-suggestions">
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> What is the current enrollment status?</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> How does the AUROC compare across models?</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> Explain the HRV feature pipeline</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> What are the three study aims?</button>
+    </div>
+    <form class="esd-chat-form" id="esd-chat-form">
+      <textarea class="esd-chat-input" id="esd-chat-input" rows="1" placeholder="Ask about NANO, enrollment, HRV, models…"></textarea>
+      <button type="submit" class="esd-chat-send" id="esd-chat-send" aria-label="Send message">↑</button>
+    </form>
   </div>
 </div>
 

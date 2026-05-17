@@ -387,6 +387,8 @@ async function bootstrap() {
   setupQaFeedObserver();
   setupControls();
   setupAssistant();
+  initBuddy();
+  initEsdChat();
   await syncData({ force: true });
   if (ASSISTANT_STATUS_POLL_ENABLED) {
     try {
@@ -5599,3 +5601,356 @@ function startPulseAtlasLoop() {
 if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
   startPulseAtlasLoop = function noopLoop() {};
 }
+
+// ==========================================================================
+// ESD BUDDY — Animated SVG assistant with hover insights + pupil tracking
+// ==========================================================================
+
+const BUDDY_INSIGHTS = {
+  "kpi-enroll":       { term: "Enrollment",    body: "Tracks how many infants are enrolled across the VPT, ASIB, and TD cohorts against the R01 target of 260." },
+  "kpi-active":       { term: "Active Records", body: "Records in REDCap that have at least one completed visit. Active records drive completeness and window-QA metrics." },
+  "kpi-queries":      { term: "Open Queries",   body: "Outstanding REDCap data queries awaiting resolution by the data team. Fewer queries mean cleaner downstream features." },
+  "kpi-auroc":        { term: "AUROC",          body: "Area under the receiver operating characteristic curve. Our best classifier achieves 0.899 on held-out validation data." },
+  "kpi-completeness": { term: "Completeness",   body: "Average fraction of REDCap fields completed per participant per visit. Target is ≥ 80% for analysis readiness." },
+  "pipeline-svg":     { term: "Pipeline",       body: "Six stages from Actiheart device capture through de-identified export. Each node shows in-flight and completed records." },
+  "stage-intake":     { term: "Intake",         body: "Raw Actiheart-5 traces arrive alongside REDCap visit context and infant-state notes." },
+  "stage-ingest":     { term: "Ingest",         body: "Files enter the secure mount, receive timestamps, and get an auditable handoff before preprocessing." },
+  "stage-preprocess": { term: "Preprocess",     body: "ECG cleanup, R-peak detection, timestamp harmonization, and behavioral alignment happen here." },
+  "stage-window_qa":  { term: "Window QA",      body: "Signal-quality rules scan each segment for noise and dropout before HRV features are materialized." },
+  "stage-hrv_features": { term: "HRV Features", body: "Accepted windows become RMSSD, RSA, SDNN, and HDA features for longitudinal comparisons." },
+  "stage-deidentify": { term: "De-identify",    body: "Only aggregate, surrogate, and PHI-scrubbed outputs reach the dashboard and downstream sharing." },
+  "cohort-table":     { term: "Cohort",         body: "Every enrolled infant with group assignment, gestational age, visit completion, and QC status." },
+  "roc":              { term: "ROC Curve",      body: "Discrimination performance of the gradient-boosted classifier across all decision thresholds." },
+  "shap":             { term: "SHAP",           body: "Shapley values showing which features drive the classifier's predictions most strongly." },
+  "confmat":          { term: "Confusion Matrix", body: "True/false positive and negative counts at the chosen operating threshold of 0.42." },
+  "reading-library":  { term: "Reading Library", body: "Automatically indexed PDFs and materials from the ESD Lab readings folder." },
+  "insights-feed":    { term: "Agentic QA",     body: "An LLM watches REDCap forms, SQI flags, and pipeline output to surface issues as they happen." },
+  "flow-list":        { term: "Participant Flow", body: "Recent visit activity across all study sites showing participant movement and status." },
+};
+
+let buddyTimeout = null;
+let buddyActive = null;
+
+function initBuddy() {
+  const buddy = document.getElementById("buddy");
+  const bubble = document.getElementById("buddy-bubble");
+  const termTag = document.getElementById("buddy-term");
+  const bodyText = document.getElementById("buddy-text");
+  const pupilL = document.querySelector(".buddy-pupil-l");
+  const pupilR = document.querySelector(".buddy-pupil-r");
+
+  if (!buddy || !bubble) return;
+
+  // Show intro bubble on load, then hide after 4s
+  bubble.classList.add("show");
+  setTimeout(() => {
+    if (!buddyActive) bubble.classList.remove("show");
+  }, 4500);
+
+  // Pupil tracking
+  document.addEventListener("mousemove", (e) => {
+    if (!pupilL || !pupilR) return;
+    const rect = buddy.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height * 0.52;
+    const dx = (e.clientX - cx) / (window.innerWidth / 2);
+    const dy = (e.clientY - cy) / (window.innerHeight / 2);
+    const clamp = (v, max) => Math.max(-max, Math.min(max, v));
+    const ox = clamp(dx * 2.5, 2.5);
+    const oy = clamp(dy * 2.0, 2.0);
+    pupilL.setAttribute("cx", 40 + ox);
+    pupilL.setAttribute("cy", 52 + oy);
+    pupilR.setAttribute("cx", 60 + ox);
+    pupilR.setAttribute("cy", 52 + oy);
+  });
+
+  // Hover listeners on data-insight elements
+  document.addEventListener("mouseover", (e) => {
+    const target = e.target.closest("[data-insight]");
+    if (!target) return;
+    const key = target.dataset.insight;
+    const insight = BUDDY_INSIGHTS[key];
+    if (!insight) return;
+
+    clearTimeout(buddyTimeout);
+    buddyActive = target;
+
+    // Highlight the hovered tile
+    document.querySelectorAll("[data-insight].insight-active").forEach(el => el.classList.remove("insight-active"));
+    target.classList.add("insight-active");
+
+    // Update bubble content
+    termTag.textContent = insight.term;
+    bodyText.textContent = insight.body;
+    bubble.classList.add("show");
+    buddy.classList.add("talking");
+
+    // Open mouth when talking
+    const mouth = document.getElementById("buddy-mouth");
+    if (mouth) mouth.setAttribute("d", "M42 66 Q 50 78, 58 66");
+  });
+
+  document.addEventListener("mouseout", (e) => {
+    const target = e.target.closest("[data-insight]");
+    if (!target || target !== buddyActive) return;
+
+    buddyTimeout = setTimeout(() => {
+      target.classList.remove("insight-active");
+      bubble.classList.remove("show");
+      buddy.classList.remove("talking");
+      buddyActive = null;
+
+      // Close mouth
+      const mouth = document.getElementById("buddy-mouth");
+      if (mouth) mouth.setAttribute("d", "M44 68 Q 50 74, 56 68");
+    }, 300);
+  });
+
+  // Click buddy to dismiss bubble
+  buddy.addEventListener("click", () => {
+    clearTimeout(buddyTimeout);
+    bubble.classList.remove("show");
+    buddy.classList.remove("talking");
+    document.querySelectorAll("[data-insight].insight-active").forEach(el => el.classList.remove("insight-active"));
+    buddyActive = null;
+    const mouth = document.getElementById("buddy-mouth");
+    if (mouth) mouth.setAttribute("d", "M44 68 Q 50 74, 56 68");
+  });
+}
+
+// ==========================================================================
+// AI CHAT PANEL — Floating action button + glassmorphic conversational panel
+// ==========================================================================
+
+const ESD_CHAT_SUGGESTIONS = [
+  "What is the current enrollment status?",
+  "How does the AUROC compare across models?",
+  "Explain the HRV feature pipeline",
+  "What are the three study aims?",
+];
+
+let esdChatOpen = false;
+let esdChatPending = false;
+
+function initEsdChat() {
+  const fab = document.getElementById("esd-chat-fab");
+  const panel = document.getElementById("esd-chat-panel");
+  const closeBtn = document.getElementById("esd-chat-close");
+  const form = document.getElementById("esd-chat-form");
+  const input = document.getElementById("esd-chat-input");
+  const suggestionsContainer = document.getElementById("esd-chat-suggestions");
+
+  if (!fab || !panel) return;
+
+  // FAB toggle
+  fab.addEventListener("click", () => {
+    if (esdChatOpen) {
+      closeEsdChat();
+    } else {
+      openEsdChat();
+    }
+  });
+
+  // Close button
+  if (closeBtn) closeBtn.addEventListener("click", closeEsdChat);
+
+  // Suggestion buttons
+  if (suggestionsContainer) {
+    suggestionsContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".esd-chat-suggestion");
+      if (!btn) return;
+      const text = btn.textContent.replace(/^→\s*/, "").trim();
+      sendEsdChatMessage(text);
+      suggestionsContainer.style.display = "none";
+    });
+  }
+
+  // Form submission
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (esdChatPending) return;
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+      sendEsdChatMessage(text);
+      if (suggestionsContainer) suggestionsContainer.style.display = "none";
+    });
+  }
+
+  // Keyboard: Enter to send, Escape to close
+  if (input) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event("submit"));
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && esdChatOpen) {
+      closeEsdChat();
+    }
+  });
+}
+
+function openEsdChat() {
+  const panel = document.getElementById("esd-chat-panel");
+  const fab = document.getElementById("esd-chat-fab");
+  if (!panel) return;
+  panel.classList.add("open");
+  if (fab) fab.setAttribute("aria-expanded", "true");
+  esdChatOpen = true;
+  const input = document.getElementById("esd-chat-input");
+  if (input) setTimeout(() => input.focus(), 400);
+}
+
+function closeEsdChat() {
+  const panel = document.getElementById("esd-chat-panel");
+  const fab = document.getElementById("esd-chat-fab");
+  if (!panel) return;
+  panel.classList.remove("open");
+  if (fab) fab.setAttribute("aria-expanded", "false");
+  esdChatOpen = false;
+}
+
+function addEsdChatMessage(role, text) {
+  const body = document.getElementById("esd-chat-body");
+  if (!body) return;
+
+  const msg = document.createElement("div");
+  msg.className = `esd-chat-msg ${role === "user" ? "you" : "bot"}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "esd-chat-avatar";
+  avatar.textContent = role === "user" ? "You" : "AI";
+
+  const bubble = document.createElement("div");
+  bubble.className = "esd-chat-bubble";
+  bubble.textContent = text;
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  body.appendChild(msg);
+  body.scrollTop = body.scrollHeight;
+
+  return msg;
+}
+
+function addEsdThinkingMessage() {
+  const body = document.getElementById("esd-chat-body");
+  if (!body) return null;
+
+  const msg = document.createElement("div");
+  msg.className = "esd-chat-msg bot";
+  msg.id = "esd-thinking-msg";
+
+  const avatar = document.createElement("div");
+  avatar.className = "esd-chat-avatar";
+  avatar.textContent = "AI";
+
+  const bubble = document.createElement("div");
+  bubble.className = "esd-chat-bubble thinking";
+  bubble.innerHTML = '<span class="esd-dots"><span></span><span></span><span></span></span>';
+
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  body.appendChild(msg);
+  body.scrollTop = body.scrollHeight;
+  return msg;
+}
+
+function removeEsdThinkingMessage() {
+  const msg = document.getElementById("esd-thinking-msg");
+  if (msg) msg.remove();
+}
+
+async function sendEsdChatMessage(text) {
+  if (esdChatPending) return;
+
+  addEsdChatMessage("user", text);
+  esdChatPending = true;
+  const sendBtn = document.getElementById("esd-chat-send");
+  if (sendBtn) sendBtn.disabled = true;
+
+  addEsdThinkingMessage();
+
+  try {
+    const response = await fetch(DATA_URLS.chat, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: text,
+        context: buildEsdChatContext(),
+      }),
+    });
+
+    removeEsdThinkingMessage();
+
+    if (!response.ok) throw new Error("Chat endpoint unavailable");
+
+    const data = await response.json();
+    const reply = data.reply || data.response || data.message || "I received your question but couldn't generate a response.";
+    addEsdChatMessage("assistant", reply);
+  } catch {
+    removeEsdThinkingMessage();
+    addEsdChatMessage("assistant", generateEsdFallbackResponse(text));
+  } finally {
+    esdChatPending = false;
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+function buildEsdChatContext() {
+  const ctx = {
+    study: "NANO — Neurodevelopment of Autonomic and Neural Organization",
+    type: "R01 longitudinal cohort of VPT infants",
+    cohorts: "VPT (200 target), ASIB (30), TD (30)",
+    pipeline: "Actiheart → ECG preprocess → Window QA → HRV features → ML models → de-identified export",
+  };
+  if (STATE.dashboard) {
+    const d = STATE.dashboard;
+    if (d.overview) {
+      ctx.enrolled = d.overview.enrolled || "unknown";
+      ctx.target = d.overview.target || 260;
+      ctx.active_records = d.overview.active_records || "unknown";
+    }
+    if (d.ml_performance && d.ml_performance.models) {
+      const best = d.ml_performance.models[0];
+      if (best) ctx.best_auroc = best.auroc;
+    }
+  }
+  return ctx;
+}
+
+function generateEsdFallbackResponse(question) {
+  const q = question.toLowerCase();
+
+  if (q.includes("enrollment") || q.includes("enrolled")) {
+    const enrolled = STATE.dashboard?.overview?.enrolled;
+    if (enrolled) {
+      return `Current enrollment stands at ${enrolled} of the 260 target. The study enrolls across three groups: VPT (very preterm, target 200), ASIB (autism siblings, target 30), and TD (typically developing, target 30).`;
+    }
+    return "The NANO study targets 260 infants across VPT (200), ASIB (30), and TD (30) cohorts. Check the enrollment section for the latest numbers.";
+  }
+
+  if (q.includes("auroc") || q.includes("model") || q.includes("performance")) {
+    return "The best model achieves an AUROC of 0.899 on held-out validation. It uses gradient-boosted features from 3- and 6-month HRV measures to predict ASD-symptom likelihood at age 3. SHAP attributions reveal that RMSSD variability and HDA features are the strongest predictors.";
+  }
+
+  if (q.includes("hrv") || q.includes("pipeline") || q.includes("feature")) {
+    return "The HRV pipeline processes Actiheart-5 R-R intervals through bandpass filtering, R-peak detection, ectopic filtering, and time-domain/nonlinear feature extraction. Key outputs include RMSSD (vagal regulation), RSA (respiratory sinus arrhythmia), SDNN, and HDA (heart-rate deceleration analysis).";
+  }
+
+  if (q.includes("aim") || q.includes("study")) {
+    return "The NANO study has three specific aims: (1) Characterize autonomic maturation trajectories in VPT infants from NICU through 12 months, (2) Test whether early autonomic dysregulation predicts attention differences at 24 months, (3) Build a predictive classifier for ASD-related outcomes using multi-domain biomarkers.";
+  }
+
+  if (q.includes("hipaa") || q.includes("phi") || q.includes("privacy")) {
+    return "All data surfaces are HIPAA-compliant. The dashboard only displays de-identified, surrogate, or aggregate data. PHI never leaves the secure mount and is never logged or persisted in any dashboard payload.";
+  }
+
+  return "I'm currently running in offline mode without a live language model connection. I can answer pre-programmed questions about enrollment, model performance, the HRV pipeline, study aims, and HIPAA compliance. For more detailed answers, the chat endpoint needs to be active.";
+}
+
