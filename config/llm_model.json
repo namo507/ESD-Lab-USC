@@ -6,7 +6,7 @@
   "min_memory_gib": 0.3,
   "max_tokens": 192,
   "score": 0.8365,
-  "selected_at": "2026-05-18T00:06:49.558839+00:00",
+  "selected_at": "2026-05-18T06:22:17.962617+00:00",
   "source": "hf-api",
   "fallbacks": [
     {
