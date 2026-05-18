@@ -515,14 +515,14 @@ export function Landing() {
       </nav>
 
       <main className={styles.main}>
-        <section id="overview" className={styles.hero}>
-          <div className={styles.heroEyebrow}>
+        <section id="overview" className={styles.hero} data-insight="landing-overview">
+          <div className={styles.heroEyebrow} data-insight="pipeline-svg">
             <span className={styles.liveDot} />
             <span>Live NANO pipeline · {totals.inflight} stages in flight</span>
           </div>
 
           <div className={styles.heroGrid}>
-            <div className={styles.heroCopy}>
+            <div className={styles.heroCopy} data-insight="landing-overview">
               <h1 className={styles.heroTitle}>
                 The heartbeat of every baby&apos;s first year.
               </h1>
@@ -542,26 +542,26 @@ export function Landing() {
               </div>
 
               <div className={styles.heroMetaStrip}>
-                <div className={styles.heroMiniCard}>
+                <div className={styles.heroMiniCard} data-insight="kpi-enroll">
                   <span>Infants enrolled</span>
                   <strong>{study?.enrolled ?? 231} / {study?.target ?? 260}</strong>
                 </div>
-                <div className={styles.heroMiniCard}>
+                <div className={styles.heroMiniCard} data-insight="landing-rmssd">
                   <span>Median RMSSD</span>
                   <strong>{stat(totals.rmssdLatest, 1)} ms</strong>
                 </div>
-                <div className={styles.heroMiniCard}>
+                <div className={styles.heroMiniCard} data-insight="kpi-epochs">
                   <span>Epochs in 24 h</span>
                   <strong>{stat(totals.done)}</strong>
                 </div>
-                <div className={styles.heroMiniCard}>
+                <div className={styles.heroMiniCard} data-insight="landing-runs">
                   <span>Queued runs</span>
                   <strong>{totals.readyRuns}</strong>
                 </div>
               </div>
             </div>
 
-            <aside className={styles.heroCard}>
+            <aside className={styles.heroCard} data-insight="landing-study">
               <span className={styles.cardEyebrow}>About the study</span>
               <h2 className={styles.cardTitle}>Longitudinal infant neurodevelopment, grounded in live operations.</h2>
               <p className={styles.cardBody}>
@@ -594,10 +594,12 @@ export function Landing() {
             </aside>
           </div>
 
-          <WaveRibbon />
+          <div data-insight="landing-waveform">
+            <WaveRibbon />
+          </div>
         </section>
 
-        <section id="metrics" className={styles.section}>
+        <section id="metrics" className={styles.section} data-insight="landing-metrics">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Lab pulse</span>
@@ -606,25 +608,25 @@ export function Landing() {
             <div className={styles.sectionNote}>Updated from the live API hooks already powering the operator routes.</div>
           </header>
           <div className={styles.metricGrid}>
-            <article className={styles.metricCard}>
+            <article className={styles.metricCard} data-insight="kpi-enroll">
               <span>Infants enrolled</span>
               <strong>{study?.enrolled ?? 231} / {study?.target ?? 260}</strong>
               <p>NANO recruitment across ASIB, VPT, and TD cohorts.</p>
               <div className={styles.metricFooter}>Recruitment narrative</div>
             </article>
-            <article className={styles.metricCard}>
+            <article className={styles.metricCard} data-insight="kpi-epochs">
               <span>Epochs · 24 h</span>
               <strong>{stat(totals.done)}</strong>
               <p>Processed ECG windows available for QA and downstream features.</p>
               <div className={styles.metricFooter}>Signal throughput</div>
             </article>
-            <article className={styles.metricCard}>
+            <article className={styles.metricCard} data-insight="landing-rmssd">
               <span>Median RMSSD</span>
               <strong>{stat(totals.rmssdLatest, 1)} ms</strong>
               <p>Cohort-level vagal tone across the visible trajectory slice.</p>
               <div className={styles.metricFooter}>Trajectory benchmark</div>
             </article>
-            <article className={styles.metricCard}>
+            <article className={styles.metricCard} data-insight="landing-assistant-context">
               <span>Assistant-ready context</span>
               <strong>{stat(totals.hdaTotal)}</strong>
               <p>HDA-labeled windows and study context wired to ESD Buddy.</p>
@@ -633,7 +635,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="aims" className={styles.section}>
+        <section id="aims" className={styles.section} data-insight="landing-aims">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Specific aims</span>
@@ -645,7 +647,7 @@ export function Landing() {
             {AIMS.map((aim, index) => {
               const isOpen = openAim === index;
               return (
-                <article key={aim.id} className={`${styles.aimCard} ${isOpen ? styles.aimCardOpen : ""}`}>
+                <article key={aim.id} className={`${styles.aimCard} ${isOpen ? styles.aimCardOpen : ""}`} data-insight={`landing-aim-${aim.id}`}>
                   <div className={styles.aimHeader}>
                     <div>
                       <span className={styles.storyKicker}>Aim {aim.id}</span>
@@ -682,7 +684,7 @@ export function Landing() {
           </div>
           <div className={styles.comparisonStrip}>
             {groupCards.map((group) => (
-              <article key={group.code} className={styles.comparisonCard}>
+              <article key={group.code} className={styles.comparisonCard} data-insight="landing-groups">
                 <span className={styles.storyKicker}>{group.code}</span>
                 <h3>{group.label}</h3>
                 <strong>{group.count}</strong>
@@ -692,7 +694,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="architecture" className={styles.section}>
+        <section id="architecture" className={styles.section} data-insight="landing-architecture">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Data architecture</span>
@@ -708,13 +710,14 @@ export function Landing() {
                   type="button"
                   className={`${styles.layerButton} ${activeLayer === layer.id ? styles.layerButtonActive : ""}`}
                   onClick={() => setActiveLayer(layer.id)}
+                  data-insight={`landing-arch-${layer.id}`}
                 >
                   <span>{layer.short}</span>
                   <strong>{layer.title}</strong>
                 </button>
               ))}
             </div>
-            <article className={styles.layerPanel}>
+            <article className={styles.layerPanel} data-insight="landing-arch-panel">
               <span className={styles.storyKicker}>{activeArchitecture.short}</span>
               <h3>{activeArchitecture.title}</h3>
               <div className={styles.layerList}>
@@ -738,7 +741,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="pipeline" className={styles.section}>
+        <section id="pipeline" className={styles.section} data-insight="pipeline-svg">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Pipeline</span>
@@ -751,7 +754,7 @@ export function Landing() {
           </header>
           <div className={styles.pipelineRail}>
             {stages.slice(0, 6).map((stage, index) => (
-              <button key={stage.id} type="button" className={styles.pipelineCard} onClick={() => navigate("/runs")}>
+              <button key={stage.id} type="button" className={styles.pipelineCard} onClick={() => navigate("/runs")} data-insight={`stage-${stage.id}`}>
                 <span className={styles.pipelineIndex}>Stage {String(index + 1).padStart(2, "0")}</span>
                 <h3>{stage.label}</h3>
                 <strong>{stage.inflight}</strong>
@@ -762,7 +765,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="qa" className={styles.section}>
+        <section id="qa" className={styles.section} data-insight="landing-qa-watch">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Quality and flow</span>
@@ -770,7 +773,7 @@ export function Landing() {
             </div>
           </header>
           <div className={styles.splitGrid}>
-            <article className={styles.darkCard}>
+            <article className={styles.darkCard} data-insight="landing-qa-watch">
               <span className={styles.sectionEyebrow}>Agentic QA</span>
               <h3>Pipeline watchlist</h3>
               <ul className={styles.watchList}>
@@ -787,7 +790,7 @@ export function Landing() {
                 </button>
               </div>
             </article>
-            <article className={styles.flowCard}>
+            <article className={styles.flowCard} data-insight="landing-flow">
               <span className={styles.sectionEyebrow}>Recent participant flow</span>
               <h3>The last four hours</h3>
               <ul className={styles.flowList}>
@@ -804,7 +807,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="cohort" className={styles.section}>
+        <section id="cohort" className={styles.section} data-insight="landing-cohort">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Cohort snapshot</span>
@@ -815,7 +818,7 @@ export function Landing() {
               <ArrowRight size={14} strokeWidth={1.5} />
             </button>
           </header>
-          <div className={styles.tableCard}>
+          <div className={styles.tableCard} data-insight="landing-cohort">
             <div className={styles.tableToolbar}>
               <div className={styles.toolbarActions}>
                 <label className={styles.groupSelectWrap}>
@@ -865,7 +868,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="ml" className={styles.section}>
+        <section id="ml" className={styles.section} data-insight="landing-model-card">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Model performance</span>
@@ -877,7 +880,7 @@ export function Landing() {
             </button>
           </header>
           <div className={styles.chartGrid}>
-            <article className={styles.chartCard}>
+            <article className={styles.chartCard} data-insight="landing-rmssd-chart">
               <span className={styles.storyKicker}>RMSSD trajectory</span>
               <h3>Visible cohort trend</h3>
               <svg viewBox="0 0 360 220" className={styles.trajectorySvg}>
@@ -906,7 +909,7 @@ export function Landing() {
                 ))}
               </div>
             </article>
-            <article className={styles.chartCard}>
+            <article className={styles.chartCard} data-insight="landing-hda-chart">
               <span className={styles.storyKicker}>HDA distribution</span>
               <h3>Phase composition by cohort</h3>
               <div className={styles.stackList}>
@@ -929,7 +932,7 @@ export function Landing() {
                   : null}
               </div>
             </article>
-            <article className={styles.chartCard}>
+            <article className={styles.chartCard} data-insight="landing-model-card">
               <span className={styles.storyKicker}>Model card</span>
               <h3>Validated, calibrated, reviewable</h3>
               <div className={styles.metricTileGrid}>
@@ -955,7 +958,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="studio" className={styles.section}>
+        <section id="studio" className={styles.section} data-insight="landing-studio-inputs">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Model studio</span>
@@ -964,7 +967,7 @@ export function Landing() {
             <div className={styles.sectionNote}>Illustrative sliders change the explanatory risk gauge without leaving the landing page.</div>
           </header>
           <div className={styles.studioGrid}>
-            <article className={styles.studioCard}>
+            <article className={styles.studioCard} data-insight="landing-studio-inputs">
               <div className={styles.studioHeader}>
                 <div>
                   <span className={styles.storyKicker}>Input features</span>
@@ -1012,7 +1015,7 @@ export function Landing() {
                 </button>
               </div>
             </article>
-            <article className={styles.studioCard}>
+            <article className={styles.studioCard} data-insight="landing-studio-gauge">
               <Gauge value={riskScore} />
               <div className={styles.metricTileGrid}>
                 <div>
@@ -1036,14 +1039,14 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="assistant" className={styles.section}>
+        <section id="assistant" className={styles.section} data-insight="landing-assistant">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>AI assistant</span>
               <h2>Ask the lab anything.</h2>
             </div>
           </header>
-          <article className={styles.assistantCard}>
+          <article className={styles.assistantCard} data-insight="landing-assistant">
             <p>
               The in-page assistant stays visually central and operationally grounded. Use it to explain the study, unpack HDA, summarize a result, or decide when to switch from this narrative surface into the operator routes.
             </p>
@@ -1058,7 +1061,7 @@ export function Landing() {
           </article>
         </section>
 
-        <section id="library" className={styles.section}>
+        <section id="library" className={styles.section} data-insight="landing-reading">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Anchor reading</span>
@@ -1075,7 +1078,7 @@ export function Landing() {
           </header>
           <div className={styles.readingList}>
             {filteredReading.map((entry) => (
-              <article key={entry.title} className={styles.readingItem}>
+              <article key={entry.title} className={styles.readingItem} data-insight="landing-reading">
                 <div className={styles.readingHeader}>
                   <div>
                     <span className={styles.storyKicker}>{entry.tag}</span>

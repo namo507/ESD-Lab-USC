@@ -1,10 +1,16 @@
 .page {
+  --landing-surface: #fff;
+  --landing-surface-muted: linear-gradient(180deg, var(--warm-card) 0%, var(--warm-bg) 100%);
+  --landing-border: var(--warm-border);
+  --landing-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  --landing-panel: rgba(255, 255, 255, 0.88);
+  --landing-pill: rgba(255, 255, 255, 0.78);
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(243, 201, 168, 0.3), transparent 28%),
-    radial-gradient(circle at 85% 20%, rgba(167, 189, 210, 0.28), transparent 24%),
-    radial-gradient(circle at 50% 100%, rgba(221, 230, 214, 0.34), transparent 30%),
-    var(--cream);
+    radial-gradient(circle at top left, rgba(243, 201, 168, 0.2), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(167, 189, 210, 0.16), transparent 24%),
+    radial-gradient(circle at 50% 100%, rgba(221, 230, 214, 0.2), transparent 30%),
+    var(--warm-bg);
   color: var(--ink);
 }
 
@@ -23,18 +29,18 @@
   position: sticky;
   top: 18px;
   z-index: 110;
-  width: min(1440px, calc(100% - 48px));
+  width: min(1480px, calc(100% - 64px));
   margin: 18px auto 0;
   padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 14px;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 999px;
-  background: var(--glass-300);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  background: var(--landing-panel);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--landing-shadow);
   transform: translateZ(0);
 }
 
@@ -43,7 +49,7 @@
   align-items: center;
   gap: 10px;
   padding-right: 14px;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  border-right: 1px solid var(--landing-border);
   background: transparent;
   border-top: none;
   border-bottom: none;
@@ -106,8 +112,8 @@
 
 .navLink:hover,
 .navLinkActive {
-  background: rgba(255, 255, 255, 0.7);
-  color: var(--ink);
+  background: var(--landing-pill);
+  color: var(--warm-fg1);
 }
 
 .navLink:hover {
@@ -134,8 +140,8 @@
 .primaryButton,
 .dock button {
   border: none;
-  background: var(--ink);
-  color: var(--cream);
+  background: linear-gradient(135deg, var(--usc-garnet) 0%, var(--usc-garnet-600) 100%);
+  color: #fff8f3;
 }
 
 .askButton {
@@ -145,11 +151,11 @@
 .main {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 56px 5vw 140px;
+  padding: 30px clamp(24px, 3vw, 32px) 140px;
 }
 
 .hero {
-  padding-top: 44px;
+  padding-top: 20px;
 }
 
 .heroEyebrow,
@@ -168,9 +174,9 @@
   align-items: center;
   gap: 10px;
   padding: 9px 14px;
-  border: 1px solid var(--glass-stroke-soft);
+  border: 1px solid var(--landing-border);
   border-radius: 999px;
-  background: var(--glass-200);
+  background: var(--landing-pill);
 }
 
 .liveDot {
@@ -231,11 +237,10 @@
 
 .heroMiniCard {
   padding: 16px 18px;
-  border: 1px solid var(--glass-stroke-soft);
+  border: 1px solid var(--landing-border);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  background: var(--landing-surface);
+  box-shadow: var(--landing-shadow);
 }
 
 .heroMiniCard strong {
@@ -251,12 +256,10 @@
   position: relative;
   height: 112px;
   margin-top: 34px;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 28px;
-  background: var(--glass-200);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  background: var(--landing-surface-muted);
+  box-shadow: var(--landing-shadow);
   overflow: hidden;
 }
 
@@ -309,9 +312,9 @@
 
 .secondaryButton,
 .ghostButton {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--ink);
+  border: 1px solid var(--landing-border);
+  background: var(--landing-surface);
+  color: var(--warm-fg1);
 }
 
 .heroCard,
@@ -323,12 +326,31 @@
 .stageCard,
 .groupCard {
   position: relative;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 24px;
-  background: var(--glass-200);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  background: var(--landing-surface);
+  box-shadow: var(--landing-shadow);
+}
+
+.heroMiniCard,
+.heroCard,
+.metricCard,
+.aimCard,
+.comparisonCard,
+.layerPanel,
+.tableCard,
+.chartCard,
+.studioCard,
+.assistantCard,
+.flowCard,
+.readingItem,
+.pipelineCard,
+.layerButton,
+.suggestionPill,
+.aimButton,
+.fab {
+  transition: transform 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft), border-color 160ms var(--ease-soft), background 160ms var(--ease-soft);
+  will-change: transform;
 }
 
 .heroCard {
@@ -376,7 +398,7 @@
 }
 
 .section {
-  padding-top: 84px;
+  padding-top: 68px;
 }
 
 .sectionHeader {
@@ -464,12 +486,10 @@
 .studioCard,
 .readingItem {
   position: relative;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 24px;
-  background: var(--glass-200);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  background: var(--landing-surface);
+  box-shadow: var(--landing-shadow);
 }
 
 .aimCard {
@@ -477,7 +497,7 @@
 }
 
 .aimCardOpen {
-  background: var(--glass-300);
+  background: var(--landing-surface-muted);
 }
 
 .aimHeader,
@@ -491,10 +511,10 @@
 
 .aimButton {
   padding: 9px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--landing-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--ink);
+  background: var(--landing-surface);
+  color: var(--warm-fg1);
   font-size: 12px;
   cursor: pointer;
 }
@@ -554,9 +574,10 @@
 .layerButton {
   width: 100%;
   padding: 18px 20px;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.46);
+  background: var(--landing-surface);
+  box-shadow: var(--landing-shadow);
   text-align: left;
   cursor: pointer;
 }
@@ -581,7 +602,7 @@
 }
 
 .layerButtonActive {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--landing-surface-muted);
   border-color: rgba(115, 0, 10, 0.18);
 }
 
@@ -598,8 +619,9 @@
 .layerItem {
   padding: 16px 18px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.56);
-  color: var(--warm-700);
+  border: 1px solid var(--landing-border);
+  background: var(--warm-bg);
+  color: var(--warm-fg2);
   line-height: 1.6;
 }
 
@@ -612,11 +634,10 @@
 .pipelineCard {
   width: 100%;
   padding: 22px 20px;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 24px;
-  background: var(--glass-200);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: var(--landing-surface-muted);
+  box-shadow: var(--landing-shadow);
   text-align: left;
 }
 
@@ -689,10 +710,10 @@
 .groupSelect {
   min-width: 140px;
   padding: 10px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--landing-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.66);
-  color: var(--ink);
+  background: var(--landing-surface);
+  color: var(--warm-fg1);
 }
 
 .tableWrap {
@@ -707,10 +728,10 @@
 .cohortTable th,
 .cohortTable td {
   padding: 14px 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--landing-border);
   text-align: left;
   font-size: 14px;
-  color: var(--warm-700);
+  color: var(--warm-fg2);
 }
 
 .cohortTable th {
@@ -738,7 +759,7 @@
   min-width: 54px;
   padding: 4px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--warm-bg);
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -757,7 +778,7 @@
 }
 
 .chartGridLine {
-  stroke: rgba(0, 0, 0, 0.06);
+  stroke: rgba(120, 107, 89, 0.18);
   stroke-width: 1;
 }
 
@@ -815,7 +836,7 @@
   height: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--warm-pill);
 }
 
 .stackSegment {
@@ -832,7 +853,8 @@
 .metricTileGrid div {
   padding: 14px 16px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid var(--landing-border);
+  background: var(--warm-bg);
 }
 
 .metricTileGrid span,
@@ -933,10 +955,10 @@
   gap: 10px;
   width: 100%;
   padding: 16px 18px;
-  border: 1px solid var(--glass-stroke);
+  border: 1px solid var(--landing-border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--warm-700);
+  background: var(--landing-surface);
+  color: var(--warm-fg2);
   text-align: left;
   cursor: pointer;
 }
@@ -947,9 +969,9 @@
   gap: 10px;
   min-width: min(360px, 100%);
   padding: 11px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--landing-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--landing-surface);
   color: var(--warm-600);
 }
 
@@ -999,8 +1021,8 @@
 .groupCard {
   width: 100%;
   border-radius: 24px;
-  border: 1px solid var(--glass-stroke);
-  background: var(--glass-200);
+  border: 1px solid var(--landing-border);
+  background: var(--landing-surface);
   text-align: left;
 }
 
@@ -1027,9 +1049,10 @@
 }
 
 .darkCard {
-  background: rgba(26, 24, 21, 0.82);
+  background: linear-gradient(160deg, #2f241d 0%, #4a3428 100%);
   color: #f3eee6;
   border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 36px rgba(44, 28, 20, 0.24);
 }
 
 .darkCard p,
@@ -1054,7 +1077,12 @@
 .flowList li {
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.flowList li {
+  border: 1px solid var(--landing-border);
+  background: var(--warm-bg);
 }
 
 .watchList strong,
@@ -1097,11 +1125,11 @@
   gap: 16px;
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid var(--glass-stroke);
-  background: var(--glass-300);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  box-shadow: var(--glass-shadow);
+  border: 1px solid var(--landing-border);
+  background: var(--landing-panel);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--landing-shadow);
 }
 
 .dock span {
@@ -1137,10 +1165,22 @@
 .secondaryButton:hover,
 .ghostButton:hover,
 .dock button:hover,
+.heroMiniCard:hover,
+.heroCard:hover,
+.metricCard:hover,
+.aimCard:hover,
+.comparisonCard:hover,
+.layerPanel:hover,
 .stageCard:hover,
 .groupCard:hover,
 .pipelineCard:hover,
 .layerButton:hover,
+.tableCard:hover,
+.chartCard:hover,
+.studioCard:hover,
+.assistantCard:hover,
+.flowCard:hover,
+.readingItem:hover,
 .suggestionPill:hover,
 .aimButton:hover,
 .fab:hover {
