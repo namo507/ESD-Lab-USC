@@ -7,6 +7,7 @@ import { epochReducer, tallyEpochs } from "@/components/qa/epochReducer";
 import { useEpochs, useEpochDecision, useParticipants } from "@/api/hooks";
 import { logAudit } from "@/lib/audit";
 import { useUi } from "@/store/ui";
+import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import type { EpochDecision } from "@/api/schemas";
 import styles from "./QA.module.css";
 
@@ -33,6 +34,8 @@ export function QA() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const selected = useUi((s) => s.qaSelectedEpoch);
   const setSelected = useUi((s) => s.setQaEpoch);
+  const setChatOpen = useUi((s) => s.setChatOpen);
+  const setChatSeed = useUi((s) => s.setChatSeed);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -104,6 +107,22 @@ export function QA() {
     return <div className={styles.empty}>Loading visit…</div>;
   }
 
+  const scopedFastPaths: FastPathPrompt[] = [
+    { lane: "qa",     label: `Explain ${subject.id} epoch ${ep.idx}`, prompt: `Walk me through why epoch ${ep.idx} on ${subject.id} ${subject.visit} has SQI ${ep.sqi.toFixed(2)} and flag ${ep.flag}. Recommend accept or reject.` },
+    { lane: "qa",     label: "Why SQI < 0.4 auto-reject",              prompt: "Why does this dashboard auto-reject epochs below SQI 0.4 and what edge cases still need a human pass?" },
+    { lane: "qa",     label: "Yield target rationale",                 prompt: "What yield target should I expect for a cga_6mo visit, and what visit-level fixes raise it the fastest?" },
+    { lane: "model",  label: "Effect on RMSSD",                        prompt: `If I keep my current accept/reject for ${subject.id} ${subject.visit}, how will the RMSSD point estimate shift versus the cohort baseline?` },
+    { lane: "model",  label: "Downstream HDA risk",                    prompt: `Project the HDA phase classifier confidence shift for ${subject.id} given my current QA decisions on this visit.` },
+    { lane: "redcap", label: "Push QA verdict to REDCap",              prompt: `Draft the REDCap visit_completion payload for ${subject.id} ${subject.visit} once I save these QA decisions.` },
+    { lane: "redcap", label: "Visit metadata cross-check",              prompt: `Cross-check the REDCap visit metadata against the Actiheart-5 capture for ${subject.id} ${subject.visit}. Flag mismatched timestamps.` },
+  ];
+
+  function fastPath(prompt: string) {
+    setChatSeed(prompt);
+    setChatOpen(true);
+    void logAudit({ action: "run.trigger", scope: "/qa/fast-path", detail: { visit: visitId } });
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.hero}>
@@ -127,6 +146,20 @@ export function QA() {
           <Button icon="check-check">Save QA decisions</Button>
         </div>
       </header>
+
+      <section className={styles.fastRow} aria-label="QA fast-paths">
+        <div className={styles.fastRowInner}>
+          <FastPaths tone="light" density="wide" prompts={scopedFastPaths} onSelect={fastPath} />
+        </div>
+        <AmbientOrbit
+          tone="sage"
+          size={150}
+          opacity={0.28}
+          spin={48}
+          waveform
+          className={styles.fastOrbit}
+        />
+      </section>
 
       <section className={styles.kpis}>
         <KPI label="Accepted" value={counts.accepted} unit={`/ ${total}`} sub="will feed HRV pipeline" />
@@ -183,6 +216,13 @@ export function QA() {
             <span className={styles.legendItem}><span className={styles.swatch} style={{ background: "var(--amber)" }} /> 0.3–0.5</span>
             <span className={styles.legendItem}><span className={styles.swatch} style={{ background: "var(--red)" }} /> &lt; 0.3</span>
             <span className={`${styles.legendNote} t-mono`}>auto-thresh: SQI &lt; 0.4</span>
+            <AmbientOrbit
+              tone="ocean"
+              size={64}
+              opacity={0.45}
+              spin={32}
+              className={styles.legendOrbit}
+            />
           </div>
         </Card>
 

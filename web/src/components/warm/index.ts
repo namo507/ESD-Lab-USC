@@ -9,3 +9,6 @@ export { ParticipantFlow } from "./ParticipantFlow";
 export { Typewriter } from "./Typewriter";
 export type { Insight, InsightKind } from "./Typewriter";
 export { AgenticQAPanel } from "./AgenticQAPanel";
+export { AmbientOrbit } from "./AmbientOrbit";
+export { FastPaths, FAST_PATHS } from "./FastPaths";
+export type { FastPathLane, FastPathPrompt } from "./FastPaths";

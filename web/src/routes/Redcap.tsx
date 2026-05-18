@@ -1,6 +1,19 @@
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
 import { useRedcapEvents } from "@/api/hooks";
+import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
+import { useUi } from "@/store/ui";
+import { logAudit } from "@/lib/audit";
 import styles from "./Redcap.module.css";
+
+const REDCAP_FAST_PATHS: FastPathPrompt[] = [
+  { lane: "redcap", label: "Last-hour fail triage",   prompt: "Triage every REDCap sync that failed in the last hour. Group by form, surface the auth or schema cause, and recommend a fix order." },
+  { lane: "redcap", label: "PHI column audit",        prompt: "Re-audit the PHI gate on every form in the active project. Flag any field where the strip rule is unset or stale." },
+  { lane: "redcap", label: "Missing DOB · open",      prompt: "List every open Intake record missing DOB or MRN. Group by site and surface the assigned coordinator." },
+  { lane: "qa",     label: "Sync vs QA mismatch",     prompt: "Cross-check tonight's REDCap visit_completion flags against QA epoch decisions. Flag any visit where REDCap says complete but QA yield is below 75%." },
+  { lane: "qa",     label: "Bayley-4 missingness",    prompt: "Build a missingness heatmap for Bayley-4 across active visits and rank the worst-offending fields." },
+  { lane: "model",  label: "Feature freshness",       prompt: "Which classifier features depend on REDCap fields that have not synced in 48 h? Rank by SHAP importance." },
+  { lane: "model",  label: "Cohort drift on sync gap", prompt: "Quantify how a 24 h REDCap sync gap shifts the VPT vs TD cohort feature distributions." },
+];
 
 interface FieldRow {
   k: string;
@@ -23,6 +36,14 @@ export function Redcap() {
   const okN = events.filter((e) => e.status === "ok").length;
   const warnN = events.filter((e) => e.status === "warn").length;
   const failN = events.filter((e) => e.status === "fail").length;
+  const setChatOpen = useUi((s) => s.setChatOpen);
+  const setChatSeed = useUi((s) => s.setChatSeed);
+
+  function fastPath(prompt: string) {
+    setChatSeed(prompt);
+    setChatOpen(true);
+    void logAudit({ action: "run.trigger", scope: "/redcap/fast-path" });
+  }
 
   return (
     <div className={styles.page}>
@@ -41,6 +62,20 @@ export function Redcap() {
           <Button icon="refresh-cw">Sync now</Button>
         </div>
       </header>
+
+      <section className={styles.fastRow} aria-label="REDCap fast-paths">
+        <div className={styles.fastRowInner}>
+          <FastPaths tone="light" density="wide" prompts={REDCAP_FAST_PATHS} onSelect={fastPath} />
+        </div>
+        <AmbientOrbit
+          tone="garnet"
+          size={170}
+          opacity={0.22}
+          spin={42}
+          waveform
+          className={styles.fastOrbit}
+        />
+      </section>
 
       <section className={styles.kpis}>
         <KPI label="Forms tracked" value="14" sub="versioned · v1–v4" insightId="redcap-forms" />
@@ -89,6 +124,14 @@ export function Redcap() {
         </Card>
 
         <Card pad={20}>
+          <div className={styles.fieldMapWrap}>
+            <AmbientOrbit
+              tone="garnet"
+              size={140}
+              opacity={0.16}
+              spin={48}
+              className={styles.fieldOrbit}
+            />
           <SectionLabel>Field map · medical_history_v1</SectionLabel>
           <div className={`${styles.fieldMap} t-mono`}>
             {FIELD_MAP.map((f) => (
@@ -104,6 +147,7 @@ export function Redcap() {
           <div className={styles.privacyNote}>
             PHI fields never leave the secure REDCap proxy — only hashed/derived columns are written to{" "}
             <code className="t-mono">processed/deidentified/</code>.
+          </div>
           </div>
         </Card>
       </div>

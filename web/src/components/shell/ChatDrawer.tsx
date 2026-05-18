@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { Send, Sparkles, X } from "lucide-react";
 import { fetchAssistantStatus, streamChat, type AssistantStatus, type ChatMessage } from "@/api/chatApi";
+import { FastPaths, type FastPathPrompt } from "@/components/warm/FastPaths";
+import { AmbientOrbit } from "@/components/warm/AmbientOrbit";
 import { useUi } from "@/store/ui";
 import styles from "./ChatDrawer.module.css";
 
-const SUGGESTIONS = [
-  "What does the HDA gauge tell me?",
-  "Why include preterm infants in an autism study?",
-  "How is the risk classifier validated?",
-  "What is RMSSD and why does it matter?",
-  "Walk me through the data pipeline.",
-] as const;
+const BUDDY_FAST_PATHS: FastPathPrompt[] = [
+  { lane: "qa",     label: "Explain SQI thresholds",      prompt: "What do the SQI thresholds (0.3 / 0.5 / 0.7) mean for an ECG epoch and how should I QA the borderline tiles?" },
+  { lane: "qa",     label: "When to reject an epoch?",    prompt: "Walk me through when I should reject an epoch versus mark it for review. Use the current NANO QA rubric." },
+  { lane: "model",  label: "Risk classifier validation",  prompt: "How is the NANO risk classifier validated? Cover AUROC, calibration, and out-of-site holdout." },
+  { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
+  { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
+  { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
+];
 
 interface Message {
   id: string;
@@ -198,8 +201,15 @@ export function ChatDrawer() {
         aria-label="ESD Buddy"
         role="dialog"
       >
-        <div className={styles.head}>
-          <div>
+        <div className={styles.head} style={{ position: "relative", overflow: "hidden" }}>
+          <AmbientOrbit
+            tone="garnet"
+            size={140}
+            opacity={0.16}
+            spin={42}
+            style={{ position: "absolute", top: -36, right: -36, pointerEvents: "none" }}
+          />
+          <div style={{ position: "relative", zIndex: 1 }}>
             <div className={styles.headTitle}>ESD Buddy</div>
             <div className={styles.headSub}>Grounded in NANO study context</div>
             <div className={styles.statusPill}>
@@ -239,18 +249,12 @@ export function ChatDrawer() {
 
         {messages.length <= 1 && (
           <div className={styles.suggestions}>
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                className={styles.suggestion}
-                onClick={() => void send(suggestion)}
-                disabled={busy}
-              >
-                <span className={styles.arrow}>→</span>
-                {suggestion}
-              </button>
-            ))}
+            <FastPaths
+              tone="light"
+              density="compact"
+              prompts={BUDDY_FAST_PATHS}
+              onSelect={(p) => void send(p)}
+            />
           </div>
         )}
 

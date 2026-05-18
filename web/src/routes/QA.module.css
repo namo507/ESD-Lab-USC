@@ -75,3 +75,20 @@
 .legendItem { display: flex; align-items: center; gap: 4px; }
 .swatch { width: 8px; height: 8px; }
 .legendNote { margin-left: auto; }
+.legendOrbit { position: absolute; right: -8px; bottom: -12px; pointer-events: none; }
+
+.fastRow {
+  position: relative;
+  display: block;
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(255,255,255,0.85) 100%);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.fastRowInner { position: relative; z-index: 1; }
+.fastOrbit { position: absolute; top: -32px; right: -20px; z-index: 0; pointer-events: none; }
+
+/* Allow the legend orbit to anchor without breaking flex flow */
+.legend { position: relative; }

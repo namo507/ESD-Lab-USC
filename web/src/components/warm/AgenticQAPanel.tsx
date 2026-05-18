@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/primitives";
 import { Typewriter, type Insight } from "./Typewriter";
+import { FastPaths } from "./FastPaths";
+import { AmbientOrbit } from "./AmbientOrbit";
 import { streamCompletion } from "@/lib/lmStudio";
 import { scrubPhi } from "@/lib/phiScrub";
 import { logAudit } from "@/lib/audit";
@@ -39,19 +41,18 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
+  async function runPrompt(raw: string) {
+    if (!raw.trim()) return;
     const controller = new AbortController();
     abortRef.current?.abort();
     abortRef.current = controller;
     setStreamed("");
     setStatus("streaming");
-    const probe = scrubPhi(prompt);
+    const probe = scrubPhi(raw);
     setRedactionCount(probe.redactions.reduce((s, r) => s + r.count, 0));
     void logAudit({ action: "run.trigger", scope: "/agentic/prompt", detail: { redactions: probe.redactions.length } });
     try {
-      const stream = streamCompletion({ prompt, signal: controller.signal });
+      const stream = streamCompletion({ prompt: raw, signal: controller.signal });
       let acc = "";
       for await (const ev of stream) {
         if (ev.delta) {
@@ -69,9 +70,27 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
     }
   }
 
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    await runPrompt(prompt);
+  }
+
+  function fireFastPath(p: string) {
+    setPrompt(p);
+    void runPrompt(p);
+  }
+
   return (
     <div className="agentic-panel agentic-glow relative px-6 py-6 overflow-hidden min-h-[320px]">
-      <div className="relative">
+      <AmbientOrbit
+        tone="gold"
+        size={220}
+        opacity={0.32}
+        spin={36}
+        waveform
+        className="absolute -top-10 -right-10 z-0"
+      />
+      <div className="relative z-[1]">
         <div className="flex justify-between items-start mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -103,6 +122,10 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
               </span>
             )}
           </div>
+        </div>
+
+        <div className="mb-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5">
+          <FastPaths tone="dark" onSelect={fireFastPath} />
         </div>
 
         <form onSubmit={submit} className="flex items-center gap-2 mb-3">

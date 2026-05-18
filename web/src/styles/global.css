@@ -212,8 +212,21 @@ select:focus-visible {
   border: 0;
 }
 
+/* Ambient orbit (decorative SVG behind metric cards) */
+@keyframes ambient-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes ambient-orbit-spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+@keyframes ambient-orbit-drift {
+  0%, 100% { transform: translateY(0); opacity: 0.55; }
+  50%      { transform: translateY(-1.5px); opacity: 1; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .pulse-dot, .flow-line { animation: none !important; }
+  [style*="ambient-orbit"] { animation: none !important; }
   * { transition: none !important; }
 }
