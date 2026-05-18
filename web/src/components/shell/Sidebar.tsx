@@ -21,7 +21,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "ops",
     title: "Lab Operations",
     items: [
-      { to: "/", label: "Overview", icon: "layout-dashboard" },
+      { to: "/overview", label: "Overview", icon: "layout-dashboard" },
       { to: "/participants", label: "Intakes & Stories", icon: "heart-handshake" },
       { to: "/qa", label: "Window QA", icon: "shield-check" },
     ],
@@ -30,7 +30,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "studies",
     title: "Active Studies",
     items: [
-      { to: "/", label: "NANO Study", icon: "activity" },
+      { to: "/overview", label: "NANO Study", icon: "activity" },
       { to: "/participants", label: "Home Study", icon: "home" },
       { to: "/participants", label: "FiSCAL-ASD", icon: "baby" },
     ],
@@ -92,7 +92,7 @@ export function Sidebar({ study, qaPending, enrolled }: SidebarProps) {
                 <NavLink
                   key={`${g.id}-${i}`}
                   to={it.to}
-                  end={it.to === "/"}
+                  end={it.to === "/overview"}
                   className={({ isActive }) =>
                     `relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-sans text-left transition ${
                       isActive

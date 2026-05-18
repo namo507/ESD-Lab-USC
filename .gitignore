@@ -149,5 +149,10 @@ temp/
 dashboard/data/.readings_cache.json
 
 # ─── Models (large binary files; store locally or in LFS) ────
+models/
+*.gguf
+*.safetensors
+*.bin
+config/llm_model.local.json
 models/local_llms/
 models/_metrics.json

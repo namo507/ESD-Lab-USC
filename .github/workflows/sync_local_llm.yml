@@ -1,0 +1,39 @@
+name: Sync Local LLM Config
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * 1'
+  push:
+    paths:
+      - 'scripts/select_best_local_llm.py'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install requests 'huggingface-hub>=0.23.0'
+
+      - name: Run model selector
+        run: python scripts/select_best_local_llm.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --exit-code config/llm_model.json || (
+            git add config/llm_model.json &&
+            git commit -m "chore: update llm_model.json [skip ci]" &&
+            git push
+          )

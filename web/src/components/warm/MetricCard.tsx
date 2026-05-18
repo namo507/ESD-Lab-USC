@@ -18,6 +18,7 @@ interface MetricCardProps {
   /** Replay counter from 0 when this changes (e.g., force-sync). */
   syncTick?: number;
   formatter?: (v: number) => string;
+  insightId?: string;
 }
 
 const DOT: Record<MetricAccent, string> = {
@@ -58,9 +59,13 @@ export function MetricCard({
   decimals = 0,
   syncTick = 0,
   formatter,
+  insightId,
 }: MetricCardProps) {
   return (
-    <div className="relative overflow-hidden rounded-xl bg-white border border-[color:var(--warm-border)] shadow-card min-h-[152px]">
+    <div
+      className="relative overflow-hidden rounded-xl bg-white border border-[color:var(--warm-border)] shadow-card min-h-[152px]"
+      data-insight={insightId}
+    >
       <div className={`absolute inset-0 pointer-events-none ${WASH[accent]}`} />
       <div className="relative flex flex-col h-full p-[22px]">
         <div className="flex justify-between items-start">

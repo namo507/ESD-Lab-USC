@@ -18,6 +18,7 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
+DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
 DEFAULT_MODEL_ID = "bartowski/Qwen2.5-1.5B-Instruct-GGUF"
 DEFAULT_MODEL_DIR = PROJECT_ROOT / "models" / "local_llms" / "Qwen2.5-1.5B-Instruct-GGUF"
 DEFAULT_MODEL_FILE = "Qwen2.5-1.5B-Instruct-Q3_K_S.gguf"
@@ -126,6 +127,15 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
 }
 
 
+def _read_llm_model_config() -> dict[str, Any]:
+    if not DEFAULT_LLM_CONFIG_PATH.exists():
+        return {}
+    try:
+        return json.loads(DEFAULT_LLM_CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
 class AssistantUnavailable(RuntimeError):
     """Raised when the assistant is configured but cannot answer yet."""
 
@@ -155,22 +165,38 @@ class AssistantConfig:
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
+        llm_config = _read_llm_model_config()
+        config_model_dir = PROJECT_ROOT / "models" if llm_config else DEFAULT_MODEL_DIR
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
-            model_id=os.getenv("DASHBOARD_ASSISTANT_MODEL_ID", DEFAULT_MODEL_ID),
-            model_dir=Path(os.getenv("DASHBOARD_ASSISTANT_MODEL_DIR", str(DEFAULT_MODEL_DIR))),
-            model_file=os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE", DEFAULT_MODEL_FILE),
+            model_id=(
+                os.getenv("DASHBOARD_ASSISTANT_MODEL_ID")
+                or llm_config.get("repo_id")
+                or DEFAULT_MODEL_ID
+            ),
+            model_dir=Path(
+                os.getenv("DASHBOARD_ASSISTANT_MODEL_DIR")
+                or os.getenv("LLM_MODEL_DIR")
+                or str(config_model_dir)
+            ),
+            model_file=(
+                os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE")
+                or llm_config.get("filename")
+                or DEFAULT_MODEL_FILE
+            ),
             auto_download=_parse_bool(
                 os.getenv("DASHBOARD_ASSISTANT_AUTO_DOWNLOAD"),
                 default=False,
             ),
             device_preference=os.getenv("DASHBOARD_ASSISTANT_DEVICE", "cpu"),
             max_new_tokens=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS"),
-                default=DEFAULT_MAX_NEW_TOKENS,
+                os.getenv("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS")
+                or os.getenv("LLM_MAX_TOKENS"),
+                default=int(llm_config.get("max_tokens") or DEFAULT_MAX_NEW_TOKENS),
             ),
             temperature=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE"),
+                os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE")
+                or os.getenv("LLM_TEMPERATURE"),
                 default=0.05,
             ),
             top_p=_parse_float(os.getenv("DASHBOARD_ASSISTANT_TOP_P"), default=0.9),
@@ -180,22 +206,24 @@ class AssistantConfig:
             ),
             min_available_memory_gib=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_MIN_MEMORY_GIB"),
-                default=1.2,
+                default=float(llm_config.get("min_memory_gib") or 1.2),
             ),
             history_turns=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_HISTORY_TURNS"),
                 default=6,
             ),
             context_window=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_CONTEXT_WINDOW"),
-                default=DEFAULT_CONTEXT_WINDOW,
+                os.getenv("DASHBOARD_ASSISTANT_CONTEXT_WINDOW")
+                or os.getenv("LLM_N_CTX"),
+                default=int(llm_config.get("context_length") or DEFAULT_CONTEXT_WINDOW),
             ),
             batch_size=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_BATCH_SIZE"),
                 default=DEFAULT_BATCH_SIZE,
             ),
             thread_count=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_THREADS"),
+                os.getenv("DASHBOARD_ASSISTANT_THREADS")
+                or os.getenv("LLM_N_THREADS"),
                 default=DEFAULT_THREAD_COUNT,
             ),
         )
@@ -279,7 +307,11 @@ class DashboardChatAssistant:
             "last_error": self._last_error,
         }
 
-    def answer(self, message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    def _prepare_request(
+        self,
+        message: str,
+        history: list[dict[str, str]] | None = None,
+    ) -> tuple[dict[str, Any], list[dict[str, str]], Any]:
         prompt = (message or "").strip()
         if not prompt:
             raise AssistantUnavailable(
@@ -293,13 +325,16 @@ class DashboardChatAssistant:
             raise AssistantUnavailable(status["message"], status, http_status=503)
 
         context = self.build_context(prompt)
-        generator = self._ensure_generator()
-
         messages = self._build_messages(
             question=prompt,
             history=history or [],
             context_block=context["context"],
         )
+        generator = self._ensure_generator()
+        return context, messages, generator
+
+    def answer(self, message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
+        context, messages, generator = self._prepare_request(message, history)
 
         try:
             output = generator.create_chat_completion(
@@ -329,6 +364,29 @@ class DashboardChatAssistant:
             "citations": context["citations"],
             "status": self.get_status(),
         }
+
+    def stream(self, message: str, history: list[dict[str, str]] | None = None):
+        _context, messages, generator = self._prepare_request(message, history)
+
+        try:
+            chunks = generator.create_chat_completion(
+                messages=messages,
+                max_tokens=self.config.max_new_tokens,
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+                stream=True,
+            )
+            for chunk in chunks:
+                choices = (chunk or {}).get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content") or ""
+                if content:
+                    yield str(content)
+        except Exception as exc:  # pragma: no cover - depends on runtime model stack
+            self._last_error = f"Assistant generation failed: {exc}"
+            raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
 
     def build_context(self, question: str) -> dict[str, Any]:
         payload = self._load_dashboard_payload()
@@ -478,6 +536,7 @@ class DashboardChatAssistant:
             explicit_path = model_dir / self.config.model_file
             if explicit_path.exists():
                 return explicit_path
+            return None
 
         candidates = sorted(model_dir.glob("*.gguf")) if model_dir.exists() else []
         return candidates[0] if candidates else None

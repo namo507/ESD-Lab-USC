@@ -9,8 +9,8 @@ Used by the uptime GitHub Action and runnable locally for spot checks.
 Checks
 ------
 1. URL responds with HTTP 200 within `--timeout` seconds.
-2. Body length > `--min-bytes` (default 4 KB) — guards against an empty
-   shell rendered while the bundler payload is still uploading.
+2. Body length > `--min-bytes` (default 4 KB) unless the response is a valid
+    lightweight SPA shell with hashed asset references.
 3. Body contains every string from `--must-contain` (comma-separated).
    Defaults: the deploy-stamp meta tag and the wordmark.
 4. Optional `--max-stamp-age-hours` — fails if the embedded
@@ -41,6 +41,14 @@ import urllib.request
 
 DEFAULT_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_MUST_CONTAIN = "esd-deploy-stamp,NANO"
+
+
+def _looks_like_spa_shell(body: str) -> bool:
+    return (
+        '<div id="root"></div>' in body
+        and re.search(r'src="/assets/index-[^"]+\.js"', body) is not None
+        and re.search(r'href="/assets/index-[^"]+\.css"', body) is not None
+    )
 
 
 def _fetch(url: str, timeout: int) -> tuple[int, bytes]:
@@ -84,14 +92,16 @@ def check(
         print(f"[FAIL] expected 200, got {status} from {url}")
         return 1
 
-    if len(raw) < min_bytes:
+    body = raw.decode("utf-8", errors="ignore")
+    spa_shell = _looks_like_spa_shell(body)
+
+    if len(raw) < min_bytes and not spa_shell:
         print(
             f"[FAIL] body too small: {len(raw)} bytes < min {min_bytes} "
             f"(suspect empty/stub page)"
         )
         return 1
 
-    body = raw.decode("utf-8", errors="ignore")
     missing = [s for s in must_contain if s and s not in body]
     if missing:
         print(f"[FAIL] body missing required strings: {missing}")
@@ -120,7 +130,7 @@ def check(
 
     print(
         f"[OK] {url} responded 200 with {len(raw):,} bytes "
-        f"(stamp={stamp or 'n/a'})"
+        f"(stamp={stamp or 'n/a'}, spa_shell={'yes' if spa_shell else 'no'})"
     )
     return 0
 

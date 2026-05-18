@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/AppShell";
 
+const Landing = lazy(() => import("@/routes/Landing").then((m) => ({ default: m.Landing })));
 const Overview = lazy(() => import("@/routes/Overview").then((m) => ({ default: m.Overview })));
 const Participants = lazy(() => import("@/routes/Participants").then((m) => ({ default: m.Participants })));
 const ParticipantDetail = lazy(() => import("@/routes/ParticipantDetail").then((m) => ({ default: m.ParticipantDetail })));
@@ -30,8 +31,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Suspense fallback={<PageFallback />}>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route element={<AppShell />}>
-            <Route path="/" element={<Overview />} />
+            <Route path="/overview" element={<Overview />} />
             <Route path="/participants" element={<Participants />} />
             <Route path="/participants/:id" element={<ParticipantDetail />} />
             <Route path="/qa" element={<QA />} />

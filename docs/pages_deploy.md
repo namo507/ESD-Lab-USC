@@ -1,123 +1,101 @@
-# Cloudflare Pages auto-deploy + uptime
+# Cloudflare Pages deploy + uptime
 
 This document covers how `https://esd-lab-namo.pages.dev/` is built, deployed,
-and monitored. The goal is "the canonical URL is never down, and any change
-under `web/` reaches production within a couple of minutes of pushing to
-`main`".
+and smoke-tested now that the public site is the React/Vite dashboard in
+`web/`.
 
 ## Files involved
 
 | Path | Role |
 |------|------|
-| `web/dashboard-source.html` | Standalone Dashboard ESD v2 bundle. Source of truth for the dashboard payload. |
-| `web/pages-overlay.css` | Layout audit fix bundle. Applies the warm-glass design system corrections on top of the bundle. |
-| `web/pages-overlay.js` | Runtime patches — scroll progress, reveal tuning, shell motion, nav/dock behavior, hub injection, empty-state handling. |
-| `scripts/build_pages_site.py` | Stitches source + overlays into `dist/pages-wrapper/index.html`. |
-| `scripts/watch_pages_site.py` | Watches the canonical Pages inputs and rebuilds/redeploys `dist/pages-wrapper/` on local changes. |
-| `scripts/check_site_health.py` | Health probe used by the uptime workflow and runnable locally. |
-| `.github/workflows/deploy-pages.yml` | On push to `main` (or manual / repository_dispatch), builds the artifact and runs `wrangler pages deploy`. |
-| `.github/workflows/uptime-monitor.yml` | Cron every 15 min — probes the live URL, opens an issue on failure, fires `repository_dispatch: redeploy-pages` to auto-recover. |
+| `web/src/**` | Source of truth for the public React dashboard UI. |
+| `web/public/**` | Static public assets copied into the Vite build. |
+| `scripts/build_pages_site.py` | Packages `web/build/` into `dist/pages-wrapper/`, injects deploy metadata, and generates a Pages `_worker.js` proxy for `/api/*`. |
+| `dashboard/public/pages_wrapper/manifest.json` | Records the latest runtime-share origin when a quick tunnel is refreshed. Useful when packaging a manual deploy without an explicit `PAGES_API_ORIGIN`. |
+| `scripts/share_dashboard.sh` | Starts the local dashboard runtime plus Cloudflare tunnel and refreshes the runtime-share preview wrapper. |
+| `scripts/check_site_health.py` | Health probe used by the uptime workflow and local spot checks. Accepts either the older large HTML shell or the current lightweight SPA shell. |
+| `.github/workflows/deploy-pages.yml` | Builds the SPA, packages the worker-backed Pages artifact, deploys it with Wrangler, then runs a smoke test. |
+| `.github/workflows/uptime-monitor.yml` | Probes the live URL on a schedule and can trigger a redeploy when the public site is unhealthy. |
 
-`dist/pages-wrapper/` is git-ignored; the workflow regenerates it on every run.
+`dist/pages-wrapper/` is git-ignored and rebuilt on every deploy.
 
-The old cloudflared runtime wrapper is now separate. It builds to
-`dist/pages-runtime-wrapper/` and can be published to a non-production Pages
-preview branch without touching the canonical `main` deployment.
+## Current production shape
+
+- The public Pages site serves the React SPA from `web/build/`.
+- Dashboard data is intentionally mocked in production by building with `VITE_USE_MOCKS=true`.
+- Live assistant chat still works because the build emits a Cloudflare Pages `_worker.js` file that proxies `/api/*` to the currently shared assistant backend.
+- External `200` rewrites in `_redirects` are not enough for this on Cloudflare Pages because Pages only supports proxy-style rewrites to relative paths on the same site.
 
 ## How a change reaches production
 
-1. Edit the source — typically `web/pages-overlay.css` or `web/pages-overlay.js`,
-   occasionally `web/dashboard-source.html` when a new bundle export is
-   produced from the design tool.
-2. Commit and push to `main`.
-3. `deploy-pages.yml` runs: builds the artifact, deploys via `wrangler pages
-   deploy`, then smoke-tests the live URL.
-4. The deploy stamp (`<meta name="esd-deploy-stamp">`) embedded by the build
-   script appears in the bottom-left of the page so you can verify the new
-   artifact is live.
+1. Edit the React app in `web/src/` or one of the deployment helpers.
+2. Commit and push to `main`, or run the workflow manually.
+3. `deploy-pages.yml` installs frontend dependencies, builds the Vite app, packages `dist/pages-wrapper/`, then deploys that directory with `wrangler pages deploy`.
+4. The build step injects three debug metas into `index.html`:
+   - `esd-deploy-stamp`
+   - `esd-build-sha`
+   - `esd-api-origin`
 
-## How uptime is enforced
+## Local deployment flow
 
-`uptime-monitor.yml` runs every 15 minutes. It calls
-`scripts/check_site_health.py`, which:
+Build the SPA and package the Pages artifact:
 
-- requires HTTP 200 within 25 s
-- requires body ≥ 8 KB (catches empty / stub responses)
-- requires the `esd-deploy-stamp` meta and the `NANO` wordmark in the body
-- fails if the deploy stamp is older than 168 h (7 days)
+```bash
+make pages-build
+```
 
-On failure, the workflow:
+Start a live assistant backend and quick tunnel:
 
-1. Posts (or comments on) a single open GitHub issue labeled `uptime`.
-2. Calls the GitHub dispatch API with `event_type: redeploy-pages`, which
-   re-triggers `deploy-pages.yml` and re-pushes the artifact. Most transient
-   Pages edge issues clear themselves on a fresh push.
+```bash
+bash scripts/share_dashboard.sh --continuous --mode quick
+```
 
-On recovery, the issue is auto-closed.
+Package the Pages artifact against a known backend origin explicitly:
+
+```bash
+PAGES_API_ORIGIN=https://your-live-origin.trycloudflare.com \
+python scripts/build_pages_site.py
+```
+
+Deploy the artifact manually:
+
+```bash
+npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper \
+  --project-name esd-lab-namo \
+  --branch main \
+  --commit-dirty=true
+```
+
+## Health checks
+
+Probe production:
+
+```bash
+python scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/
+python scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/ --max-stamp-age-hours 24
+```
+
+Check the live assistant proxy:
+
+```bash
+curl https://esd-lab-namo.pages.dev/api/assistant/status
+curl -X POST https://esd-lab-namo.pages.dev/api/chat \
+  -H 'Content-Type: application/json' \
+  --data '{"message":"How many indexed readings are available?","history":[]}'
+```
 
 ## One-time setup
 
 The workflows require two repo secrets:
 
-- `CLOUDFLARE_API_TOKEN` — an API token with **Account · Cloudflare Pages ·
-  Edit** permission for the `esd-lab-namo` project. Create it at
-  <https://dash.cloudflare.com/profile/api-tokens>.
-- `CLOUDFLARE_ACCOUNT_ID` — the account ID shown on the Cloudflare dashboard
-  sidebar.
+- `CLOUDFLARE_API_TOKEN` — an API token with **Account · Cloudflare Pages · Edit** permission for the `esd-lab-namo` project.
+- `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID for that Pages project.
 
-Add both at *Settings → Secrets and variables → Actions → New repository
-secret*.
-
-The Cloudflare Pages project itself must already exist
-(`wrangler pages project create esd-lab-namo` if not). The project's build
-output directory in the Cloudflare dashboard can stay blank — the deploy
-workflow ships a pre-built directory, so Pages does no build of its own.
-
-## Running locally
-
-Rebuild the artifact:
-
-```bash
-make pages-build
-open dist/pages-wrapper/index.html
-```
-
-Watch local `web/` edits and auto-publish them to the canonical Pages site:
-
-```bash
-make pages-watch
-```
-
-Build only, without a deploy:
-
-```bash
-python scripts/watch_pages_site.py --once --no-deploy
-```
-
-Probe production:
-
-```bash
-python scripts/check_site_health.py
-python scripts/check_site_health.py --max-stamp-age-hours 24
-```
-
-Force a redeploy without pushing code:
-
-```bash
-gh workflow run deploy-pages.yml
-```
+If you want unattended assistant proxying from GitHub Actions, also set a repo variable such as `PAGES_API_ORIGIN` to a stable backend origin. Without that, manual deploys can still package against the latest tunnel origin or manifest.
 
 ## Why this design
 
-- **No build step on Cloudflare's side.** The artifact is built in CI from
-  pinned Python + Node, then uploaded as static files. No surprise
-  failures from Pages picking up a new framework version.
-- **Layout fixes live as an overlay**, not as a fork of the bundle. When a
-  new dashboard export drops, only `web/dashboard-source.html` changes — the
-  overlay CSS and JS continue to apply.
-- **Local auto-publish now watches the canonical site inputs directly.** The
-  runtime quick-share wrapper lives on its own preview branch, so quick-share
-  restarts can no longer overwrite the production Pages alias.
-- **Self-healing via the uptime monitor.** A transient edge failure or a
-  missing recent deploy stamp triggers a fresh `wrangler pages deploy`
-  automatically.
+- **Pages stays deterministic.** CI ships a prebuilt directory instead of letting Cloudflare infer a framework build.
+- **The assistant proxy lives at the edge.** `_worker.js` handles `/api/*` so the public site can keep same-origin API calls while the backend runs behind a separate tunnel.
+- **Production remains smooth without a full backend port.** Mocked dashboard data avoids exposing half-implemented API routes while live chat still works.
+- **The runtime-share preview stays separate from production.** Quick-tunnel refreshes can update a stable preview wrapper without overwriting the canonical Pages alias.

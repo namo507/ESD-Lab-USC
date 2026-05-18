@@ -4,6 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TopNav } from "./TopNav";
 import { Sidebar } from "./Sidebar";
 import { HipaaBanner } from "./HipaaBanner";
+import { Buddy } from "./Buddy";
+import { ChatDrawer } from "./ChatDrawer";
 import { useIdleTimer } from "./useIdleTimer";
 import { useStudySummary, useStages, useRuns } from "@/api/hooks";
 import { useUi } from "@/store/ui";
@@ -19,6 +21,8 @@ export interface ShellContext {
 export function AppShell() {
   const showHipaa = useUi((s) => s.showHipaa);
   const setHipaa = useUi((s) => s.setHipaa);
+  const toggleChat = useUi((s) => s.toggleChat);
+  const setChatOpen = useUi((s) => s.setChatOpen);
   const density = useUi((s) => s.density);
 
   const { data: study } = useStudySummary();
@@ -35,6 +39,23 @@ export function AppShell() {
     void logAudit({ action: "route.navigate", scope: location.pathname });
   }, [location.pathname]);
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        toggleChat();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setChatOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toggleChat, setChatOpen]);
+
   const idleMinutes = useIdleTimer(() => {
     if (import.meta.env.DEV) console.warn("idle timeout reached");
   });
@@ -50,6 +71,7 @@ export function AppShell() {
 
   const qaPending = stages?.find((s) => s.id === "qa")?.inflight ?? 0;
   const enrolled = study?.enrolled ?? 0;
+  const showHipaaBanner = import.meta.env.PROD ? true : showHipaa;
 
   const safeStudy = study ?? {
     enrolled: 0,
@@ -71,7 +93,7 @@ export function AppShell() {
           onForceSync={forceSync}
           idleMinutes={idleMinutes}
         />
-        {showHipaa && <HipaaBanner onDismiss={() => setHipaa(false)} idleMinutes={idleMinutes} />}
+        {showHipaaBanner && <HipaaBanner onDismiss={import.meta.env.PROD ? undefined : () => setHipaa(false)} idleMinutes={idleMinutes} />}
 
         <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main" style={{ maxWidth: 1480 }}>
           <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
@@ -80,6 +102,9 @@ export function AppShell() {
             <span>NIH R01 MH123456 · IRB Pro00115234 · v0.15.0</span>
           </footer>
         </main>
+
+        <Buddy />
+        <ChatDrawer />
       </div>
       <div className={styles.skip}>
         <a href="#main" className={styles.skipLink}>Skip to main content</a>

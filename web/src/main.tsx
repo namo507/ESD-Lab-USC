@@ -8,18 +8,22 @@ import App from "./App";
 const useMocks =
   import.meta.env.VITE_USE_MOCKS === "true" || import.meta.env.DEV;
 
-if (useMocks) {
-  const { installMockServer } = await import("./api/mockServer");
-  installMockServer();
+async function bootstrap() {
+  if (useMocks) {
+    const { installMockServer } = await import("./api/mockServer");
+    installMockServer();
+  }
+
+  const root = document.getElementById("root");
+  if (!root) throw new Error("Missing #root");
+
+  createRoot(root).render(
+    <StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </StrictMode>,
+  );
 }
 
-const root = document.getElementById("root");
-if (!root) throw new Error("Missing #root");
-
-createRoot(root).render(
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-);
+void bootstrap();

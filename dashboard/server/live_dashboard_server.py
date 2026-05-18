@@ -42,6 +42,7 @@ RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
 
 logger = get_pipeline_logger(__name__)
+ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
 
 
 def atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
@@ -362,10 +363,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self.assistant.get_status())
             return
 
+        if request_path == "/api/assistant/status":
+            self._send_json(self._assistant_status_payload())
+            return
+
         super().do_GET()
 
     def do_POST(self) -> None:
         request_path = urlparse(self.path).path
+        if request_path == "/api/assistant/chat":
+            self._handle_stream_chat()
+            return
+
         if request_path != "/api/chat":
             self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
             return
@@ -431,6 +440,77 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _assistant_status_payload(self) -> dict[str, Any]:
+        payload = self.assistant.get_status()
+        if payload.get("ready"):
+            status = "ready"
+            error = None
+        elif payload.get("state") in {"disabled", "model-missing", "unloaded"}:
+            status = "unloaded"
+            error = payload.get("message")
+        else:
+            status = "error"
+            error = payload.get("last_error") or payload.get("message")
+
+        return {
+            "status": status,
+            "error": error,
+            "model": payload.get("model_id"),
+        }
+
+    def _send_ndjson(
+        self,
+        chunks: list[dict[str, Any]],
+        *,
+        status: int | HTTPStatus = HTTPStatus.OK,
+    ) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        for chunk in chunks:
+            self.wfile.write(json.dumps(chunk).encode("utf-8") + b"\n")
+            self.wfile.flush()
+
+    def _handle_stream_chat(self) -> None:
+        try:
+            payload = self._read_json_body()
+            message = (payload.get("message") or "").strip()
+            history = payload.get("history") or []
+            if not message:
+                self._send_json({"error": "Please ask a question before submitting."}, status=HTTPStatus.BAD_REQUEST)
+                return
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        if not ASSISTANT_CHAT_LOCK.acquire(blocking=False):
+            self._send_ndjson([
+                {"error": "model busy — another request in flight"},
+            ])
+            return
+
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+
+            for delta in self.assistant.stream(message, history=history):
+                self.wfile.write(json.dumps({"delta": delta}).encode("utf-8") + b"\n")
+                self.wfile.flush()
+            self.wfile.write(json.dumps({"done": True}).encode("utf-8") + b"\n")
+            self.wfile.flush()
+        except AssistantUnavailable as exc:
+            self.wfile.write(json.dumps({"error": str(exc)}).encode("utf-8") + b"\n")
+            self.wfile.flush()
+        except Exception as exc:  # pragma: no cover - defensive API path
+            logger.exception("Streaming chat request failed")
+            self.wfile.write(json.dumps({"error": f"Unexpected chat failure: {exc}"}).encode("utf-8") + b"\n")
+            self.wfile.flush()
+        finally:
+            ASSISTANT_CHAT_LOCK.release()
 
 
 def main(argv: Optional[list[str]] = None) -> int:

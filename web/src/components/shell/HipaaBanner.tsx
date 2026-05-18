@@ -1,7 +1,7 @@
 import { Icon, Gloss } from "@/components/primitives";
 
 interface HipaaBannerProps {
-  onDismiss: () => void;
+  onDismiss?: () => void;
   idleMinutes: number;
 }
 
@@ -12,7 +12,7 @@ interface HipaaBannerProps {
 export function HipaaBanner({ onDismiss, idleMinutes }: HipaaBannerProps) {
   return (
     <div
-      className="flex items-center gap-3 px-8 py-2 text-[12px] text-[color:#5a3033] font-sans"
+      className="flex items-center gap-3 px-8 py-2 text-[12px] text-[color:var(--usc-garnet-800)] font-sans"
       style={{
         background: "linear-gradient(90deg, rgba(115,0,10,0.08) 0%, rgba(115,0,10,0.02) 100%)",
         borderBottom: "1px solid rgba(115,0,10,0.15)",
@@ -31,14 +31,16 @@ export function HipaaBanner({ onDismiss, idleMinutes }: HipaaBannerProps) {
       <span className="ml-auto font-mono text-[10px] text-[color:var(--warm-fg4)]">
         IRB Pro00115234 · session · {idleMinutes} m
       </span>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="bg-transparent border-0 p-1 cursor-pointer leading-none"
-        aria-label="Dismiss HIPAA banner"
-      >
-        <Icon name="x" size={13} stroke={1.5} color="var(--warm-fg4)" />
-      </button>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="bg-transparent border-0 p-1 cursor-pointer leading-none"
+          aria-label="Dismiss HIPAA banner"
+        >
+          <Icon name="x" size={13} stroke={1.5} color="var(--warm-fg4)" />
+        </button>
+      )}
     </div>
   );
 }

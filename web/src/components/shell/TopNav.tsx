@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@/components/primitives";
+import { useUi } from "@/store/ui";
 
 interface TopNavProps {
   query: string;
@@ -18,6 +19,9 @@ interface TopNavProps {
 export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: TopNavProps) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
+  const setChatOpen = useUi((state) => state.setChatOpen);
+  const setChatSeed = useUi((state) => state.setChatSeed);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -26,6 +30,18 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
 
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+
+  function openChatWithQuery(nextQuery: string) {
+    const trimmed = nextQuery.trim();
+    setChatSeed(trimmed ? trimmed : null);
+    setChatOpen(true);
+  }
+
+  function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    openChatWithQuery(searchRef.current?.value ?? event.currentTarget.value);
+  }
 
   return (
     <header
@@ -44,9 +60,12 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
       <label className="relative flex-[0_1_320px] min-w-[180px] bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)] rounded-full pl-9 pr-3.5 py-2 flex items-center gap-2">
         <Icon name="sparkles" size={14} stroke={1.5} color="var(--usc-garnet)" style={{ position: "absolute", left: 12 }} />
         <input
+          ref={searchRef}
           aria-label="Ask the lab"
           value={query}
           onChange={(e) => onSearch(e.target.value)}
+          onFocus={() => openChatWithQuery(searchRef.current?.value ?? query)}
+          onKeyDown={onSearchKeyDown}
           placeholder="Ask the lab · NANO-0173 RMSSD trend?"
           className="flex-1 bg-transparent border-none outline-none text-[13px] text-[color:var(--warm-fg1)]"
         />

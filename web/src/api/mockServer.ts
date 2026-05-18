@@ -99,6 +99,47 @@ const REDCAP_EVENTS: RedcapEvent[] = [
   { ts: "08:30", form: "medical_history_v1", n: 2, status: "fail", note: "token expired · retry" },
 ];
 
+interface MockChatStreamChunk {
+  delta?: string;
+  done?: boolean;
+  error?: string;
+}
+
+function mockAssistantReply(message: string): string {
+  const q = message.toLowerCase();
+
+  if (q.includes("rmssd")) {
+    return "RMSSD is the root mean square of successive IBI differences. In this dashboard it is used as a vagal-tone marker, so higher values generally indicate stronger parasympathetic regulation during attention tasks.";
+  }
+
+  if (q.includes("risk") || q.includes("classifier") || q.includes("auroc")) {
+    return "The dashboard prototype reports a held-out AUROC near 0.899 for the risk model. The feature mix combines HRV, HDA composition, demographics, and recording quality, with HDA-derived features carrying much of the signal.";
+  }
+
+  if (q.includes("pipeline") || q.includes("walk me through")) {
+    return "The NANO pipeline moves from ingest to preprocess, QA, HRV features, HDA labeling, and a de-identified merge. Each stage card in the DAG shows in-flight work, throughput, and cumulative completed windows.";
+  }
+
+  return "ESD Buddy is running against the mock backend in development. Ask about RMSSD, HDA, enrollment, REDCap sync, or the pipeline and I will answer using the same dashboard vocabulary the production assistant uses.";
+}
+
+function ndjsonReply(chunks: MockChatStreamChunk[], status = 200): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(`${JSON.stringify(chunk)}\n`));
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    status,
+    headers: { "content-type": "application/x-ndjson" },
+  });
+}
+
 function makeEpochs(): Epoch[] {
   const flags: Epoch["flag"][] = [
     "clean", "clean", "clean", "clean", "clean", "clean", "clean", "ectopic",
@@ -157,6 +198,18 @@ function reply(body: unknown, status = 200): Response {
 }
 
 const realFetch = window.fetch.bind(window);
+const LIVE_ASSISTANT_ROUTES = new Set([
+  "/api/assistant/status",
+  "/api/assistant/chat",
+  "/api/chat/status",
+  "/api/chat",
+]);
+
+const liveAssistantEnabled = import.meta.env.VITE_LIVE_ASSISTANT === "true";
+
+export function shouldBypassMock(pathname: string, enabled = liveAssistantEnabled): boolean {
+  return enabled && LIVE_ASSISTANT_ROUTES.has(pathname);
+}
 
 export function installMockServer() {
   if ((window as unknown as { __nano_mock_installed?: boolean }).__nano_mock_installed) return;
@@ -169,6 +222,7 @@ export function installMockServer() {
     const method = (init?.method || "GET").toUpperCase();
 
     if (!p.startsWith("/api/")) return realFetch(input, init);
+    if (shouldBypassMock(p)) return realFetch(input, init);
 
     if (p === "/api/study/summary") return reply(STUDY);
     if (p === "/api/pipeline/stages") return reply(STAGES);
@@ -205,6 +259,17 @@ export function installMockServer() {
     }
     if (p === "/api/results/hda") return reply(HDA);
     if (p === "/api/redcap/events") return reply(REDCAP_EVENTS);
+    if (p === "/api/assistant/status") {
+      return reply({ status: "ready", error: null, model: "mock://qwen2.5-1.5b" });
+    }
+    if (p === "/api/assistant/chat" && method === "POST") {
+      const payload = (await new Response(init?.body as BodyInit).json()) as { message?: string };
+      const responseText = mockAssistantReply(payload.message ?? "");
+      const words = responseText.split(/(\s+)/).filter(Boolean);
+      const chunks: MockChatStreamChunk[] = words.map((part) => ({ delta: part }));
+      chunks.push({ done: true });
+      return ndjsonReply(chunks);
+    }
     if (p === "/api/audit") return new Response(null, { status: 204 });
 
     return reply({ error: "mock route not found", path: p }, 404);

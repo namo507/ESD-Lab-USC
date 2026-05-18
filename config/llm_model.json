@@ -1,0 +1,31 @@
+{
+  "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",
+  "filename": "SmolLM2-360M-Instruct-Q2_K.gguf",
+  "params_b": 0.36,
+  "context_length": 2048,
+  "min_memory_gib": 0.25,
+  "max_tokens": 192,
+  "score": null,
+  "selected_at": "2026-01-01T00:00:00+00:00",
+  "source": "manual-seed",
+  "fallbacks": [
+    {
+      "repo_id": "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
+      "filename": "Qwen2.5-0.5B-Instruct-Q2_K.gguf",
+      "params_b": 0.5,
+      "context_length": 2048,
+      "min_memory_gib": 0.3,
+      "max_tokens": 192,
+      "reason": "fallback-secondary"
+    },
+    {
+      "repo_id": "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+      "filename": "Qwen2.5-1.5B-Instruct-Q2_K.gguf",
+      "params_b": 1.5,
+      "context_length": 4096,
+      "min_memory_gib": 0.8,
+      "max_tokens": 256,
+      "reason": "fallback-tertiary"
+    }
+  ]
+}

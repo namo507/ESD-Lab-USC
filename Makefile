@@ -120,10 +120,11 @@ dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	fi
 	bash scripts/share_dashboard.sh
 
-pages-build:  ## Build the canonical Cloudflare Pages dashboard artifact locally
+pages-build:  ## Build the canonical Cloudflare Pages dashboard SPA artifact locally
+	VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true npm --prefix web run build
 	$(PYTHON) scripts/build_pages_site.py
 
-pages-deploy: pages-build  ## Build + deploy the canonical Cloudflare Pages dashboard site
+pages-deploy: pages-build  ## Build + deploy the canonical Cloudflare Pages dashboard SPA
 	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
 
 pages-watch:  ## Watch the canonical Pages dashboard inputs and redeploy on change

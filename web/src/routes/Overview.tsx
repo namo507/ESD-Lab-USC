@@ -58,6 +58,7 @@ export function Overview() {
 
   const kpis: Array<{
     id: string;
+    insightId: string;
     label: React.ReactNode;
     value: number;
     unit: string;
@@ -71,6 +72,7 @@ export function Overview() {
   }> = [
     {
       id: "enroll",
+      insightId: "kpi-enroll",
       label: "Active Enrollees",
       value: study?.enrolled ?? 231,
       unit: `/ ${study?.target ?? 260}`,
@@ -83,6 +85,7 @@ export function Overview() {
     },
     {
       id: "evals",
+      insightId: "kpi-evals",
       label: "Evaluations Pending",
       value: evalsPending || 12,
       unit: "families",
@@ -99,6 +102,7 @@ export function Overview() {
     },
     {
       id: "epochs",
+      insightId: "kpi-epochs",
       label: <span><Gloss term="Epoch">Epochs</Gloss> Processed · 24 h</span>,
       value: totals.done || 1824,
       unit: "windows",
@@ -114,6 +118,7 @@ export function Overview() {
     },
     {
       id: "redcap",
+      insightId: "kpi-redcap",
       label: <Gloss term="RedCap">REDCap Health</Gloss>,
       value: Math.max(0, 100 - totals.fail / Math.max(totals.done, 1) * 100) || 99.8,
       unit: "%",
@@ -165,6 +170,7 @@ export function Overview() {
         {kpis.map((k) => (
           <MetricCard
             key={k.id}
+            insightId={k.insightId}
             label={k.label}
             value={k.value}
             unit={k.unit}

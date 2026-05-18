@@ -38,6 +38,8 @@ def main(argv: list[str] | None = None) -> int:
     if load_dotenv and env_path.exists():
         load_dotenv(env_path, override=False)
 
+    base_config = AssistantConfig.from_env()
+
     parser = argparse.ArgumentParser(
         description="Inspect or download the local model assets for the dashboard assistant."
     )
@@ -45,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true")
     parser.add_argument(
         "--model-id",
-        default=os.getenv("DASHBOARD_ASSISTANT_MODEL_ID", "bartowski/Qwen2.5-1.5B-Instruct-GGUF"),
+        default=os.getenv("DASHBOARD_ASSISTANT_MODEL_ID", base_config.model_id),
     )
     parser.add_argument(
         "--model-dir",
@@ -53,13 +55,13 @@ def main(argv: list[str] | None = None) -> int:
         default=Path(
             os.getenv(
                 "DASHBOARD_ASSISTANT_MODEL_DIR",
-                "models/local_llms/Qwen2.5-1.5B-Instruct-GGUF",
+                str(base_config.model_dir),
             )
         ),
     )
     parser.add_argument(
         "--model-file",
-        default=os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE", "Qwen2.5-1.5B-Instruct-Q3_K_S.gguf"),
+        default=os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE", base_config.model_file),
     )
     args = parser.parse_args(argv)
 
@@ -67,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     if not model_dir.is_absolute():
         model_dir = PROJECT_ROOT / model_dir
 
-    config = AssistantConfig.from_env()
+    config = base_config
     config.model_id = args.model_id
     config.model_dir = model_dir
     config.model_file = args.model_file

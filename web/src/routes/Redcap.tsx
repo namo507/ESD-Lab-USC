@@ -43,15 +43,16 @@ export function Redcap() {
       </header>
 
       <section className={styles.kpis}>
-        <KPI label="Forms tracked" value="14" sub="versioned · v1–v4" />
-        <KPI label="Records · 24 h" value="25" sub="pulled and pushed" delta={`+${okN}`} deltaKind="up" />
-        <KPI label="Warnings" value={warnN} sub="missing fields · review" delta="needs eye" deltaKind="flat" />
+        <KPI label="Forms tracked" value="14" sub="versioned · v1–v4" insightId="redcap-forms" />
+        <KPI label="Records · 24 h" value="25" sub="pulled and pushed" delta={`+${okN}`} deltaKind="up" insightId="redcap-records" />
+        <KPI label="Warnings" value={warnN} sub="missing fields · review" delta="needs eye" deltaKind="flat" insightId="redcap-warnings" />
         <KPI
           label="Failures"
           value={failN}
           sub="auto-retry queued"
           delta={failN ? "needs auth" : "clear"}
           deltaKind={failN ? "down" : "up"}
+          insightId="redcap-failures"
         />
       </section>
 

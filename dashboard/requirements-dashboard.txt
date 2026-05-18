@@ -3,3 +3,6 @@ pandas>=2.1.0
 pypdf>=4.2.0
 PyYAML>=6.0.1
 beautifulsoup4>=4.12.3
+llama-cpp-python>=0.2.90
+huggingface-hub>=0.23.0
+requests>=2.31.0

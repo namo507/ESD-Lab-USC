@@ -66,7 +66,11 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
   const keySalt = syncTick;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[color:var(--warm-border)] shadow-card px-6 pt-6 pb-3" style={{ background: "linear-gradient(180deg, #ffffff 0%, var(--warm-bg) 100%)" }}>
+    <div
+      className="relative overflow-hidden rounded-2xl border border-[color:var(--warm-border)] shadow-card px-6 pt-6 pb-3"
+      style={{ background: "linear-gradient(180deg, var(--warm-card) 0%, var(--warm-bg) 100%)" }}
+      data-insight="pipeline-svg"
+    >
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -185,6 +189,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
               aria-label={`${n.label} stage, ${n.inflight} in flight, ${n.done.toLocaleString()} done`}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSelect(n.id); }}
               style={{ cursor: "pointer" }}
+              data-insight={`stage-${n.id}`}
             >
               {isActive && (
                 <circle cx={n.x} cy={n.y} r={42} fill="none" stroke={ACCENT_RING[n.accent]} strokeWidth={1.5} opacity={0.5}>

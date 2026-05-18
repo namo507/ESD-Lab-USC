@@ -1,22 +1,19 @@
 name: Deploy Pages site
 
-# Triggers
-# --------
-# - push to main: re-build + deploy on any source change
-# - workflow_dispatch: manual redeploy from the Actions tab
-# - repository_dispatch (type: redeploy-pages): triggered by the uptime
-#   monitor when it detects the live site is unhealthy
 on:
   push:
     branches: [main]
     paths:
-      - "web/dashboard-source.html"
-      - "web/pages-overlay.css"
-      - "web/pages-overlay.js"
-      - "web/lab-readings.json"
+      - "web/index.html"
+      - "web/package.json"
+      - "web/package-lock.json"
+      - "web/public/**"
+      - "web/src/**"
+      - "web/vite.config.ts"
+      - "web/tsconfig.json"
       - "scripts/build_pages_site.py"
-      - "scripts/build_lab_readings_index.py"
-      - "dashboard/data/readings_data.json"
+      - "scripts/check_site_health.py"
+      - "dashboard/public/pages_wrapper/manifest.json"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
   repository_dispatch:
@@ -27,39 +24,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: production
-      url: https://esd-lab-namo.pages.dev/
     steps:
-      - name: Checkout
+      - name: Check out repo
         uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Refresh lab readings index
-        run: |
-          # Regenerate web/lab-readings.json from dashboard/data so the
-          # in-browser AI chatbot + Knowledge Hub always ship the latest
-          # corpus snapshot. Pure stdlib — no extras needed.
-          python scripts/build_lab_readings_index.py
-          test -s web/lab-readings.json
+      - name: Install frontend deps
+        working-directory: web
+        run: npm ci
 
-      - name: Build deploy artifact
+      - name: Build React SPA
+        working-directory: web
+        env:
+          VITE_USE_MOCKS: "true"
+          VITE_LIVE_ASSISTANT: "true"
+        run: |
+          npm run build
+          test -s build/index.html
+
+      - name: Package deploy artifact
+        env:
+          PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN }}
         run: |
           python scripts/build_pages_site.py
           test -s dist/pages-wrapper/index.html
+          test -s dist/pages-wrapper/_worker.js
+          test -s dist/pages-wrapper/_redirects
           ls -lah dist/pages-wrapper/
-
-      - name: Set up Node (for wrangler)
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -70,7 +74,6 @@ jobs:
 
       - name: Smoke test live URL
         run: |
-          # Give the Pages edge a moment to propagate, then probe.
           sleep 25
           python scripts/check_site_health.py \
             --url https://esd-lab-namo.pages.dev/ \

@@ -33,10 +33,13 @@ npm run typecheck
 npm run test
 ```
 
-The mock backend lives in `src/api/mockServer.ts` and is patched in only when
-`import.meta.env.DEV === true` or `VITE_USE_MOCKS=true`. Production builds
-NEVER bundle it. Point `vite.config.ts` `server.proxy["/api"]` at the real
-FastAPI host (default `http://127.0.0.1:8000`).
+The mock backend lives in `src/api/mockServer.ts` and is patched in when
+`import.meta.env.DEV === true` or `VITE_USE_MOCKS=true`. The Cloudflare Pages
+production build intentionally enables mocks for the dashboard data until the
+full `/api/*` surface exists server-side; set `VITE_LIVE_ASSISTANT=true` to let
+the assistant routes bypass the mock and hit the live backend. Point
+`vite.config.ts` `server.proxy["/api"]` at the real FastAPI host in local dev
+(default `http://127.0.0.1:8000`).
 
 ## File layout
 

@@ -17,6 +17,7 @@ interface KPIProps {
   spark?: number[];
   gloss?: string;
   style?: CSSProperties;
+  insightId?: string;
 }
 
 export function KPI({
@@ -29,9 +30,10 @@ export function KPI({
   spark,
   gloss,
   style,
+  insightId,
 }: KPIProps) {
   return (
-    <Card pad={18} style={style} className={styles.card}>
+    <Card pad={18} style={style} className={styles.card} dataInsight={insightId}>
       <div className={styles.head}>
         <SectionLabel>{gloss ? <Gloss term={gloss}>{label}</Gloss> : label}</SectionLabel>
         {spark && <Sparkline values={spark} w={64} h={18} color="var(--slate-400)" dotLast />}
