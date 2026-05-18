@@ -6,6 +6,7 @@ import {
   MetricCard,
   AgenticQAPanel,
   ParticipantFlow,
+  ReadingsGeoMap,
   type MetricAccent,
 } from "@/components/warm";
 import {
@@ -194,6 +195,10 @@ export function Overview() {
           syncing={syncing}
           syncTick={syncTick}
         />
+      </section>
+
+      <section aria-label="Reading geography">
+        <ReadingsGeoMap />
       </section>
 
       <section className="grid grid-cols-[1fr_1.1fr] gap-4">

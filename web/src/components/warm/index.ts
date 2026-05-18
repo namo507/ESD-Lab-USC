@@ -12,3 +12,4 @@ export { AgenticQAPanel } from "./AgenticQAPanel";
 export { AmbientOrbit } from "./AmbientOrbit";
 export { FastPaths, FAST_PATHS } from "./FastPaths";
 export type { FastPathLane, FastPathPrompt } from "./FastPaths";
+export { ReadingsGeoMap } from "./ReadingsGeoMap";
