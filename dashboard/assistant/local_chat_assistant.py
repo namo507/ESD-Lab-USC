@@ -108,6 +108,20 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "article",
         "articles",
         "literature",
+        "research",
+        "strategy",
+        "grant",
+        "document",
+        "pdf",
+        "protocol",
+        "summary",
+        "summarize",
+        "summarise",
+        "design",
+        "analytic",
+        "analysis",
+        "measure",
+        "measures",
     },
     "organization_site": {
         "website",
@@ -125,6 +139,41 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "public",
     },
 }
+READING_SUMMARY_REQUEST_TOKENS = {
+    "summarize",
+    "summarise",
+    "summary",
+    "explain",
+    "explanation",
+    "outline",
+    "design",
+    "measure",
+    "measures",
+    "method",
+    "methods",
+    "analytic",
+    "analysis",
+    "plan",
+    "strategy",
+    "protocol",
+}
+DETAIL_REQUEST_TOKENS = {
+    "compare",
+    "detail",
+    "details",
+    "explain",
+    "how",
+    "list",
+    "outline",
+    "summarize",
+    "summarise",
+    "summary",
+    "why",
+}
+CONCISE_RESPONSE_TOKEN_LIMIT = 96
+DETAILED_RESPONSE_TOKEN_LIMIT = 144
+LOW_CONFIDENCE_SCORE_THRESHOLD = 3.0
+FOCUSED_CONFIDENCE_SCORE_THRESHOLD = 5.0
 
 
 def _read_llm_model_config() -> dict[str, Any]:
@@ -242,6 +291,7 @@ class DashboardChatAssistant:
         self._lock = threading.Lock()
         self._generator = None
         self._last_error: str | None = None
+        self._json_cache: dict[Path, tuple[int, Any]] = {}
 
         self._maybe_load_dotenv()
         self.config = config or AssistantConfig.from_env()
@@ -311,7 +361,7 @@ class DashboardChatAssistant:
         self,
         message: str,
         history: list[dict[str, str]] | None = None,
-    ) -> tuple[dict[str, Any], list[dict[str, str]], Any]:
+    ) -> tuple[dict[str, Any], list[dict[str, str]]]:
         prompt = (message or "").strip()
         if not prompt:
             raise AssistantUnavailable(
@@ -330,16 +380,24 @@ class DashboardChatAssistant:
             history=history or [],
             context_block=context["context"],
         )
-        generator = self._ensure_generator()
-        return context, messages, generator
+        return context, messages
 
     def answer(self, message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-        context, messages, generator = self._prepare_request(message, history)
+        context, messages = self._prepare_request(message, history)
+        quick_reply = self._maybe_short_circuit_response(message, context)
+        if quick_reply is not None:
+            return {
+                "reply": quick_reply,
+                "citations": context["citations"],
+                "status": self.get_status(),
+            }
+
+        generator = self._ensure_generator()
 
         try:
             output = generator.create_chat_completion(
                 messages=messages,
-                max_tokens=self.config.max_new_tokens,
+                max_tokens=self._response_token_limit(message),
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
             )
@@ -366,12 +424,18 @@ class DashboardChatAssistant:
         }
 
     def stream(self, message: str, history: list[dict[str, str]] | None = None):
-        _context, messages, generator = self._prepare_request(message, history)
+        context, messages = self._prepare_request(message, history)
+        quick_reply = self._maybe_short_circuit_response(message, context)
+        if quick_reply is not None:
+            yield quick_reply
+            return
+
+        generator = self._ensure_generator()
 
         try:
             chunks = generator.create_chat_completion(
                 messages=messages,
-                max_tokens=self.config.max_new_tokens,
+                max_tokens=self._response_token_limit(message),
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
                 stream=True,
@@ -395,16 +459,60 @@ class DashboardChatAssistant:
         focus_sections = _detect_focus_sections(question_tokens)
         summary_fragments = self._build_summary_fragments(payload, readings)
         summary_paths = {path for path, _ in summary_fragments}
+        reading_fragments, reading_fragment_index = _build_reading_catalog_fragments(readings)
+
+        if focus_sections == {"readings"}:
+            reading_ranked = sorted(
+                reading_fragments,
+                key=lambda item: _score_reading_match(question_tokens, reading_fragment_index.get(item[0], {})),
+                reverse=True,
+            )
+            reading_matches = [
+                reading_fragment_index[path]
+                for path, _ in reading_ranked
+                if _score_reading_match(question_tokens, reading_fragment_index.get(path, {})) > 0
+            ][:3]
+
+            context_parts = [
+                f"- {text}"
+                for path, text in summary_fragments
+                if path in {"meta.study.name", "meta.data_source", "readings.summary.total_readings"}
+            ]
+            citations = [
+                path
+                for path, _ in summary_fragments
+                if path in {"meta.study.name", "meta.data_source", "readings.summary.total_readings"}
+            ]
+            for item in reading_matches:
+                context_parts.append(f"- {_reading_match_context_text(item)}")
+                citations.append(f"readings.catalog[{item['id']}]")
+
+            top_score = 0.0
+            if reading_ranked:
+                top_score = _score_reading_match(question_tokens, reading_fragment_index.get(reading_ranked[0][0], {}))
+
+            return {
+                "context": "\n".join(part for part in context_parts if part),
+                "citations": citations[:6],
+                "grounded": bool(reading_matches),
+                "focus_sections": ["readings"],
+                "reading_matches": reading_matches,
+                "reading_metadata_only": bool(reading_matches),
+                "top_score": top_score,
+                "facts": self._build_fact_map(payload, readings),
+            }
 
         fragments = []
         for key in SUMMARY_KEYS:
+            if key == "meta":
+                continue
             value = payload.get(key)
             if value:
                 fragments.extend(_flatten_context(value, prefix=key))
 
         if readings:
             fragments.extend(_flatten_context(readings.get("summary", {}), prefix="readings.summary"))
-            fragments.extend(_flatten_context(readings.get("featured", [])[:3], prefix="readings.featured"))
+            fragments.extend(reading_fragments)
 
         ranked = sorted(
             (
@@ -416,9 +524,14 @@ class DashboardChatAssistant:
             reverse=True,
         )
 
-        context_parts = [f"- {text}" for _, text in summary_fragments]
+        top_score = 0.0
+        if ranked:
+            top_score = _score_fragment(question_tokens, ranked[0][0], ranked[0][1], focus_sections)
+
+        core_summary_paths = {"meta.study.name", "meta.data_source"}
+        context_parts: list[str] = []
         citations: list[str] = []
-        remaining = max(self._effective_context_char_budget() - len("\n".join(context_parts)), 0)
+        used_paths: set[str] = set()
         target_citation_count = max(1, len(focus_sections)) if focus_sections else 4
 
         ranked_summary = sorted(
@@ -426,33 +539,62 @@ class DashboardChatAssistant:
             key=lambda item: _score_fragment(question_tokens, item[0], item[1], focus_sections),
             reverse=True,
         )
+        summary_limit = 3 if focus_sections else 5
+
+        for path, text in summary_fragments:
+            if path not in core_summary_paths:
+                continue
+            context_parts.append(f"- {text}")
+            citations.append(path)
+            used_paths.add(path)
+
         for path, text in ranked_summary:
+            if path in used_paths:
+                continue
             if focus_sections and _top_section(path) not in focus_sections:
                 continue
             score = _score_fragment(question_tokens, path, text, focus_sections)
             if score <= 0 and citations:
                 continue
-            if path not in citations:
-                citations.append(path)
-            if len(citations) >= target_citation_count:
+            context_parts.append(f"- {text}")
+            citations.append(path)
+            used_paths.add(path)
+            if len(context_parts) >= summary_limit:
                 break
 
+        remaining = max(self._effective_context_char_budget() - len("\n".join(context_parts)), 0)
+        reading_matches: list[dict[str, Any]] = []
+
         for path, text in ranked:
-            if not text or path in citations or path in summary_paths:
+            if not text or path in used_paths or path in summary_paths:
                 continue
-            line = f"- {path}: {text}"
+            if path in reading_fragment_index and len(reading_matches) < 3:
+                reading_matches.append(reading_fragment_index[path])
+            line = f"- {text}"
             if len(line) > remaining:
                 continue
             context_parts.append(line)
-            if len(citations) < target_citation_count:
+            used_paths.add(path)
+            if len(citations) < target_citation_count and path not in citations:
                 citations.append(path)
             remaining -= len(line) + 1
             if len(citations) >= 8:
                 break
 
+        grounded_threshold = FOCUSED_CONFIDENCE_SCORE_THRESHOLD if focus_sections else LOW_CONFIDENCE_SCORE_THRESHOLD
+        grounded = bool(ranked) and top_score >= grounded_threshold
+        if reading_matches and focus_sections == {"readings"}:
+            grounded = True
+
         return {
             "context": "\n".join(part for part in context_parts if part),
             "citations": citations[:6],
+            "grounded": grounded,
+            "focus_sections": sorted(focus_sections),
+            "reading_matches": reading_matches,
+            "reading_metadata_only": bool(reading_matches) and focus_sections == {"readings"},
+            "top_score": top_score,
+            "facts": self._build_fact_map(payload, readings),
         }
 
     def _ensure_generator(self):
@@ -507,9 +649,12 @@ class DashboardChatAssistant:
                 "content": (
                     "You are the NANO Study dashboard assistant embedded in the ESD Lab live dashboard. "
                     "Answer only from the provided dashboard context and do not invent facts. "
+                    "Be concise by default: answer in 2-4 sentences or short bullets unless the user explicitly asks for more detail. "
                     "Repeat exact counts, group labels, model names, and AUROC values verbatim when they appear in context. "
                     "Do not add qualitative judgments, speculation, or interpretations that are not explicitly stated. "
                     "If a list is requested, include every listed item from context and nothing else. "
+                    "For library or reading questions, the dashboard context may contain only indexed metadata and short excerpts, not full document text. "
+                    "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
                     f"Dashboard context:\n{context_block}"
@@ -543,15 +688,22 @@ class DashboardChatAssistant:
 
     def _load_dashboard_payload(self) -> dict[str, Any]:
         path = self.data_dir / "dashboard_data.json"
-        if not path.exists():
-            return {}
-        return json.loads(path.read_text(encoding="utf-8"))
+        return self._load_json_file_cached(path)
 
     def _load_readings_payload(self) -> dict[str, Any]:
         path = self.data_dir / "readings_data.json"
+        return self._load_json_file_cached(path)
+
+    def _load_json_file_cached(self, path: Path) -> dict[str, Any]:
         if not path.exists():
             return {}
-        return json.loads(path.read_text(encoding="utf-8"))
+        signature = path.stat().st_mtime_ns
+        cached = self._json_cache.get(path)
+        if cached and cached[0] == signature:
+            return cached[1]
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        self._json_cache[path] = (signature, payload)
+        return payload
 
     def _build_summary_block(
         self,
@@ -632,6 +784,38 @@ class DashboardChatAssistant:
 
         return fragments
 
+    def _build_fact_map(self, payload: dict[str, Any], readings: dict[str, Any]) -> dict[str, Any]:
+        enrollment = payload.get("enrollment", {})
+        overall = enrollment.get("overall", {})
+        by_group = enrollment.get("by_group", {})
+        readings_summary = readings.get("summary", {})
+        best_index, best_model = _find_best_model_card(payload.get("ml_performance", {}).get("models") or [])
+
+        enrollment_total_current = overall.get("current")
+        enrollment_total_target = overall.get("target") or payload.get("meta", {}).get("study", {}).get("n_target")
+
+        if enrollment_total_current is None and by_group:
+            current_values = [stats.get("current") for stats in by_group.values() if isinstance(stats, dict)]
+            if current_values and all(isinstance(value, (int, float)) for value in current_values):
+                enrollment_total_current = int(sum(current_values))
+
+        if enrollment_total_target is None and by_group:
+            target_values = [stats.get("target") for stats in by_group.values() if isinstance(stats, dict)]
+            if target_values and all(isinstance(value, (int, float)) for value in target_values):
+                enrollment_total_target = int(sum(target_values))
+
+        return {
+            "indexed_readings": readings_summary.get("total_readings"),
+            "enrollment_total_current": enrollment_total_current,
+            "enrollment_total_target": enrollment_total_target,
+            "enrollment_by_group": by_group,
+            "best_model": {
+                "index": best_index,
+                "name": (best_model or {}).get("model_name") or (best_model or {}).get("name"),
+                "auroc": (best_model or {}).get("auroc") or (best_model or {}).get("roc_auc"),
+            } if best_model else None,
+        }
+
     def _probe_dependencies(self) -> dict[str, Any]:
         missing: list[str] = []
         for module_name in ("llama_cpp",):
@@ -658,6 +842,101 @@ class DashboardChatAssistant:
         )
         derived_budget = available_prompt_tokens * APPROX_CONTEXT_CHARS_PER_TOKEN
         return max(1200, min(self.config.context_char_budget, derived_budget))
+
+    def _response_token_limit(self, question: str) -> int:
+        question_tokens = set(_tokenize(question))
+        if question_tokens & DETAIL_REQUEST_TOKENS:
+            return max(64, min(self.config.max_new_tokens, DETAILED_RESPONSE_TOKEN_LIMIT))
+        return max(48, min(self.config.max_new_tokens, CONCISE_RESPONSE_TOKEN_LIMIT))
+
+    def _maybe_short_circuit_response(self, question: str, context: dict[str, Any]) -> str | None:
+        question_tokens = set(_tokenize(question))
+        reading_matches = context.get("reading_matches") or []
+        facts = context.get("facts") or {}
+
+        if question_tokens & {"reading", "readings"} and question_tokens & {"count", "how", "many", "number", "indexed"}:
+            indexed_readings = facts.get("indexed_readings")
+            if isinstance(indexed_readings, (int, float)):
+                return f"There are {int(indexed_readings)} indexed readings in the dashboard library."
+
+        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {"group", "groups", "cohort", "cohorts"}:
+            shortcut = self._format_enrollment_by_group_response(facts.get("enrollment_by_group") or {})
+            if shortcut is not None:
+                return shortcut
+
+        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {"current", "participants", "participant", "total", "overall"}:
+            current = facts.get("enrollment_total_current")
+            target = facts.get("enrollment_total_target")
+            if isinstance(current, (int, float)) and isinstance(target, (int, float)):
+                return f"Current enrollment is {int(current)} of {int(target)} participants."
+
+        if context.get("reading_metadata_only") and question_tokens & READING_SUMMARY_REQUEST_TOKENS:
+            return self._format_reading_metadata_response(reading_matches)
+
+        if not context.get("grounded"):
+            if reading_matches:
+                return self._format_reading_metadata_response(reading_matches)
+            return (
+                "I can't verify that from the indexed NANO dashboard context right now. "
+                "Try asking about enrollment, visit completion, data quality, model performance, or a specific reading title."
+            )
+
+        return None
+
+    def _format_reading_metadata_response(self, matches: list[dict[str, Any]]) -> str:
+        if not matches:
+            return (
+                "I can only verify indexed reading metadata here, and I do not have a grounded full-text match for that request. "
+                "Try asking for a specific reading title, source, author, or page count."
+            )
+
+        items: list[str] = []
+        for item in matches[:3]:
+            title = item.get("title") or item.get("display_name") or "Untitled reading"
+            display_name = item.get("display_name") or item.get("relative_path") or "file unavailable"
+            source = item.get("source") or "unknown source"
+            page_count = item.get("page_count")
+            authors = item.get("authors_display")
+            excerpt = item.get("excerpt")
+
+            detail_parts = [f"{title} [{display_name}]", source]
+            if isinstance(page_count, int):
+                detail_parts.append(f"{page_count} pages")
+            if authors and authors != "Unknown authors":
+                detail_parts.append(authors)
+            detail = ", ".join(detail_parts)
+            if excerpt:
+                detail = f"{detail} - {excerpt}"
+            items.append(detail)
+
+        return (
+            "I found matching reading records, but I can't verify a full summary from this assistant because only indexed metadata and short excerpts are available here, not the full PDF text. "
+            f"Best matches: {'; '.join(items)}. Open the matching PDF if you need the exact longitudinal design, measures, or analytic plan."
+        )
+
+    def _format_enrollment_by_group_response(self, by_group: dict[str, Any]) -> str | None:
+        if not by_group:
+            return None
+
+        parts: list[str] = []
+        for group, stats in by_group.items():
+            if not isinstance(stats, dict):
+                continue
+            current = stats.get("current")
+            target = stats.get("target")
+            label = stats.get("label") or group
+            if current is None:
+                continue
+            segment = f"{group}: {int(current)}"
+            if isinstance(target, (int, float)):
+                segment += f" of {int(target)}"
+            segment += f" ({label})"
+            parts.append(segment)
+
+        if not parts:
+            return None
+
+        return "Enrollment by group: " + "; ".join(parts) + "."
 
 
 def _available_memory_gib() -> float:
@@ -771,6 +1050,124 @@ def _find_best_model_card(model_cards: list[dict[str, Any]]) -> tuple[int, dict[
     return best_index, best_card
 
 
+def _build_reading_catalog_fragments(
+    readings: dict[str, Any],
+) -> tuple[list[tuple[str, str]], dict[str, dict[str, Any]]]:
+    fragments: list[tuple[str, str]] = []
+    fragment_index: dict[str, dict[str, Any]] = {}
+    seen_ids: set[str] = set()
+
+    for bucket in ("featured", "readings"):
+        for item in readings.get(bucket, []) or []:
+            if not isinstance(item, dict):
+                continue
+            reading_id = str(item.get("id") or item.get("display_name") or item.get("title") or "reading")
+            if reading_id in seen_ids:
+                continue
+            seen_ids.add(reading_id)
+
+            title = (item.get("title") or item.get("display_name") or reading_id).strip()
+            display_name = item.get("display_name") or item.get("relative_path") or reading_id
+            source = item.get("source") or "unknown source"
+            category = item.get("category") or "unknown category"
+            authors_display = item.get("authors_display") or "Unknown authors"
+            page_count = item.get("page_count")
+            excerpt = item.get("excerpt") or ""
+            keywords = ", ".join((item.get("keywords") or [])[:6])
+            relative_path = item.get("relative_path") or ""
+            search_text = item.get("search_text") or ""
+
+            detail_parts = [
+                f"Reading title: {title}",
+                f"file: {display_name}",
+                f"source: {source}",
+                f"category: {category}",
+            ]
+            if authors_display:
+                detail_parts.append(f"authors: {authors_display}")
+            if page_count:
+                detail_parts.append(f"pages: {page_count}")
+            if excerpt:
+                detail_parts.append(f"excerpt: {excerpt}")
+            if keywords:
+                detail_parts.append(f"keywords: {keywords}")
+            if relative_path:
+                detail_parts.append(f"path: {relative_path}")
+
+            path = f"readings.catalog[{reading_id}]"
+            text = "; ".join(detail_parts)
+            fragments.append((path, text))
+            fragment_index[path] = {
+                "title": title,
+                "display_name": display_name,
+                "source": source,
+                "category": category,
+                "authors_display": authors_display,
+                "page_count": page_count,
+                "excerpt": excerpt,
+                "relative_path": relative_path,
+                "search_text": search_text,
+                "id": reading_id,
+            }
+
+    return fragments, fragment_index
+
+
+def _score_reading_match(question_tokens: set[str], item: dict[str, Any]) -> float:
+    if not item:
+        return 0.0
+
+    title_haystack = " ".join(
+        [
+            str(item.get("title") or ""),
+            str(item.get("display_name") or ""),
+            str(item.get("source") or ""),
+            str(item.get("category") or ""),
+        ]
+    ).lower()
+    metadata_haystack = " ".join(
+        [
+            str(item.get("excerpt") or ""),
+            str(item.get("search_text") or ""),
+            str(item.get("relative_path") or ""),
+        ]
+    ).lower()
+
+    score = 0.0
+    for token in question_tokens:
+        if token in title_haystack:
+            score += 5.0
+        elif token in metadata_haystack:
+            score += 2.0
+
+    if item.get("category") == "Grant Materials":
+        score += 2.0
+    if "researchstrategy" in str(item.get("display_name") or "").lower():
+        score += 3.0
+    if question_tokens & {"research", "strategy", "grant", "analytic", "analysis", "design", "measure", "measures"}:
+        if item.get("category") == "Grant Materials":
+            score += 6.0
+
+    return score
+
+
+def _reading_match_context_text(item: dict[str, Any]) -> str:
+    detail_parts = [
+        f"Reading title: {item.get('title') or item.get('display_name') or 'Untitled reading'}",
+        f"file: {item.get('display_name') or item.get('relative_path') or 'file unavailable'}",
+        f"source: {item.get('source') or 'unknown source'}",
+    ]
+    if item.get("category"):
+        detail_parts.append(f"category: {item['category']}")
+    if item.get("authors_display"):
+        detail_parts.append(f"authors: {item['authors_display']}")
+    if item.get("page_count"):
+        detail_parts.append(f"pages: {item['page_count']}")
+    if item.get("excerpt"):
+        detail_parts.append(f"excerpt: {item['excerpt']}")
+    return "; ".join(detail_parts)
+
+
 def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:
     fragments: list[tuple[str, str]] = []
 
@@ -784,7 +1181,7 @@ def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:
             if isinstance(item, (str, int, float, bool)) or item is None
         }
         if scalar_subset:
-            fragments.append((prefix, json.dumps(scalar_subset, ensure_ascii=True, sort_keys=True)))
+            fragments.append((prefix, _compact_scalar_mapping(scalar_subset)))
         for key, item in value.items():
             if isinstance(item, (dict, list)):
                 fragments.extend(_flatten_context(item, prefix=f"{prefix}.{key}"))
@@ -793,8 +1190,12 @@ def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:
     if isinstance(value, list):
         if not value:
             return fragments
+        if prefix.endswith(".months"):
+            return fragments
         if all(isinstance(item, (str, int, float, bool)) or item is None for item in value[:8]):
-            fragments.append((prefix, json.dumps(value[:8], ensure_ascii=True)))
+            if all(isinstance(item, (int, float)) or item is None for item in value[:8]) and len(value) > 4:
+                return fragments
+            fragments.append((prefix, ", ".join(_format_scalar_value(item) for item in value[:8] if item is not None)))
             return fragments
         for index, item in enumerate(value[:6]):
             fragments.extend(_flatten_context(item, prefix=f"{prefix}[{index}]"))
@@ -802,3 +1203,21 @@ def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:
 
     fragments.append((prefix, str(value)))
     return fragments
+
+
+def _compact_scalar_mapping(value: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key, item in value.items():
+        if item is None:
+            continue
+        label = key.replace("_", " ")
+        parts.append(f"{label}: {_format_scalar_value(item)}")
+    return "; ".join(parts)
+
+
+def _format_scalar_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        return f"{value:.3f}".rstrip("0").rstrip(".")
+    return str(value)
