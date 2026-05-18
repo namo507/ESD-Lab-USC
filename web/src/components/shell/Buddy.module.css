@@ -35,8 +35,8 @@
 }
 
 .body {
-  fill: var(--cream);
-  stroke: var(--ink);
+  fill: var(--you-bubble-fg);
+  stroke: var(--you-bubble-bg);
   stroke-width: 1.5;
   filter: drop-shadow(0 8px 20px rgba(58, 50, 38, 0.22));
 }
@@ -47,7 +47,7 @@
 }
 
 .eye {
-  fill: var(--ink);
+  fill: var(--you-bubble-bg);
   transition: transform 220ms var(--ease-soft, cubic-bezier(0.32, 0.72, 0, 1));
   transform-origin: center;
 }
@@ -58,7 +58,7 @@
 
 .mouth {
   fill: none;
-  stroke: var(--ink);
+  stroke: var(--you-bubble-bg);
   stroke-width: 1.5;
   stroke-linecap: round;
 }

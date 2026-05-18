@@ -4,6 +4,7 @@ import { ArrowRight, ChevronDown, RotateCcw, Search, ShieldCheck, SlidersHorizon
 import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
+import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { useUi } from "@/store/ui";
@@ -513,6 +514,8 @@ export function Landing() {
           <Sparkles size={14} strokeWidth={1.5} />
           Ask the lab
         </button>
+
+        <ThemeToggle variant="pill" />
       </nav>
 
       <main className={styles.main}>

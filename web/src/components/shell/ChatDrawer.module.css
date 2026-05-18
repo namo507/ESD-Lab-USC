@@ -164,7 +164,8 @@
 }
 
 .userAvatar {
-  background: var(--ink);
+  background: var(--you-bubble-bg);
+  color: var(--you-bubble-fg);
 }
 
 .bubble {
@@ -180,9 +181,9 @@
 }
 
 .youBubble {
-  background: var(--ink);
-  color: var(--cream);
-  border-color: var(--ink);
+  background: var(--you-bubble-bg);
+  color: var(--you-bubble-fg);
+  border-color: var(--you-bubble-bg);
 }
 
 .thinking {

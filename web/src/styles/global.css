@@ -92,6 +92,125 @@
   --r-glass: 28px;
 }
 
+/* ========================================================================
+   Dark-theme overrides for the extended warm / landing / glass tokens.
+   Activated globally by data-theme="dark" on <html>.
+   Token names match the light defaults declared above so component CSS
+   stays untouched — colour swap happens entirely at the variable layer.
+   ======================================================================== */
+:root[data-theme="dark"] {
+  --warm-bg:    #16140f;
+  --warm-card:  #1f1c17;
+  --warm-border:#2e2a23;
+  --warm-rule:  #25221c;
+  --warm-fg1:   #f1ece1;
+  --warm-fg2:   #d8d2c4;
+  --warm-fg3:   #aaa496;
+  --warm-fg4:   #8a8478;
+  --warm-fg5:   #5e594f;
+  --warm-pill:  #25221c;
+
+  --cream:    #f1ece1;
+  --cream-2:  #d8d2c4;
+  --ink-soft: #f1ece1;
+  --warm-300: #6b6557;
+  --warm-400: #8a8478;
+  --warm-500: #aaa496;
+  --warm-600: #c7c1b3;
+  --warm-700: #e0d9c8;
+
+  --sage-tint: #1a241d;
+  --ocean-tint:#1a2230;
+  --sand-tint: #2b2419;
+  --mint-tint: #182621;
+
+  --vpt-bg: #2c1518; --vpt-fg: #ffb6bf;
+  --asib-bg2: #1f1a2c; --asib-fg: #c5a8db;
+  --td-bg: #161f17; --td-fg: #a8d1b4;
+
+  --on-gold:    #f1d97b;
+  --on-info:    #b9d1f0;
+  --on-ok:      #b1d8bc;
+  --on-fail:    #f0b1b4;
+  --on-pending: #c9b7e6;
+  --warn-fg:    #ffd97a;
+  --amber:      #f3a23a;
+  --amber-warn: #ffc266;
+
+  --tile-accept-bg: #173021;
+  --tile-accept-border: #2e6044;
+  --tile-reject-bg: #321517;
+  --tile-reject-border: #6e2a2e;
+
+  --hipaa-bg: #2a1416;
+  --ecg-grid: #0a0c10;
+  --terminal-fg: #f1ece1;
+
+  --glass-100: rgba(20, 18, 14, 0.55);
+  --glass-200: rgba(20, 18, 14, 0.72);
+  --glass-300: rgba(20, 18, 14, 0.82);
+  --glass-400: rgba(20, 18, 14, 0.92);
+  --glass-stroke:      rgba(255, 245, 220, 0.10);
+  --glass-stroke-soft: rgba(255, 245, 220, 0.06);
+  --glass-shadow:
+    0 1px 0 rgba(255, 245, 220, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.4) inset,
+    0 10px 30px -10px rgba(0, 0, 0, 0.7),
+    0 30px 80px -40px rgba(0, 0, 0, 0.9);
+}
+
+/* Inverted accent washes — keep the colour, drop the white floor */
+:root[data-theme="dark"] .accent-wash-sage  { background: linear-gradient(135deg, rgba(91,149,119,0.18) 0%, rgba(91,149,119,0.05) 60%, rgba(0,0,0,0) 100%); }
+:root[data-theme="dark"] .accent-wash-ocean { background: linear-gradient(135deg, rgba(107,139,184,0.20) 0%, rgba(107,139,184,0.05) 60%, rgba(0,0,0,0) 100%); }
+:root[data-theme="dark"] .accent-wash-sand  { background: linear-gradient(135deg, rgba(199,144,38,0.18) 0%, rgba(199,144,38,0.05) 60%, rgba(0,0,0,0) 100%); }
+:root[data-theme="dark"] .accent-wash-mint  { background: linear-gradient(135deg, rgba(125,197,154,0.18) 0%, rgba(125,197,154,0.05) 60%, rgba(0,0,0,0) 100%); }
+
+/* Glass shell variants drift on dark */
+:root[data-theme="dark"] .glass-panel  { background: rgba(28, 25, 20, 0.78); border-color: var(--warm-border); box-shadow: 0 8px 30px rgba(0,0,0,0.45); }
+:root[data-theme="dark"] .glass-header { background: rgba(22, 20, 15, 0.78); }
+:root[data-theme="dark"] .agentic-panel { background: linear-gradient(160deg, #100e0a 0%, #1d1a13 100%); box-shadow: 0 12px 40px rgba(0,0,0,0.55); }
+:root[data-theme="dark"] .agentic-glow::before { background: radial-gradient(circle, rgba(255, 204, 0, 0.28) 0%, transparent 70%); }
+
+/* Component-level fixes that referenced pure white / fixed greys */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  color: var(--warm-fg1);
+  background-color: var(--warm-card);
+  border-color: var(--warm-border);
+}
+:root[data-theme="dark"] ::placeholder { color: var(--warm-fg4); }
+:root[data-theme="dark"] kbd {
+  background: var(--warm-pill);
+  border-color: var(--warm-border);
+  color: var(--warm-fg2);
+}
+
+/* color-scheme so native form controls and scrollbars follow */
+:root            { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* Tailwind utility overrides — components use `bg-white` literally in many
+   spots; remap to the warm-card token so the whole UI inverts cleanly. */
+:root[data-theme="dark"] .bg-white { background-color: var(--warm-card) !important; }
+:root[data-theme="dark"] .text-white { /* keep literal #fff for badges on garnet */ }
+:root[data-theme="dark"] .shadow-card { box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important; }
+
+/* Bubble / pill pairs that must stay inverted in BOTH themes. The default
+   tokens (--ink / --cream) flip with the theme, which would collapse the
+   foreground onto the background on chat bubbles. Use these instead. */
+:root {
+  --you-bubble-bg: #0e1013;
+  --you-bubble-fg: #faf6ee;
+}
+:root[data-theme="dark"] {
+  --you-bubble-bg: #f1ece1;
+  --you-bubble-fg: #0e1013;
+}
+
+/* MetricCard / ParticipantFlow / AnimatedDAG borders pick up warm-border
+   already via the [color:var(--warm-border)] arbitrary value. No-op. */
+
 /* Glass panel + utilities used by the warm dashboard surfaces */
 @layer components {
   .glass-panel {

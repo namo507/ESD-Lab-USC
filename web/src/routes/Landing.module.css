@@ -1,5 +1,5 @@
 .page {
-  --landing-surface: #fff;
+  --landing-surface: var(--warm-card);
   --landing-surface-muted: linear-gradient(180deg, var(--warm-card) 0%, var(--warm-bg) 100%);
   --landing-border: var(--warm-border);
   --landing-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
@@ -12,6 +12,31 @@
     radial-gradient(circle at 50% 100%, rgba(221, 230, 214, 0.2), transparent 30%),
     var(--warm-bg);
   color: var(--ink);
+}
+
+:global([data-theme="dark"]) .page {
+  --landing-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --landing-panel:  rgba(28, 25, 20, 0.82);
+  --landing-pill:   rgba(40, 36, 30, 0.72);
+  background:
+    radial-gradient(circle at top left, rgba(243, 201, 168, 0.06), transparent 30%),
+    radial-gradient(circle at 85% 20%, rgba(107, 139, 184, 0.07), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(91, 149, 119, 0.06), transparent 32%),
+    var(--warm-bg);
+}
+:global([data-theme="dark"]) .darkCard {
+  background: linear-gradient(160deg, #0d0c09 0%, #1b1813 100%);
+}
+:global([data-theme="dark"]) .flowList li,
+:global([data-theme="dark"]) .flowCard .fillChip {
+  background: var(--warm-pill);
+  border-color: var(--warm-border);
+  color: var(--warm-fg2);
+}
+:global([data-theme="dark"]) .watchList li,
+:global([data-theme="dark"]) .darkCard .fillChip {
+  background: rgba(255, 245, 220, 0.04);
+  border-color: rgba(255, 245, 220, 0.08);
 }
 
 .progress {

@@ -134,6 +134,60 @@
   --nav-h: 56px;
 }
 
+/* ========================================================================
+   Dark theme — token overrides ONLY. Component CSS never inverts itself.
+   Activated by writing data-theme="dark" on <html> (see store/ui.ts).
+   ======================================================================== */
+:root[data-theme="dark"] {
+  --ink:       #f1ece1;
+  --slate-900: #f1ece1;
+  --slate-800: #dad4c6;
+  --slate-700: #c0baad;  /* fg2 */
+  --slate-600: #a59f93;
+  --slate-500: #8d877c;  /* fg3 */
+  --slate-400: #6c675e;
+  --slate-300: #4a463f;  /* border strong */
+  --slate-200: #38342e;  /* border default */
+  --slate-100: #2c2924;
+  --slate-75:  #25231f;
+  --slate-50:  #1f1d1a;
+  --paper:     #16140f;  /* page */
+  --white:     #1b1813;  /* card */
+
+  --fg1: var(--ink);
+  --fg2: var(--slate-700);
+  --fg3: var(--slate-500);
+  --fg-muted: var(--slate-400);
+  --fg-on-brand: #fff;
+  --fg-link: #ffb84d;
+
+  --bg-page:    var(--paper);
+  --bg-surface: var(--white);
+  --bg-subtle:  var(--slate-50);
+  --bg-hover:   var(--slate-75);
+  --bg-active:  var(--slate-100);
+  --bg-inverse: #f1ece1;
+
+  --border:        var(--slate-200);
+  --border-strong: var(--slate-300);
+  --border-focus:  var(--usc-gold);
+
+  --usc-garnet-600: #a8323e; /* lift hover state for visibility on dark */
+
+  --blue-tint:   #1e2a3a;
+  --green-tint:  #18261c;
+  --red-tint:    #2e1719;
+  --purple-tint: #1e1a29;
+
+  --shadow-overlay:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.55);
+  --shadow-focus-ring: 0 0 0 2px var(--bg-page), 0 0 0 4px var(--usc-gold);
+}
+
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb       { background: var(--slate-300); }
+:root[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: var(--slate-400); }
+
 /* ---- Base resets -------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 

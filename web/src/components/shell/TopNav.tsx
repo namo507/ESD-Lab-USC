@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@/components/primitives";
+import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { useUi } from "@/store/ui";
 
 interface TopNavProps {
@@ -94,6 +95,8 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
         <Icon name="arrow-left" size={12} stroke={1.5} color="var(--usc-garnet)" />
         Landing
       </button>
+
+      <ThemeToggle variant="pill" />
 
       <div className="text-right">
         <div className="font-mono text-[14px] font-medium text-[color:var(--warm-fg1)] tracking-[0.02em]">{time}</div>
