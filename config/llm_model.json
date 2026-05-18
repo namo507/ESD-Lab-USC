@@ -1,14 +1,23 @@
 {
-  "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",
-  "filename": "SmolLM2-360M-Instruct-Q2_K.gguf",
-  "params_b": 0.36,
+  "repo_id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+  "filename": "qwen2.5-0.5b-instruct-fp16.gguf",
+  "params_b": 0.5,
   "context_length": 2048,
-  "min_memory_gib": 0.25,
+  "min_memory_gib": 0.3,
   "max_tokens": 192,
-  "score": null,
-  "selected_at": "2026-01-01T00:00:00+00:00",
-  "source": "manual-seed",
+  "score": 0.8365,
+  "selected_at": "2026-05-18T00:06:49.558839+00:00",
+  "source": "hf-api",
   "fallbacks": [
+    {
+      "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",
+      "filename": "SmolLM2-360M-Instruct-Q2_K.gguf",
+      "params_b": 0.36,
+      "context_length": 2048,
+      "min_memory_gib": 0.25,
+      "max_tokens": 192,
+      "reason": "fallback-primary: fits very constrained CPU containers"
+    },
     {
       "repo_id": "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
       "filename": "Qwen2.5-0.5B-Instruct-Q2_K.gguf",
@@ -16,7 +25,7 @@
       "context_length": 2048,
       "min_memory_gib": 0.3,
       "max_tokens": 192,
-      "reason": "fallback-secondary"
+      "reason": "fallback-secondary: slightly stronger while still small"
     },
     {
       "repo_id": "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
@@ -25,7 +34,7 @@
       "context_length": 4096,
       "min_memory_gib": 0.8,
       "max_tokens": 256,
-      "reason": "fallback-tertiary"
+      "reason": "fallback-tertiary: only for roomier hosts"
     }
   ]
 }
