@@ -1187,6 +1187,117 @@
   transform: translateY(-2px);
 }
 
+/* ----- Fill-card additions: ambient orbits + status strip + animated stream ----- */
+.fillCard {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+}
+.fillContent {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.fillOrbitBR {
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
+  z-index: 0;
+  pointer-events: none;
+}
+.fillOrbitBL {
+  position: absolute;
+  bottom: -40px;
+  left: -40px;
+  z-index: 0;
+  pointer-events: none;
+}
+.fillOrbitTR {
+  position: absolute;
+  top: -32px;
+  right: -32px;
+  z-index: 0;
+  pointer-events: none;
+}
+.fillStrip {
+  margin-top: auto;
+  padding-top: 22px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.fillChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: inherit;
+}
+.flowCard .fillChip {
+  border-color: var(--landing-border);
+  background: var(--warm-bg);
+  color: var(--warm-600);
+}
+.fillChip strong {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  color: inherit;
+}
+.fillDotG { width: 6px; height: 6px; border-radius: 50%; background: #7dc59a; box-shadow: 0 0 6px #7dc59a; animation: fill-pulse 2.4s ease-in-out infinite; }
+.fillDotR { width: 6px; height: 6px; border-radius: 50%; background: #d97676; box-shadow: 0 0 6px #d97676; animation: fill-pulse 2.4s ease-in-out infinite 0.4s; }
+.fillDotB { width: 6px; height: 6px; border-radius: 50%; background: #9bb8e0; box-shadow: 0 0 6px #9bb8e0; animation: fill-pulse 2.4s ease-in-out infinite 0.8s; }
+.fillDotY { width: 6px; height: 6px; border-radius: 50%; background: var(--usc-gold); box-shadow: 0 0 6px var(--usc-gold); animation: fill-pulse 2.4s ease-in-out infinite 1.2s; }
+
+/* Floating data-stream particles inside the dark card */
+.fillStream {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.fillStream span {
+  position: absolute;
+  bottom: -8px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 204, 0, 0.55);
+  box-shadow: 0 0 8px rgba(255, 204, 0, 0.45);
+  animation: fill-rise 9s linear infinite;
+}
+.fillStream span:nth-child(1) { left: 12%; animation-delay: 0s;   animation-duration: 10s; }
+.fillStream span:nth-child(2) { left: 31%; animation-delay: 2.2s; animation-duration: 12s; background: rgba(155, 184, 224, 0.6); box-shadow: 0 0 8px rgba(155, 184, 224, 0.5); }
+.fillStream span:nth-child(3) { left: 56%; animation-delay: 4.5s; animation-duration: 11s; background: rgba(125, 197, 154, 0.6); box-shadow: 0 0 8px rgba(125, 197, 154, 0.5); }
+.fillStream span:nth-child(4) { left: 74%; animation-delay: 1.3s; animation-duration: 13s; }
+.fillStream span:nth-child(5) { left: 88%; animation-delay: 5.6s; animation-duration: 9.5s; background: rgba(115, 0, 10, 0.55); box-shadow: 0 0 8px rgba(115, 0, 10, 0.4); }
+
+@keyframes fill-rise {
+  0%   { transform: translateY(0)   scale(1);   opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-520px) scale(0.6); opacity: 0; }
+}
+@keyframes fill-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fillStream span, .fillDotG, .fillDotR, .fillDotB, .fillDotY { animation: none !important; }
+}
+
 @media (max-width: 1180px) {
   .nav {
     width: calc(100% - 28px);

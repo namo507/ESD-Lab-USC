@@ -84,6 +84,17 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
         <span>{idleMinutes} m</span>
       </button>
 
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-[color:var(--warm-fg2)] bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)] hover:text-[color:var(--usc-garnet)] hover:border-[color:var(--usc-garnet)] transition"
+        title="Back to public landing site"
+        aria-label="Back to landing"
+      >
+        <Icon name="arrow-left" size={12} stroke={1.5} color="var(--usc-garnet)" />
+        Landing
+      </button>
+
       <div className="text-right">
         <div className="font-mono text-[14px] font-medium text-[color:var(--warm-fg1)] tracking-[0.02em]">{time}</div>
         <div className="text-[11px] text-[color:var(--warm-fg3)]">{date}</div>

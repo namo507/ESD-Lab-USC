@@ -4,6 +4,7 @@ import { ArrowRight, ChevronDown, RotateCcw, Search, ShieldCheck, SlidersHorizon
 import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
+import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { useUi } from "@/store/ui";
 import styles from "./Landing.module.css";
@@ -773,36 +774,57 @@ export function Landing() {
             </div>
           </header>
           <div className={styles.splitGrid}>
-            <article className={styles.darkCard} data-insight="landing-qa-watch">
-              <span className={styles.sectionEyebrow}>Agentic QA</span>
-              <h3>Pipeline watchlist</h3>
-              <ul className={styles.watchList}>
-                {insightFeed.map((item) => (
-                  <li key={item.tag}>
-                    <strong>{item.tag}</strong>
-                    <span>{item.body}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className={styles.heroActions}>
-                <button type="button" className={styles.secondaryButton} onClick={() => openAssistant("Summarize the current QA watchlist.")}>
-                  Ask the assistant
-                </button>
+            <article className={`${styles.darkCard} ${styles.fillCard}`} data-insight="landing-qa-watch">
+              <AmbientOrbit tone="gold" size={260} opacity={0.18} spin={36} waveform className={styles.fillOrbitBR} />
+              <AmbientOrbit tone="garnet" size={140} opacity={0.22} spin={48} className={styles.fillOrbitBL} />
+              <div className={styles.fillStream} aria-hidden>
+                <span /><span /><span /><span /><span />
+              </div>
+              <div className={styles.fillContent}>
+                <span className={styles.sectionEyebrow}>Agentic QA</span>
+                <h3>Pipeline watchlist</h3>
+                <ul className={styles.watchList}>
+                  {insightFeed.map((item) => (
+                    <li key={item.tag}>
+                      <strong>{item.tag}</strong>
+                      <span>{item.body}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className={styles.heroActions}>
+                  <button type="button" className={styles.secondaryButton} onClick={() => openAssistant("Summarize the current QA watchlist.")}>
+                    Ask the assistant
+                  </button>
+                </div>
+                <div className={styles.fillStrip}>
+                  <div className={styles.fillChip}><span className={styles.fillDotG} /> heartbeat <strong>{stat(totals.done)}</strong></div>
+                  <div className={styles.fillChip}><span className={styles.fillDotR} /> stage fails <strong>{totals.fail}</strong></div>
+                  <div className={styles.fillChip}><span className={styles.fillDotB} /> in flight <strong>{totals.inflight}</strong></div>
+                </div>
               </div>
             </article>
-            <article className={styles.flowCard} data-insight="landing-flow">
-              <span className={styles.sectionEyebrow}>Recent participant flow</span>
-              <h3>The last four hours</h3>
-              <ul className={styles.flowList}>
-                {participants.slice(0, 7).map((participant) => (
-                  <li key={participant.id}>
-                    <button type="button" onClick={() => navigate(`/participants/${participant.id}`)}>
-                      <strong>{participant.id}</strong>
-                      <span>{participant.group} · {participant.visit} · {participant.site}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <article className={`${styles.flowCard} ${styles.fillCard}`} data-insight="landing-flow">
+              <AmbientOrbit tone="sage" size={200} opacity={0.32} spin={44} waveform className={styles.fillOrbitBR} />
+              <AmbientOrbit tone="ocean" size={120} opacity={0.22} spin={52} className={styles.fillOrbitTR} />
+              <div className={styles.fillContent}>
+                <span className={styles.sectionEyebrow}>Recent participant flow</span>
+                <h3>The last four hours</h3>
+                <ul className={styles.flowList}>
+                  {participants.slice(0, 7).map((participant) => (
+                    <li key={participant.id}>
+                      <button type="button" onClick={() => navigate(`/participants/${participant.id}`)}>
+                        <strong>{participant.id}</strong>
+                        <span>{participant.group} · {participant.visit} · {participant.site}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className={styles.fillStrip}>
+                  <div className={styles.fillChip}><span className={styles.fillDotG} /> visits today <strong>{participants.length}</strong></div>
+                  <div className={styles.fillChip}><span className={styles.fillDotB} /> queued runs <strong>{totals.readyRuns}</strong></div>
+                  <div className={styles.fillChip}><span className={styles.fillDotY} /> RMSSD <strong>{stat(totals.rmssdLatest, 1)} ms</strong></div>
+                </div>
+              </div>
             </article>
           </div>
         </section>
