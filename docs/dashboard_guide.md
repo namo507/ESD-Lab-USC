@@ -6,15 +6,15 @@
 
 ## 1. What is the dashboard?
 
-A single web page (`dashboard/index.html`) that shows, at a glance,
-**the current state of the NANO Study** plus a public-facing view of the
-ESD Lab organization site. It is generated from a small
-JSON file (`dashboard/data/dashboard_data.json`) that the nightly
-pipeline rebuilds from REDCap and the feature matrix.
+The current website is a React SPA served locally at `/` with the
+operator-facing dashboard at `/overview`. It is backed by
+`dashboard/data/dashboard_data.json` and `dashboard/data/readings_data.json`,
+which the nightly pipeline rebuilds from REDCap, feature outputs, and the
+reading library.
 
-The dashboard can still be hosted as static files, but the repository now
-also includes a lightweight live runtime that serves the site, watches the
-source folders, and refreshes the generated JSON outputs automatically.
+The older static shell that lived at `dashboard/index.html` has been archived
+under `archive/2026-05-18_legacy_dashboard_ui/`. The repository now treats the
+local runtime and the Pages-deployed SPA as the same canonical UI surface.
 
 The page also now includes a compact jump atlas near the top and smaller
 local jump chips inside each section so team members can hop directly to
@@ -28,17 +28,22 @@ section views or restore the full long-form dashboard when needed.
 
 ## 2. Opening the dashboard
 
-### Option A — Double-click (easiest)
-Navigate to `dashboard/index.html` in Finder / File Explorer and
-double-click. It opens in your default browser.
-
-### Option B — Live Docker runtime (recommended)
+### Option A — Live runtime (recommended)
+Run the local server and open the canonical routes:
 
 ```bash
 docker compose up --build dashboard
 ```
 
-Then open `http://localhost:8080/dashboard/`.
+Then open `http://localhost:8080/` or `http://localhost:8080/overview`.
+
+### Option B — Public Pages URL
+
+Open the production site directly:
+
+```bash
+https://esd-lab-namo.pages.dev/
+```
 
 If you need to share the dashboard with someone outside your machine, the
 canonical static-site URL is:
@@ -64,7 +69,7 @@ token, deploy the wrapper manually:
 make pages-runtime-deploy
 ```
 
-For a stable branded hostname (e.g. `https://dashboard.esdlabsc.com/dashboard/`),
+For a stable branded hostname (e.g. `https://dashboard.esdlabsc.com/`),
 configure both values in `.env` and use `make share-named`:
 
 ```bash
@@ -85,13 +90,11 @@ every run.
 
 ### Option C — From a URL (if you host it)
 ```
-https://<lab-server>/nano/dashboard/
+https://<lab-server>/overview
 ```
 
-If the charts look blank, make sure the file
-`dashboard/data/dashboard_data.json` exists next to `index.html`.
-If the reading library is empty, make sure
-`dashboard/data/readings_data.json` has been generated.
+If the charts look blank, make sure `dashboard/data/dashboard_data.json` exists.
+If the reading library is empty, make sure `dashboard/data/readings_data.json` has been generated.
 
 ## 3. Nine sections on one continuous page
 
@@ -151,10 +154,8 @@ For visual comfort, use the topbar theme selector:
    builder, strips PHI, and writes the JSON.
 3. **Readings index** (`dashboard/pipelines/build_readings_index.py`)
    scans `ESD Lab readings/` and writes the searchable reading library.
-4. **Dashboard** (`dashboard/index.html`) reads both JSON files in the
-   browser, animates updates, redraws the charts with Chart.js, and
-   derives the ML architecture explainer from the best model and SHAP
-   fields already present in `dashboard_data.json`.
+4. **Local runtime + SPA** (`dashboard/server/live_dashboard_server.py` + `web/src/**`)
+   serve both JSON files to the browser and render the canonical Pages-aligned UI.
 
 ## 6. Something looks wrong — who do I ask?
 

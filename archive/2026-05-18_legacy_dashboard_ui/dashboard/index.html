@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NANO Study · Research Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="styles.css?v=20260513-glass-overhaul">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body>
+<div class="site-loader" id="site-loader" role="status" aria-live="polite" aria-label="Preparing NANO dashboard">
+  <div class="site-loader-panel site-loader-panel-left"></div>
+  <div class="site-loader-panel site-loader-panel-right"></div>
+  <div class="site-loader-content">
+    <span class="site-loader-kicker">NANO Study</span>
+    <strong id="site-loader-title">Preparing the live research environment</strong>
+    <p id="site-loader-copy">Syncing enrollment, modeling, geospatial, and readings surfaces for the live dashboard.</p>
+  </div>
+</div>
+<div class="site-noise" aria-hidden="true"></div>
+<div class="ambient-blobs" aria-hidden="true">
+  <span class="ambient-blob ambient-blob-garnet"></span>
+  <span class="ambient-blob ambient-blob-peach"></span>
+  <span class="ambient-blob ambient-blob-sage"></span>
+  <span class="ambient-blob ambient-blob-ocean"></span>
+</div>
+<div class="site-cursor" id="site-cursor" aria-hidden="true">
+  <span class="site-cursor-ring"></span>
+  <span class="site-cursor-dot"></span>
+</div>
+<div class="app">
+  <!-- ─── Sidebar ─── -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">NANO Study</span>
+    </div>
+    <div class="brand-sub">ESD Lab · University of South Carolina</div>
+
+    <nav class="nav">
+      <span class="section-label">Navigate</span>
+      <a href="#overview" class="active" data-target="overview"><span class="dot"></span>Overview</a>
+      <a href="#labsite" data-target="labsite"><span class="dot"></span>ESD Lab Site</a>
+      <a href="#impact" data-target="impact"><span class="dot"></span>ESD Impact</a>
+      <a href="#pipeline" data-target="pipeline"><span class="dot"></span>Pipeline</a>
+      <a href="#geo" data-target="geo"><span class="dot"></span>Geospatial</a>
+      <a href="#quality" data-target="quality"><span class="dot"></span>Data Quality</a>
+      <a href="#ml" data-target="ml"><span class="dot"></span>ML Performance</a>
+      <a href="#trajectories" data-target="trajectories"><span class="dot"></span>Trajectories</a>
+      <a href="#cohort" data-target="cohort"><span class="dot"></span>Cohort Table</a>
+      <a href="#research" data-target="research"><span class="dot"></span>Research Questions</a>
+      <a href="#readings" data-target="readings"><span class="dot"></span>Reading Library</a>
+
+      <span class="section-label">ESD Lab Site</span>
+      <a href="https://www.esdlabsc.com/" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Main Website</a>
+      <a href="https://www.esdlabsc.com/about" target="_blank" rel="noreferrer noopener"><span class="dot"></span>About &amp; Mission</a>
+      <a href="https://www.esdlabsc.com/our-studies" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Current Studies</a>
+      <a href="https://www.esdlabsc.com/our-team" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Our Team</a>
+      <a href="https://www.esdlabsc.com/publications-presentations" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Publications</a>
+      <a href="https://www.esdlabsc.com/resources" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Resources</a>
+      <a href="https://www.esdlabsc.com/contact-us" target="_blank" rel="noreferrer noopener"><span class="dot"></span>Contact &amp; Sign Up</a>
+
+      <span class="section-label">Repository</span>
+      <a href="../README.md" target="_blank"><span class="dot"></span>README</a>
+      <a href="../docs/data_flow_diagram.md" target="_blank"><span class="dot"></span>Data Flow Doc</a>
+      <a href="../docs/hipaa_compliance_checklist.md" target="_blank"><span class="dot"></span>HIPAA Checklist</a>
+      <a href="../docs/dashboard_guide.md" target="_blank"><span class="dot"></span>Dashboard Guide</a>
+      <a href="../docs/auto_update_pipeline.md" target="_blank"><span class="dot"></span>Auto-Update Docs</a>
+      <a href="../docs/research_questions_process.md" target="_blank"><span class="dot"></span>Research Questions SOP</a>
+    </nav>
+
+    <div class="sidebar-preview" id="sidebar-preview">
+      <span class="sidebar-preview-label t-label">Focused surface</span>
+      <strong class="sidebar-preview-title" id="sidebar-preview-title">Homepage snapshot</strong>
+      <p class="sidebar-preview-copy" id="sidebar-preview-copy">Operational metrics, overview KPIs, and quick-entry cards.</p>
+      <a class="sidebar-preview-link" id="sidebar-preview-link" href="#overview-kpis">Open overview</a>
+    </div>
+
+    <div class="side-meta" id="side-meta">&nbsp;</div>
+  </aside>
+
+  <!-- ─── Main ─── -->
+  <main class="main" id="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="page-title t-headline" id="page-title"><span class="title-mark" aria-hidden="true">◆</span>NANO Study · Research Dashboard</div>
+        <div class="page-sub t-caption" id="page-sub">R01 longitudinal cohort · VPT infants from NICU admission through 36 months</div>
+      </div>
+      <div class="topbar-right">
+        <span class="status-pill live"><span class="pulse"></span>Live monitor</span>
+        <span class="status-pill" id="sync-state">Booting</span>
+        <span class="status-pill soft">Updated <span id="updated-at">—</span></span>
+        <span class="status-pill soft">Refresh in <span id="next-refresh">—</span></span>
+        <span id="data-source-chip" class="status-pill soft">synthetic_demo</span>
+        <div class="theme-toggle status-pill soft" id="theme-toggle" role="group" aria-label="Theme mode selector">
+          <span class="theme-toggle-label t-label">Theme</span>
+          <div class="theme-toggle-options">
+            <button type="button" class="theme-option" data-theme-preference="auto" aria-pressed="true">Auto</button>
+            <button type="button" class="theme-option" data-theme-preference="light" aria-pressed="false">Light</button>
+            <button type="button" class="theme-option" data-theme-preference="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+        <button type="button" class="status-pill soft home-view-trigger" id="home-view-toggle" hidden>Homepage</button>
+        <button type="button" class="status-pill soft view-panel-trigger t-label" id="view-panel-toggle" aria-controls="view-panel-shell" aria-expanded="false">View Panel</button>
+      </div>
+    </div>
+
+    <div id="error-banner" class="error-banner hide"></div>
+
+    <div class="view-panel-shell" id="view-panel-shell" aria-hidden="true">
+      <button type="button" class="view-panel-scrim" id="view-panel-scrim" aria-label="Close view panel"></button>
+      <aside class="view-panel" id="view-panel" aria-label="Dashboard view panel">
+        <div class="view-panel-header">
+          <div class="view-panel-header-copy">
+            <span class="eyebrow">View panel</span>
+            <h2 class="view-panel-title">Open a focused dashboard view instead of one long page</h2>
+            <p class="view-panel-copy">Keep the homepage centered on key metrics, then switch into dedicated section views or expand the full dashboard only when you need the long-form browse.</p>
+          </div>
+          <div class="view-panel-header-stage" aria-label="Live dashboard quick scan">
+            <div class="view-panel-header-stage-top">
+              <span class="view-panel-header-stage-label">Live scan</span>
+              <button type="button" class="view-panel-close" id="view-panel-close" aria-label="Close view panel">Close</button>
+            </div>
+
+            <div class="view-panel-header-mini-grid">
+              <button type="button" class="view-header-signal" data-tone="recruitment" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
+                <span class="view-header-signal-label">Enrollment</span>
+                <strong id="view-header-enrollment-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-enrollment-note">Target progress will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-enrollment-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="quality" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
+                <span class="view-header-signal-label">Readiness</span>
+                <strong id="view-header-quality-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-quality-note">Quality diagnostics will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-quality-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="model" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
+                <span class="view-header-signal-label">Model lead</span>
+                <strong id="view-header-model-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-model-note">Model performance will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-model-bar"></span></div>
+              </button>
+
+              <button type="button" class="view-header-signal" data-tone="library" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
+                <span class="view-header-signal-label">Library</span>
+                <strong id="view-header-library-value">—</strong>
+                <span class="view-header-signal-note" id="view-header-library-note">Reading library coverage will appear here.</span>
+                <div class="view-header-signal-meter" aria-hidden="true"><span id="view-header-library-bar"></span></div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="view-panel-status">
+          <span class="view-panel-status-label">Current view</span>
+          <strong id="view-panel-current-title">Homepage snapshot</strong>
+          <span id="view-panel-current-sub">Operational metrics, overview KPIs, and quick-entry cards.</span>
+        </div>
+
+        <div class="view-panel-modes">
+          <button type="button" class="view-mode-card" data-dashboard-view="home" data-section="overview" data-jump-target="#overview-kpis">
+            <strong>Homepage snapshot</strong>
+            <span>Keep the landing page focused on operational metrics, KPI cards, and overview quick links.</span>
+          </button>
+          <button type="button" class="view-mode-card" data-dashboard-view="all" data-section="overview" data-jump-target="#overview-kpis">
+            <strong>Full dashboard browse</strong>
+            <span>Show every section at once for full-page review, scrolling, and broad comparison.</span>
+          </button>
+        </div>
+
+        <div class="view-panel-groups">
+          <section class="view-panel-group">
+            <h3>Study status</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="home" data-jump-target="#overview-kpis" data-section="overview">
+                <strong>KPI snapshot</strong>
+                <span>Enrollment, active records, model AUROC, and completeness.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
+                <strong>Enrollment trends</strong>
+                <span>Cumulative recruitment curves and progress vs target.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#cohort-table-card" data-section="cohort">
+                <strong>Cohort snapshot</strong>
+                <span>Sortable surrogate participant table with QC filters.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>ESD Lab public site</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#labsite-summary" data-section="labsite">
+                <strong>Mission snapshot</strong>
+                <span>Public-facing mission, footprint, and organization metrics from esdlabsc.com.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#labsite-studies" data-section="labsite">
+                <strong>Current studies</strong>
+                <span>NANO and NICU Exit recruitment pathways, participation details, and study-entry links.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#labsite-connect" data-section="labsite">
+                <strong>Resources &amp; contact</strong>
+                <span>Family resources, partner network, outreach contacts, and direct public-site links.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#impact-overview" data-section="impact">
+                <strong>Impact explorer</strong>
+                <span>Filter publications, news mentions, and participant stories sourced from the public site.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Methods and quality</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#pipeline-map" data-section="pipeline">
+                <strong>Pipeline map</strong>
+                <span>Clickable methods SVG from collection through sharing.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
+                <strong>Missingness review</strong>
+                <span>Instrument missingness and imputation follow-through.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#quality-audit" data-section="quality">
+                <strong>Audit activity</strong>
+                <span>Recent data-team actions and open query context.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Community and geography</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-kpis-section" data-section="geo">
+                <strong>Geo overview</strong>
+                <span>Recruitment zones, partner network, and community coverage KPIs.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-map-card" data-section="geo">
+                <strong>Interactive map</strong>
+                <span>Layered recruitment, SDoH, catchment, and partner-network map view.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#geo-distance-grid" data-section="geo">
+                <strong>Distance and retention</strong>
+                <span>Travel bands, retention patterns, and geographic access trends.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Modeling views</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-explainer" data-section="ml">
+                <strong>Model explainer</strong>
+                <span>Animated architecture walkthrough with methods citations.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
+                <strong>ROC comparison</strong>
+                <span>Full model discrimination curves across candidate models.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#ml-metrics" data-section="ml">
+                <strong>Metrics table</strong>
+                <span>AUROC, CI, sensitivity, specificity, and F1 in one place.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#trajectories-chart" data-section="trajectories">
+                <strong>Trajectory view</strong>
+                <span>Longitudinal biomarker patterns and visit completion context.</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="view-panel-group">
+            <h3>Library and outputs</h3>
+            <div class="view-link-grid">
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#readings-spotlight" data-section="readings">
+                <strong>Featured reading</strong>
+                <span>Current spotlight paper and library metadata highlights.</span>
+              </button>
+              <button type="button" class="view-link" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
+                <strong>Search archive</strong>
+                <span>Filterable reading library with category and keyword search.</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <section class="view-panel-signalboard" aria-label="Live dashboard signal board">
+          <div class="view-panel-signalboard-head">
+            <div>
+              <span class="eyebrow">Signal board</span>
+              <h3>Scan the live study story before opening a section.</h3>
+            </div>
+            <p>These animated cards compress the strongest operational signals, then jump directly into the most relevant dashboard view.</p>
+          </div>
+
+          <div class="view-panel-signal-rail" aria-hidden="true">
+            <span>Recruit</span>
+            <span>Ready</span>
+            <span>Model</span>
+            <span>Read</span>
+          </div>
+
+          <div class="view-panel-signal-grid">
+            <button type="button" class="view-signal-card" data-tone="recruitment" data-dashboard-view="home" data-jump-target="#overview-enrollment" data-section="overview">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Recruitment pulse</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-enrollment-value">—</strong>
+              <span id="view-signal-enrollment-note">Enrollment progress will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-enrollment-bar"></span></div>
+              <span class="view-signal-action">Open overview trends</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="quality" data-dashboard-view="section" data-jump-target="#quality-missingness" data-section="quality">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Data readiness</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-quality-value">—</strong>
+              <span id="view-signal-quality-note">Quality diagnostics will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-quality-bar"></span></div>
+              <span class="view-signal-action">Open missingness review</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="model" data-dashboard-view="section" data-jump-target="#ml-roc" data-section="ml">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Model signal</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-model-value">—</strong>
+              <span id="view-signal-model-note">Model performance will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-model-bar"></span></div>
+              <span class="view-signal-action">Open ROC comparison</span>
+            </button>
+
+            <button type="button" class="view-signal-card" data-tone="library" data-dashboard-view="section" data-jump-target="#readings-library" data-section="readings">
+              <div class="view-signal-card-head">
+                <span class="view-signal-tag">Evidence library</span>
+                <span class="view-signal-orb" aria-hidden="true"></span>
+              </div>
+              <strong id="view-signal-library-value">—</strong>
+              <span id="view-signal-library-note">Reading library coverage will appear here.</span>
+              <div class="view-signal-meter" aria-hidden="true"><span id="view-signal-library-bar"></span></div>
+              <span class="view-signal-action">Open reading archive</span>
+            </button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <section class="sync-banner" id="sync-banner">
+      <div class="sync-hero">
+        <div class="sync-hero-top">
+          <span class="eyebrow">Live NANO pipeline</span>
+          <div class="sync-hero-pills cockpit-quicknav">
+            <a class="sync-link-pill" href="#overview-kpis">KPI deck</a>
+            <a class="sync-link-pill" href="#pipeline-map">Node map</a>
+            <a class="sync-link-pill" href="#quality-missingness">QA watch</a>
+            <a class="sync-link-pill" href="#readings-spotlight">Evidence layer</a>
+          </div>
+        </div>
+        <div class="sync-hero-core">
+          <div class="sync-copy">
+            <div class="sync-copy-intro">
+              <span class="sync-copy-status">Warm glass shell · de-identified live surfaces</span>
+            </div>
+            <h1 class="t-display" data-split="chars">The heartbeat of every baby's first year.</h1>
+            <p id="sync-notes">Tracking <span class="gloss" data-term="NANO">NANO</span> enrollment, <span class="gloss" data-term="RMSSD">RMSSD</span> maturation, <span class="gloss" data-term="REDCap">REDCap</span> operations, and <span class="gloss" data-term="HIPAA">HIPAA</span>-safe exports from intake through de-identification.</p>
+          </div>
+          <div class="sync-visual" aria-hidden="true">
+            <div class="sync-visual-stage">
+              <div class="sync-visual-halo sync-visual-halo-a"></div>
+              <div class="sync-visual-halo sync-visual-halo-b"></div>
+              <div class="sync-visual-ring sync-visual-ring-a"></div>
+              <div class="sync-visual-ring sync-visual-ring-b"></div>
+              <div class="sync-visual-grid"></div>
+              <div class="sync-visual-card" style="position: relative;">
+                <span>Study orchestration</span>
+                <strong>Glassmorphic command surface for infant physiology.</strong>
+                <p>Enrollment, window QA, HRV features, and compliant sharing stay aligned in one premium operational view.</p>
+                <div class="sync-mini-badges" style="position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px;">
+                  <span class="sync-visual-chip sync-visual-chip-mini" style="position: static; font-size: 10px; padding: 4px 8px; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; color: var(--usc-garnet); animation: pulse 2s infinite;">REDCap: 78 queries</span>
+                  <span class="sync-visual-chip sync-visual-chip-mini" style="position: static; font-size: 10px; padding: 4px 8px; background: rgba(255,255,255,0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; color: var(--ocean-800); animation: pulse 2s infinite 1s;">AUROC: 0.899</span>
+                </div>
+              </div>
+              <div class="sync-visual-chip sync-visual-chip-a">Actiheart intake</div>
+              <div class="sync-visual-chip sync-visual-chip-b">Window QA</div>
+              <div class="sync-visual-chip sync-visual-chip-c">De-identify</div>
+            </div>
+          </div>
+        </div>
+        <div class="sync-highlight-strip">
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="ocean">
+            <span class="sync-label">Enrolled</span>
+            <strong id="home-progress-total">—</strong>
+            <span id="home-progress-note">Awaiting cohort snapshot</span>
+          </div>
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="sage">
+            <span class="sync-label">Median RMSSD</span>
+            <strong id="home-active-total">—</strong>
+            <span id="home-active-note">Trajectory median will appear here</span>
+          </div>
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="warn">
+            <span class="sync-label">Epochs</span>
+            <strong id="home-completeness-total">—</strong>
+            <span id="home-completeness-note">Derived processing windows will appear here</span>
+          </div>
+          <div class="sync-highlight-card kpi-accent" data-kpi-tone="danger">
+            <span class="sync-label">PHI leaks</span>
+            <strong id="home-best-model">—</strong>
+            <span id="home-best-model-note">De-identification status will appear here</span>
+          </div>
+        </div>
+        <div class="sync-dashboard-mosaic">
+          <div class="sync-story-grid">
+            <div class="sync-storyboard">
+            <div class="sync-storyboard-top">
+              <div class="sync-storyboard-copy">
+                <span class="eyebrow">Pipeline balance</span>
+                <h3 class="sync-storyboard-title">A symmetrical landing surface that keeps intake, QA, feature engineering, and export in one glance.</h3>
+                <p class="sync-storyboard-note">The homepage now leads with a premium node-driven story: REDCap intake on the left, feature and quality orchestration in the middle, and compliant export on the right.</p>
+              </div>
+              <div class="sync-storyboard-stage" aria-hidden="true">
+                <div class="sync-storyboard-stage-grid"></div>
+                <div class="sync-storyboard-stage-core">
+                  <span class="sync-storyboard-stage-label">Live orchestration</span>
+                  <strong id="home-stage-focus-value">—</strong>
+                  <p id="home-stage-focus-note">Waiting for synced study metrics.</p>
+                  <div class="sync-storyboard-stage-bars">
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-a"><i id="home-stage-bar-enrollment"></i></span>
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-b"><i id="home-stage-bar-readiness"></i></span>
+                    <span class="sync-storyboard-stage-bar sync-storyboard-stage-bar-c"><i id="home-stage-bar-library"></i></span>
+                  </div>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-a">
+                  <span>REDCap</span>
+                  <strong id="home-stage-chip-enrollment">—</strong>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-b">
+                  <span>Window QA</span>
+                  <strong id="home-stage-chip-readiness">—</strong>
+                </div>
+                <div class="sync-storyboard-stage-chip sync-storyboard-stage-chip-c">
+                  <span>HRV</span>
+                  <strong id="home-stage-chip-library">—</strong>
+                </div>
+              </div>
+            </div>
+            <div class="sync-story-track" aria-label="Live study pulse">
+              <a class="sync-story-node" data-tone="recruitment" href="#overview-enrollment">
+                <span class="sync-story-kicker">REDCap intake</span>
+                <strong id="home-pulse-enrollment-value">—</strong>
+                <span id="home-pulse-enrollment-note">Waiting for enrollment signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-enrollment-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="quality" href="#quality-kpis">
+                <span class="sync-story-kicker">Window QA</span>
+                <strong id="home-pulse-quality-value">—</strong>
+                <span id="home-pulse-quality-note">Waiting for quality signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-quality-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="model" href="#ml-explainer">
+                <span class="sync-story-kicker">HRV features</span>
+                <strong id="home-pulse-model-value">—</strong>
+                <span id="home-pulse-model-note">Waiting for model signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-model-bar"></span></span>
+              </a>
+              <a class="sync-story-node" data-tone="library" href="#readings-spotlight">
+                <span class="sync-story-kicker">De-identify</span>
+                <strong id="home-pulse-library-value">—</strong>
+                <span id="home-pulse-library-note">Waiting for readings signal.</span>
+                <span class="sync-story-meter" aria-hidden="true"><span id="home-pulse-library-bar"></span></span>
+              </a>
+            </div>
+            </div>
+            <div class="sync-ambient-grid" aria-label="Live operational highlights">
+            <a class="sync-ambient-card" data-tone="runtime" href="#overview-kpis">
+              <span class="sync-story-kicker">Watcher cadence</span>
+              <strong id="home-ambient-runtime-value">—</strong>
+              <span id="home-ambient-runtime-note">Waiting for runtime cadence.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="library" href="#readings-spotlight">
+              <span class="sync-story-kicker">Evidence focus</span>
+              <strong id="home-ambient-library-value">—</strong>
+              <span id="home-ambient-library-note">Waiting for reading spotlight.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="queries" href="#quality-kpis">
+              <span class="sync-story-kicker">Query pressure</span>
+              <strong id="home-ambient-query-value">—</strong>
+              <span id="home-ambient-query-note">Waiting for REDCap workload.</span>
+            </a>
+            <a class="sync-ambient-card" data-tone="cohort" href="#cohort-table-card">
+              <span class="sync-story-kicker">Cohort balance</span>
+              <strong id="home-ambient-cohort-value">—</strong>
+              <span id="home-ambient-cohort-note">Waiting for cohort movement.</span>
+            </a>
+            </div>
+          </div>
+          <div class="sync-side-stack">
+            <div class="sync-arm-grid" id="home-arm-grid" aria-label="Enrollment progress by study group"></div>
+            <div class="sync-cards">
+              <div class="sync-card">
+                <span class="sync-label">Build cycles</span>
+                <strong id="runtime-build-count">0</strong>
+                <span id="runtime-build-status">Waiting for first sync</span>
+              </div>
+              <div class="sync-card">
+                <span class="sync-label">Indexed readings</span>
+                <strong id="runtime-readings-count">0</strong>
+                <span id="runtime-readings-latest">No readings indexed yet</span>
+              </div>
+              <div class="sync-card">
+                <span class="sync-label">Auto refresh cadence</span>
+                <strong id="runtime-refresh-interval">20s</strong>
+                <span id="runtime-source">Standby</span>
+              </div>
+              <div class="sync-card sync-card-accent">
+                <span class="sync-label">Open queries</span>
+                <strong id="runtime-query-count">0</strong>
+                <span id="runtime-query-status">Waiting for REDCap summary</span>
+              </div>
+            </div>
+            <div class="qa-feed-panel" id="qa-feed-panel" aria-live="polite">
+              <div class="qa-feed-head">
+                <div>
+                  <span class="eyebrow">Agentic QA</span>
+                  <h3>Pipeline alerts and live study insights</h3>
+                  <p>Dark-glass observer feed for REDCap intake, window QA, feature drift, and HIPAA-safe export signals.</p>
+                </div>
+                <span class="qa-feed-chip">Observer-driven</span>
+              </div>
+              <div class="qa-feed-summary" id="qa-feed-summary">Monitoring REDCap, window QA, and de-identification guardrails.</div>
+              <div class="qa-feed-list" id="qa-feed-list"></div>
+            </div>
+          </div>
+
+          <!-- ─── Pulse Atlas · animated cohort + pipeline + signal widget ─── -->
+          <section class="pulse-atlas" id="pulse-atlas" aria-label="Live cohort, pipeline, and model-signal pulse">
+            <div class="pulse-atlas-head">
+              <div>
+                <span class="eyebrow">Live pulse</span>
+                <h2>Cohort streams, pipeline particles, and model signals — moving as the data lands</h2>
+              </div>
+              <div class="pulse-atlas-tags" role="tablist" aria-label="Pulse atlas focus">
+                <button type="button" class="pulse-atlas-tag is-active" data-pa-focus="all">All streams</button>
+                <button type="button" class="pulse-atlas-tag" data-pa-focus="VPT">VPT</button>
+                <button type="button" class="pulse-atlas-tag" data-pa-focus="ASIB">ASIB</button>
+                <button type="button" class="pulse-atlas-tag" data-pa-focus="TD">TD</button>
+              </div>
+            </div>
+            <div class="pulse-atlas-grid">
+              <div class="pulse-atlas-canvas-wrap">
+                <svg class="pulse-atlas-svg" viewBox="0 0 720 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Three cohort streams flowing through six pipeline stages">
+                  <defs>
+                    <radialGradient id="pa-spark-grad">
+                      <stop offset="0%" stop-color="#ffcc00" stop-opacity="1" />
+                      <stop offset="60%" stop-color="#ffcc00" stop-opacity="0.35" />
+                      <stop offset="100%" stop-color="#ffcc00" stop-opacity="0" />
+                    </radialGradient>
+                    <path id="pa-path-VPT"  d="M 30 90  C 180 60, 260 90, 380 110 S 600 80, 690 90" />
+                    <path id="pa-path-ASIB" d="M 30 180 C 200 200, 280 150, 380 180 S 600 200, 690 180" />
+                    <path id="pa-path-TD"   d="M 30 270 C 180 260, 280 290, 380 250 S 600 280, 690 270" />
+                  </defs>
+                  <use class="pa-track" href="#pa-path-VPT"  />
+                  <use class="pa-track" href="#pa-path-ASIB" />
+                  <use class="pa-track" href="#pa-path-TD"   />
+                  <use class="pa-stream pa-stream-VPT"  href="#pa-path-VPT"  data-pa-stream="VPT" />
+                  <use class="pa-stream pa-stream-ASIB" href="#pa-path-ASIB" data-pa-stream="ASIB" />
+                  <use class="pa-stream pa-stream-TD"   href="#pa-path-TD"   data-pa-stream="TD" />
+                  <g id="pa-stages"></g>
+                  <g id="pa-particles"></g>
+                  <g id="pa-sparks"></g>
+                  <g class="pa-start-labels">
+                    <text class="pa-label" x="30" y="74">VPT</text>
+                    <text class="pa-num"   x="30" y="58" id="pa-num-VPT">—</text>
+                    <text class="pa-label" x="30" y="164">ASIB</text>
+                    <text class="pa-num"   x="30" y="148" id="pa-num-ASIB">—</text>
+                    <text class="pa-label" x="30" y="254">TD</text>
+                    <text class="pa-num"   x="30" y="238" id="pa-num-TD">—</text>
+                  </g>
+                </svg>
+              </div>
+              <div class="pulse-atlas-side">
+                <div class="pa-card">
+                  <span class="pa-card-label">Today's signal</span>
+                  <strong id="pa-side-signal">—</strong>
+                  <span class="pa-card-sub" id="pa-side-signal-sub">Awaiting model evaluation</span>
+                  <div class="pa-bar"><div class="pa-bar-fill" id="pa-side-signal-bar" data-tone="ocean"></div></div>
+                </div>
+                <div class="pa-card">
+                  <span class="pa-card-label">Pipeline yield</span>
+                  <strong id="pa-side-yield">—</strong>
+                  <span class="pa-card-sub" id="pa-side-yield-sub">QC pass rate across last 24 h of epochs</span>
+                  <div class="pa-bar"><div class="pa-bar-fill" id="pa-side-yield-bar" data-tone="sage"></div></div>
+                </div>
+                <div class="pa-mini-stat-row" aria-label="Live counters">
+                  <div class="pa-mini-stat">
+                    <span class="pa-mini-label">In flight</span>
+                    <span class="pa-mini-val" id="pa-mini-inflight">—</span>
+                  </div>
+                  <div class="pa-mini-stat">
+                    <span class="pa-mini-label">Queries</span>
+                    <span class="pa-mini-val" id="pa-mini-queries">—</span>
+                  </div>
+                  <div class="pa-mini-stat">
+                    <span class="pa-mini-label">Build #</span>
+                    <span class="pa-mini-val" id="pa-mini-builds">—</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-atlas card">
+      <div class="section-atlas-header">
+        <div>
+          <span class="eyebrow">Jump by task</span>
+          <h2 class="section-atlas-title">Move directly to the chart, filter, or explainer you need</h2>
+          <p class="section-atlas-copy">The landing view surfaces the live study pulse. Use these quick-entry cards when you want a deeper read inside a specific section.</p>
+        </div>
+      </div>
+      <div class="section-atlas-grid">
+        <a class="atlas-card jump-card" data-card-group="overview" href="#overview-kpis">
+          <strong>Study status</strong>
+          <span>KPI snapshot and operational health</span>
+          <small>Overview</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="organization" href="#labsite-summary">
+          <strong>ESD Lab site</strong>
+          <span>Mission, studies, resources, and community links</span>
+          <small>Organization</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="organization" href="#impact-overview">
+          <strong>ESD impact</strong>
+          <span>Publications, news, and participant stories with filters</span>
+          <small>Organization</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="overview" href="#overview-enrollment">
+          <strong>Recruitment curves</strong>
+          <span>Enrollment and target progress</span>
+          <small>Overview</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="pipeline" href="#pipeline-map">
+          <strong>Methods pipeline</strong>
+          <span>Collection to modeling to sharing</span>
+          <small>Pipeline</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="geo" href="#geo-kpis-section">
+          <strong>Geospatial intelligence</strong>
+          <span>Recruitment zones, catchment map, and community access</span>
+          <small>Geospatial</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="quality" href="#quality-missingness">
+          <strong>QC signals</strong>
+          <span>Missingness, queries, and audit actions</span>
+          <small>Data quality</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="ml" href="#ml-explainer">
+          <strong>Model explainer</strong>
+          <span>Architecture animation and methods links</span>
+          <small>ML performance</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="trajectories" href="#trajectories-chart">
+          <strong>Developmental trajectories</strong>
+          <span>Biomarker slopes and visit completion</span>
+          <small>Trajectories</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="cohort" href="#cohort-table-card">
+          <strong>Cohort table</strong>
+          <span>Sortable participant snapshot</span>
+          <small>Cohort</small>
+        </a>
+        <a class="atlas-card jump-card" data-card-group="readings" href="#readings-library">
+          <strong>Reading library</strong>
+          <span>Featured papers and searchable archive</span>
+          <small>Readings</small>
+        </a>
+      </div>
+    </section>
+
+    <!-- ─── Section: Overview ─── -->
+    <section id="overview">
+      <div class="section jump-target" id="overview-kpis">
+        <h2><span class="num">1</span>Study Overview</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within overview</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#overview-kpis">KPI snapshot</a>
+            <a class="section-jump-pill" href="#overview-enrollment">Enrollment trends</a>
+            <a class="section-jump-pill" href="#quality-kpis">Quality checks</a>
+            <a class="section-jump-pill" href="#ml-explainer">Best model explainer</a>
+          </div>
+        </div>
+        <div class="grid kpis">
+          <div class="card kpi kpi-card" data-kpi-tone="default" data-insight="kpi-enroll">
+            <span class="hint">i</span>
+            <div class="hint-popup">Total participants currently enrolled across all three groups (ASIB, PT, TD). Target: 260 over 5 years.</div>
+            <div class="label t-label">Enrolled / Target</div>
+            <div class="value t-kpi t-mono" id="kpi-enroll">—</div>
+            <div class="delta ok t-caption" id="kpi-enroll-delta">—</div>
+          </div>
+          <div class="card kpi kpi-card" data-kpi-tone="default" data-insight="kpi-active">
+            <span class="hint">i</span>
+            <div class="hint-popup">Records active in REDCap (have had ≥1 visit completed).</div>
+            <div class="label t-label">Active Records</div>
+            <div class="value t-kpi t-mono" id="kpi-active">—</div>
+            <div class="delta t-caption" id="kpi-active-delta">—</div>
+          </div>
+          <div class="card kpi kpi-card" data-kpi-tone="warn" data-insight="kpi-queries">
+            <span class="hint">i</span>
+            <div class="hint-popup">Outstanding REDCap data queries awaiting resolution by the data team.</div>
+            <div class="label t-label">Open Queries</div>
+            <div class="value t-kpi t-mono" id="kpi-queries">—</div>
+            <div class="delta warn t-caption">auto-assigned to RA team</div>
+          </div>
+          <div class="card kpi kpi-card" data-kpi-tone="accent" data-insight="kpi-auroc">
+            <span class="hint">i</span>
+            <div class="hint-popup">Best model's AUROC for predicting ADOS-2 positive screen at 12 months from NICU+infant biomarkers.</div>
+            <div class="label t-label">Best Model AUROC</div>
+            <div class="value t-kpi t-mono" id="kpi-auroc">—</div>
+            <div class="delta ok t-caption" id="kpi-auroc-sub">—</div>
+          </div>
+          <div class="card kpi kpi-card" data-kpi-tone="warn" data-insight="kpi-completeness">
+            <span class="hint">i</span>
+            <div class="hint-popup">Average fraction of REDCap fields completed per participant per visit.</div>
+            <div class="label t-label">Mean Completeness</div>
+            <div class="value t-kpi t-mono" id="kpi-completeness">—</div>
+            <div class="delta ok t-caption">target ≥ 80%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section jump-target" id="overview-enrollment">
+        <h2><span class="num">2</span>Enrollment by Group</h2>
+        <div class="grid two">
+          <div class="card">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>What:</b> Cumulative enrollment over the last 30 months by study arm.<br><br><b>Why it matters:</b> Monitors accrual against R01 targets. Lower slope for an arm signals a need to adjust recruitment strategy.<br><br><b>Pulled from:</b> REDCap <code class="code">demographics</code> form via <code class="code">redcap/api/redcap_pull.py</code>.</div>
+            <h3>Cumulative enrollment curve</h3>
+            <div class="chart-wrap tall"><canvas id="chart-enrollment"></canvas></div>
+          </div>
+          <div class="card">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>What:</b> Current enrollment vs R01 target per group.<br><br><b>Why it matters:</b> Groups falling behind target risk underpowered comparisons in primary aims.</div>
+            <h3>Progress vs target</h3>
+            <div class="chart-wrap"><canvas id="chart-progress"></canvas></div>
+            <div class="deeplinks">
+              <a href="../config/study_parameters.yml" target="_blank">study_parameters.yml</a>
+              <a href="../config/redcap_config.yml" target="_blank">redcap_config.yml</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="labsite">
+      <div class="section jump-target" id="labsite-summary">
+        <h2><span class="num">3</span>ESD Lab Organization Snapshot</h2>
+        <p class="page-sub section-subhead" id="labsite-summary-copy">
+          Loading mission, current studies, pathway, contact details, and support links from the public organization site at <a href="https://www.esdlabsc.com/" target="_blank" rel="noreferrer noopener">esdlabsc.com</a>.
+        </p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within ESD Lab site analysis</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#labsite-summary">Public snapshot</a>
+            <a class="section-jump-pill" href="#labsite-mission">Mission</a>
+            <a class="section-jump-pill" href="#labsite-studies">Current studies</a>
+            <a class="section-jump-pill" href="#labsite-pathway">Family pathway</a>
+            <a class="section-jump-pill" href="#labsite-impact">Impact handoff</a>
+            <a class="section-jump-pill" href="#labsite-connect">Resources &amp; contact</a>
+            <a class="section-jump-pill" href="#impact-overview">Impact explorer</a>
+          </div>
+        </div>
+
+        <div class="grid kpis">
+          <div class="card kpi">
+            <div class="label">Current public studies</div>
+            <div class="value" id="labsite-kpi-studies">—</div>
+            <div class="delta" id="labsite-kpi-studies-note">Waiting for site metadata</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Featured family stories</div>
+            <div class="value" id="labsite-kpi-stories">—</div>
+            <div class="delta" id="labsite-kpi-stories-note">Participant narratives and lived experience</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Community partners</div>
+            <div class="value" id="labsite-kpi-partners">—</div>
+            <div class="delta" id="labsite-kpi-partners-note">Service, therapy, and support organizations</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Dissemination archive</div>
+            <div class="value small" id="labsite-kpi-years">—</div>
+            <div class="delta" id="labsite-kpi-years-note">Publications, posters, awards, and news coverage</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Family incentive</div>
+            <div class="value small" id="labsite-kpi-compensation">—</div>
+            <div class="delta" id="labsite-kpi-compensation-note">Publicly advertised participation incentive</div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top">
+          <div class="card jump-target" id="labsite-mission">
+            <span class="eyebrow">Mission and network</span>
+            <h3 id="labsite-mission-title">Clinical infant research translated for families and community partners</h3>
+            <p class="lab-copy" id="labsite-mission-copy">Waiting for mission details from the public site.</p>
+            <ul class="lab-detail-list" id="labsite-mission-list"></ul>
+            <div class="lab-link-grid" id="labsite-team-grid"></div>
+            <div class="deeplinks" id="labsite-mission-links"></div>
+          </div>
+
+          <div class="card jump-target" id="labsite-studies">
+            <span class="eyebrow">Current studies</span>
+            <h3 id="labsite-studies-title">Recruitment and participation details surfaced on the public site</h3>
+            <div class="lab-study-stack" id="labsite-study-stack"></div>
+            <div class="deeplinks" id="labsite-study-links"></div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top">
+          <div class="card jump-target" id="labsite-pathway">
+            <span class="eyebrow">Family pathway</span>
+            <h3 id="labsite-pathway-title">What the public site asks families to do, and what they get back</h3>
+            <div class="lab-step-grid" id="labsite-pathway-grid"></div>
+            <div class="deeplinks" id="labsite-pathway-links"></div>
+          </div>
+
+          <div class="card jump-target" id="labsite-impact">
+            <span class="eyebrow">Impact handoff</span>
+            <h3 id="labsite-impact-title">How the organization presents dissemination, credibility, and family outcomes</h3>
+            <ul class="lab-detail-list" id="labsite-impact-list"></ul>
+            <div class="lab-link-grid" id="labsite-impact-links"></div>
+          </div>
+        </div>
+
+        <div class="card stack-top jump-target" id="labsite-connect">
+          <span class="eyebrow">Resources and contact</span>
+          <h3 id="labsite-connect-title">Important outbound links for families, providers, and collaborators</h3>
+          <p class="lab-copy" id="labsite-connect-copy">Waiting for public contact and resource metadata.</p>
+          <div class="grid three lab-contact-grid" id="labsite-contact-grid"></div>
+          <div class="lab-link-grid" id="labsite-resource-grid"></div>
+          <div class="deeplinks" id="labsite-connect-links"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="impact">
+      <div class="section jump-target" id="impact-overview">
+        <h2><span class="num">4</span>ESD Lab Dissemination &amp; Stories</h2>
+        <p class="page-sub section-subhead" id="impact-summary-copy">Filter publications, news mentions, and participant stories sourced from esdlabsc.com.</p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within organization impact</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#impact-overview">Impact overview</a>
+            <a class="section-jump-pill" href="#impact-spotlight">Spotlight</a>
+            <a class="section-jump-pill" href="#impact-signals">Impact signals</a>
+            <a class="section-jump-pill" href="#impact-filters">Filter explorer</a>
+            <a class="section-jump-pill" href="#labsite-summary">Back to organization snapshot</a>
+          </div>
+        </div>
+
+        <div class="grid three jump-target" id="impact-kpis">
+          <div class="card kpi">
+            <div class="label">Impact items</div>
+            <div class="value" id="impact-kpi-total">—</div>
+            <div class="delta" id="impact-kpi-total-note">Across publications, news, and participant stories</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Publications</div>
+            <div class="value" id="impact-kpi-publications">—</div>
+            <div class="delta" id="impact-kpi-publications-note">Conference talks, posters, and publication entries</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Public visibility</div>
+            <div class="value small" id="impact-kpi-years">—</div>
+            <div class="delta" id="impact-kpi-years-note">Available years represented in the public archive</div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top impact-overview-grid">
+          <div class="card impact-spotlight jump-target" id="impact-spotlight">
+            <span class="eyebrow">Spotlight</span>
+            <div class="impact-meta" id="impact-featured-meta"></div>
+            <h3 id="impact-featured-title">Impact spotlight</h3>
+            <p id="impact-featured-summary" class="lab-copy">Use the filter explorer below to review publications, news coverage, and participant stories.</p>
+            <div class="reading-tags" id="impact-featured-tags"></div>
+            <div class="reading-actions impact-actions">
+              <a class="reading-link" id="impact-featured-link" href="https://www.esdlabsc.com/" target="_blank" rel="noreferrer noopener">Open source</a>
+              <span id="impact-featured-source">esdlabsc.com</span>
+            </div>
+          </div>
+
+          <div class="card impact-signals jump-target" id="impact-signals">
+            <h3>Impact signals</h3>
+            <div class="reading-insight-grid">
+              <div class="mini-stat">
+                <span class="label">Filtered results</span>
+                <strong id="impact-signal-filtered">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Latest year</span>
+                <strong id="impact-signal-year">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Source mode</span>
+                <strong id="impact-signal-mode">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Kinds indexed</span>
+                <strong id="impact-signal-types">—</strong>
+              </div>
+            </div>
+            <div class="reading-source-stack" id="impact-type-stack"></div>
+            <div class="chip-bar year-chip-bar" id="impact-year-chip-bar"></div>
+          </div>
+        </div>
+
+        <div class="card stack-top jump-target" id="impact-filters">
+          <div class="filters readings-filters">
+            <div class="filter search-filter">
+              <label for="filter-impact-search">Search</label>
+              <input id="filter-impact-search" class="search-input" type="search" placeholder="Search titles, summaries, sources, or tags">
+            </div>
+            <div class="filter">
+              <label for="filter-impact-kind">Type</label>
+              <select id="filter-impact-kind">
+                <option value="all">All types</option>
+                <option value="publication">Publications</option>
+                <option value="news">News</option>
+                <option value="story">Stories</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="filter-impact-year">Year</label>
+              <select id="filter-impact-year">
+                <option value="all">All years</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="filter-impact-sort">Sort</label>
+              <select id="filter-impact-sort">
+                <option value="recent">Newest first</option>
+                <option value="relevance">Search relevance</option>
+                <option value="title">Title A-Z</option>
+                <option value="type">Type</option>
+              </select>
+            </div>
+            <button id="impact-clear-filters" class="ghost-button" type="button">Clear filters</button>
+          </div>
+          <div id="impact-type-chip-bar" class="chip-bar"></div>
+          <div id="impact-grid" class="reading-grid impact-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: Pipeline ─── -->
+    <section id="pipeline">
+      <div class="section jump-target" id="pipeline-map">
+        <div class="pipeline-header">
+          <div>
+            <span class="eyebrow">Node map</span>
+            <h2><span class="num">5</span>Intake to De-identify</h2>
+            <p class="page-sub section-subhead">
+              Hover any stage to inspect how <span class="gloss" data-term="Actiheart">Actiheart</span> traces, <span class="gloss" data-term="REDCap">REDCap</span> context, <span class="gloss" data-term="SQI">SQI</span>-aware window checks, and <span class="gloss" data-term="PHI">PHI</span>-safe exports move through the NANO pipeline.
+            </p>
+          </div>
+          <div class="pipeline-legend" aria-label="Pipeline legend">
+            <span class="pipeline-legend-chip is-active">In flight</span>
+            <span class="pipeline-legend-chip">Hover a capsule for detail</span>
+          </div>
+        </div>
+        <div class="pipeline-node-map">
+          <div class="pipeline-canvas">
+            <svg viewBox="0 0 1180 360" preserveAspectRatio="xMidYMid meet" id="pipeline-svg" role="img" aria-label="Six-stage pipeline map from intake to de-identify">
+              <defs>
+                <linearGradient id="pl-connection-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#73000a" stop-opacity="0.2"></stop>
+                  <stop offset="52%" stop-color="#c78652" stop-opacity="0.9"></stop>
+                  <stop offset="100%" stop-color="#4f7d7a" stop-opacity="0.25"></stop>
+                </linearGradient>
+                <path id="pl-curve-a" d="M 110 198 C 170 152, 220 136, 286 138"></path>
+                <path id="pl-curve-b" d="M 286 138 C 348 140, 404 206, 470 212"></path>
+                <path id="pl-curve-c" d="M 470 212 C 544 220, 592 150, 660 142"></path>
+                <path id="pl-curve-d" d="M 660 142 C 732 130, 796 216, 856 220"></path>
+                <path id="pl-curve-e" d="M 856 220 C 932 222, 992 176, 1058 152"></path>
+              </defs>
+
+              <path class="pl-connection" d="M 110 198 C 170 152, 220 136, 286 138"></path>
+              <path class="pl-connection" d="M 286 138 C 348 140, 404 206, 470 212"></path>
+              <path class="pl-connection" d="M 470 212 C 544 220, 592 150, 660 142"></path>
+              <path class="pl-connection" d="M 660 142 C 732 130, 796 216, 856 220"></path>
+              <path class="pl-connection" d="M 856 220 C 932 222, 992 176, 1058 152"></path>
+
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="14s" begin="0s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-a"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="15s" begin="-2.4s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-b"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="13s" begin="-5.2s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-c"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="16s" begin="-7.4s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-d"></mpath></animateMotion>
+              </circle>
+              <circle class="pl-particle" r="4.5">
+                <animateMotion dur="12s" begin="-9.1s" repeatCount="indefinite" rotate="auto"><mpath href="#pl-curve-e"></mpath></animateMotion>
+              </circle>
+
+              <g class="pl-node is-focused" data-key="intake" data-stage-state="live" tabindex="0" role="button" transform="translate(40 140)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">01</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Intake</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">Actiheart-5 + REDCap</text>
+              </g>
+
+              <g class="pl-node" data-key="ingest" data-stage-state="live" tabindex="0" role="button" transform="translate(216 80)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">02</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Ingest</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">Secure mount + audit</text>
+              </g>
+
+              <g class="pl-node" data-key="preprocess" tabindex="0" role="button" transform="translate(400 154)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">03</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Preprocess</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">ECG cleanup + sync</text>
+              </g>
+
+              <g class="pl-node" data-key="window_qa" data-stage-state="live" tabindex="0" role="button" transform="translate(590 84)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">04</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">Window QA</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">SQI + epoch filter</text>
+              </g>
+
+              <g class="pl-node" data-key="hrv_features" tabindex="0" role="button" transform="translate(786 162)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">05</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">HRV Features</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">RMSSD · RSA · SDNN</text>
+              </g>
+
+              <g class="pl-node" data-key="deidentify" data-stage-state="live" tabindex="0" role="button" transform="translate(988 94)">
+                <ellipse class="pl-ring" cx="70" cy="58" rx="88" ry="54"></ellipse>
+                <rect class="pl-capsule" x="0" y="14" width="140" height="88" rx="44"></rect>
+                <ellipse class="pl-gloss" cx="70" cy="30" rx="54" ry="14"></ellipse>
+                <text class="pl-node-step" x="70" y="38" text-anchor="middle">06</text>
+                <text class="pl-node-title" x="70" y="64" text-anchor="middle">De-identify</text>
+                <text class="pl-node-meta" x="70" y="84" text-anchor="middle">HIPAA-safe export</text>
+              </g>
+            </svg>
+          </div>
+
+          <aside id="pipeline-explainer" class="pl-detail-card" data-stage="intake">
+            <span class="eyebrow">Stage detail</span>
+            <h3 id="pipeline-detail-title">Intake</h3>
+            <p id="pipeline-detail-copy">Actiheart-5 R-R intervals, REDCap visit context, and infant state notes enter the intake lane before secure ingest and downstream window QA.</p>
+            <div class="pipeline-detail-tags" id="pipeline-detail-tags">
+              <span>Actiheart-5</span>
+              <span>REDCap</span>
+              <span>Home visit</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: Geospatial Analysis ─── -->
+    <section id="geo">
+      <div class="section jump-target" id="geo-kpis-section">
+        <h2><span class="num">6</span>Geospatial Analysis</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within geospatial</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#geo-kpis-section">Overview</a>
+            <a class="section-jump-pill" href="#geo-map-card">Map</a>
+            <a class="section-jump-pill" href="#geo-sdoh-grid">SDoH</a>
+            <a class="section-jump-pill" href="#geo-distance-grid">Distance</a>
+          </div>
+        </div>
+        <div class="grid kpis" id="geo-kpis"></div>
+      </div>
+
+      <div class="card" id="geo-map-card" style="position: relative;">
+        <div class="card-header">
+          <div>
+            <h3>Recruitment &amp; Community Map</h3>
+            <p class="card-sub">Aggregated ZIP-level recruitment density, SDoH risk overlays, NICU catchment, and partner network across the South Carolina Midlands.</p>
+          </div>
+          <div class="card-actions" id="geo-layer-controls"></div>
+        </div>
+        <div id="geo-map" class="geo-map-container" role="img" aria-label="Geospatial map of NANO Study recruitment region" style="position: relative;">
+          <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-image: radial-gradient(rgba(0,0,0,0.1) 1px, transparent 1px); background-size: 20px 20px; color: var(--warm-500); font-family: var(--font-mono); font-size: 14px; pointer-events: none; z-index: 1;">Map loading...</div>
+        </div>
+        <div id="geo-timeline-bar" class="geo-timeline glass-soft" style="position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 1000; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 16px; background: rgba(255, 255, 255, 0.85);">
+          <button class="geo-play-btn" id="geo-play-btn" aria-label="Play enrollment timeline">▶</button>
+          <span class="geo-timeline-label" id="geo-timeline-label">—</span>
+          <div class="geo-timeline-track" id="geo-timeline-track">
+            <div class="geo-timeline-fill" id="geo-timeline-fill"></div>
+            <div class="geo-timeline-thumb" id="geo-timeline-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid two" id="geo-sdoh-grid">
+        <div class="card" id="geo-sdoh-radar">
+          <h3>PRAPARE Domain Profile</h3>
+          <p class="card-sub">Mean social-determinant risk scores across responding ZIP codes, by domain.</p>
+          <div class="chart-wrap" id="geo-sdoh-radar-chart"></div>
+        </div>
+        <div class="card" id="geo-sdoh-table-card">
+          <h3>SDoH by ZIP (Aggregated)</h3>
+          <p class="card-sub">Per-ZIP composite and domain-level PRAPARE risk, suppressed below n=5.</p>
+          <div class="table-scroll" id="geo-sdoh-table-scroll">
+            <table class="data" id="table-sdoh">
+              <thead><tr id="geo-sdoh-thead"></tr></thead>
+              <tbody id="geo-sdoh-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid two" id="geo-distance-grid">
+        <div class="card" id="geo-distance-chart-card">
+          <h3>Visit Distance Distribution</h3>
+          <p class="card-sub">Participant count by distance band from the ESD Lab (1800 Gervais St, Columbia).</p>
+          <div class="chart-wrap" id="geo-distance-chart"></div>
+        </div>
+        <div class="card" id="geo-retention-card">
+          <h3>Distance vs. Retention</h3>
+          <p class="card-sub">Mean visit completeness rate by distance band, highlighting travel-related attrition.</p>
+          <div class="chart-wrap" id="geo-retention-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: Data Quality ─── -->
+    <section id="quality">
+      <div class="section jump-target" id="quality-kpis">
+        <h2><span class="num">7</span>Data Quality &amp; REDCap Audit</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within quality</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#quality-kpis">QC overview</a>
+            <a class="section-jump-pill" href="#quality-missingness">Missingness</a>
+            <a class="section-jump-pill" href="#quality-audit">Audit activity</a>
+            <a class="section-jump-pill" href="#ml-explainer">Model follow-through</a>
+          </div>
+        </div>
+        <div class="grid kpis">
+          <div class="card kpi kpi-card mini-kpi-item"><div class="label t-label">Records</div><div class="value t-kpi t-mono" id="dq-records">—</div><div class="delta t-caption">in REDCap</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">Double-entry diff</div><div class="value t-kpi t-mono" id="dq-double">—</div><div class="delta warn t-caption">needs review</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">Out-of-range</div><div class="value t-kpi t-mono" id="dq-oor">—</div><div class="delta warn t-caption">above 3.5 SD</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="danger"><div class="label t-label">Missing required</div><div class="value t-kpi t-mono" id="dq-missing">—</div><div class="delta bad t-caption">blocks analysis</div></div>
+          <div class="card kpi kpi-card mini-kpi-item" data-kpi-tone="warn"><div class="label t-label">ECG transfer late</div><div class="value t-kpi t-mono" id="dq-ecg-late">—</div><div class="delta warn t-caption">&gt; 48 h</div></div>
+          <div class="card kpi kpi-card mini-kpi-item"><div class="label t-label">Pending PI review</div><div class="value t-kpi t-mono" id="dq-pi">—</div><div class="delta t-caption">awaiting sign-off</div></div>
+        </div>
+
+        <div class="grid two stack-top">
+          <div class="card jump-target" id="quality-missingness">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>What:</b> % missingness per REDCap instrument. Status is MCAR/MAR/MNAR per Little-Rubin heuristics.<br><br><b>Action:</b> Instruments flagged High feed the MICE m=20 imputation pipeline.</div>
+            <h3>Missingness by instrument</h3>
+            <div class="chart-wrap tall"><canvas id="chart-missing"></canvas></div>
+            <div class="deeplinks">
+              <a href="../src/imputation/mice_imputation.R" target="_blank">mice_imputation.R</a>
+              <a href="../src/imputation/python_imputation.py" target="_blank">python_imputation.py</a>
+            </div>
+          </div>
+          <div class="card jump-target" id="quality-queries">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>What:</b> Open REDCap queries awaiting RA response, by visit event.<br><br><b>Workflow:</b> <code class="code">redcap/quality_control/redcap_qc_pipeline.py</code> runs nightly and assigns queries to the RA team.</div>
+            <h3>Open queries by event</h3>
+            <div class="chart-wrap tall"><canvas id="chart-queries"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card table-card stack-top jump-target" id="quality-audit">
+          <span class="hint">i</span>
+          <div class="hint-popup">Last 8 data-team actions (synthetic for demo). In production this reads the audit log at <code class="code">logs/data_access_audit.log</code>.</div>
+          <h3>Recent audit activity</h3>
+          <table class="data" id="table-audit">
+            <thead><tr><th>Date</th><th>Action</th><th>Record ID</th><th>User</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: ML Performance ─── -->
+    <section id="ml">
+      <div class="section jump-target" id="ml-overview">
+        <h2><span class="num">8</span>Machine Learning Performance</h2>
+        <p class="page-sub section-subhead-large">Predicting ADOS-2 positive screen at 12 months from NICU + infant biomarkers. Stratified 5-fold CV, 2000 bootstrap samples for CI.</p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within machine learning</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#ml-explainer">Architecture explainer</a>
+            <a class="section-jump-pill" href="#ml-roc">ROC curves</a>
+            <a class="section-jump-pill" href="#ml-subgroup">Subgroup sensitivity</a>
+            <a class="section-jump-pill" href="#ml-metrics">Model table</a>
+            <a class="section-jump-pill" href="#trajectories-chart">Trajectories</a>
+          </div>
+        </div>
+
+        <div class="card ml-explainer-card" id="ml-explainer">
+          <span class="hint">i</span>
+          <div class="hint-popup"><b>Architecture explainer:</b> this animated schematic turns the current best-performing model into a teaching view. It uses the ranked model results plus SHAP feature importance already loaded into the dashboard and is intended to explain the workflow, not to depict a single participant.</div>
+
+          <div class="ml-explainer-header">
+            <div>
+              <span class="eyebrow">Model explainer</span>
+              <h3>How the best model extracts features and reaches a prediction</h3>
+              <p class="ml-explainer-summary" id="ml-explainer-summary">Waiting for model metrics...</p>
+            </div>
+            <div class="ml-explainer-badges">
+              <span class="badge ok" id="ml-explainer-model">Model pending</span>
+              <span class="badge" id="ml-explainer-auroc">AUROC —</span>
+            </div>
+          </div>
+
+          <div class="ml-explainer-layout">
+            <div class="ml-input-bank">
+              <div class="ml-mini-title">Evidence streams entering the model</div>
+              <div class="ml-domain-grid" id="ml-domain-grid"></div>
+
+              <div class="ml-mini-title">Most influential extracted features</div>
+              <div class="ml-feature-cloud" id="ml-feature-cloud"></div>
+            </div>
+
+            <div class="ml-explainer-main">
+              <div class="ml-stage-board">
+                <p class="t-eyebrow" style="margin-bottom: 8px; color: var(--warm-500);">Auto-advances through the analysis steps; hover to pause or click a stage to inspect it.</p>
+                <div class="ml-stage-board-scroll">
+                  <div class="ml-stage-rail" aria-hidden="true">
+                    <svg class="ml-signal-svg" id="ml-signal-svg" viewBox="0 0 660 82" preserveAspectRatio="none"></svg>
+                  </div>
+                  <div class="ml-stage-track" id="ml-stage-track"></div>
+                </div>
+              </div>
+
+              <div class="ml-stage-detail" id="ml-stage-detail">
+                <div>
+                  <span class="eyebrow ml-stage-kicker" id="ml-stage-kicker">Stage 1 of 5</span>
+                  <h4 id="ml-stage-title">Waiting for model metrics...</h4>
+                  <p id="ml-stage-body">The explainer fills in once the dashboard loads the ML performance payload.</p>
+                </div>
+                <div class="ml-stage-evidence" id="ml-stage-evidence"></div>
+
+                <div class="ml-diagram-card">
+                  <div class="ml-output-heading">Model schematic</div>
+                  <p class="ml-diagram-caption" id="ml-architecture-caption">Architecture-specific schematic loads with the best-performing model.</p>
+                  <div class="ml-diagram-shell">
+                    <div class="ml-model-diagram" id="ml-model-diagram"></div>
+                  </div>
+                </div>
+
+                <div class="ml-methods-card">
+                  <div class="ml-output-heading">Methods linkage</div>
+                  <p class="ml-methods-summary" id="ml-methods-summary">Stage-specific script and methods references appear here so lab members can connect the explainer to the actual repo implementation.</p>
+                  <div class="ml-methods-links" id="ml-methods-links"></div>
+                </div>
+
+                <div class="ml-output-summary">
+                  <div class="ml-output-heading">Prediction target</div>
+                  <div class="ml-output-target">12-month ADOS-2 positive screen</div>
+                  <div class="ml-score-track"><span id="ml-score-fill" class="ml-score-fill"></span></div>
+                  <div class="ml-output-metrics" id="ml-output-metrics"></div>
+                  <p class="ml-output-note">This is a conceptual teaching view of the trained workflow. It summarizes how the model family processes inputs; it is not a replay of any one participant or a clinical decision aid.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid two">
+          <div class="card jump-target" id="ml-roc">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>ROC curves</b> for all models. Area under the curve (AUROC) measures discrimination; 1.0 = perfect, 0.5 = chance.<br><br>Hover a curve to see per-model FPR/TPR at each threshold.</div>
+            <h3>ROC curves (all models)</h3>
+            <div class="chart-wrap tall"><canvas id="chart-roc"></canvas></div>
+          </div>
+          <div class="card jump-target" id="ml-shap">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>Feature importance</b> from SHAP values averaged across CV folds for the best-performing model.</div>
+            <h3>Top predictors (SHAP)</h3>
+            <div class="chart-wrap tall chart-wrap-shap"><canvas id="chart-shap"></canvas><div class="ml-shap-ranks" id="ml-shap-ranks"></div></div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top">
+          <div class="card jump-target" id="ml-auroc">
+            <span class="hint">i</span>
+            <div class="hint-popup">AUROC with 95% bootstrap CI. Error bars show ± 1.96·SD.</div>
+            <h3>AUROC by model (95% CI)</h3>
+            <div class="chart-wrap"><canvas id="chart-auroc"></canvas></div>
+          </div>
+          <div class="card table-card jump-target" id="ml-subgroup">
+            <span class="hint">i</span>
+            <div class="hint-popup"><b>Subgroup sensitivity:</b> re-fit best model within each subgroup (GA bin, sex). Stable results across subgroups → generalizable.</div>
+            <h3>Subgroup sensitivity</h3>
+            <table class="data" id="table-subgroup">
+              <thead><tr><th>Subgroup</th><th>N</th><th>AUROC</th><th>SD</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card table-card stack-top jump-target" id="ml-metrics">
+          <span class="hint">i</span>
+          <div class="hint-popup">Full metric summary, sortable. Click column headers to sort.</div>
+          <h3>Full model metrics</h3>
+          <table class="data" id="table-metrics">
+            <thead><tr><th>Model</th><th>AUROC</th><th>95% CI</th><th>Sens.</th><th>Spec.</th><th>F1</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="deeplinks">
+            <a href="../src/models/ml_pipeline.py" target="_blank">ml_pipeline.py</a>
+            <a href="../src/models/deep_learning_ecg.py" target="_blank">deep_learning_ecg.py</a>
+            <a href="../src/models/transformer_ecg.py" target="_blank">transformer_ecg.py</a>
+            <a href="../config/model_config.yml" target="_blank">model_config.yml</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: Trajectories ─── -->
+    <section id="trajectories">
+      <div class="section jump-target" id="trajectories-overview">
+        <h2><span class="num">9</span>Participant Trajectories</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within trajectories</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#trajectories-chart">Biomarker chart</a>
+            <a class="section-jump-pill" href="#trajectories-completion">Visit completion</a>
+            <a class="section-jump-pill" href="#trajectories-slopes">Intercepts and slopes</a>
+            <a class="section-jump-pill" href="#cohort-table-card">Cohort table</a>
+          </div>
+        </div>
+        <div class="filters filters-spaced">
+          <div class="filter">
+            <label>Biomarker</label>
+            <select id="filter-biomarker" title="Select biomarker trajectory">
+              <option value="RSA">RSA (parasympathetic tone)</option>
+              <option value="RMSSD">RMSSD</option>
+              <option value="SDNN">SDNN</option>
+              <option value="HDA_SA">HDA · Sustained Attention</option>
+            </select>
+          </div>
+          <div class="filter">
+            <label>Show CI</label>
+            <select id="filter-ci" title="Toggle confidence interval bands"><option value="1">Yes</option><option value="0">No</option></select>
+          </div>
+        </div>
+
+        <div class="card jump-target" id="trajectories-chart">
+          <span class="hint">i</span>
+          <div class="hint-popup"><b>What:</b> Group-mean trajectories with 95% bootstrapped CI bands across the 0–36 month follow-up window.<br><br><b>Interpretation:</b> Divergence between ASIB and TD slopes over infancy aligns with developmental cascade theory (Bradshaw et al., 2025).</div>
+          <h3 id="traj-title">Biomarker trajectory · RSA</h3>
+          <div class="chart-wrap tall"><canvas id="chart-traj"></canvas></div>
+          <div class="deeplinks">
+            <a href="../src/models/mixed_effects_models.R" target="_blank">mixed_effects_models.R</a>
+            <a href="../src/models/latent_growth_curves.R" target="_blank">latent_growth_curves.R</a>
+            <a href="../src/visualization/trajectory_plots.R" target="_blank">trajectory_plots.R</a>
+          </div>
+        </div>
+
+        <div class="grid two stack-top">
+          <div class="card jump-target" id="trajectories-completion">
+            <span class="hint">i</span>
+            <div class="hint-popup">Visit completion rate per event, stratified by group. Drops at 24m reflect the questionnaire-only protocol.</div>
+            <h3>Visit completion by group</h3>
+            <div class="chart-wrap"><canvas id="chart-completion"></canvas></div>
+          </div>
+          <div class="card table-card jump-target" id="trajectories-slopes">
+            <span class="hint">i</span>
+            <div class="hint-popup">Per-group intercepts and linear slopes estimated from the lme4 random-intercept-slope model.</div>
+            <h3>Group intercepts &amp; slopes</h3>
+            <table class="data" id="table-trajectories">
+              <thead><tr><th>Group</th><th>Biomarker</th><th>Intercept (0m)</th><th>Slope / month</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Section: Cohort ─── -->
+    <section id="cohort">
+      <div class="section jump-target" id="cohort-overview">
+        <h2><span class="num">10</span>Cohort Snapshot</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within cohort</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#cohort-filters">Cohort filters</a>
+            <a class="section-jump-pill" href="#cohort-table-card">Participant table</a>
+            <a class="section-jump-pill" href="#readings-library">Reading archive</a>
+            <a class="section-jump-pill" href="#overview-kpis">Return to overview</a>
+          </div>
+        </div>
+        <div class="filters filters-spaced jump-target" id="cohort-filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div class="filter">
+            <label>Group</label>
+            <select id="filter-group" title="Filter cohort by group"><option value="all">All groups</option><option>ASIB</option><option>PT</option><option>TD</option></select>
+          </div>
+          <div class="filter">
+            <label>QC Status</label>
+            <select id="filter-qc" title="Filter cohort by QC status"><option value="all">All</option><option>OK</option><option>Review</option></select>
+          </div>
+          <div class="cohort-toolbar-actions" style="margin-left: auto;">
+            <span class="toolbar-chip t-label" id="cohort-toolbar-group">All groups</span>
+            <span class="toolbar-chip t-label" id="cohort-toolbar-qc">All QC</span>
+          </div>
+        </div>
+
+        <div class="card table-card jump-target" id="cohort-table-card">
+          <div class="table-toolbar cohort-toolbar" id="cohort-toolbar" style="margin-bottom: 12px;">
+            <span class="t-caption" id="cohort-count">— participants</span>
+          </div>
+          <h3>First 40 participants (sortable)</h3>
+          <div class="table-scroll" id="cohort-table-scroll">
+          <table class="data" id="table-cohort">
+            <thead>
+              <tr>
+                <th data-sort="nano_id">NANO ID</th>
+                <th data-sort="group">Group</th>
+                <th data-sort="ga_weeks">GA (wk)</th>
+                <th data-sort="birth_weight_g">BW (g)</th>
+                <th data-sort="sex">Sex</th>
+                <th data-sort="last_visit">Last visit</th>
+                <th data-sort="completeness_pct">Complete %</th>
+                <th data-sort="qc_status">QC</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="research">
+      <div class="section jump-target" id="research-overview">
+        <h2><span class="num">11</span>Research Questions</h2>
+        <p class="section-lede">
+          Living SOP of the 40 research, methods, and engineering questions that
+          sit between a raw REDCap event and a publishable figure. Every row is
+          categorized, tagged, prioritized, and linked back to code + docs so the
+          team can track how a decision becomes a reproducible answer.
+        </p>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within research</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#research-kpis">Status snapshot</a>
+            <a class="section-jump-pill" href="#research-heatmap">Category × Type map</a>
+            <a class="section-jump-pill" href="#research-grid">Question cards</a>
+            <a class="section-jump-pill" href="../docs/research_questions_process.md" target="_blank" rel="noreferrer noopener">SOP doc</a>
+          </div>
+        </div>
+
+        <div class="grid four jump-target" id="research-kpis">
+          <div class="card kpi">
+            <div class="label">Total questions</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-total">—</div>
+            <div class="delta" id="rq-kpi-total-note">Across 8 categories</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">In progress</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-inprogress">—</div>
+            <div class="delta" id="rq-kpi-inprogress-note">Active analyst workload</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Resolved</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-resolved">—</div>
+            <div class="delta" id="rq-kpi-resolved-note">Closed with test + link</div>
+          </div>
+          <div class="card kpi kpi-accent" data-kpi-tone="danger">
+            <div class="label">Critical + High open</div>
+            <div class="value t-kpi t-mono" id="rq-kpi-critical">—</div>
+            <div class="delta" id="rq-kpi-critical-note">Unresolved high-priority work</div>
+          </div>
+        </div>
+
+        <div class="card jump-target" id="research-heatmap">
+          <div class="card-header">
+            <div>
+              <h3>Category × Type-tag map</h3>
+              <p class="card-sub">Cells show how many questions sit in each (category, type-tag) pair. Click to filter the grid below.</p>
+            </div>
+            <div class="card-actions">
+              <span class="legend-item"><span class="legend-swatch legend-lo"></span>0–1</span>
+              <span class="legend-item"><span class="legend-swatch legend-mid"></span>2</span>
+              <span class="legend-item"><span class="legend-swatch legend-hi"></span>3+</span>
+            </div>
+          </div>
+          <div class="research-heatmap-wrap" style="overflow-x: auto; -webkit-mask-image: linear-gradient(to right, black 95%, transparent 100%); mask-image: linear-gradient(to right, black 95%, transparent 100%);">
+            <table class="research-heatmap" id="rq-heatmap">
+              <thead>
+                <tr>
+                  <th scope="col">Category</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card jump-target" id="research-grid">
+          <div class="filters research-filters">
+            <div class="filter search-filter">
+              <label for="rq-search">Search</label>
+              <input id="rq-search" class="search-input" type="search" placeholder="Search questions, summaries, assets">
+            </div>
+            <div class="filter">
+              <label for="rq-filter-category">Category</label>
+              <select id="rq-filter-category">
+                <option value="all">All categories</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-type">Type tag</label>
+              <select id="rq-filter-type">
+                <option value="all">All types</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-status">Status</label>
+              <select id="rq-filter-status">
+                <option value="all">All statuses</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In progress</option>
+                <option value="blocked">Blocked</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="rq-filter-priority">Priority</label>
+              <select id="rq-filter-priority">
+                <option value="all">All priorities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <button id="rq-clear-filters" class="ghost-button" type="button">Clear filters</button>
+          </div>
+          <div id="rq-chip-bar" class="chip-bar"></div>
+          <div id="rq-grid" class="research-grid"></div>
+          <div id="rq-empty" class="research-empty hide">No questions match these filters.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="readings">
+      <div class="section jump-target" id="readings-overview">
+        <h2><span class="num">12</span>Reading Library</h2>
+        <div class="section-jumpbar">
+          <span class="section-jump-label">Jump within readings</span>
+          <div class="section-jump-links">
+            <a class="section-jump-pill" href="#readings-spotlight">Featured reading</a>
+            <a class="section-jump-pill" href="#readings-insights">Library signals</a>
+            <a class="section-jump-pill" href="#readings-library">Search archive</a>
+            <a class="section-jump-pill" href="#pipeline-map">Methods pipeline</a>
+          </div>
+        </div>
+        <div class="grid three jump-target" id="readings-kpis">
+          <div class="card kpi">
+            <div class="label">Indexed readings</div>
+            <div class="value" id="readings-total">—</div>
+            <div class="delta" id="readings-total-note">Watching ESD Lab readings/</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Latest update</div>
+            <div class="value small" id="readings-latest">—</div>
+            <div class="delta" id="readings-latest-note">Most recent file modification</div>
+          </div>
+          <div class="card kpi">
+            <div class="label">Top category</div>
+            <div class="value small" id="readings-category">—</div>
+            <div class="delta" id="readings-category-note">Auto-grouped from titles and PDF text</div>
+          </div>
+        </div>
+
+        <div class="grid two stack-top readings-overview-grid">
+          <div class="card reading-spotlight jump-target" id="readings-spotlight">
+            <span class="eyebrow">Featured reading</span>
+            <div class="reading-meta reading-spotlight-meta" id="reading-featured-meta"></div>
+            <h3 id="reading-featured-title">Reading spotlight</h3>
+            <p id="reading-featured-excerpt" class="reading-excerpt">Open the reading library below to explore indexed PDFs and supporting materials.</p>
+            <div id="reading-featured-tags" class="reading-tags"></div>
+            <div class="reading-actions reading-spotlight-actions">
+              <a class="reading-link" id="reading-featured-link" href="../ESD%20Lab%20readings/" target="_blank" rel="noreferrer noopener">Open featured reading</a>
+              <span id="reading-featured-path">ESD Lab readings/</span>
+            </div>
+          </div>
+
+          <div class="card reading-insights jump-target" id="readings-insights">
+            <h3>Library signals</h3>
+            <div class="reading-insight-grid">
+              <div class="mini-stat">
+                <span class="label">Pages indexed</span>
+                <strong id="readings-pages">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Distinct sources</span>
+                <strong id="readings-sources">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Most active year</span>
+                <strong id="readings-year">—</strong>
+              </div>
+              <div class="mini-stat">
+                <span class="label">Featured set</span>
+                <strong id="readings-featured-count">—</strong>
+              </div>
+            </div>
+            <div class="reading-source-stack" id="reading-source-stack"></div>
+            <div class="chip-bar year-chip-bar" id="reading-year-chip-bar"></div>
+          </div>
+        </div>
+
+        <div class="card stack-top jump-target" id="readings-library">
+          <div class="filters readings-filters">
+            <div class="filter search-filter">
+              <label for="filter-reading-search">Search</label>
+              <input id="filter-reading-search" class="search-input" type="search" placeholder="Search titles, authors, excerpts, keywords">
+            </div>
+            <div class="filter">
+              <label for="filter-reading-category">Category</label>
+              <select id="filter-reading-category">
+                <option value="all">All categories</option>
+              </select>
+            </div>
+            <div class="filter">
+              <label for="filter-reading-sort">Sort</label>
+              <select id="filter-reading-sort">
+                <option value="recent">Newest first</option>
+                <option value="relevance">Search relevance</option>
+                <option value="title">Title A-Z</option>
+                <option value="year">Year</option>
+                <option value="pages">Most pages</option>
+                <option value="size">Largest file</option>
+              </select>
+            </div>
+            <button id="reading-clear-filters" class="ghost-button" type="button">Clear filters</button>
+          </div>
+          <div id="reading-chip-bar" class="chip-bar"></div>
+          <div id="readings-grid" class="reading-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="dashboard-footer">
+      <div class="footer-left t-caption" id="footer-left">Live dashboard initialized · awaiting data sync</div>
+      <div class="footer-right t-caption">ESD Lab · University of South Carolina · R01 NIH</div>
+      <div class="footer-links">
+        <a class="footer-link t-mono" href="../config/study_parameters.yml" target="_blank">study_parameters.yml</a>
+        <a class="footer-link t-mono" href="../config/redcap_config.yml" target="_blank">redcap_config.yml</a>
+      </div>
+    </footer>
+  </main>
+
+  <div class="assistant-shell" id="assistant-shell">
+    <button type="button" class="assistant-launcher" id="assistant-launcher" aria-expanded="false" aria-controls="assistant-panel">
+      <span class="assistant-launcher-mark">AI</span>
+      <span id="assistant-launcher-label">Ask NANO AI</span>
+    </button>
+
+    <section class="assistant-panel" id="assistant-panel" hidden aria-label="Dashboard assistant">
+      <header class="assistant-panel-head">
+        <div>
+          <span class="eyebrow">Dashboard assistant</span>
+          <h2>Ask grounded questions about this dashboard</h2>
+          <p id="assistant-status-copy">Checking assistant status…</p>
+        </div>
+        <button type="button" class="assistant-close ghost-button" id="assistant-close">Close</button>
+      </header>
+
+      <div class="assistant-log" id="assistant-log">
+        <article class="assistant-message assistant-message-assistant">
+          <span class="assistant-role">NANO AI</span>
+          <p>I can answer grounded questions about the live dashboard, study metrics, and indexed reading library using the local dashboard model.</p>
+        </article>
+      </div>
+
+      <form class="assistant-form" id="assistant-form">
+        <label class="assistant-sr-only" for="assistant-input">Ask the dashboard assistant</label>
+        <textarea id="assistant-input" rows="3" placeholder="Ask about enrollment, data quality, AUROC, or readings"></textarea>
+        <div class="assistant-form-row">
+          <span class="assistant-status-chip" id="assistant-status-chip" data-tone="soft">Checking status</span>
+          <button type="submit" class="assistant-submit" id="assistant-submit">Send</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- ─── ESD Buddy — interactive SVG assistant ─── -->
+  <div class="buddy-stage" id="buddy-stage" aria-hidden="true">
+    <div class="buddy-bubble" id="buddy-bubble">
+      <div class="buddy-term-tag" id="buddy-term">NANO</div>
+      <div class="buddy-body-text" id="buddy-text">Hi! I'm ESD Buddy. Hover any highlighted tile and I'll explain what it means.</div>
+    </div>
+    <div class="buddy" id="buddy" title="Click to dismiss">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Antenna -->
+        <path class="buddy-antenna" d="M50 18 Q 48 4, 54 2" />
+        <circle class="buddy-antenna-dot" cx="54" cy="2" r="3.5" />
+        <!-- Heart pulse behind body -->
+        <path class="buddy-heart-pulse" d="M50 32 c-0.6-0.6-1.6-0.6-2.2 0-1.4 1.4-5 3.4-5 6.3 0 2.8 3.6 4.8 5 6.3l2.2-2.2 2.2 2.2c1.4-1.5 5-3.5 5-6.3s-3.6-4.9-5-6.3c-0.6-0.6-1.6-0.6-2.2 0z" />
+        <!-- Body -->
+        <ellipse class="buddy-body" cx="50" cy="58" rx="30" ry="34" />
+        <!-- Blush marks -->
+        <ellipse class="buddy-blush" cx="32" cy="62" rx="6" ry="3.5" />
+        <ellipse class="buddy-blush" cx="68" cy="62" rx="6" ry="3.5" />
+        <!-- Eyes -->
+        <g id="buddy-eye-left">
+          <circle cx="40" cy="52" r="6" fill="white" stroke="#1a1815" stroke-width="1" />
+          <circle class="buddy-eye buddy-pupil-l" cx="40" cy="52" r="2.8" />
+        </g>
+        <g id="buddy-eye-right">
+          <circle cx="60" cy="52" r="6" fill="white" stroke="#1a1815" stroke-width="1" />
+          <circle class="buddy-eye buddy-pupil-r" cx="60" cy="52" r="2.8" />
+        </g>
+        <!-- Mouth -->
+        <path class="buddy-mouth" id="buddy-mouth" d="M44 68 Q 50 74, 56 68" />
+      </svg>
+    </div>
+  </div>
+
+  <!-- ─── AI Chat FAB + Panel ─── -->
+  <button type="button" class="esd-chat-fab" id="esd-chat-fab" aria-label="Open AI chat" aria-expanded="false" aria-controls="esd-chat-panel">
+    <span class="chat-fab-icon" aria-hidden="true">✦</span>
+  </button>
+
+  <div class="esd-chat-panel" id="esd-chat-panel" role="dialog" aria-label="NANO AI assistant">
+    <div class="esd-chat-head">
+      <div>
+        <h2 class="esd-chat-title">Ask the lab</h2>
+        <div class="esd-chat-sub">NANO study · AI assistant</div>
+      </div>
+      <button type="button" class="esd-chat-close" id="esd-chat-close" aria-label="Close chat">✕</button>
+    </div>
+    <div class="esd-chat-body" id="esd-chat-body">
+      <div class="esd-chat-msg bot">
+        <div class="esd-chat-avatar">AI</div>
+        <div class="esd-chat-bubble">
+          I'm the NANO study assistant. I can answer questions about enrollment, the data pipeline, HRV features, model performance, and the reading library. What would you like to know?
+        </div>
+      </div>
+    </div>
+    <div class="esd-chat-suggestions" id="esd-chat-suggestions">
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> What is the current enrollment status?</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> How does the AUROC compare across models?</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> Explain the HRV feature pipeline</button>
+      <button type="button" class="esd-chat-suggestion"><span class="esd-arrow">→</span> What are the three study aims?</button>
+    </div>
+    <form class="esd-chat-form" id="esd-chat-form">
+      <textarea class="esd-chat-input" id="esd-chat-input" rows="1" placeholder="Ask about NANO, enrollment, HRV, models…"></textarea>
+      <button type="submit" class="esd-chat-send" id="esd-chat-send" aria-label="Send message">↑</button>
+    </form>
+  </div>
+</div>
+
+  <div id="esd-scroll-progress" class="esd-scroll-progress" aria-hidden="true"></div>
+
+  <div class="esd-dock" id="esd-dock" aria-label="Status bar">
+    <span class="esd-dock-item">
+      <span class="esd-dot" style="background:var(--green,#55A868);box-shadow:0 0 8px rgba(85,168,104,0.6)"></span>
+      <span class="esd-gloss" data-term="HIPAA">HIPAA</span>&nbsp;session
+    </span>
+    <span class="esd-dock-item">
+      <span class="esd-dot" style="background:var(--blue,#4C72B0);box-shadow:0 0 8px rgba(76,114,176,0.6)"></span>
+      pipeline · live
+    </span>
+    <span class="esd-dock-item esd-dock-clock" id="esd-dock-clock">--:--:--</span>
+  </div>
+
+  <script src="primitives.js?v=20260517-buddy-feature" defer></script>
+  <script src="app.js?v=20260517-buddy-feature" defer></script>
+</body>
+</html>

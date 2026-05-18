@@ -4,7 +4,7 @@
 Checks that:
 
 1. The health endpoint reports an ok state.
-2. The dashboard page and JSON endpoints are readable.
+2. The canonical SPA routes and JSON endpoints are readable.
 3. The watcher loop triggers a rebuild after a watched file mtime change.
 4. The Pages wrapper embeds a live dashboard origin when requested.
 5. An optional repair path can refresh the quick tunnel and redeploy Pages.
@@ -24,6 +24,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TOUCH_PATH = PROJECT_ROOT / "config" / "study_parameters.yml"
 DEFAULT_PAGES_URL = "https://esd-lab-namo.pages.dev/"
+EXPECTED_SPA_TITLE = "NANO Dashboard · ESD Lab"
 FRAME_URL_RE = re.compile(
     r'<iframe[^>]*id=["\']dashboard-frame["\'][^>]*src=["\']([^"\']+)["\']',
     re.IGNORECASE,
@@ -49,6 +50,19 @@ def fetch_bytes(url: str, timeout: int = 10) -> bytes:
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return response.read()
+
+
+def fetch_final_url(url: str, timeout: int = 10) -> str:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "ESD-Lab-USC-dashboard-watchdog/1.0",
+            "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        response.read()
+        return response.geturl()
 
 
 def fetch_text(url: str, timeout: int = 10) -> str:
@@ -86,7 +100,9 @@ def wait_for(description: str, timeout: int, probe, interval: float = 2.0):
 
 def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     health_url = f"{base_url}/api/healthz"
-    page_url = f"{base_url}/dashboard/"
+    page_url = f"{base_url}/"
+    overview_url = f"{base_url}/overview"
+    legacy_page_url = f"{base_url}/dashboard/"
     runtime_url = f"{base_url}/dashboard/data/runtime_status.json"
     dashboard_url = f"{base_url}/dashboard/data/dashboard_data.json"
     readings_url = f"{base_url}/dashboard/data/readings_data.json"
@@ -108,8 +124,18 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     )
 
     page_html = fetch_text(page_url, timeout=timeout)
-    if "NANO Study" not in page_html:
-        raise RuntimeError("dashboard HTML did not contain the expected title")
+    if EXPECTED_SPA_TITLE not in page_html:
+        raise RuntimeError("root SPA shell did not contain the expected title")
+
+    overview_html = fetch_text(overview_url, timeout=timeout)
+    if EXPECTED_SPA_TITLE not in overview_html:
+        raise RuntimeError("overview SPA shell did not contain the expected title")
+
+    legacy_final_url = fetch_final_url(legacy_page_url, timeout=timeout)
+    if not legacy_final_url.rstrip("/").endswith("/overview"):
+        raise RuntimeError(
+            f"legacy /dashboard/ path did not redirect to /overview (got {legacy_final_url})"
+        )
 
     runtime = fetch_json(runtime_url, timeout=timeout)
     dashboard = fetch_json(dashboard_url, timeout=timeout)
@@ -163,8 +189,8 @@ def probe_pages_wrapper(pages_url: str, timeout: int) -> dict[str, str]:
     wrapper_html = fetch_text(pages_url, timeout=timeout)
     origin_url = extract_dashboard_frame_url(wrapper_html)
     origin_html = fetch_text(origin_url, timeout=timeout)
-    if "NANO Study" not in origin_html:
-        raise RuntimeError("embedded dashboard origin did not contain the expected title")
+    if EXPECTED_SPA_TITLE not in origin_html:
+        raise RuntimeError("embedded site origin did not contain the expected title")
     return {"wrapper_url": pages_url, "origin_url": origin_url}
 
 

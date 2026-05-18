@@ -3,7 +3,7 @@
 Pulls live data from REDCap, the processed feature matrix, model artifacts
 and QC logs, then emits ``dashboard/data/dashboard_data.json`` using the
 **same schema** as ``generate_synthetic_dashboard_data.py`` so the
-``dashboard/index.html`` UI works with either source.
+local runtime and SPA routes can work with either source.
 
 Pipeline role
 -------------

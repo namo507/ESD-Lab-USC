@@ -17,9 +17,8 @@ indifferent to which one was used:
 | `dashboard/pipelines/build_readings_index.py`             | Python | Re-index the `ESD Lab readings/` library. |
 
 The first three write `dashboard/data/dashboard_data.json`. The readings
-pipeline writes `dashboard/data/readings_data.json`. The dashboard
-(`dashboard/index.html`) reloads them automatically in live mode and on
-page refresh in static mode.
+pipeline writes `dashboard/data/readings_data.json`. The local runtime and
+the React SPA served from `web/` consume those payloads during local runs.
 
 `build_dashboard_data.py` now calls the organization-site builder logic
 internally, so `dashboard/data/dashboard_data.json` includes the
@@ -50,7 +49,7 @@ docker compose up --build dashboard
 What that does:
 
 1. Serves the repository root at `http://localhost:8080/`.
-2. Redirects `/` to `/dashboard/`.
+2. Serves the canonical SPA at `/` and `/overview`.
 3. Polls dashboard inputs and `ESD Lab readings/` every 20 seconds.
 4. Rebuilds `dashboard_data.json`, `readings_data.json`, and `runtime_status.json` when an input changes.
 
@@ -69,7 +68,7 @@ make share-quick          # one-off random hostname + runtime preview branch
 ```
 
 The canonical static-site URL is `https://esd-lab-namo.pages.dev/` and is now
-built from `web/dashboard-source.html` plus the Pages overlay. Local quick-share
+built from `web/` plus the Pages overlay. Local quick-share
 runtime publishing is separate: the wrapper goes to a non-production Pages
 preview branch, `https://runtime-share.esd-lab-namo.pages.dev/` by default,
 so tunnel restarts cannot overwrite the main site.
@@ -113,7 +112,7 @@ CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-`make share-named` then prints `https://dashboard.esdlabsc.com/dashboard/`
+`make share-named` then prints `https://dashboard.esdlabsc.com/`
 as the canonical URL and skips the wrapper rebuild.
 
 Cloudflare account prerequisites required for the named-tunnel path:
@@ -151,8 +150,8 @@ python dashboard/pipelines/build_dashboard_data.py --fallback-synthetic
 Rscript dashboard/pipelines/build_dashboard_data.R
 ```
 
-After any of these, open `dashboard/index.html` in your browser, or run
-the Docker service for automatic refreshes.
+After any of these, open `http://localhost:8080/` or `http://localhost:8080/overview`,
+or run the Docker service for automatic refreshes.
 
 ## 5. Inputs
 
@@ -169,8 +168,8 @@ the Docker service for automatic refreshes.
 
 | File | Schema | Who reads it |
 |------|--------|--------------|
-| `dashboard/data/dashboard_data.json` | Documented in `dashboard/context_skill/references/dashboard_schema.md` | `dashboard/index.html` (Chart.js) |
-| `dashboard/data/readings_data.json` | Reading metadata summary + searchable cards | `dashboard/index.html` |
+| `dashboard/data/dashboard_data.json` | Documented in `dashboard/context_skill/references/dashboard_schema.md` | `dashboard/server/live_dashboard_server.py` and the local SPA routes |
+| `dashboard/data/readings_data.json` | Reading metadata summary + searchable cards | `dashboard/server/live_dashboard_server.py` and the local SPA routes |
 | `dashboard/data/runtime_status.json` | Last rebuild state + watcher health | Live dashboard runtime + operators |
 | `logs/dashboard_build_<date>.log`    | plain text | Research Programmer when debugging |
 
@@ -214,7 +213,7 @@ does not extract PDF contents or transmit documents anywhere.
    and parse logic in a helper module similar to `build_org_site_data.py`.
 3. Mirror the same key in
    `dashboard/pipelines/generate_synthetic_dashboard_data.py`.
-4. Add a new section + Chart.js block to `dashboard/index.html`.
+4. Add the new UI surface in `web/src/` and wire it into the appropriate route.
 5. Document the key in
    `dashboard/context_skill/references/dashboard_schema.md`.
 6. Run `python dashboard/context_skill/extract_context.py --check` to

@@ -189,7 +189,7 @@ automatically indexes new PDFs added under `ESD Lab readings/`.
 docker compose up --build dashboard
 
 # Open it locally
-open http://localhost:8080/dashboard/
+open http://localhost:8080/
 ```
 
 Useful shortcuts:
@@ -238,13 +238,13 @@ runtime and cloudflared tunnel alive, auto-restarts them if they stop, and rewri
 the Pages wrapper target whenever the quick-tunnel hostname rotates so
 `https://esd-lab-namo.pages.dev/` stays current.
 
-That command starts the dashboard, starts the tunnel sidecar, and prints the
-active public dashboard URL for the current session.
+That command starts the local website runtime, starts the tunnel sidecar, and
+prints the active public site URL for the current session.
 
 The Cloudflare-hosted links currently used for sharing this repository are:
 
 - Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
-- Active direct dashboard URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/dashboard/`
+- Active direct site URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/`
 
 The Pages wrapper is the preferred public link, but on this machine it still
 depends on the currently active Cloudflare quick tunnel because no local named
@@ -260,7 +260,7 @@ For temporary sharing, always rerun `make dashboard-share` and send only the
 latest quick-share URL printed by the script.
 
 To move from the current quick-tunnel-backed wrapper to a stable branded
-hostname such as `https://dashboard.esdlabsc.com/dashboard/`, attach the DNS
+hostname such as `https://dashboard.esdlabsc.com/`, attach the DNS
 zone to the Cloudflare account, create a named public hostname, and set these
 variables in `.env` before running the same command:
 

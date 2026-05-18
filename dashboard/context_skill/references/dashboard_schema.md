@@ -38,7 +38,7 @@ populates it in the production pipeline.
    Category × Type-tag heatmap iterates over `meta.categories` × `meta.type_tags`.
 
 If you change any of these, also update:
-* `dashboard/index.html` (where Chart.js assumes the shape)
+* the current consumers in `web/src/**` or `dashboard/server/live_dashboard_server.py`
 * `dashboard/pipelines/generate_synthetic_dashboard_data.py`
 * This document.
 

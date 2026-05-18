@@ -8,7 +8,7 @@ non-production branch, while the main `esd-lab-namo.pages.dev` alias is now
 reserved for the canonical static site built by `scripts/build_pages_site.py`.
 It iframes the live dashboard origin — either a stable named-tunnel hostname
 (e.g. https://dashboard.esdlabsc.com) or, when no named tunnel is configured,
-the rotating quick-tunnel URL (`https://<random>.trycloudflare.com/dashboard/`).
+the rotating quick-tunnel URL (`https://<random>.trycloudflare.com/`).
 
 Before this script, the wrapper HTML at `temp/pages-wrapper/index.html` had a
 specific quick-tunnel hostname *baked in*. Every restart of the share script
@@ -66,15 +66,15 @@ def _runtime_pages_url() -> str:
     return f"https://{branch}.{project}.pages.dev/"
 
 
-def _ensure_dashboard_path(origin: str) -> str:
-    """Append `/dashboard/` if the origin has no path. Strip query/fragment."""
+def _normalize_origin_url(origin: str) -> str:
+    """Normalize an origin to a clean site URL with a trailing slash."""
     parsed = urlparse(origin.strip())
     if not parsed.scheme or not parsed.netloc:
         raise SystemExit(f"Invalid origin URL: {origin!r}")
     path = parsed.path or "/"
-    if path == "/":
-        path = "/dashboard/"
-    elif not path.endswith("/"):
+    if path in {"/dashboard", "/dashboard/", "/dashboard/index.html"}:
+        path = "/"
+    if not path.endswith("/"):
         path += "/"
     return f"{parsed.scheme}://{parsed.netloc}{path}"
 
@@ -98,7 +98,7 @@ def render(origin: str, kind: str | None) -> tuple[str, dict[str, str]]:
         raise SystemExit(f"Template not found: {TEMPLATE}")
     text = TEMPLATE.read_text(encoding="utf-8")
     _validate_template(text)
-    dashboard_url = _ensure_dashboard_path(origin)
+    dashboard_url = _normalize_origin_url(origin)
     generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     pill_label, pill_class, display = _classify(dashboard_url, kind)
     rendered = (

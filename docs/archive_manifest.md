@@ -40,6 +40,18 @@ A file is eligible for archival only if **all** of these are true:
 Full restoration procedure is in
 `archive/2026-04-17_dashboard_refactor/MANIFEST.md`.
 
+### `archive/2026-05-18_legacy_dashboard_ui/`
+
+| Original | Moved because | Replacement |
+|----------|---------------|-------------|
+| `dashboard/index.html` | The old static HTML shell was retired so localhost, Pages, and tunnel previews all resolve to the same React SPA. | `dashboard/server/live_dashboard_server.py` serving `web/build/index.html` at `/` and `/overview` |
+| `dashboard/app.js` | Vanilla runtime controller only powered the retired static shell. | `web/src/**` |
+| `dashboard/styles.css` | Static-only theme file no longer drives the canonical site. | `web/src/**` |
+| `dashboard/primitives.js` | Static helper library only served the archived dashboard shell. | `web/src/**` |
+
+Full restoration procedure is in
+`archive/2026-05-18_legacy_dashboard_ui/MANIFEST.md`.
+
 ## 4. How to find the old version
 
 ```bash

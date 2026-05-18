@@ -155,7 +155,7 @@ resolve_python() {
 
 ensure_local_dashboard() {
   if curl -fsS "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
-    echo "Using existing local dashboard on ${DASHBOARD_URL}/dashboard/"
+    echo "Using existing local website runtime on ${DASHBOARD_URL}/"
     return 0
   fi
 
@@ -172,7 +172,7 @@ ensure_local_dashboard() {
   }
 
   stop_pid_file "$DASHBOARD_PID_FILE"
-  echo "Starting local dashboard runtime on ${DASHBOARD_URL}/dashboard/..."
+  echo "Starting local website runtime on ${DASHBOARD_URL}/..."
   nohup "$python_bin" dashboard/server/live_dashboard_server.py --fallback-synthetic --host "$DASHBOARD_HOST" --port "$DASHBOARD_PORT" >"$DASHBOARD_LOG_FILE" 2>&1 &
   echo $! >"$DASHBOARD_PID_FILE"
 
@@ -240,7 +240,7 @@ auto_deploy_pages_wrapper() {
 
 # Print the result block. `origin_url` is the cloudflared origin (https://...).
 # When the named tunnel is in use, `origin_url` already equals
-# `https://${public_hostname}/dashboard/`.
+# `https://${public_hostname}/`.
 emit_result() {
   local origin_url="$1"
   local kind="$2"   # named | quick
@@ -331,7 +331,7 @@ print_host_tunnel_result() {
   fi
 
   named_hostname_ready() {
-    curl -fsSIL --max-time 10 "https://${public_hostname}/dashboard/" >/dev/null 2>&1
+    curl -fsSIL --max-time 10 "https://${public_hostname}/" >/dev/null 2>&1
   }
 
   while (( SECONDS < deadline )); do
@@ -351,19 +351,19 @@ print_host_tunnel_result() {
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
       named_registered="true"
       if named_hostname_ready; then
-        emit_result "https://${public_hostname}/dashboard/" "named"
+        emit_result "https://${public_hostname}/" "named"
         return 0
       fi
     fi
     if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
-      emit_result "${url}/dashboard/" "quick"
+      emit_result "${url}/" "quick"
       return 0
     fi
     sleep 2
   done
 
   if [[ "$use_named" == "true" && "$named_registered" == "true" ]]; then
-    echo "Timed out waiting for https://${public_hostname}/dashboard/ to become reachable." >&2
+    echo "Timed out waiting for https://${public_hostname}/ to become reachable." >&2
     echo "The tunnel connected, but the named hostname is still not live yet." >&2
     echo "Check that the zone for ${public_hostname#*.} is active in Cloudflare and that public DNS for ${public_hostname} points to ${CLOUDFLARE_TUNNEL_ID:-<tunnel-id>}.cfargotunnel.com." >&2
   else
@@ -392,11 +392,11 @@ share_with_docker() {
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
-      emit_result "https://${public_hostname}/dashboard/" "named"
+      emit_result "https://${public_hostname}/" "named"
       return 0
     fi
     if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
-      emit_result "${url}/dashboard/" "quick"
+      emit_result "${url}/" "quick"
       return 0
     fi
     sleep 2
@@ -435,7 +435,7 @@ share_without_docker() {
   fi
 
   echo
-  echo "Continuous mode enabled: supervising local dashboard + tunnel (Ctrl-C to stop)."
+  echo "Continuous mode enabled: supervising local website runtime + tunnel (Ctrl-C to stop)."
 
   trap 'stop_pid_file "$TUNNEL_PID_FILE"; stop_pid_file "$DASHBOARD_PID_FILE"; exit 0' INT TERM
 

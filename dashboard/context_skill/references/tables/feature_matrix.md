@@ -42,4 +42,4 @@ left for downstream modeling.
    * `dashboard/pipelines/generate_synthetic_dashboard_data.py` (extend
      `generate_trajectories`).
 3. Add a short blurb here in this file.
-4. Add the biomarker to the `<select>` in `dashboard/index.html`.
+4. If the biomarker should be visible in the current UI, add it to the relevant selector or control in `web/src/**`.

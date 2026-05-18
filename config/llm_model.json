@@ -1,13 +1,13 @@
 {
-  "repo_id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
-  "filename": "qwen2.5-0.5b-instruct-fp16.gguf",
-  "params_b": 0.5,
+  "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",
+  "filename": "SmolLM2-360M-Instruct-Q2_K.gguf",
+  "params_b": 0.36,
   "context_length": 2048,
-  "min_memory_gib": 0.3,
+  "min_memory_gib": 0.25,
   "max_tokens": 192,
-  "score": 0.8365,
-  "selected_at": "2026-05-18T06:22:17.962617+00:00",
-  "source": "hf-api",
+  "score": 0.79,
+  "selected_at": "2026-05-18T21:54:00+00:00",
+  "source": "repo-local-existing",
   "fallbacks": [
     {
       "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",

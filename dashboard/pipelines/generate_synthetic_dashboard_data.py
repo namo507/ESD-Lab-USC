@@ -1,7 +1,7 @@
 """NANO Study - Synthetic Dashboard Data Generator.
 
 Produces a reproducible, realistically-shaped JSON payload used by the
-``dashboard/index.html`` file. NO Protected Health Information (PHI) is
+local runtime and SPA-backed dashboard routes. NO Protected Health Information (PHI) is
 involved: every value is synthesized with ``numpy.random`` using a fixed
 seed so the dashboard renders identically on each run.
 

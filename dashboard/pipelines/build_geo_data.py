@@ -1,7 +1,7 @@
-"""NANO Study — Geospatial data generator for the dashboard.
+"""NANO Study — Geospatial data generator for dashboard payloads.
 
-Produces the ``geo`` key consumed by ``dashboard/app.js`` for the
-Geospatial Analysis section. All data is aggregated to ZIP-code level
+Produces the ``geo`` key retained in ``dashboard_data.json`` for the
+legacy geospatial surface and any future compatibility consumers. All data is aggregated to ZIP-code level
 and any cell with fewer than SUPPRESSION_THRESHOLD participants is
 suppressed to prevent re-identification.
 

@@ -1,11 +1,11 @@
 # Cloudflare Pages wrapper — `esd-lab-namo.pages.dev`
 
 This folder is the **canonical, tracked source** for the Cloudflare Pages
-wrapper that the team shares as the public NANO Study dashboard URL:
+runtime-preview wrapper that the team uses for a stable tunnel-backed preview URL:
 
 > Canonical public URL: **https://esd-lab-namo.pages.dev/**
 
-The wrapper is a tiny static page that iframes whichever dashboard origin is
+The wrapper is a tiny static page that iframes whichever local site origin is
 currently live (named tunnel or quick tunnel). The wrapper's **own URL never
 changes**; only the origin it points at can change.
 
@@ -16,7 +16,7 @@ changes**; only the origin it points at can change.
 | `template.html` | Source-of-truth template with `{{DASHBOARD_URL}}` placeholders. | yes |
 | `index.html` | Most recently rendered preview — useful for diffing what's live. | yes |
 | `manifest.json` | Origin + timestamp + tunnel kind from the last render. | yes |
-| `../../../dist/pages-wrapper/index.html` | Deploy artifact (uploaded to Pages). | no (`.gitignore`) |
+| `../../../dist/pages-runtime-wrapper/index.html` | Deploy artifact (uploaded to the runtime preview branch). | no (`.gitignore`) |
 
 ## Rebuild
 
@@ -24,9 +24,9 @@ The share script rebuilds the wrapper automatically every time it produces a
 public origin URL. To rebuild manually:
 
 ```bash
-make pages-build ORIGIN=https://<your>.trycloudflare.com
+python scripts/build_pages_wrapper.py --origin https://<your>.trycloudflare.com
 # or, with a stable named tunnel:
-make pages-build ORIGIN=https://dashboard.esdlabsc.com KIND=named
+python scripts/build_pages_wrapper.py --origin https://dashboard.esdlabsc.com --kind named
 ```
 
 Validate the template alone:
@@ -37,11 +37,11 @@ python scripts/build_pages_wrapper.py --check
 
 ## Deploy
 
-The deploy artifact lives at `dist/pages-wrapper/index.html`. Use either:
+The deploy artifact lives at `dist/pages-runtime-wrapper/index.html`. Use either:
 
 1. **Wrangler (recommended):**
    ```bash
-   npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name esd-lab-namo
+   npx --yes wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper --project-name esd-lab-namo --branch runtime-share
    ```
 2. **Git-connected branch:** the operator's existing
    `esd-lab-namo` Pages project is wired to a branch — push the regenerated
@@ -52,7 +52,7 @@ The deploy artifact lives at `dist/pages-wrapper/index.html`. Use either:
 
 ## Why this matters
 
-- The wrapper URL is the **only** link operators should publish.
+- The wrapper URL is the stable preview operators can publish when they need a live tunnel-backed runtime share.
 - The iframe target (origin) is allowed to change every restart.
 - `manifest.json` records when the wrapper was last regenerated so anyone can
   tell whether it's fresh.
@@ -66,7 +66,7 @@ If the public Pages URL still shows a dead origin after `make dashboard-share`:
 1. Run the share command (it should rebuild the wrapper automatically).
 2. Check `manifest.json` — `dashboard_url` should match the URL the share
    script just printed.
-3. Redeploy via `npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name esd-lab-namo`.
+3. Redeploy via `npx --yes wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper --project-name esd-lab-namo --branch runtime-share`.
 
 If the deploy step is skipped, the canonical URL keeps serving the previous
 artifact and the iframe will fail to load until you push.

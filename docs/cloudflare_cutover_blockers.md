@@ -2,7 +2,7 @@
 
 > Goal: move the canonical public dashboard URL off
 > `https://esd-lab-namo.pages.dev/` (Pages wrapper · iframes a rotating
-> trycloudflare origin) to `https://esd-lab-namo.sc.edu/dashboard/`
+> trycloudflare origin) to `https://esd-lab-namo.sc.edu/`
 > (Cloudflare named tunnel · stable hostname).
 >
 > This document records what is required, what is in place, and what is
@@ -72,11 +72,11 @@ that bypasses this — the record is at the parent zone's registrar.
    or do this step in the Cloudflare dashboard UI.)
 3. **Operator:** once `host esd-lab-namo.sc.edu` resolves, run
    `make share-named`. The script will validate readiness and print
-   `Canonical public URL → https://esd-lab-namo.sc.edu/dashboard/`.
+   `Canonical public URL → https://esd-lab-namo.sc.edu/`.
 4. **Operator:** rebuild and redeploy the wrapper so the iframe target
    becomes the stable named hostname:
    ```bash
-   make pages-build ORIGIN=https://esd-lab-namo.sc.edu/dashboard/ KIND=named
+   python scripts/build_pages_wrapper.py --origin https://esd-lab-namo.sc.edu --kind named
    make pages-deploy
    ```
    At that point the Pages wrapper no longer depends on any

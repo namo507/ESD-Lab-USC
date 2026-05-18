@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import posixpath
 import subprocess
 import sys
@@ -39,7 +40,17 @@ from src.utils.logging_utils import get_pipeline_logger
 
 DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
+SPA_BUILD_DIR = PROJECT_ROOT / "web" / "build"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
+SPA_ROUTE_PREFIXES = (
+    "/overview",
+    "/participants",
+    "/qa",
+    "/results",
+    "/runs",
+    "/redcap",
+)
+LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
@@ -153,6 +164,35 @@ def read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def ensure_public_spa_build() -> None:
+    """Build the React SPA used by the public Pages site for local runtime use."""
+    logger.info("Building public SPA shell for local runtime from web/")
+    env = dict(os.environ)
+    env.setdefault("VITE_USE_MOCKS", "true")
+    env.setdefault("VITE_LIVE_ASSISTANT", "true")
+    env.setdefault("VITE_OUT_DIR", "build")
+
+    completed = subprocess.run(
+        ["npm", "--prefix", "web", "run", "build"],
+        cwd=PROJECT_ROOT,
+        env=env,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"web build failed with exit code {completed.returncode}")
+    if not (SPA_BUILD_DIR / "index.html").exists():
+        raise RuntimeError(f"built SPA missing expected entrypoint: {SPA_BUILD_DIR / 'index.html'}")
+
+
+def is_spa_route(request_path: str) -> bool:
+    if request_path in {"", "/"}:
+        return True
+    return any(
+        request_path == prefix or request_path.startswith(f"{prefix}/")
+        for prefix in SPA_ROUTE_PREFIXES
+    )
 
 
 class DashboardRuntime:
@@ -337,10 +377,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         request_path = urlparse(self.path).path
 
-        if request_path in {"/", ""}:
-            self.send_response(HTTPStatus.FOUND)
-            self.send_header("Location", "/dashboard/")
-            self.end_headers()
+        if self._redirect_legacy_dashboard(request_path):
             return
 
         if request_path == "/api/healthz":
@@ -368,6 +405,12 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             return
 
         super().do_GET()
+
+    def do_HEAD(self) -> None:
+        request_path = urlparse(self.path).path
+        if self._redirect_legacy_dashboard(request_path):
+            return
+        super().do_HEAD()
 
     def do_POST(self) -> None:
         request_path = urlparse(self.path).path
@@ -404,7 +447,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path: str) -> str:
         parsed_path = urlparse(path).path
-        return super().translate_path(parsed_path)
+        if is_spa_route(parsed_path):
+            return str(SPA_BUILD_DIR / "index.html")
+
+        spa_candidate = (SPA_BUILD_DIR / parsed_path.lstrip("/")).resolve()
+        if spa_candidate.exists() and spa_candidate.is_relative_to(SPA_BUILD_DIR.resolve()):
+            return str(spa_candidate)
+
+        repo_candidate = (PROJECT_ROOT / parsed_path.lstrip("/")).resolve()
+        if repo_candidate.exists() and repo_candidate.is_relative_to(PROJECT_ROOT.resolve()):
+            return str(repo_candidate)
+
+        return str(repo_candidate)
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -458,6 +512,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             "error": error,
             "model": payload.get("model_id"),
         }
+
+    def _redirect_legacy_dashboard(self, request_path: str) -> bool:
+        if request_path not in LEGACY_DASHBOARD_PATHS:
+            return False
+        self.send_response(HTTPStatus.MOVED_PERMANENTLY)
+        self.send_header("Location", "/overview")
+        self.end_headers()
+        return True
 
     def _send_ndjson(
         self,
@@ -547,6 +609,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         config_path=args.config,
         fallback_synthetic=args.fallback_synthetic,
     )
+    ensure_public_spa_build()
     runtime.start()
     assistant = DashboardChatAssistant()
 
@@ -557,7 +620,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         directory=str(PROJECT_ROOT),
     )
     httpd = ThreadingHTTPServer((args.host, args.port), handler)
-    logger.info("Serving dashboard on http://%s:%s/dashboard/", args.host, args.port)
+    logger.info(
+        "Serving public website shell on http://%s:%s/ (overview at /overview)",
+        args.host,
+        args.port,
+    )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:  # pragma: no cover - manual shutdown path

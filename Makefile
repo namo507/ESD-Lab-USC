@@ -99,7 +99,7 @@ dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
 dashboard-build:  ## Build the live dashboard Docker image
 	docker compose build dashboard
 
-dashboard-up:  ## Start the live dashboard at http://localhost:8080/dashboard/
+dashboard-up:  ## Start the live website runtime at http://localhost:8080/ (overview at /overview)
 	docker compose up --build dashboard
 
 dashboard-down:  ## Stop the live dashboard container
@@ -163,7 +163,7 @@ clean:  ## Remove Python cache files and test artifacts
 
 
 docker-health:  ## Check Docker daemon and Compose service health
-	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url http://127.0.0.1:8080/dashboard/ --json
+	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url http://127.0.0.1:8080/ --json
 
 clean-all: clean  ## Remove virtualenv and all generated files
 	rm -rf $(VENV)

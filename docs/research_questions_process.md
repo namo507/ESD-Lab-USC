@@ -23,10 +23,10 @@ Three files work together:
 
 ## 2. Opening the list
 
-### On the dashboard
-Open `dashboard/index.html` and click **Research Questions** in the
-sidebar (or use the topbar view panel). You'll see four KPI cards, a
-Category × Type-tag heatmap, and a filterable grid of question cards.
+### In the current repository state
+The old static dashboard surface that exposed **Research Questions** has
+been archived with the retired legacy UI. Until a new SPA surface is added,
+use the source markdown and JSON files directly.
 
 ### As a document
 Open `dashboard/research_questions/research_questions.md` in your
