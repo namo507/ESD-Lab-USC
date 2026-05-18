@@ -10,6 +10,11 @@ import {
   type StateCode,
 } from "@/data/readingsGeo";
 
+interface HoverInsight {
+  term: string;
+  body: string;
+}
+
 const LEGEND_STOPS = [
   { label: "No signal", count: 0 },
   { label: "1 reading", count: 1 },
@@ -27,6 +32,52 @@ function formatYear(year: number | null): string {
 
 function metricLabel(mode: GeoMapMode): string {
   return mode === "us" ? "State signals" : "Country signals";
+}
+
+function createInsightAttrs(insight: HoverInsight) {
+  return {
+    "data-insight": "dynamic",
+    "data-insight-term": insight.term,
+    "data-insight-body": insight.body,
+  } as const;
+}
+
+function formatCategoryCount(count: number): string {
+  return `${count} reading ${count === 1 ? "category" : "categories"}`;
+}
+
+function describeStateInsight(state: ReadingGeoState): HoverInsight {
+  if (state.readingCount === 0) {
+    return {
+      term: state.name,
+      body: `No indexed readings in the active filter carry a direct affiliation signal for ${state.name}.`,
+    };
+  }
+
+  const keywordNote = state.keywords.length > 0
+    ? ` Frequent keywords: ${state.keywords.join(", ")}.`
+    : "";
+
+  return {
+    term: state.name,
+    body: `${formatReadingCount(state.readingCount)} linked to ${state.name} across ${state.pageCount} indexed pages and ${formatCategoryCount(state.categories.length)}.${keywordNote}`,
+  };
+}
+
+function describeCountryInsight(country: ReadingGeoCountry): HoverInsight {
+  const pageCount = country.readings.reduce((sum, reading) => sum + reading.pageCount, 0);
+
+  if (country.readingCount === 0) {
+    return {
+      term: country.label,
+      body: `No indexed readings in the active filter carry a direct country-level signal for ${country.label}.`,
+    };
+  }
+
+  return {
+    term: country.label,
+    body: `${formatReadingCount(country.readingCount)} linked to ${country.label} across ${pageCount} indexed pages in the current filter.`,
+  };
 }
 
 function resolveStateTone(count: number, selected: boolean): { background: string; border: string; color: string; shadow: string } {
@@ -83,9 +134,22 @@ function resolveCountryTone(count: number, selected: boolean): { fill: string; s
   return { fill: "var(--ocean-soft)", stroke: "var(--ocean-ring)", text: "var(--on-info)" };
 }
 
-function MapSummaryCard({ label, value, note }: { label: string; value: string; note: string }) {
+function MapSummaryCard({
+  label,
+  value,
+  note,
+  insight,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  insight: HoverInsight;
+}) {
   return (
-    <div className="rounded-2xl border border-[color:var(--warm-border)] bg-white px-4 py-3">
+    <div
+      className="rounded-2xl border border-[color:var(--warm-border)] bg-white px-4 py-3"
+      {...createInsightAttrs(insight)}
+    >
       <div className="text-[10px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">{label}</div>
       <div className="mt-1 font-serif text-[28px] font-semibold leading-none text-[color:var(--warm-fg1)]">{value}</div>
       <div className="mt-1 text-[11px] text-[color:var(--warm-fg3)]">{note}</div>
@@ -130,6 +194,7 @@ function UnitedStatesReadingMap({
               title={`${state.name} · ${state.readingCount > 0 ? formatReadingCount(state.readingCount) : "no signal"}`}
               onClick={() => onSelect(state.code)}
               className="min-w-0 rounded-[14px] border px-2 py-1.5 text-left transition hover:-translate-y-[1px]"
+              {...createInsightAttrs(describeStateInsight(state))}
               style={{
                 gridColumn: state.col + 1,
                 gridRow: state.row + 1,
@@ -209,7 +274,12 @@ function GlobalReadingMap({
           const tone = resolveCountryTone(country.readingCount, country.code === activeCode);
           const radius = country.readingCount >= 3 ? 5.6 : country.readingCount === 2 ? 4.8 : 4.2;
           return (
-            <g key={country.code} onClick={() => onSelect(country.code)} style={{ cursor: "pointer" }}>
+            <g
+              key={country.code}
+              onClick={() => onSelect(country.code)}
+              style={{ cursor: "pointer" }}
+              {...createInsightAttrs(describeCountryInsight(country))}
+            >
               <circle cx={country.x} cy={country.y} r={radius} fill={tone.fill} stroke={tone.stroke} strokeWidth={country.code === activeCode ? 1.8 : 1.2} />
               <text
                 x={country.x}
@@ -301,10 +371,20 @@ export function ReadingsGeoMap() {
   const activeKeywords = geo.mode === "us" ? selectedState?.keywords ?? [] : [];
   const activePageCount = geo.mode === "us" ? selectedState?.pageCount ?? 0 : selectedCountry?.readings.reduce((sum, reading) => sum + reading.pageCount, 0) ?? 0;
   const activeReadings = geo.mode === "us" ? selectedState?.readings ?? [] : selectedCountry?.readings ?? [];
+  const activeInsight = geo.mode === "us"
+    ? (selectedState ? describeStateInsight(selectedState) : { term: activeTitle, body: "No geography signal is selected yet." })
+    : (selectedCountry ? describeCountryInsight(selectedCountry) : { term: activeTitle, body: "No geography signal is selected yet." });
 
   return (
     <div className="grid grid-cols-[1.18fr_0.82fr] gap-4">
-      <section className="glass-panel overflow-hidden" aria-labelledby="readings-geo-title">
+      <section
+        className="glass-panel overflow-hidden"
+        aria-labelledby="readings-geo-title"
+        {...createInsightAttrs({
+          term: "Reading geography",
+          body: `The indexed reading library currently spans ${filteredReadings.length} readings and ${totalPages} pages, switching between U.S. and global geography views as affiliation signals change.`,
+        })}
+      >
         <div className="border-b border-[color:var(--warm-rule)] px-6 py-5">
           <div className="flex items-start justify-between gap-6">
             <div className="max-w-[720px]">
@@ -353,10 +433,44 @@ export function ReadingsGeoMap() {
           </div>
 
           <div className="mt-5 grid grid-cols-4 gap-3">
-            <MapSummaryCard label="Filtered" value={String(filteredReadings.length)} note="indexed readings in scope" />
-            <MapSummaryCard label="Geocoded" value={String(geo.geocodedReadings)} note={`${coveragePercent}% of active filter`} />
-            <MapSummaryCard label={metricLabel(geo.mode)} value={String(geo.mode === "us" ? geo.activeStates.length : geo.activeCountries.filter((country) => country.code !== "USA").length)} note={geo.mode === "us" ? "unique U.S. affiliation signals" : "non-U.S. geography signals"} />
-            <MapSummaryCard label="Pages" value={String(totalPages)} note="indexed material represented" />
+            <MapSummaryCard
+              label="Filtered"
+              value={String(filteredReadings.length)}
+              note="indexed readings in scope"
+              insight={{
+                term: "Filtered readings",
+                body: `${filteredReadings.length} indexed readings remain after applying the active year and category filters.`,
+              }}
+            />
+            <MapSummaryCard
+              label="Geocoded"
+              value={String(geo.geocodedReadings)}
+              note={`${coveragePercent}% of active filter`}
+              insight={{
+                term: "Geocoded coverage",
+                body: `${geo.geocodedReadings} readings carry state or country affiliation signals, covering ${coveragePercent}% of the filtered library.`,
+              }}
+            />
+            <MapSummaryCard
+              label={metricLabel(geo.mode)}
+              value={String(geo.mode === "us" ? geo.activeStates.length : geo.activeCountries.filter((country) => country.code !== "USA").length)}
+              note={geo.mode === "us" ? "unique U.S. affiliation signals" : "non-U.S. geography signals"}
+              insight={{
+                term: metricLabel(geo.mode),
+                body: geo.mode === "us"
+                  ? `${geo.activeStates.length} U.S. states have direct affiliation signals in the current reading filter.`
+                  : `${geo.activeCountries.filter((country) => country.code !== "USA").length} non-U.S. country nodes are active in the current reading filter.`,
+              }}
+            />
+            <MapSummaryCard
+              label="Pages"
+              value={String(totalPages)}
+              note="indexed material represented"
+              insight={{
+                term: "Indexed pages",
+                body: `${totalPages} indexed pages of reading material are represented in this filtered geography view.`,
+              }}
+            />
           </div>
         </div>
 
@@ -377,7 +491,10 @@ export function ReadingsGeoMap() {
         </div>
       </section>
 
-      <aside className="overflow-hidden rounded-2xl border border-[color:var(--warm-border)] bg-white shadow-card">
+      <aside
+        className="overflow-hidden rounded-2xl border border-[color:var(--warm-border)] bg-white shadow-card"
+        {...createInsightAttrs(activeInsight)}
+      >
         <div className="border-b border-[color:var(--warm-rule)] px-6 py-5">
           <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">Selected signal</div>
           <div className="mt-1 flex items-start justify-between gap-4">
@@ -399,9 +516,35 @@ export function ReadingsGeoMap() {
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <MapSummaryCard label="Signals" value={String(activeCount)} note={geo.mode === "us" ? "linked readings" : "country-linked readings"} />
-            <MapSummaryCard label="Pages" value={String(activePageCount)} note="represented in scope" />
-            <MapSummaryCard label="Groups" value={String(activeCategories.length || (geo.mode === "global" ? 1 : 0))} note={geo.mode === "us" ? "reading categories" : "country node in focus"} />
+            <MapSummaryCard
+              label="Signals"
+              value={String(activeCount)}
+              note={geo.mode === "us" ? "linked readings" : "country-linked readings"}
+              insight={{
+                term: `${activeTitle} signals`,
+                body: `${activeTitle} currently links to ${formatReadingCount(activeCount)} in the active geography filter.`,
+              }}
+            />
+            <MapSummaryCard
+              label="Pages"
+              value={String(activePageCount)}
+              note="represented in scope"
+              insight={{
+                term: `${activeTitle} pages`,
+                body: `${activeTitle} contributes ${activePageCount} indexed pages in the active geography filter.`,
+              }}
+            />
+            <MapSummaryCard
+              label="Groups"
+              value={String(activeCategories.length || (geo.mode === "global" ? 1 : 0))}
+              note={geo.mode === "us" ? "reading categories" : "country node in focus"}
+              insight={{
+                term: `${activeTitle} groups`,
+                body: geo.mode === "us"
+                  ? `${activeTitle} spans ${formatCategoryCount(activeCategories.length)} in the current reading filter.`
+                  : `${activeTitle} is the country node currently in focus for this global view.`,
+              }}
+            />
           </div>
 
           {activeKeywords.length > 0 ? (
@@ -438,6 +581,9 @@ export function ReadingsGeoMap() {
                       setActiveCountryCode(signal.code as CountryCode);
                     }}
                     className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left transition hover:bg-[color:var(--warm-bg)]"
+                    {...createInsightAttrs(geo.mode === "us"
+                      ? describeStateInsight(signal as ReadingGeoState)
+                      : describeCountryInsight(signal as ReadingGeoCountry))}
                     style={{
                       borderColor: isActive ? "var(--usc-garnet)" : "var(--warm-border)",
                       background: isActive ? "var(--warm-pill)" : "transparent",
@@ -468,7 +614,14 @@ export function ReadingsGeoMap() {
           <div className="mt-3 space-y-3">
             {activeReadings.length > 0 ? (
               activeReadings.slice(0, 4).map((reading) => (
-                <article key={reading.id} className="rounded-2xl border border-[color:var(--warm-border)] bg-[color:var(--warm-bg)] px-4 py-3">
+                <article
+                  key={reading.id}
+                  className="rounded-2xl border border-[color:var(--warm-border)] bg-[color:var(--warm-bg)] px-4 py-3"
+                  {...createInsightAttrs({
+                    term: reading.title,
+                    body: `${reading.source} · ${formatYear(reading.year)} · ${reading.pageCount} pages. This ${reading.category.toLowerCase()} reading is one of the indexed sources linked to ${activeTitle}.`,
+                  })}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">
                       {reading.category}

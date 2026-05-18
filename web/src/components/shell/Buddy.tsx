@@ -58,6 +58,25 @@ export function lookupInsight(id: string | null | undefined): InsightData | null
   return INSIGHTS[id] ?? { term: "Insight", body: id };
 }
 
+function insightTarget(target: EventTarget | null): Element | null {
+  return target instanceof Element ? target.closest("[data-insight]") : null;
+}
+
+function resolveInsightFromElement(target: Element): InsightData | null {
+  const term = target.getAttribute("data-insight-term")?.trim() ?? "";
+  const body = target.getAttribute("data-insight-body")?.trim() ?? "";
+  const fallback = lookupInsight(target.getAttribute("data-insight"));
+
+  if (term || body) {
+    return {
+      term: term || fallback?.term || "Insight",
+      body: body || fallback?.body || "",
+    };
+  }
+
+  return fallback;
+}
+
 interface BuddySvgProps {
   talking: boolean;
   lookX: number;
@@ -131,30 +150,48 @@ export function Buddy() {
       }
     };
 
-    const onOver = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target.closest("[data-insight]") : null;
+    const showInsight = (target: Element | null) => {
       if (!(target instanceof Element)) return;
-      const next = lookupInsight(target.getAttribute("data-insight"));
       clearHideTimer();
-      setInsight(next);
+      setInsight(resolveInsightFromElement(target));
       target.classList.add("insight-active");
     };
 
-    const onOut = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target.closest("[data-insight]") : null;
+    const hideInsight = (target: Element | null, relatedTarget: EventTarget | null) => {
       if (!(target instanceof Element)) return;
+      if (target === insightTarget(relatedTarget)) return;
       target.classList.remove("insight-active");
       clearHideTimer();
       hideTimerRef.current = window.setTimeout(() => setInsight(null), 500);
     };
 
+    const onOver = (event: MouseEvent) => {
+      showInsight(insightTarget(event.target));
+    };
+
+    const onOut = (event: MouseEvent) => {
+      hideInsight(insightTarget(event.target), event.relatedTarget);
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      showInsight(insightTarget(event.target));
+    };
+
+    const onFocusOut = (event: FocusEvent) => {
+      hideInsight(insightTarget(event.target), event.relatedTarget);
+    };
+
     document.addEventListener("mouseover", onOver, { passive: true });
     document.addEventListener("mouseout", onOut, { passive: true });
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
 
     return () => {
       clearHideTimer();
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 
