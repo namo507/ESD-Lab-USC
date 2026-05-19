@@ -3,6 +3,7 @@ dist/
 build/
 coverage/
 .vite/
+*.timestamp-*.mjs
 *.log
 .DS_Store
 .env
