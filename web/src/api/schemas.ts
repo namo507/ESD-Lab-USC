@@ -155,3 +155,54 @@ export const RedcapEvent = z.object({
   note: z.string(),
 });
 export type RedcapEvent = z.infer<typeof RedcapEvent>;
+
+/** /api/matlab/integration */
+export const MatlabManifest = z.object({
+  generated_at: z.string(),
+  matlab_version: z.string(),
+  salt: z.string().nullable().optional(),
+  epoch_sec: z.number().int().nullable().optional(),
+  source: z.string(),
+  host: z.string(),
+});
+export type MatlabManifest = z.infer<typeof MatlabManifest>;
+
+export const MatlabFile = z.object({
+  name: z.string(),
+  feature: z.string(),
+  rows: z.number().int(),
+  qa_pass_pct: z.number(),
+});
+export type MatlabFile = z.infer<typeof MatlabFile>;
+
+export const MatlabScript = z.object({
+  name: z.string(),
+  feature: z.string(),
+  last_run: z.string(),
+  status: z.enum(["ok", "warn", "fail"]),
+  duration_s: z.number(),
+  lines: z.number().int(),
+});
+export type MatlabScript = z.infer<typeof MatlabScript>;
+
+export const MatlabOption = z.object({
+  id: z.string(),
+  title: z.string(),
+  tag: z.string(),
+  coupling: z.string(),
+  cost: z.string(),
+  summary: z.string(),
+});
+export type MatlabOption = z.infer<typeof MatlabOption>;
+
+export const MatlabIntegration = z.object({
+  manifest: MatlabManifest,
+  files: z.array(MatlabFile),
+  scripts: z.array(MatlabScript),
+  throughput_24h: z.object({
+    hours: z.array(z.string()),
+    rows: z.array(z.number().int()),
+  }),
+  options: z.array(MatlabOption),
+});
+export type MatlabIntegration = z.infer<typeof MatlabIntegration>;

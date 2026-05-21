@@ -535,8 +535,63 @@ def build_payload(
         "redcap_audit":     build_redcap_audit(redcap),
         "cohort_table":     build_cohort_table(redcap, salt),
         "organization_site": organization_site or {},
+        "matlab_integration": build_matlab_integration(),
     }
     return _make_json_safe(payload)
+
+
+# ─── MATLAB integration block ────────────────────────────────────────────────
+def build_matlab_integration() -> dict:
+    """Read ``data/interim/matlab/manifest.json`` if present; otherwise synth.
+
+    The MATLAB scripts under ``MATLAB/`` write Parquet to
+    ``data/interim/matlab/`` and emit a small manifest. This builder
+    promotes that manifest into the dashboard payload so the ``/matlab``
+    section in the SPA can render run health, file inventory, script
+    activity, and a 24h throughput sparkline using the same schema in
+    both synthetic and live runs.
+    """
+    manifest_path = PROJECT_ROOT / "data" / "interim" / "matlab" / "manifest.json"
+    if not manifest_path.exists():
+        # Defer to the synthetic generator so the SPA always has something
+        from dashboard.pipelines.generate_synthetic_dashboard_data import (
+            generate_matlab_integration,
+        )
+        return generate_matlab_integration()
+
+    try:
+        raw = json.loads(manifest_path.read_text())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("MATLAB manifest unreadable (%s) — falling back to synthetic.", exc)
+        from dashboard.pipelines.generate_synthetic_dashboard_data import (
+            generate_matlab_integration,
+        )
+        return generate_matlab_integration()
+
+    files = [
+        {
+            "name": f.get("name"),
+            "feature": f.get("feature"),
+            "rows": int(f.get("rows", 0) or 0),
+            "qa_pass_pct": round(float(f.get("qaPassPct", f.get("qa_pass_pct", 0.0)) or 0.0), 3),
+        }
+        for f in raw.get("files", [])
+    ]
+
+    return {
+        "manifest": {
+            "generated_at": raw.get("generated_at"),
+            "matlab_version": raw.get("matlab_version", "unknown"),
+            "salt": raw.get("salt"),
+            "epoch_sec": raw.get("epoch_sec"),
+            "source": raw.get("source", "live"),
+            "host": raw.get("host", "unknown"),
+        },
+        "files": files,
+        "scripts": raw.get("scripts", []),
+        "throughput_24h": raw.get("throughput_24h", {"hours": [], "rows": []}),
+        "options": raw.get("options", []),
+    }
 
 
 def main(argv: Optional[list[str]] = None) -> int:

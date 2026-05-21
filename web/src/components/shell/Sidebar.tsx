@@ -41,6 +41,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     items: [
       { to: "/runs", label: "Clinical Pipeline", icon: "git-branch" },
       { to: "/redcap", label: "REDCap Sync", icon: "refresh-cw" },
+      { to: "/matlab", label: "MATLAB Bridge", icon: "function-square" },
       { to: "/results", label: "Results & Trajectories", icon: "line-chart" },
     ],
   },

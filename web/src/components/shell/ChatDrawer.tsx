@@ -13,6 +13,9 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
   { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
+  { lane: "matlab", label: "How MATLAB hands off",        prompt: "Explain the MATLAB → Parquet → Python merge handoff. Which script writes which file under data/interim/matlab/?" },
+  { lane: "matlab", label: "Run all MATLAB exports",      prompt: "Walk me through running MATLAB/scripts/run_all.m end-to-end, including the manifest the dashboard reads." },
+  { lane: "matlab", label: "MATLAB Engine vs file",       prompt: "When should I use the MATLAB Engine for Python path instead of the Parquet file handoff?" },
 ];
 
 interface Message {

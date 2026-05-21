@@ -12,6 +12,7 @@ const QA = lazy(() => import("@/routes/QA").then((m) => ({ default: m.QA })));
 const Results = lazy(() => import("@/routes/Results").then((m) => ({ default: m.Results })));
 const Runs = lazy(() => import("@/routes/Runs").then((m) => ({ default: m.Runs })));
 const Redcap = lazy(() => import("@/routes/Redcap").then((m) => ({ default: m.Redcap })));
+const Matlab = lazy(() => import("@/routes/Matlab").then((m) => ({ default: m.Matlab })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/runs" element={<Runs />} />
             <Route path="/redcap" element={<Redcap />} />
+            <Route path="/matlab" element={<Matlab />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

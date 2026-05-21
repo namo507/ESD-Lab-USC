@@ -1,8 +1,8 @@
 {
   "meta": {
-    "generated_at": "2026-05-18T22:00:45",
-    "data_source": "repo_demo_inputs",
-    "pipeline_commit": "unknown",
+    "generated_at": "2026-05-21T17:39:20",
+    "data_source": "synthetic_demo",
+    "seed": 42,
     "study": {
       "name": "NANO Study",
       "long_name": "Neurodevelopment of Autonomic and Neural Organization",
@@ -15,12 +15,12 @@
   },
   "enrollment": {
     "months": [
-      "2023-11",
       "2023-12",
       "2024-01",
       "2024-02",
       "2024-03",
       "2024-04",
+      "2024-05",
       "2024-05",
       "2024-06",
       "2024-07",
@@ -191,115 +191,120 @@
     ],
     "by_group": {
       "ASIB": [
-        100.0,
-        84.6,
-        94.2,
-        82.7,
-        80.8,
-        75.0,
-        51.9,
-        7.7,
-        0.0
+        91.3,
+        90.2,
+        89.3,
+        89.3,
+        85.3,
+        83.0,
+        79.1,
+        63.4,
+        55.9
       ],
       "PT": [
-        100.0,
-        88.6,
-        92.4,
-        90.5,
-        81.9,
-        76.2,
-        55.2,
-        10.5,
-        0.0
+        91.8,
+        92.5,
+        91.3,
+        90.0,
+        87.6,
+        87.2,
+        80.7,
+        67.5,
+        55.5
       ],
       "TD": [
-        100.0,
-        94.3,
-        98.1,
-        88.7,
-        84.9,
-        73.6,
-        60.4,
-        5.7,
-        0.0
+        97.5,
+        97.2,
+        96.9,
+        96.1,
+        93.2,
+        88.5,
+        85.3,
+        71.3,
+        61.7
       ]
     }
   },
   "data_quality": {
     "missingness": [
       {
-        "instrument": "ados2_scores",
-        "pct_missing": 18.6,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
-        "instrument": "asq3_milestones",
-        "pct_missing": 19.6,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
-        "instrument": "bayley4_scores",
-        "pct_missing": 19.4,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
-        "instrument": "behavioral_coding_log",
-        "pct_missing": 29.9,
-        "status": "High \u2014 MNAR risk"
-      },
-      {
-        "instrument": "csbs_social_communication",
-        "pct_missing": 19.1,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
         "instrument": "demographics",
-        "pct_missing": 18.2,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
-        "instrument": "ecg_recording_log",
-        "pct_missing": 19.4,
-        "status": "Moderate \u2014 MAR candidate"
-      },
-      {
-        "instrument": "epds_maternal_depression",
-        "pct_missing": 27.6,
-        "status": "High \u2014 MNAR risk"
-      },
-      {
-        "instrument": "mchat_r_tf",
-        "pct_missing": 20.6,
+        "pct_missing": 15.7,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "nicu_morbidity",
+        "pct_missing": 5.7,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "nnns_attention_1_3m",
+        "pct_missing": 2.9,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "ecg_recording_log",
+        "pct_missing": 6.5,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "temperature_recording_log",
+        "pct_missing": 6.7,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "behavioral_coding_log",
         "pct_missing": 20.6,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
-        "instrument": "nnns_attention_1_3m",
-        "pct_missing": 20.2,
+        "instrument": "csbs_social_communication",
+        "pct_missing": 10.9,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "bayley4_scores",
+        "pct_missing": 14.5,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "ados2_scores",
+        "pct_missing": 12.6,
+        "status": "Moderate \u2014 MAR candidate"
+      },
+      {
+        "instrument": "mchat_r_tf",
+        "pct_missing": 8.5,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "asq3_milestones",
+        "pct_missing": 15.0,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "prapare_sdoh",
-        "pct_missing": 26.4,
-        "status": "High \u2014 MNAR risk"
+        "pct_missing": 4.7,
+        "status": "Low \u2014 MCAR likely"
       },
       {
-        "instrument": "temperature_recording_log",
-        "pct_missing": 21.0,
+        "instrument": "epds_maternal_depression",
+        "pct_missing": 2.4,
+        "status": "Low \u2014 MCAR likely"
+      },
+      {
+        "instrument": "hmet_recording_log",
+        "pct_missing": 11.4,
         "status": "Moderate \u2014 MAR candidate"
       }
     ],
     "qc_flags": {
-      "total_records": 1400,
-      "double_entry_discrepancies": 19,
-      "out_of_range_values": 45,
-      "missing_required_fields": 0,
-      "ecg_transfer_late": 44,
-      "temp_quality_rejected": 27
+      "total_records": 1840,
+      "double_entry_discrepancies": 23,
+      "out_of_range_values": 41,
+      "missing_required_fields": 112,
+      "ecg_transfer_late": 14,
+      "temp_quality_rejected": 9
     }
   },
   "ml_performance": {
@@ -307,7 +312,7 @@
       {
         "name": "Random Forest",
         "slug": "rf",
-        "auroc": 0.82,
+        "auroc": 0.813,
         "auroc_ci": [
           0.761,
           0.879
@@ -419,14 +424,14 @@
             1.0
           ]
         },
-        "sensitivity": 0.772,
-        "specificity": 0.738,
-        "f1": 0.674
+        "sensitivity": 0.796,
+        "specificity": 0.877,
+        "f1": 0.667
       },
       {
         "name": "XGBoost",
         "slug": "xgb",
-        "auroc": 0.859,
+        "auroc": 0.853,
         "auroc_ci": [
           0.811,
           0.909
@@ -538,138 +543,19 @@
             1.0
           ]
         },
-        "sensitivity": 0.865,
-        "specificity": 0.899,
-        "f1": 0.678
+        "sensitivity": 0.725,
+        "specificity": 0.886,
+        "f1": 0.681
       },
       {
         "name": "Logistic Regression",
         "slug": "logreg",
-        "auroc": 0.747,
+        "auroc": 0.731,
         "auroc_ci": [
           0.662,
           0.818
         ],
         "auroc_sd": 0.04,
-        "roc": {
-          "fpr": [
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003,
-            0.003
-          ],
-          "tpr": [
-            0.0,
-            0.02,
-            0.041,
-            0.061,
-            0.082,
-            0.102,
-            0.122,
-            0.143,
-            0.163,
-            0.184,
-            0.204,
-            0.224,
-            0.245,
-            0.265,
-            0.286,
-            0.306,
-            0.327,
-            0.347,
-            0.367,
-            0.388,
-            0.408,
-            0.429,
-            0.449,
-            0.469,
-            0.49,
-            0.51,
-            0.531,
-            0.551,
-            0.571,
-            0.592,
-            0.612,
-            0.633,
-            0.653,
-            0.673,
-            0.694,
-            0.714,
-            0.735,
-            0.755,
-            0.776,
-            0.796,
-            0.816,
-            0.837,
-            0.857,
-            0.878,
-            0.898,
-            0.918,
-            0.939,
-            0.959,
-            0.98,
-            1.0
-          ]
-        },
-        "sensitivity": 0.726,
-        "specificity": 0.856,
-        "f1": 0.674
-      },
-      {
-        "name": "SVM (RBF)",
-        "slug": "svm",
-        "auroc": 0.784,
-        "auroc_ci": [
-          0.711,
-          0.849
-        ],
-        "auroc_sd": 0.035,
         "roc": {
           "fpr": [
             0.0,
@@ -776,14 +662,133 @@
             1.0
           ]
         },
-        "sensitivity": 0.733,
-        "specificity": 0.777,
-        "f1": 0.681
+        "sensitivity": 0.791,
+        "specificity": 0.77,
+        "f1": 0.697
+      },
+      {
+        "name": "SVM (RBF)",
+        "slug": "svm",
+        "auroc": 0.781,
+        "auroc_ci": [
+          0.711,
+          0.849
+        ],
+        "auroc_sd": 0.035,
+        "roc": {
+          "fpr": [
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.001,
+            0.002,
+            0.002
+          ],
+          "tpr": [
+            0.0,
+            0.02,
+            0.041,
+            0.061,
+            0.082,
+            0.102,
+            0.122,
+            0.143,
+            0.163,
+            0.184,
+            0.204,
+            0.224,
+            0.245,
+            0.265,
+            0.286,
+            0.306,
+            0.327,
+            0.347,
+            0.367,
+            0.388,
+            0.408,
+            0.429,
+            0.449,
+            0.469,
+            0.49,
+            0.51,
+            0.531,
+            0.551,
+            0.571,
+            0.592,
+            0.612,
+            0.633,
+            0.653,
+            0.673,
+            0.694,
+            0.714,
+            0.735,
+            0.755,
+            0.776,
+            0.796,
+            0.816,
+            0.837,
+            0.857,
+            0.878,
+            0.898,
+            0.918,
+            0.939,
+            0.959,
+            0.98,
+            1.0
+          ]
+        },
+        "sensitivity": 0.728,
+        "specificity": 0.816,
+        "f1": 0.733
       },
       {
         "name": "1D-CNN + LSTM",
         "slug": "cnn_lstm",
-        "auroc": 0.899,
+        "auroc": 0.892,
         "auroc_ci": [
           0.831,
           0.949
@@ -791,56 +796,56 @@
         "auroc_sd": 0.03,
         "roc": {
           "fpr": [
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006,
-            0.006
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.015
           ],
           "tpr": [
             0.0,
@@ -895,14 +900,14 @@
             1.0
           ]
         },
-        "sensitivity": 0.766,
-        "specificity": 0.827,
-        "f1": 0.82
+        "sensitivity": 0.784,
+        "specificity": 0.875,
+        "f1": 0.784
       },
       {
         "name": "Transformer",
         "slug": "transformer",
-        "auroc": 0.865,
+        "auroc": 0.873,
         "auroc_ci": [
           0.807,
           0.933
@@ -910,56 +915,56 @@
         "auroc_sd": 0.032,
         "roc": {
           "fpr": [
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01,
-            0.01
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
           ],
           "tpr": [
             0.0,
@@ -1014,71 +1019,71 @@
             1.0
           ]
         },
-        "sensitivity": 0.777,
-        "specificity": 0.866,
-        "f1": 0.761
+        "sensitivity": 0.707,
+        "specificity": 0.721,
+        "f1": 0.66
       }
     ],
     "shap": [
       {
         "feature": "rmssd_mean_m6",
         "label": "RMSSD mean @ 6mo",
-        "importance": 0.179
+        "importance": 0.17
       },
       {
         "feature": "rsa_slope_0_12",
         "label": "RSA slope 0\u219212mo",
-        "importance": 0.156
+        "importance": 0.144
       },
       {
         "feature": "hda_sa_latency_m3",
         "label": "HDA sust. attention latency @ 3mo",
-        "importance": 0.125
+        "importance": 0.106
       },
       {
         "feature": "sdnn_mean_m9",
         "label": "SDNN mean @ 9mo",
-        "importance": 0.093
+        "importance": 0.074
       },
       {
         "feature": "cptd_nicu",
         "label": "Central-Peripheral Temp \u0394 (NICU)",
-        "importance": 0.089
+        "importance": 0.073
       },
       {
         "feature": "ga_weeks",
         "label": "Gestational age (weeks)",
-        "importance": 0.072
+        "importance": 0.071
       },
       {
         "feature": "birth_weight_g",
         "label": "Birth weight (g)",
-        "importance": 0.061
-      },
-      {
-        "feature": "mchat_total_m9",
-        "label": "M-CHAT total @ 9mo",
-        "importance": 0.06
+        "importance": 0.052
       },
       {
         "feature": "nnns_attention_m1",
         "label": "NNNS attention @ 1mo",
-        "importance": 0.052
+        "importance": 0.05
       },
       {
-        "feature": "sample_entropy_m6",
-        "label": "Sample entropy @ 6mo",
-        "importance": 0.041
+        "feature": "mchat_total_m9",
+        "label": "M-CHAT total @ 9mo",
+        "importance": 0.05
       },
       {
         "feature": "bayley_cog_m6",
         "label": "Bayley-4 cognitive @ 6mo",
-        "importance": 0.037
+        "importance": 0.05
+      },
+      {
+        "feature": "sample_entropy_m6",
+        "label": "Sample entropy @ 6mo",
+        "importance": 0.039
       },
       {
         "feature": "hr_decel_magnitude",
         "label": "HR deceleration magnitude",
-        "importance": 0.017
+        "importance": 0.032
       }
     ],
     "confusion": {
@@ -1137,145 +1142,145 @@
       "ASIB": {
         "mean": {
           "RSA": [
-            3.113,
-            3.14,
-            3.183,
-            3.263,
-            3.365,
-            3.463,
-            3.596,
-            3.996,
-            null
+            3.2,
+            3.21,
+            3.26,
+            3.26,
+            3.41,
+            3.55,
+            3.71,
+            4.22,
+            4.59
           ],
           "RMSSD": [
-            29.026,
-            29.21,
-            29.76,
-            30.187,
-            32.273,
-            33.684,
-            36.252,
-            42.779,
-            null
+            28.2,
+            28.08,
+            29.44,
+            29.73,
+            30.68,
+            33.86,
+            34.9,
+            42.13,
+            49.07
           ],
           "SDNN": [
-            35.975,
-            36.173,
-            37.285,
-            38.354,
-            39.919,
-            42.335,
-            43.835,
-            49.974,
-            null
+            35.59,
+            36.97,
+            37.28,
+            38.31,
+            40.43,
+            43.13,
+            44.19,
+            51.88,
+            61.87
           ],
           "HDA_SA": [
-            455.257,
-            451.933,
-            452.267,
-            451.032,
-            448.809,
-            442.942,
-            443.21,
-            408.986,
-            null
+            447.68,
+            456.3,
+            449.68,
+            444.58,
+            443.44,
+            450.16,
+            446.54,
+            414.49,
+            397.12
           ]
         },
         "ci": {
           "RSA": {
             "low": [
-              3.076,
-              3.106,
-              3.146,
-              3.22,
-              3.328,
-              3.419,
-              3.55,
-              3.86,
-              null
+              3.1,
+              3.1,
+              3.15,
+              3.15,
+              3.31,
+              3.44,
+              3.6,
+              4.11,
+              4.48
             ],
             "high": [
-              3.149,
-              3.174,
-              3.221,
-              3.306,
-              3.403,
-              3.507,
-              3.642,
-              4.132,
-              null
+              3.31,
+              3.31,
+              3.36,
+              3.36,
+              3.52,
+              3.65,
+              3.81,
+              4.33,
+              4.7
             ]
           },
           "RMSSD": {
             "low": [
-              28.358,
-              28.306,
-              28.957,
-              29.396,
-              31.438,
-              32.76,
-              35.322,
-              40.844,
-              null
+              26.8,
+              26.68,
+              28.04,
+              28.33,
+              29.28,
+              32.46,
+              33.5,
+              40.73,
+              47.67
             ],
             "high": [
-              29.695,
-              30.115,
-              30.562,
-              30.978,
-              33.109,
-              34.608,
-              37.182,
-              44.714,
-              null
+              29.6,
+              29.48,
+              30.84,
+              31.13,
+              32.08,
+              35.26,
+              36.3,
+              43.53,
+              50.47
             ]
           },
           "SDNN": {
             "low": [
-              34.973,
-              35.116,
-              36.346,
-              37.357,
-              38.893,
-              41.304,
-              42.509,
-              47.683,
-              null
+              33.84,
+              35.22,
+              35.53,
+              36.56,
+              38.68,
+              41.38,
+              42.44,
+              50.13,
+              60.12
             ],
             "high": [
-              36.977,
-              37.23,
-              38.223,
-              39.351,
-              40.945,
-              43.366,
-              45.162,
-              52.265,
-              null
+              37.34,
+              38.72,
+              39.03,
+              40.06,
+              42.18,
+              44.88,
+              45.94,
+              53.63,
+              63.62
             ]
           },
           "HDA_SA": {
             "low": [
-              446.716,
-              443.103,
-              444.055,
-              442.058,
-              439.392,
-              433.857,
-              430.213,
-              382.02,
-              null
+              428.08,
+              436.7,
+              430.08,
+              424.98,
+              423.84,
+              430.56,
+              426.94,
+              394.89,
+              377.52
             ],
             "high": [
-              463.797,
-              460.763,
-              460.48,
-              460.006,
-              458.227,
-              452.026,
-              456.207,
-              435.952,
-              null
+              467.28,
+              475.9,
+              469.28,
+              464.18,
+              463.04,
+              469.76,
+              466.14,
+              434.09,
+              416.72
             ]
           }
         },
@@ -1284,145 +1289,145 @@
       "PT": {
         "mean": {
           "RSA": [
-            3.145,
-            3.235,
-            3.319,
-            3.401,
-            3.633,
-            3.877,
-            4.126,
-            5.119,
-            null
+            3.24,
+            3.25,
+            3.37,
+            3.44,
+            3.69,
+            3.89,
+            4.1,
+            5.04,
+            6.04
           ],
           "RMSSD": [
-            27.642,
-            28.993,
-            29.688,
-            31.196,
-            34.17,
-            37.475,
-            40.84,
-            54.68,
-            null
+            27.77,
+            28.95,
+            31.17,
+            31.85,
+            34.12,
+            38.07,
+            41.0,
+            54.26,
+            67.69
           ],
           "SDNN": [
-            35.358,
             36.39,
-            37.752,
-            38.964,
-            42.414,
-            46.217,
-            49.778,
-            62.902,
-            null
+            36.99,
+            39.06,
+            38.89,
+            43.2,
+            48.42,
+            50.54,
+            65.7,
+            79.26
           ],
           "HDA_SA": [
-            450.252,
-            448.966,
-            441.914,
-            435.815,
-            426.035,
-            412.781,
-            400.765,
-            346.939,
-            null
+            454.07,
+            445.6,
+            440.81,
+            432.54,
+            429.01,
+            408.04,
+            406.66,
+            361.6,
+            308.57
           ]
         },
         "ci": {
           "RSA": {
             "low": [
-              3.119,
-              3.209,
-              3.292,
-              3.371,
-              3.606,
-              3.846,
-              4.095,
-              5.039,
-              null
+              3.14,
+              3.15,
+              3.27,
+              3.33,
+              3.58,
+              3.79,
+              3.99,
+              4.93,
+              5.93
             ],
             "high": [
-              3.172,
-              3.262,
-              3.346,
-              3.431,
-              3.66,
-              3.908,
-              4.158,
-              5.2,
-              null
+              3.35,
+              3.35,
+              3.48,
+              3.54,
+              3.79,
+              4.0,
+              4.21,
+              5.15,
+              6.15
             ]
           },
           "RMSSD": {
             "low": [
-              27.174,
-              28.467,
-              29.203,
-              30.744,
-              33.582,
-              36.852,
-              40.074,
-              53.477,
-              null
+              26.37,
+              27.55,
+              29.77,
+              30.45,
+              32.72,
+              36.67,
+              39.6,
+              52.86,
+              66.29
             ],
             "high": [
-              28.111,
-              29.52,
-              30.172,
-              31.648,
-              34.758,
-              38.098,
-              41.606,
-              55.884,
-              null
+              29.17,
+              30.35,
+              32.57,
+              33.25,
+              35.52,
+              39.47,
+              42.4,
+              55.66,
+              69.09
             ]
           },
           "SDNN": {
             "low": [
-              34.701,
-              35.653,
-              37.028,
-              38.263,
-              41.658,
-              45.424,
-              48.785,
-              61.184,
-              null
+              34.64,
+              35.24,
+              37.31,
+              37.14,
+              41.45,
+              46.67,
+              48.79,
+              63.95,
+              77.51
             ],
             "high": [
-              36.015,
-              37.128,
-              38.475,
-              39.666,
-              43.169,
-              47.009,
-              50.771,
-              64.62,
-              null
+              38.14,
+              38.74,
+              40.81,
+              40.64,
+              44.95,
+              50.17,
+              52.29,
+              67.45,
+              81.01
             ]
           },
           "HDA_SA": {
             "low": [
-              444.518,
-              443.394,
-              436.06,
-              429.63,
-              419.643,
-              406.044,
-              393.985,
-              330.902,
-              null
+              434.47,
+              426.0,
+              421.21,
+              412.94,
+              409.41,
+              388.44,
+              387.06,
+              342.0,
+              288.97
             ],
             "high": [
-              455.987,
-              454.538,
-              447.768,
-              442.0,
-              432.427,
-              419.518,
-              407.544,
-              362.976,
-              null
+              473.67,
+              465.2,
+              460.41,
+              452.14,
+              448.61,
+              427.64,
+              426.26,
+              381.2,
+              328.17
             ]
           }
         },
@@ -1431,145 +1436,145 @@
       "TD": {
         "mean": {
           "RSA": [
-            3.137,
-            3.263,
-            3.385,
-            3.499,
-            3.809,
-            4.117,
-            4.425,
-            5.775,
-            null
+            3.19,
+            3.33,
+            3.41,
+            3.57,
+            3.79,
+            4.18,
+            4.45,
+            5.78,
+            7.21
           ],
           "RMSSD": [
-            28.075,
-            29.509,
-            30.603,
-            31.738,
-            36.142,
-            40.987,
-            43.956,
-            58.679,
-            null
+            28.45,
+            29.04,
+            30.05,
+            30.72,
+            36.13,
+            41.81,
+            45.02,
+            61.32,
+            78.63
           ],
           "SDNN": [
-            35.758,
-            37.065,
-            38.203,
-            40.002,
-            44.638,
-            49.207,
-            52.668,
-            71.509,
-            null
+            35.02,
+            37.31,
+            39.06,
+            40.45,
+            45.49,
+            49.72,
+            54.42,
+            71.57,
+            90.56
           ],
           "HDA_SA": [
-            449.307,
-            440.448,
-            435.381,
-            430.42,
-            413.033,
-            397.083,
-            384.388,
-            339.987,
-            null
+            461.4,
+            437.71,
+            432.79,
+            442.85,
+            415.66,
+            410.33,
+            380.9,
+            328.19,
+            252.92
           ]
         },
         "ci": {
           "RSA": {
             "low": [
-              3.093,
-              3.223,
-              3.341,
-              3.455,
-              3.766,
-              4.071,
-              4.375,
-              5.719,
-              null
+              3.08,
+              3.23,
+              3.31,
+              3.46,
+              3.69,
+              4.07,
+              4.34,
+              5.67,
+              7.1
             ],
             "high": [
-              3.182,
-              3.303,
-              3.428,
-              3.543,
-              3.853,
-              4.163,
-              4.474,
-              5.83,
-              null
+              3.29,
+              3.44,
+              3.52,
+              3.67,
+              3.9,
+              4.29,
+              4.56,
+              5.89,
+              7.32
             ]
           },
           "RMSSD": {
             "low": [
-              27.376,
-              28.745,
-              29.873,
-              30.876,
-              35.323,
-              40.201,
-              42.781,
-              57.717,
-              null
+              27.05,
+              27.64,
+              28.65,
+              29.32,
+              34.73,
+              40.41,
+              43.62,
+              59.92,
+              77.23
             ],
             "high": [
-              28.774,
-              30.273,
-              31.333,
-              32.599,
-              36.961,
-              41.772,
-              45.131,
-              59.642,
-              null
+              29.85,
+              30.44,
+              31.45,
+              32.12,
+              37.53,
+              43.21,
+              46.42,
+              62.72,
+              80.03
             ]
           },
           "SDNN": {
             "low": [
-              34.857,
-              36.345,
-              37.317,
-              39.107,
-              43.889,
-              48.221,
-              51.659,
-              67.578,
-              null
+              33.27,
+              35.56,
+              37.31,
+              38.7,
+              43.74,
+              47.97,
+              52.67,
+              69.82,
+              88.81
             ],
             "high": [
-              36.659,
-              37.785,
-              39.09,
-              40.897,
-              45.387,
-              50.192,
-              53.678,
-              75.441,
-              null
+              36.77,
+              39.06,
+              40.81,
+              42.2,
+              47.24,
+              51.47,
+              56.17,
+              73.32,
+              92.31
             ]
           },
           "HDA_SA": {
             "low": [
-              440.157,
-              431.569,
-              425.695,
-              419.238,
-              402.296,
-              386.259,
-              371.663,
-              319.455,
-              null
+              441.8,
+              418.11,
+              413.19,
+              423.25,
+              396.06,
+              390.73,
+              361.3,
+              308.59,
+              233.32
             ],
             "high": [
-              458.457,
-              449.328,
-              445.066,
-              441.603,
-              423.77,
-              407.906,
-              397.113,
-              360.52,
-              null
+              481.0,
+              457.31,
+              452.39,
+              462.45,
+              435.26,
+              429.93,
+              400.5,
+              347.79,
+              272.52
             ]
           }
         },
@@ -1585,658 +1590,507 @@
   },
   "redcap_audit": {
     "summary": {
-      "total_participants_enrolled": 210,
-      "active_participants": 195,
+      "total_participants_enrolled": 213,
+      "active_participants": 198,
       "withdrawn": 15,
-      "open_queries": 78,
-      "records_pending_pi_review": 43,
-      "double_entry_pending": 36
+      "open_queries": 37,
+      "records_pending_pi_review": 12,
+      "double_entry_pending": 6
     },
     "queries_by_event": [
       {
         "event": "NICU Admission",
-        "open": 12
+        "open": 2
       },
       {
         "event": "1 Month CGA",
-        "open": 0
+        "open": 5
       },
       {
         "event": "2 Months CGA",
-        "open": 0
+        "open": 5
       },
       {
         "event": "3 Months CGA",
-        "open": 0
+        "open": 5
       },
       {
         "event": "6 Months",
-        "open": 0
+        "open": 8
       },
       {
         "event": "9 Months",
-        "open": 0
+        "open": 3
       },
       {
         "event": "12 Months",
-        "open": 0
+        "open": 4
       },
       {
         "event": "24 Months",
-        "open": 0
+        "open": 3
       },
       {
         "event": "36 Months",
-        "open": 0
+        "open": 3
       }
     ],
-    "recent_activity": []
+    "recent_activity": [
+      {
+        "date": "2026-05-21",
+        "action": "QC pipeline run",
+        "record_id": "NANO-9163",
+        "user": "pipeline_bot"
+      },
+      {
+        "date": "2026-05-21",
+        "action": "Double-entry check",
+        "record_id": "NANO-9465",
+        "user": "ra_emma"
+      },
+      {
+        "date": "2026-05-20",
+        "action": "Imputation diagnostics",
+        "record_id": "NANO-1401",
+        "user": "research_prog"
+      },
+      {
+        "date": "2026-05-20",
+        "action": "Field mapping update",
+        "record_id": "NANO-6688",
+        "user": "pi_bradshaw"
+      },
+      {
+        "date": "2026-05-19",
+        "action": "Bayley-4 score entered",
+        "record_id": "NANO-3095",
+        "user": "ra_sam"
+      },
+      {
+        "date": "2026-05-19",
+        "action": "ADOS-2 module coded",
+        "record_id": "NANO-2732",
+        "user": "ra_julia"
+      },
+      {
+        "date": "2026-05-18",
+        "action": "Temperature data pushed",
+        "record_id": "NANO-3628",
+        "user": "pipeline_bot"
+      },
+      {
+        "date": "2026-05-17",
+        "action": "ECG batch processed",
+        "record_id": "NANO-2749",
+        "user": "research_prog"
+      }
+    ]
   },
   "cohort_table": [
     {
-      "nano_id": "NANO-2456",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 1288,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 78.6,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-4268",
-      "group": "PT",
-      "ga_weeks": 25,
-      "birth_weight_g": 1755,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 83.9,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-7758",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 1999,
-      "sex": "M",
-      "last_visit": "24 Months",
-      "completeness_pct": 74.1,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-1445",
+      "nano_id": "NANO-1000",
       "group": "PT",
       "ga_weeks": 28,
-      "birth_weight_g": 1341,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 80.4,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-2471",
-      "group": "TD",
-      "ga_weeks": 39,
-      "birth_weight_g": 3449,
-      "sex": "F",
-      "last_visit": "9 Months",
-      "completeness_pct": 62.5,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-1441",
-      "group": "TD",
-      "ga_weeks": 40,
-      "birth_weight_g": 3012,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 79.5,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-0585",
-      "group": "TD",
-      "ga_weeks": 40,
-      "birth_weight_g": 2905,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 75.9,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-5963",
-      "group": "ASIB",
-      "ga_weeks": 24,
-      "birth_weight_g": 1260,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 67.9,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-9259",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 2018,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 87.5,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-5181",
-      "group": "TD",
-      "ga_weeks": 38,
-      "birth_weight_g": 4051,
+      "birth_weight_g": 1285,
       "sex": "M",
       "last_visit": "24 Months",
-      "completeness_pct": 76.8,
+      "completeness_pct": 73.1,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-5403",
-      "group": "ASIB",
-      "ga_weeks": 31,
-      "birth_weight_g": 1979,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 67.9,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-1034",
-      "group": "ASIB",
-      "ga_weeks": 24,
-      "birth_weight_g": 918,
-      "sex": "F",
-      "last_visit": "6 Months",
-      "completeness_pct": 55.4,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-5746",
-      "group": "ASIB",
-      "ga_weeks": 30,
-      "birth_weight_g": 1531,
-      "sex": "M",
-      "last_visit": "9 Months",
-      "completeness_pct": 58.9,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-7855",
+      "nano_id": "NANO-1001",
       "group": "PT",
       "ga_weeks": 29,
-      "birth_weight_g": 1634,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 85.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9207",
-      "group": "PT",
-      "ga_weeks": 25,
-      "birth_weight_g": 1479,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 64.3,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-1326",
-      "group": "TD",
-      "ga_weeks": 37,
-      "birth_weight_g": 3455,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 88.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9304",
-      "group": "PT",
-      "ga_weeks": 31,
-      "birth_weight_g": 1605,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 67.0,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-5819",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 1714,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 72.3,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-6604",
-      "group": "PT",
-      "ga_weeks": 27,
-      "birth_weight_g": 1190,
-      "sex": "M",
-      "last_visit": "24 Months",
-      "completeness_pct": 84.8,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-9842",
-      "group": "PT",
-      "ga_weeks": 28,
-      "birth_weight_g": 1732,
-      "sex": "F",
-      "last_visit": "9 Months",
-      "completeness_pct": 65.2,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-1314",
-      "group": "PT",
-      "ga_weeks": 27,
-      "birth_weight_g": 1810,
+      "birth_weight_g": 1498,
       "sex": "F",
       "last_visit": "12 Months",
-      "completeness_pct": 77.7,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-1520",
-      "group": "ASIB",
-      "ga_weeks": 31,
-      "birth_weight_g": 2072,
-      "sex": "M",
-      "last_visit": "24 Months",
-      "completeness_pct": 84.8,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-2668",
-      "group": "ASIB",
-      "ga_weeks": 28,
-      "birth_weight_g": 1788,
-      "sex": "M",
-      "last_visit": "24 Months",
-      "completeness_pct": 80.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-5537",
-      "group": "ASIB",
-      "ga_weeks": 30,
-      "birth_weight_g": 2108,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 66.1,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-6496",
-      "group": "TD",
-      "ga_weeks": 39,
-      "birth_weight_g": 3394,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 80.4,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-8902",
-      "group": "ASIB",
-      "ga_weeks": 31,
-      "birth_weight_g": 1631,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 74.1,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-5432",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 2177,
-      "sex": "M",
-      "last_visit": "24 Months",
-      "completeness_pct": 77.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-3733",
-      "group": "PT",
-      "ga_weeks": 24,
-      "birth_weight_g": 2296,
-      "sex": "M",
-      "last_visit": "24 Months",
       "completeness_pct": 92.0,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-9542",
+      "nano_id": "NANO-1002",
       "group": "PT",
       "ga_weeks": 30,
-      "birth_weight_g": 2198,
+      "birth_weight_g": 1754,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 95.6,
+      "qc_status": "Review"
+    },
+    {
+      "nano_id": "NANO-1003",
+      "group": "TD",
+      "ga_weeks": 38,
+      "birth_weight_g": 3177,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 79.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1004",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1244,
+      "sex": "F",
+      "last_visit": "36 Months",
+      "completeness_pct": 89.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1005",
+      "group": "PT",
+      "ga_weeks": 27,
+      "birth_weight_g": 1960,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 88.4,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1006",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1020,
+      "sex": "M",
+      "last_visit": "6 Months",
+      "completeness_pct": 89.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1007",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1018,
       "sex": "F",
       "last_visit": "12 Months",
-      "completeness_pct": 76.8,
-      "qc_status": "OK"
+      "completeness_pct": 100,
+      "qc_status": "Review"
     },
     {
-      "nano_id": "NANO-3943",
-      "group": "PT",
-      "ga_weeks": 24,
-      "birth_weight_g": 1314,
-      "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 76.8,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-6080",
+      "nano_id": "NANO-1008",
       "group": "TD",
       "ga_weeks": 39,
-      "birth_weight_g": 4299,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 75.0,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-8728",
-      "group": "TD",
-      "ga_weeks": 40,
-      "birth_weight_g": 3359,
+      "birth_weight_g": 2837,
       "sex": "F",
-      "last_visit": "24 Months",
-      "completeness_pct": 90.2,
+      "last_visit": "9 Months",
+      "completeness_pct": 87.1,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-1851",
-      "group": "TD",
-      "ga_weeks": 37,
-      "birth_weight_g": 3723,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 79.5,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-4437",
-      "group": "PT",
-      "ga_weeks": 26,
-      "birth_weight_g": 1648,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 66.1,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9714",
+      "nano_id": "NANO-1009",
       "group": "ASIB",
       "ga_weeks": 28,
-      "birth_weight_g": 1804,
+      "birth_weight_g": 1129,
       "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 90.8,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-6151",
-      "group": "PT",
-      "ga_weeks": 31,
-      "birth_weight_g": 1468,
-      "sex": "M",
-      "last_visit": "9 Months",
-      "completeness_pct": 65.3,
+      "last_visit": "24 Months",
+      "completeness_pct": 92.4,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-8656",
+      "nano_id": "NANO-1010",
       "group": "TD",
-      "ga_weeks": 40,
-      "birth_weight_g": 3261,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 84.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-2361",
-      "group": "PT",
-      "ga_weeks": 24,
-      "birth_weight_g": 881,
+      "ga_weeks": 39,
+      "birth_weight_g": 4028,
       "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 85.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-1644",
-      "group": "PT",
-      "ga_weeks": 32,
-      "birth_weight_g": 1192,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 91.8,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-8871",
-      "group": "ASIB",
-      "ga_weeks": 32,
-      "birth_weight_g": 1497,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 79.6,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-8049",
-      "group": "ASIB",
-      "ga_weeks": 30,
-      "birth_weight_g": 1517,
-      "sex": "M",
-      "last_visit": "9 Months",
+      "last_visit": "1 Month CGA",
       "completeness_pct": 73.5,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-6691",
-      "group": "PT",
-      "ga_weeks": 31,
-      "birth_weight_g": 1993,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 72.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9022",
-      "group": "PT",
-      "ga_weeks": 28,
-      "birth_weight_g": 1389,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 86.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-8244",
-      "group": "TD",
-      "ga_weeks": 37,
-      "birth_weight_g": 3005,
-      "sex": "M",
-      "last_visit": "9 Months",
-      "completeness_pct": 72.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-6812",
-      "group": "PT",
-      "ga_weeks": 25,
-      "birth_weight_g": 1851,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 72.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-3697",
+      "nano_id": "NANO-1011",
       "group": "TD",
       "ga_weeks": 40,
-      "birth_weight_g": 3217,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 84.7,
+      "birth_weight_g": 3625,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 72.3,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-9528",
-      "group": "PT",
-      "ga_weeks": 29,
-      "birth_weight_g": 1376,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 79.6,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9883",
-      "group": "ASIB",
-      "ga_weeks": 28,
-      "birth_weight_g": 1334,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 59.2,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-7617",
-      "group": "PT",
-      "ga_weeks": 30,
-      "birth_weight_g": 1735,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 83.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-2019",
-      "group": "TD",
-      "ga_weeks": 37,
-      "birth_weight_g": 3574,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 71.4,
-      "qc_status": "OK"
-    },
-    {
-      "nano_id": "NANO-0370",
+      "nano_id": "NANO-1012",
       "group": "TD",
       "ga_weeks": 38,
-      "birth_weight_g": 3675,
-      "sex": "F",
+      "birth_weight_g": 3048,
+      "sex": "M",
       "last_visit": "12 Months",
-      "completeness_pct": 82.7,
+      "completeness_pct": 83.6,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-7769",
+      "nano_id": "NANO-1013",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 2625,
+      "sex": "F",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 79.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1014",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 1277,
+      "sex": "F",
+      "last_visit": "12 Months",
+      "completeness_pct": 77.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1015",
       "group": "ASIB",
       "ga_weeks": 32,
-      "birth_weight_g": 1880,
+      "birth_weight_g": 2180,
       "sex": "M",
-      "last_visit": "9 Months",
-      "completeness_pct": 76.5,
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 90.3,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-1219",
+      "nano_id": "NANO-1016",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1386,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 85.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1017",
+      "group": "ASIB",
+      "ga_weeks": 27,
+      "birth_weight_g": 2244,
+      "sex": "F",
+      "last_visit": "36 Months",
+      "completeness_pct": 85.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1018",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1524,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 78.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1019",
+      "group": "PT",
+      "ga_weeks": 28,
+      "birth_weight_g": 1879,
+      "sex": "F",
+      "last_visit": "24 Months",
+      "completeness_pct": 91.7,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1020",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 907,
+      "sex": "F",
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 91.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1021",
       "group": "PT",
       "ga_weeks": 27,
-      "birth_weight_g": 1428,
+      "birth_weight_g": 2267,
       "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 89.8,
-      "qc_status": "Review"
+      "last_visit": "1 Month CGA",
+      "completeness_pct": 95.9,
+      "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-4663",
+      "nano_id": "NANO-1022",
       "group": "PT",
-      "ga_weeks": 29,
-      "birth_weight_g": 1716,
-      "sex": "M",
-      "last_visit": "12 Months",
-      "completeness_pct": 70.4,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-9999",
-      "group": "PT",
-      "ga_weeks": 25,
-      "birth_weight_g": 1330,
+      "ga_weeks": 24,
+      "birth_weight_g": 2085,
       "sex": "F",
-      "last_visit": "6 Months",
-      "completeness_pct": 50.0,
-      "qc_status": "Review"
+      "last_visit": "36 Months",
+      "completeness_pct": 86.8,
+      "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-4052",
-      "group": "TD",
-      "ga_weeks": 40,
-      "birth_weight_g": 2578,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 84.7,
-      "qc_status": "Review"
-    },
-    {
-      "nano_id": "NANO-3953",
+      "nano_id": "NANO-1023",
       "group": "TD",
       "ga_weeks": 39,
-      "birth_weight_g": 2213,
+      "birth_weight_g": 3163,
+      "sex": "M",
+      "last_visit": "9 Months",
+      "completeness_pct": 72.9,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1024",
+      "group": "TD",
+      "ga_weeks": 40,
+      "birth_weight_g": 2274,
       "sex": "F",
-      "last_visit": "12 Months",
+      "last_visit": "3 Months CGA",
+      "completeness_pct": 97.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1025",
+      "group": "PT",
+      "ga_weeks": 31,
+      "birth_weight_g": 1934,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 100,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1026",
+      "group": "TD",
+      "ga_weeks": 37,
+      "birth_weight_g": 3626,
+      "sex": "F",
+      "last_visit": "9 Months",
+      "completeness_pct": 96.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1027",
+      "group": "PT",
+      "ga_weeks": 26,
+      "birth_weight_g": 1399,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 85.2,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1028",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 1430,
+      "sex": "F",
+      "last_visit": "6 Months",
+      "completeness_pct": 93.1,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1029",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1269,
+      "sex": "M",
+      "last_visit": "36 Months",
+      "completeness_pct": 66.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1030",
+      "group": "PT",
+      "ga_weeks": 24,
+      "birth_weight_g": 2045,
+      "sex": "F",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 87.5,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1031",
+      "group": "PT",
+      "ga_weeks": 30,
+      "birth_weight_g": 1209,
+      "sex": "M",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 95.6,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1032",
+      "group": "PT",
+      "ga_weeks": 25,
+      "birth_weight_g": 1880,
+      "sex": "M",
+      "last_visit": "1 Month CGA",
       "completeness_pct": 79.6,
       "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-4674",
+      "nano_id": "NANO-1033",
       "group": "PT",
-      "ga_weeks": 28,
-      "birth_weight_g": 1589,
-      "sex": "F",
+      "ga_weeks": 26,
+      "birth_weight_g": 974,
+      "sex": "M",
       "last_visit": "9 Months",
-      "completeness_pct": 81.6,
-      "qc_status": "Review"
+      "completeness_pct": 86.5,
+      "qc_status": "OK"
     },
     {
-      "nano_id": "NANO-9376",
+      "nano_id": "NANO-1034",
       "group": "PT",
-      "ga_weeks": 25,
-      "birth_weight_g": 2071,
-      "sex": "F",
-      "last_visit": "12 Months",
-      "completeness_pct": 71.4,
+      "ga_weeks": 27,
+      "birth_weight_g": 687,
+      "sex": "M",
+      "last_visit": "2 Months CGA",
+      "completeness_pct": 75.0,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1035",
+      "group": "ASIB",
+      "ga_weeks": 30,
+      "birth_weight_g": 1906,
+      "sex": "M",
+      "last_visit": "3 Months CGA",
+      "completeness_pct": 78.8,
       "qc_status": "Review"
     },
     {
-      "nano_id": "NANO-7147",
-      "group": "TD",
-      "ga_weeks": 38,
-      "birth_weight_g": 3660,
+      "nano_id": "NANO-1036",
+      "group": "ASIB",
+      "ga_weeks": 24,
+      "birth_weight_g": 1524,
+      "sex": "M",
+      "last_visit": "12 Months",
+      "completeness_pct": 92.8,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1037",
+      "group": "ASIB",
+      "ga_weeks": 31,
+      "birth_weight_g": 952,
+      "sex": "F",
+      "last_visit": "NICU Admission",
+      "completeness_pct": 100,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1038",
+      "group": "PT",
+      "ga_weeks": 29,
+      "birth_weight_g": 1639,
       "sex": "F",
       "last_visit": "12 Months",
-      "completeness_pct": 60.2,
+      "completeness_pct": 99.3,
+      "qc_status": "OK"
+    },
+    {
+      "nano_id": "NANO-1039",
+      "group": "ASIB",
+      "ga_weeks": 32,
+      "birth_weight_g": 1242,
+      "sex": "M",
+      "last_visit": "24 Months",
+      "completeness_pct": 87.0,
       "qc_status": "OK"
     }
   ],
   "organization_site": {
     "meta": {
-      "generated_at": "2026-05-11T17:15:53",
+      "generated_at": "2026-05-21T17:39:20",
       "source_mode": "fallback",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 0,
@@ -2630,5 +2484,3626 @@
         2020
       ]
     }
+  },
+  "geo": {
+    "meta": {
+      "generated_at": "2026-05-21T17:39:20",
+      "suppression_threshold": 5,
+      "coordinate_system": "EPSG:4326",
+      "center": [
+        -81.0348,
+        34.0007
+      ],
+      "zoom_default": 10,
+      "bounds": [
+        [
+          -81.45,
+          33.7
+        ],
+        [
+          -79.6,
+          34.35
+        ]
+      ]
+    },
+    "recruitment_zones": [
+      {
+        "zip": "29201",
+        "label": "Downtown Columbia",
+        "centroid": [
+          -81.0348,
+          34.0007
+        ],
+        "n_total": 22,
+        "n_by_group": {
+          "ASIB": 6,
+          "PT": 9,
+          "TD": 7
+        },
+        "distance_km": 0.0,
+        "suppressed": false,
+        "density_rank": 1
+      },
+      {
+        "zip": "29170",
+        "label": "West Columbia",
+        "centroid": [
+          -81.107,
+          33.97
+        ],
+        "n_total": 16,
+        "n_by_group": {
+          "ASIB": 4,
+          "PT": 8,
+          "TD": 4
+        },
+        "distance_km": 7.5,
+        "suppressed": false,
+        "density_rank": 2
+      },
+      {
+        "zip": "29204",
+        "label": "Eau Claire",
+        "centroid": [
+          -80.989,
+          34.031
+        ],
+        "n_total": 15,
+        "n_by_group": {
+          "ASIB": 4,
+          "PT": 8,
+          "TD": 3
+        },
+        "distance_km": 5.4,
+        "suppressed": false,
+        "density_rank": 3
+      },
+      {
+        "zip": "29206",
+        "label": "Forest Acres",
+        "centroid": [
+          -80.955,
+          34.027
+        ],
+        "n_total": 15,
+        "n_by_group": {
+          "ASIB": 5,
+          "PT": 6,
+          "TD": 4
+        },
+        "distance_km": 7.9,
+        "suppressed": false,
+        "density_rank": 4
+      },
+      {
+        "zip": "29033",
+        "label": "Cayce",
+        "centroid": [
+          -81.052,
+          33.958
+        ],
+        "n_total": 15,
+        "n_by_group": {
+          "ASIB": 4,
+          "PT": 8,
+          "TD": 3
+        },
+        "distance_km": 5.0,
+        "suppressed": false,
+        "density_rank": 5
+      },
+      {
+        "zip": "29205",
+        "label": "Shandon",
+        "centroid": [
+          -80.987,
+          34.001
+        ],
+        "n_total": 14,
+        "n_by_group": {
+          "ASIB": 4,
+          "PT": 7,
+          "TD": 3
+        },
+        "distance_km": 4.4,
+        "suppressed": false,
+        "density_rank": 6
+      },
+      {
+        "zip": "29209",
+        "label": "Hopkins / Lower Richland",
+        "centroid": [
+          -80.968,
+          33.938
+        ],
+        "n_total": 14,
+        "n_by_group": {
+          "ASIB": 4,
+          "PT": 6,
+          "TD": 4
+        },
+        "distance_km": 9.3,
+        "suppressed": false,
+        "density_rank": 7
+      },
+      {
+        "zip": "29169",
+        "label": "West Columbia",
+        "centroid": [
+          -81.073,
+          33.993
+        ],
+        "n_total": 11,
+        "n_by_group": {
+          "ASIB": 3,
+          "PT": 6,
+          "TD": 2
+        },
+        "distance_km": 3.6,
+        "suppressed": false,
+        "density_rank": 8
+      },
+      {
+        "zip": "29223",
+        "label": "Northeast Columbia",
+        "centroid": [
+          -80.917,
+          34.099
+        ],
+        "n_total": 10,
+        "n_by_group": {
+          "ASIB": 3,
+          "PT": 4,
+          "TD": 3
+        },
+        "distance_km": 15.4,
+        "suppressed": false,
+        "density_rank": 9
+      },
+      {
+        "zip": "29073",
+        "label": "Lexington / Pelion",
+        "centroid": [
+          -81.25,
+          33.901
+        ],
+        "n_total": 10,
+        "n_by_group": {
+          "ASIB": 2,
+          "PT": 5,
+          "TD": 3
+        },
+        "distance_km": 22.7,
+        "suppressed": false,
+        "density_rank": 10
+      },
+      {
+        "zip": "29203",
+        "label": "North Columbia",
+        "centroid": [
+          -81.018,
+          34.042
+        ],
+        "n_total": 9,
+        "n_by_group": {
+          "ASIB": 3,
+          "PT": 3,
+          "TD": 3
+        },
+        "distance_km": 4.8,
+        "suppressed": false,
+        "density_rank": 11
+      },
+      {
+        "zip": "29210",
+        "label": "Broad River / Irmo",
+        "centroid": [
+          -81.12,
+          34.048
+        ],
+        "n_total": 7,
+        "n_by_group": {
+          "ASIB": 2,
+          "PT": 3,
+          "TD": 2
+        },
+        "distance_km": 9.5,
+        "suppressed": false,
+        "density_rank": 12
+      },
+      {
+        "zip": "29229",
+        "label": "Elgin / NE Richland",
+        "centroid": [
+          -80.853,
+          34.138
+        ],
+        "n_total": 7,
+        "n_by_group": {
+          "ASIB": 1,
+          "PT": 4,
+          "TD": 2
+        },
+        "distance_km": 22.7,
+        "suppressed": false,
+        "density_rank": 13
+      },
+      {
+        "zip": "29063",
+        "label": "Irmo",
+        "centroid": [
+          -81.188,
+          34.093
+        ],
+        "n_total": 7,
+        "n_by_group": {
+          "ASIB": 1,
+          "PT": 4,
+          "TD": 2
+        },
+        "distance_km": 17.5,
+        "suppressed": false,
+        "density_rank": 14
+      },
+      {
+        "zip": "29072",
+        "label": "Lexington",
+        "centroid": [
+          -81.235,
+          33.977
+        ],
+        "n_total": 7,
+        "n_by_group": {
+          "ASIB": 1,
+          "PT": 5,
+          "TD": 1
+        },
+        "distance_km": 18.6,
+        "suppressed": false,
+        "density_rank": 15
+      },
+      {
+        "zip": "29016",
+        "label": "Blythewood",
+        "centroid": [
+          -80.972,
+          34.217
+        ],
+        "n_total": 7,
+        "n_by_group": {
+          "ASIB": 1,
+          "PT": 4,
+          "TD": 2
+        },
+        "distance_km": 24.7,
+        "suppressed": false,
+        "density_rank": 16
+      },
+      {
+        "zip": "29212",
+        "label": "Irmo / Dutch Fork",
+        "centroid": [
+          -81.179,
+          34.083
+        ],
+        "n_total": 6,
+        "n_by_group": {
+          "ASIB": 2,
+          "PT": 2,
+          "TD": 2
+        },
+        "distance_km": 16.1,
+        "suppressed": false,
+        "density_rank": 17
+      },
+      {
+        "zip": "29036",
+        "label": "Chapin",
+        "centroid": [
+          -81.348,
+          34.166
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 34.2,
+        "suppressed": true,
+        "density_rank": 18
+      },
+      {
+        "zip": "29045",
+        "label": "Elgin",
+        "centroid": [
+          -80.776,
+          34.173
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 30.6,
+        "suppressed": true,
+        "density_rank": 19
+      },
+      {
+        "zip": "29150",
+        "label": "Sumter",
+        "centroid": [
+          -80.392,
+          33.937
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 59.7,
+        "suppressed": true,
+        "density_rank": 20
+      },
+      {
+        "zip": "29501",
+        "label": "Florence",
+        "centroid": [
+          -79.763,
+          34.185
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 118.9,
+        "suppressed": true,
+        "density_rank": 21
+      },
+      {
+        "zip": "29020",
+        "label": "Camden",
+        "centroid": [
+          -80.604,
+          34.252
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 48.5,
+        "suppressed": true,
+        "density_rank": 22
+      },
+      {
+        "zip": "29078",
+        "label": "Lugoff",
+        "centroid": [
+          -80.681,
+          34.227
+        ],
+        "n_total": null,
+        "n_by_group": null,
+        "distance_km": 41.2,
+        "suppressed": true,
+        "density_rank": 23
+      }
+    ],
+    "sdoh_heat": [
+      {
+        "zip": "29201",
+        "centroid": [
+          -81.0348,
+          34.0007
+        ],
+        "composite_risk": 0.17,
+        "domains": {
+          "housing": 0.07,
+          "food": 0.09,
+          "transportation": 0.24,
+          "social_isolation": 0.29,
+          "stress": 0.21
+        },
+        "n_respondents": 13,
+        "suppressed": false
+      },
+      {
+        "zip": "29170",
+        "centroid": [
+          -81.107,
+          33.97
+        ],
+        "composite_risk": 0.37,
+        "domains": {
+          "housing": 0.34,
+          "food": 0.25,
+          "transportation": 0.39,
+          "social_isolation": 0.34,
+          "stress": 0.53
+        },
+        "n_respondents": 9,
+        "suppressed": false
+      },
+      {
+        "zip": "29204",
+        "centroid": [
+          -80.989,
+          34.031
+        ],
+        "composite_risk": 0.21,
+        "domains": {
+          "housing": 0.26,
+          "food": 0.11,
+          "transportation": 0.35,
+          "social_isolation": 0.25,
+          "stress": 0.24
+        },
+        "n_respondents": 9,
+        "suppressed": false
+      },
+      {
+        "zip": "29206",
+        "centroid": [
+          -80.955,
+          34.027
+        ],
+        "composite_risk": 0.29,
+        "domains": {
+          "housing": 0.25,
+          "food": 0.26,
+          "transportation": 0.34,
+          "social_isolation": 0.23,
+          "stress": 0.25
+        },
+        "n_respondents": 9,
+        "suppressed": false
+      },
+      {
+        "zip": "29033",
+        "centroid": [
+          -81.052,
+          33.958
+        ],
+        "composite_risk": 0.29,
+        "domains": {
+          "housing": 0.38,
+          "food": 0.25,
+          "transportation": 0.36,
+          "social_isolation": 0.33,
+          "stress": 0.41
+        },
+        "n_respondents": 9,
+        "suppressed": false
+      },
+      {
+        "zip": "29205",
+        "centroid": [
+          -80.987,
+          34.001
+        ],
+        "composite_risk": 0.29,
+        "domains": {
+          "housing": 0.26,
+          "food": 0.31,
+          "transportation": 0.4,
+          "social_isolation": 0.4,
+          "stress": 0.34
+        },
+        "n_respondents": 8,
+        "suppressed": false
+      },
+      {
+        "zip": "29209",
+        "centroid": [
+          -80.968,
+          33.938
+        ],
+        "composite_risk": 0.2,
+        "domains": {
+          "housing": 0.12,
+          "food": 0.25,
+          "transportation": 0.38,
+          "social_isolation": 0.21,
+          "stress": 0.22
+        },
+        "n_respondents": 8,
+        "suppressed": false
+      },
+      {
+        "zip": "29169",
+        "centroid": [
+          -81.073,
+          33.993
+        ],
+        "composite_risk": 0.38,
+        "domains": {
+          "housing": 0.32,
+          "food": 0.28,
+          "transportation": 0.5,
+          "social_isolation": 0.38,
+          "stress": 0.42
+        },
+        "n_respondents": 6,
+        "suppressed": false
+      },
+      {
+        "zip": "29223",
+        "centroid": [
+          -80.917,
+          34.099
+        ],
+        "composite_risk": 0.31,
+        "domains": {
+          "housing": 0.33,
+          "food": 0.35,
+          "transportation": 0.4,
+          "social_isolation": 0.37,
+          "stress": 0.23
+        },
+        "n_respondents": 6,
+        "suppressed": false
+      },
+      {
+        "zip": "29073",
+        "centroid": [
+          -81.25,
+          33.901
+        ],
+        "composite_risk": 0.36,
+        "domains": {
+          "housing": 0.31,
+          "food": 0.24,
+          "transportation": 0.39,
+          "social_isolation": 0.36,
+          "stress": 0.45
+        },
+        "n_respondents": 6,
+        "suppressed": false
+      },
+      {
+        "zip": "29203",
+        "centroid": [
+          -81.018,
+          34.042
+        ],
+        "composite_risk": 0.17,
+        "domains": {
+          "housing": 0.17,
+          "food": 0.09,
+          "transportation": 0.23,
+          "social_isolation": 0.25,
+          "stress": 0.24
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29210",
+        "centroid": [
+          -81.12,
+          34.048
+        ],
+        "composite_risk": 0.4,
+        "domains": {
+          "housing": 0.4,
+          "food": 0.31,
+          "transportation": 0.47,
+          "social_isolation": 0.44,
+          "stress": 0.46
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29229",
+        "centroid": [
+          -80.853,
+          34.138
+        ],
+        "composite_risk": 0.28,
+        "domains": {
+          "housing": 0.28,
+          "food": 0.24,
+          "transportation": 0.51,
+          "social_isolation": 0.41,
+          "stress": 0.27
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29063",
+        "centroid": [
+          -81.188,
+          34.093
+        ],
+        "composite_risk": 0.31,
+        "domains": {
+          "housing": 0.23,
+          "food": 0.23,
+          "transportation": 0.41,
+          "social_isolation": 0.41,
+          "stress": 0.31
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29072",
+        "centroid": [
+          -81.235,
+          33.977
+        ],
+        "composite_risk": 0.29,
+        "domains": {
+          "housing": 0.16,
+          "food": 0.23,
+          "transportation": 0.31,
+          "social_isolation": 0.28,
+          "stress": 0.28
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29016",
+        "centroid": [
+          -80.972,
+          34.217
+        ],
+        "composite_risk": 0.37,
+        "domains": {
+          "housing": 0.26,
+          "food": 0.23,
+          "transportation": 0.57,
+          "social_isolation": 0.31,
+          "stress": 0.34
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      },
+      {
+        "zip": "29212",
+        "centroid": [
+          -81.179,
+          34.083
+        ],
+        "composite_risk": 0.48,
+        "domains": {
+          "housing": 0.65,
+          "food": 0.36,
+          "transportation": 0.54,
+          "social_isolation": 0.52,
+          "stress": 0.62
+        },
+        "n_respondents": 5,
+        "suppressed": false
+      }
+    ],
+    "catchment": {
+      "lab_location": [
+        -81.0348,
+        34.0007
+      ],
+      "distance_rings_km": [
+        10,
+        25,
+        50,
+        100
+      ],
+      "participants_by_ring": [
+        {
+          "ring_km": 10,
+          "lower_km": 0,
+          "n": 116,
+          "pct": 55.8,
+          "mean_completeness": 86.0
+        },
+        {
+          "ring_km": 25,
+          "lower_km": 10,
+          "n": 54,
+          "pct": 26.0,
+          "mean_completeness": 83.8
+        },
+        {
+          "ring_km": 50,
+          "lower_km": 25,
+          "n": 0,
+          "pct": 0.0,
+          "mean_completeness": 79.3
+        },
+        {
+          "ring_km": 100,
+          "lower_km": 50,
+          "n": 0,
+          "pct": 0.0,
+          "mean_completeness": 63.3
+        }
+      ],
+      "nicu_sites": [
+        {
+          "name": "Prisma Health Richland",
+          "coords": [
+            -81.0185,
+            34.0095
+          ],
+          "n_referred": 22,
+          "mean_ga_weeks": 30.3
+        },
+        {
+          "name": "Lexington Medical Center",
+          "coords": [
+            -81.189,
+            33.953
+          ],
+          "n_referred": 14,
+          "mean_ga_weeks": 31.2
+        },
+        {
+          "name": "Providence Health NE",
+          "coords": [
+            -80.924,
+            34.082
+          ],
+          "n_referred": 8,
+          "mean_ga_weeks": 29.4
+        },
+        {
+          "name": "Palmetto Health Baptist",
+          "coords": [
+            -81.029,
+            34.001
+          ],
+          "n_referred": 10,
+          "mean_ga_weeks": 30.8
+        }
+      ],
+      "total_participants": 208
+    },
+    "partner_network": [
+      {
+        "name": "About Play",
+        "coords": [
+          -81.05,
+          33.99
+        ],
+        "type": "community",
+        "href": "https://aboutplaysc.com"
+      },
+      {
+        "name": "Team Therapy",
+        "coords": [
+          -81.08,
+          34.02
+        ],
+        "type": "clinical",
+        "href": "https://teamtherapysc.com"
+      },
+      {
+        "name": "SC Autism Society",
+        "coords": [
+          -81.03,
+          34.01
+        ],
+        "type": "advocacy",
+        "href": "https://scautism.org"
+      },
+      {
+        "name": "Prisma Health Children",
+        "coords": [
+          -81.02,
+          34.01
+        ],
+        "type": "hospital",
+        "href": "https://prismahealth.org"
+      },
+      {
+        "name": "Lexington Medical",
+        "coords": [
+          -81.19,
+          33.95
+        ],
+        "type": "hospital",
+        "href": "https://lexmed.com"
+      },
+      {
+        "name": "MUSC",
+        "coords": [
+          -79.95,
+          32.78
+        ],
+        "type": "academic",
+        "href": "https://musc.edu"
+      },
+      {
+        "name": "Wil Lou Gray",
+        "coords": [
+          -81.1,
+          33.97
+        ],
+        "type": "education",
+        "href": ""
+      },
+      {
+        "name": "First Steps SC",
+        "coords": [
+          -81.04,
+          34.0
+        ],
+        "type": "government",
+        "href": "https://scfirststeps.org"
+      },
+      {
+        "name": "BabyNet SC",
+        "coords": [
+          -81.01,
+          33.99
+        ],
+        "type": "government",
+        "href": ""
+      },
+      {
+        "name": "Palmetto Peds",
+        "coords": [
+          -80.96,
+          34.03
+        ],
+        "type": "clinical",
+        "href": ""
+      }
+    ],
+    "enrollment_geo_timeline": [
+      {
+        "month_index": 0,
+        "month_label": "2023-12",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 1,
+        "month_label": "2024-01",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 2,
+        "month_label": "2024-02",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29063",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 1
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 3,
+        "month_label": "2024-03",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 4,
+        "month_label": "2024-04",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 5,
+        "month_label": "2024-05",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 6,
+        "month_label": "2024-05",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29063",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 1
+          }
+        ]
+      },
+      {
+        "month_index": 7,
+        "month_label": "2024-06",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 1
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 2
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 2
+          }
+        ]
+      },
+      {
+        "month_index": 8,
+        "month_label": "2024-07",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 2
+          }
+        ]
+      },
+      {
+        "month_index": 9,
+        "month_label": "2024-08",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 2
+          }
+        ]
+      },
+      {
+        "month_index": 10,
+        "month_label": "2024-09",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 2
+          }
+        ]
+      },
+      {
+        "month_index": 11,
+        "month_label": "2024-10",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29204",
+            "n_new": 2,
+            "cumulative": 6
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 2
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 2
+          }
+        ]
+      },
+      {
+        "month_index": 12,
+        "month_label": "2024-11",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 13,
+        "month_label": "2024-12",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 14,
+        "month_label": "2025-01",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 15,
+        "month_label": "2025-02",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29206",
+            "n_new": 2,
+            "cumulative": 8
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29063",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 16,
+        "month_label": "2025-03",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29205",
+            "n_new": 2,
+            "cumulative": 8
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 3
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 17,
+        "month_label": "2025-04",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 3
+          }
+        ]
+      },
+      {
+        "month_index": 18,
+        "month_label": "2025-05",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 2,
+            "cumulative": 14
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 4
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 19,
+        "month_label": "2025-06",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 9
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 9
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 20,
+        "month_label": "2025-07",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 2,
+            "cumulative": 14
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 9
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 21,
+        "month_label": "2025-08",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 13
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29033",
+            "n_new": 2,
+            "cumulative": 11
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29209",
+            "n_new": 2,
+            "cumulative": 10
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 22,
+        "month_label": "2025-09",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 14
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 11
+          },
+          {
+            "zip": "29206",
+            "n_new": 2,
+            "cumulative": 11
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 11
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 4
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 5
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 23,
+        "month_label": "2025-10",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 1,
+            "cumulative": 15
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29204",
+            "n_new": 2,
+            "cumulative": 12
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29033",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29212",
+            "n_new": 1,
+            "cumulative": 5
+          }
+        ]
+      },
+      {
+        "month_index": 24,
+        "month_label": "2025-11",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 17
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29206",
+            "n_new": 1,
+            "cumulative": 11
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29209",
+            "n_new": 2,
+            "cumulative": 11
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 25,
+        "month_label": "2025-12",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 3,
+            "cumulative": 18
+          },
+          {
+            "zip": "29170",
+            "n_new": 2,
+            "cumulative": 13
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29205",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 26,
+        "month_label": "2026-01",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 2,
+            "cumulative": 18
+          },
+          {
+            "zip": "29170",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29033",
+            "n_new": 2,
+            "cumulative": 13
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 10
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29169",
+            "n_new": 2,
+            "cumulative": 10
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29063",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 5
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 5
+          }
+        ]
+      },
+      {
+        "month_index": 27,
+        "month_label": "2026-02",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 17
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 13
+          },
+          {
+            "zip": "29204",
+            "n_new": 1,
+            "cumulative": 14
+          },
+          {
+            "zip": "29206",
+            "n_new": 3,
+            "cumulative": 14
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 12
+          },
+          {
+            "zip": "29169",
+            "n_new": 1,
+            "cumulative": 10
+          },
+          {
+            "zip": "29223",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29203",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29016",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 4
+          }
+        ]
+      },
+      {
+        "month_index": 28,
+        "month_label": "2026-03",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 2,
+            "cumulative": 21
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 13
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 13
+          },
+          {
+            "zip": "29206",
+            "n_new": 3,
+            "cumulative": 14
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29209",
+            "n_new": 0,
+            "cumulative": 11
+          },
+          {
+            "zip": "29169",
+            "n_new": 0,
+            "cumulative": 9
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29073",
+            "n_new": 1,
+            "cumulative": 9
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29210",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29229",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29063",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29072",
+            "n_new": 1,
+            "cumulative": 6
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 5
+          }
+        ]
+      },
+      {
+        "month_index": 29,
+        "month_label": "2026-04",
+        "new_enrollments": [
+          {
+            "zip": "29201",
+            "n_new": 0,
+            "cumulative": 21
+          },
+          {
+            "zip": "29170",
+            "n_new": 0,
+            "cumulative": 14
+          },
+          {
+            "zip": "29204",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29206",
+            "n_new": 0,
+            "cumulative": 13
+          },
+          {
+            "zip": "29033",
+            "n_new": 0,
+            "cumulative": 14
+          },
+          {
+            "zip": "29205",
+            "n_new": 0,
+            "cumulative": 12
+          },
+          {
+            "zip": "29209",
+            "n_new": 1,
+            "cumulative": 13
+          },
+          {
+            "zip": "29169",
+            "n_new": 2,
+            "cumulative": 11
+          },
+          {
+            "zip": "29223",
+            "n_new": 0,
+            "cumulative": 9
+          },
+          {
+            "zip": "29073",
+            "n_new": 0,
+            "cumulative": 8
+          },
+          {
+            "zip": "29203",
+            "n_new": 1,
+            "cumulative": 8
+          },
+          {
+            "zip": "29210",
+            "n_new": 1,
+            "cumulative": 7
+          },
+          {
+            "zip": "29229",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29063",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29072",
+            "n_new": 0,
+            "cumulative": 7
+          },
+          {
+            "zip": "29016",
+            "n_new": 0,
+            "cumulative": 6
+          },
+          {
+            "zip": "29212",
+            "n_new": 0,
+            "cumulative": 5
+          }
+        ]
+      }
+    ]
+  },
+  "matlab_integration": {
+    "manifest": {
+      "generated_at": "2026-05-21T17:39:20",
+      "matlab_version": "R2024a",
+      "salt": "nano_demo",
+      "epoch_sec": 60,
+      "source": "synthetic_demo",
+      "host": "matlab-lab-01"
+    },
+    "files": [
+      {
+        "name": "hrv_dense.parquet",
+        "feature": "hrv",
+        "rows": 12515,
+        "qa_pass_pct": 0.884
+      },
+      {
+        "name": "temp_gradients.parquet",
+        "feature": "temp",
+        "rows": 30609,
+        "qa_pass_pct": 0.901
+      },
+      {
+        "name": "hda_phases.parquet",
+        "feature": "hda",
+        "rows": 3776,
+        "qa_pass_pct": 0.965
+      }
+    ],
+    "scripts": [
+      {
+        "name": "export_hrv_features.m",
+        "feature": "hrv",
+        "last_run": "2026-05-21T17:14:20",
+        "status": "ok",
+        "duration_s": 12.8,
+        "lines": 96
+      },
+      {
+        "name": "export_temperature_features.m",
+        "feature": "temp",
+        "last_run": "2026-05-21T17:14:20",
+        "status": "ok",
+        "duration_s": 7.9,
+        "lines": 64
+      },
+      {
+        "name": "export_hda_phases.m",
+        "feature": "hda",
+        "last_run": "2026-05-21T17:29:20",
+        "status": "ok",
+        "duration_s": 2.2,
+        "lines": 48
+      },
+      {
+        "name": "run_all.m",
+        "feature": "orchestrator",
+        "last_run": "2026-05-21T17:19:20",
+        "status": "ok",
+        "duration_s": 31.3,
+        "lines": 22
+      }
+    ],
+    "throughput_24h": {
+      "hours": [
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00",
+        "00:00",
+        "01:00",
+        "02:00",
+        "03:00",
+        "04:00",
+        "05:00",
+        "06:00",
+        "07:00",
+        "08:00",
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00"
+      ],
+      "rows": [
+        526,
+        421,
+        442,
+        333,
+        554,
+        523,
+        406,
+        358,
+        380,
+        332,
+        422,
+        352,
+        484,
+        380,
+        381,
+        589,
+        340,
+        247,
+        460,
+        191,
+        449,
+        527,
+        427,
+        421
+      ]
+    },
+    "options": [
+      {
+        "id": "file",
+        "title": "File handoff",
+        "tag": "Recommended",
+        "coupling": "loose",
+        "cost": "low",
+        "summary": "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh."
+      },
+      {
+        "id": "engine",
+        "title": "MATLAB Engine for Python",
+        "tag": "Real-time",
+        "coupling": "tight",
+        "cost": "medium",
+        "summary": "build_dashboard_data.py invokes .m functions via matlab.engine in a single process."
+      },
+      {
+        "id": "rest",
+        "title": "REST endpoint",
+        "tag": "On-demand",
+        "coupling": "loose",
+        "cost": "medium",
+        "summary": "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference."
+      }
+    ]
   }
 }
