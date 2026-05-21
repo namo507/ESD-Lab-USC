@@ -18,6 +18,7 @@ import type {
   RedcapEvent,
   StudySummary,
   EpochDecision,
+  MatlabIntegration,
 } from "./schemas";
 
 const STUDY: StudySummary = {
@@ -98,6 +99,37 @@ const REDCAP_EVENTS: RedcapEvent[] = [
   { ts: "08:44", form: "consent_v4", n: 1, status: "ok", note: "pushed" },
   { ts: "08:30", form: "medical_history_v1", n: 2, status: "fail", note: "token expired · retry" },
 ];
+
+const MATLAB_INTEGRATION: MatlabIntegration = {
+  manifest: {
+    generated_at: new Date().toISOString().slice(0, 19),
+    matlab_version: "R2024a",
+    salt: "nano_demo",
+    epoch_sec: 60,
+    source: "synthetic_demo",
+    host: "matlab-lab-01",
+  },
+  files: [
+    { name: "hrv_dense.parquet",      feature: "hrv",  rows: 12480, qa_pass_pct: 0.924 },
+    { name: "temp_gradients.parquet", feature: "temp", rows: 30210, qa_pass_pct: 0.951 },
+    { name: "hda_phases.parquet",     feature: "hda",  rows: 4120,  qa_pass_pct: 0.967 },
+  ],
+  scripts: [
+    { name: "export_hrv_features.m",         feature: "hrv",          last_run: "09:12", status: "ok", duration_s: 14.6, lines: 96 },
+    { name: "export_temperature_features.m", feature: "temp",         last_run: "09:11", status: "ok", duration_s:  7.2, lines: 64 },
+    { name: "export_hda_phases.m",           feature: "hda",          last_run: "09:11", status: "ok", duration_s:  3.4, lines: 48 },
+    { name: "run_all.m",                     feature: "orchestrator", last_run: "09:13", status: "ok", duration_s: 28.1, lines: 22 },
+  ],
+  throughput_24h: {
+    hours: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`),
+    rows:  [310, 280, 295, 220, 180, 150, 260, 410, 530, 610, 620, 580, 540, 600, 690, 720, 700, 640, 560, 520, 480, 440, 400, 360],
+  },
+  options: [
+    { id: "file",   title: "File handoff",             tag: "Recommended", coupling: "loose", cost: "low",    summary: "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh." },
+    { id: "engine", title: "MATLAB Engine for Python", tag: "Real-time",   coupling: "tight", cost: "medium", summary: "build_dashboard_data.py invokes .m functions via matlab.engine in a single process." },
+    { id: "rest",   title: "REST endpoint",            tag: "On-demand",   coupling: "loose", cost: "medium", summary: "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference." },
+  ],
+};
 
 interface MockChatStreamChunk {
   delta?: string;
@@ -259,6 +291,7 @@ export function installMockServer() {
     }
     if (p === "/api/results/hda") return reply(HDA);
     if (p === "/api/redcap/events") return reply(REDCAP_EVENTS);
+    if (p === "/api/matlab/integration") return reply(MATLAB_INTEGRATION);
     if (p === "/api/assistant/status") {
       return reply({ status: "ready", error: null, model: "mock://qwen2.5-1.5b" });
     }

@@ -304,6 +304,60 @@ def generate_cohort_table(n: int = 40) -> list[dict]:
     return rows
 
 
+def generate_matlab_integration() -> dict:
+    """Synthetic block describing the MATLAB handoff to the dashboard.
+
+    Mirrors the shape that the production builder produces from
+    ``data/interim/matlab/manifest.json`` so the new ``/matlab`` SPA
+    section can render identically against either source.
+    """
+    rng = np.random.default_rng(SEED + 1)
+    now = datetime.now()
+    files = [
+        {"name": "hrv_dense.parquet",      "feature": "hrv",  "rows": int(rng.integers(11_000, 14_000)), "qa_pass_pct": round(float(rng.uniform(0.88, 0.96)), 3)},
+        {"name": "temp_gradients.parquet", "feature": "temp", "rows": int(rng.integers(28_000, 32_000)), "qa_pass_pct": round(float(rng.uniform(0.90, 0.97)), 3)},
+        {"name": "hda_phases.parquet",     "feature": "hda",  "rows": int(rng.integers(3_500, 4_500)),   "qa_pass_pct": round(float(rng.uniform(0.93, 0.99)), 3)},
+    ]
+    hours = [(now - timedelta(hours=23 - i)).strftime("%H:00") for i in range(24)]
+    throughput = [int(max(0, rng.normal(loc=420, scale=110))) for _ in range(24)]
+
+    def _script(name, feature, lines, dur_lo, dur_hi):
+        return {
+            "name": name,
+            "feature": feature,
+            "last_run": (now - timedelta(minutes=int(rng.integers(2, 30)))).isoformat(timespec="seconds"),
+            "status": "ok",
+            "duration_s": round(float(rng.uniform(dur_lo, dur_hi)), 1),
+            "lines": lines,
+        }
+
+    scripts = [
+        _script("export_hrv_features.m",         "hrv",          96, 8, 22),
+        _script("export_temperature_features.m", "temp",         64, 4, 11),
+        _script("export_hda_phases.m",           "hda",          48, 2, 6),
+        _script("run_all.m",                     "orchestrator", 22, 18, 42),
+    ]
+
+    return {
+        "manifest": {
+            "generated_at": now.isoformat(timespec="seconds"),
+            "matlab_version": "R2024a",
+            "salt": "nano_demo",
+            "epoch_sec": 60,
+            "source": "synthetic_demo",
+            "host": "matlab-lab-01",
+        },
+        "files": files,
+        "scripts": scripts,
+        "throughput_24h": {"hours": hours, "rows": throughput},
+        "options": [
+            {"id": "file",   "title": "File handoff",            "tag": "Recommended", "coupling": "loose", "cost": "low",    "summary": "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh."},
+            {"id": "engine", "title": "MATLAB Engine for Python", "tag": "Real-time",   "coupling": "tight", "cost": "medium", "summary": "build_dashboard_data.py invokes .m functions via matlab.engine in a single process."},
+            {"id": "rest",   "title": "REST endpoint",            "tag": "On-demand",   "coupling": "loose", "cost": "medium", "summary": "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference."},
+        ],
+    }
+
+
 def build_payload() -> dict:
     """Assemble the full dashboard JSON payload."""
     from dashboard.pipelines import build_org_site_data
@@ -335,6 +389,7 @@ def build_payload() -> dict:
         "cohort_table": generate_cohort_table(),
         "organization_site": build_org_site_data.build_payload(allow_network=False),
         "geo": generate_geo_data(enrollment_data=enrollment),
+        "matlab_integration": generate_matlab_integration(),
     }
 
 

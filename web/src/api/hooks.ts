@@ -114,6 +114,14 @@ export function useRedcapEvents(since?: string) {
   });
 }
 
+export function useMatlabIntegration() {
+  return useQuery({
+    queryKey: ["matlab", "integration"],
+    queryFn: () => api.get("/api/matlab/integration", S.MatlabIntegration),
+    refetchInterval: 60_000,
+  });
+}
+
 export function useTriggerRun() {
   const qc = useQueryClient();
   return useMutation({
