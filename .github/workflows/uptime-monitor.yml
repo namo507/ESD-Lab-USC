@@ -1,9 +1,10 @@
 name: Uptime monitor
 
-# Runs every 15 minutes. Probes the canonical Pages URL with the
-# health-check script. On failure: open / update a single GitHub issue
-# ("ESD Pages site is down") AND fire a repository_dispatch event that
-# triggers the deploy workflow to push a fresh artifact.
+# Runs every 15 minutes. Probes the canonical Pages URL and assistant
+# surface with the health-check script. On failure: open / update a
+# single GitHub issue ("ESD Pages site is down") AND fire a
+# repository_dispatch event that triggers the deploy workflow to push a
+# fresh artifact.
 
 on:
   schedule:
@@ -71,7 +72,7 @@ jobs:
               log.trim(),
               "```",
               "",
-              "A redeploy has been requested automatically. If the site stays down for more than two consecutive probes, investigate the deploy-pages workflow.",
+              "A redeploy has been requested automatically. If the failing probe references a stale trycloudflare api-origin, restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,

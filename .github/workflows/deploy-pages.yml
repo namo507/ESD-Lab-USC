@@ -56,8 +56,6 @@ jobs:
           test -s build/index.html
 
       - name: Package deploy artifact
-        env:
-          PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN }}
         run: |
           python scripts/build_pages_site.py
           test -s dist/pages-wrapper/index.html

@@ -38,6 +38,8 @@ ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
 PAGES_RUNTIME_PROJECT="${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo}}"
 PAGES_RUNTIME_BRANCH="${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share}"
 PAGES_RUNTIME_PREVIEW="https://${PAGES_RUNTIME_BRANCH}.${PAGES_RUNTIME_PROJECT}.pages.dev/"
+PAGES_CANONICAL_PROJECT="${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo}"
+PAGES_CANONICAL_URL="https://${PAGES_CANONICAL_PROJECT}.pages.dev/"
 
 mode="auto"
 continuous="false"
@@ -54,6 +56,8 @@ case "$mode" in
   auto|named|quick) : ;;
   *) echo "--mode must be one of: auto | named | quick (got '$mode')" >&2; exit 64 ;;
 esac
+
+publish_canonical_pages="${AUTO_DEPLOY_CANONICAL_PAGES:-$continuous}"
 
 if [[ -f .env ]]; then
   set -a
@@ -100,8 +104,6 @@ case "$mode" in
     fi
     ;;
 esac
-
-export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"
 
 if [[ "$use_named" == "true" ]]; then
   share_service="dashboard-share-named"
@@ -221,6 +223,18 @@ ensure_cloudflared() {
   printf '%s\n' "$cloudflared_bin"
 }
 
+start_cloudflared() {
+  local cloudflared_bin="$1"
+
+  if [[ "$use_named" == "true" ]]; then
+    nohup "$cloudflared_bin" tunnel --metrics 127.0.0.1:20242 --no-autoupdate run --token "$named_tunnel_token" --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+  else
+    nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+  fi
+
+  echo $! >"$TUNNEL_PID_FILE"
+}
+
 auto_deploy_pages_wrapper() {
   if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
     echo "rebuilt, but auto-deploy skipped because CLOUDFLARE_API_TOKEN is unset"
@@ -238,6 +252,29 @@ auto_deploy_pages_wrapper() {
   return 1
 }
 
+auto_deploy_canonical_pages_site() {
+  local origin_url="$1"
+
+  if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
+    echo "auto-deploy skipped because CLOUDFLARE_API_TOKEN is unset"
+    return 0
+  fi
+
+  local deploy_log
+  deploy_log="$STATE_DIR/pages_site_deploy.log"
+  if PAGES_API_ORIGIN="$origin_url" make pages-deploy >"$deploy_log" 2>&1; then
+    echo "rebuilt and auto-deployed to ${PAGES_CANONICAL_URL}"
+    return 0
+  fi
+
+  echo "WARNING: canonical Pages deploy failed; see ${deploy_log} or rerun 'PAGES_API_ORIGIN=${origin_url} make pages-deploy' manually"
+  return 1
+}
+
+canonical_pages_assistant_healthy() {
+  curl -fsS --max-time 20 "${PAGES_CANONICAL_URL}api/assistant/status" >/dev/null 2>&1
+}
+
 # Print the result block. `origin_url` is the cloudflared origin (https://...).
 # When the named tunnel is in use, `origin_url` already equals
 # `https://${public_hostname}/`.
@@ -246,6 +283,7 @@ emit_result() {
   local kind="$2"   # named | quick
   local rebuild_msg=""
   local wrapper_auto_deployed="false"
+  local pages_site_msg=""
 
   printf '%s\n' "$origin_url" >"$ORIGIN_RECORD"
 
@@ -289,12 +327,28 @@ emit_result() {
   fi
   echo "Pages wrapper: ${rebuild_msg}"
 
+  if [[ "$publish_canonical_pages" == "true" ]]; then
+    if pages_site_msg="$(auto_deploy_canonical_pages_site "$origin_url")"; then
+      :
+    elif [[ -z "$pages_site_msg" ]]; then
+      pages_site_msg="WARNING: canonical Pages deploy failed; run 'PAGES_API_ORIGIN=${origin_url} make pages-deploy' manually."
+    fi
+    echo "Pages site: ${pages_site_msg}"
+  fi
+
   if [[ "$kind" == "quick" ]]; then
     if [[ "$wrapper_auto_deployed" == "true" ]]; then
       cat <<EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
   2. Open ${PAGES_RUNTIME_PREVIEW} in a browser.
+EOF
+      if [[ "$publish_canonical_pages" == "true" ]]; then
+        cat <<EOF
+  3. Confirm the canonical site worker now points at the fresh origin:  curl -I ${PAGES_CANONICAL_URL}api/assistant/status
+EOF
+      fi
+      cat <<EOF
 
 This quick-tunnel hostname is temporary; only the Pages runtime preview URL is stable.
 EOF
@@ -306,6 +360,13 @@ Next:
        make pages-runtime-deploy       # = wrangler@3.112.0 pages deploy --branch ${PAGES_RUNTIME_BRANCH} --commit-dirty=true
        (set CLOUDFLARE_API_TOKEN first; or push to the git-connected branch)
   3. Open ${PAGES_RUNTIME_PREVIEW} in a browser.
+EOF
+      if [[ "$publish_canonical_pages" == "true" ]]; then
+        cat <<EOF
+  4. Confirm the canonical site worker now points at the fresh origin:  curl -I ${PAGES_CANONICAL_URL}api/assistant/status
+EOF
+      fi
+      cat <<EOF
 
 This quick-tunnel hostname is temporary; only the Pages runtime preview URL is stable.
 EOF
@@ -315,6 +376,13 @@ EOF
 Next:
   1. Verify the origin returns 200:    curl -I ${origin_url}
   2. Open ${origin_url} in a browser.
+EOF
+    if [[ "$publish_canonical_pages" == "true" ]]; then
+      cat <<EOF
+  3. Confirm the canonical site worker now points at the fresh origin:  curl -I ${PAGES_CANONICAL_URL}api/assistant/status
+EOF
+    fi
+    cat <<EOF
 
 The named-tunnel hostname stays the same as long as the tunnel keeps running.
 EOF
@@ -421,12 +489,7 @@ share_without_docker() {
   stop_pid_file "$TUNNEL_PID_FILE"
   : >"$TUNNEL_LOG_FILE"
 
-  if [[ "$use_named" == "true" ]]; then
-    nohup "$cloudflared_bin" tunnel --no-autoupdate run >"$TUNNEL_LOG_FILE" 2>&1 &
-  else
-    nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
-  fi
-  echo $! >"$TUNNEL_PID_FILE"
+  start_cloudflared "$cloudflared_bin"
 
   print_host_tunnel_result
 
@@ -436,8 +499,14 @@ share_without_docker() {
 
   echo
   echo "Continuous mode enabled: supervising local website runtime + tunnel (Ctrl-C to stop)."
+  if [[ "$publish_canonical_pages" == "true" ]]; then
+    echo "Canonical Pages publication is enabled: ${PAGES_CANONICAL_URL} will be rechecked and republished automatically."
+  fi
 
   trap 'stop_pid_file "$TUNNEL_PID_FILE"; stop_pid_file "$DASHBOARD_PID_FILE"; exit 0' INT TERM
+
+  local last_pages_probe=0
+  local pages_probe_interval="${PAGES_CANONICAL_PROBE_INTERVAL:-60}"
 
   while true; do
     sleep 5
@@ -452,13 +521,20 @@ share_without_docker() {
     if [[ -z "$tunnel_pid" ]] || ! kill -0 "$tunnel_pid" 2>/dev/null; then
       echo "Tunnel process not running; restarting Cloudflare tunnel..."
       : >"$TUNNEL_LOG_FILE"
-      if [[ "$use_named" == "true" ]]; then
-        nohup "$cloudflared_bin" tunnel --no-autoupdate run >"$TUNNEL_LOG_FILE" 2>&1 &
-      else
-        nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
-      fi
-      echo $! >"$TUNNEL_PID_FILE"
+      start_cloudflared "$cloudflared_bin"
       print_host_tunnel_result || true
+    fi
+
+    if [[ "$publish_canonical_pages" == "true" ]] && (( SECONDS - last_pages_probe >= pages_probe_interval )); then
+      last_pages_probe=$SECONDS
+      if ! canonical_pages_assistant_healthy; then
+        local current_origin
+        current_origin="$(cat "$ORIGIN_RECORD" 2>/dev/null || true)"
+        if [[ -n "$current_origin" ]]; then
+          echo "Canonical Pages assistant probe failed; republishing ${current_origin} ..."
+          auto_deploy_canonical_pages_site "$current_origin" || true
+        fi
+      fi
     fi
   done
 }

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import time
@@ -24,6 +25,8 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TOUCH_PATH = PROJECT_ROOT / "config" / "study_parameters.yml"
 DEFAULT_PAGES_URL = "https://esd-lab-namo.pages.dev/"
+SHARE_STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "esd-lab-usc-share"
+SHARE_ORIGIN_RECORD = SHARE_STATE_DIR / "last_origin.txt"
 EXPECTED_SPA_TITLE = "NANO Dashboard · ESD Lab"
 FRAME_URL_RE = re.compile(
     r'<iframe[^>]*id=["\']dashboard-frame["\'][^>]*src=["\']([^"\']+)["\']',
@@ -202,6 +205,21 @@ def repair_public_share(mode: str) -> None:
     subprocess.run(["bash", "-lc", command], cwd=PROJECT_ROOT, check=True)
 
 
+def read_share_origin() -> str | None:
+    try:
+        origin = SHARE_ORIGIN_RECORD.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return origin or None
+
+
+def redeploy_public_pages(origin: str | None) -> None:
+    env = os.environ.copy()
+    if origin:
+        env["PAGES_API_ORIGIN"] = origin
+    subprocess.run(["make", "pages-deploy"], cwd=PROJECT_ROOT, check=True, env=env)
+
+
 def run_cycle(args: argparse.Namespace, *, exercise_watcher: bool) -> None:
     base_url = args.base_url.rstrip("/")
     runtime_state = probe_dashboard_runtime(base_url, args.timeout)
@@ -254,6 +272,8 @@ def run_with_optional_repair(args: argparse.Namespace, *, exercise_watcher: bool
         print(f"share-repair-needed reason={exc}")
 
     repair_public_share(args.share_mode)
+    if args.pages_url:
+        redeploy_public_pages(read_share_origin())
     run_cycle(args, exercise_watcher=exercise_watcher)
     print(f"share-repair-ok mode={args.share_mode}")
 
@@ -273,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--repair-share",
         action="store_true",
-        help="If checks fail, refresh the public share via scripts/share_dashboard.sh and make pages-deploy.",
+        help="If checks fail, refresh the public share via scripts/share_dashboard.sh and redeploy Pages with the refreshed origin.",
     )
     parser.add_argument(
         "--share-mode",

@@ -142,7 +142,7 @@ pages-runtime-watch:  ## Continuously regen + redeploy the tunnel runtime wrappe
 pages-runtime-watch-once:  ## One-shot runtime wrapper sync to the preview branch
 	$(PYTHON) scripts/watch_pages_wrapper.py --once
 
-share-live:  ## Continuously supervise local dashboard+quick-share and republish the runtime wrapper preview on tunnel restart
+share-live:  ## Continuously supervise local dashboard+quick-share and keep the canonical Pages assistant worker pointed at the current tunnel origin
 	bash scripts/share_dashboard.sh --continuous --mode quick
 
 # ─── Backup ──────────────────────────────────────────────────────────────────

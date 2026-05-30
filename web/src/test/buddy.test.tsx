@@ -39,4 +39,20 @@ describe("Buddy", () => {
     expect(await screen.findByText("Illinois")).toBeInTheDocument();
     expect(screen.getByText(/3 readings linked to Illinois across 63 indexed pages/i)).toBeInTheDocument();
   });
+
+  it("shows MATLAB route insight copy for MATLAB KPI hotspots", async () => {
+    render(
+      <>
+        <button type="button" data-insight="matlab-files">
+          MATLAB files KPI
+        </button>
+        <Buddy />
+      </>,
+    );
+
+    fireEvent.mouseOver(screen.getByRole("button", { name: "MATLAB files KPI" }));
+
+    expect(await screen.findByText("Parquet files")).toBeInTheDocument();
+    expect(screen.getByText(/handoff contract from MATLAB into the dashboard/i)).toBeInTheDocument();
+  });
 });

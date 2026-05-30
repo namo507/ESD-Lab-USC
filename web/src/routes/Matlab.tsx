@@ -88,7 +88,7 @@ export function Matlab() {
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} data-insight="matlab-bridge">
         <div>
           <span className={`${styles.eyebrow} t-mono`}>MATLAB bridge</span>
           <h1 className={styles.h1}>
@@ -154,7 +154,7 @@ export function Matlab() {
       </section>
 
       <div className={styles.split}>
-        <Card pad={0}>
+        <Card pad={0} dataInsight="matlab-inventory">
           <div className={styles.listHead}>
             <SectionLabel>Parquet inventory · data/interim/matlab/</SectionLabel>
           </div>
@@ -197,7 +197,7 @@ export function Matlab() {
           </div>
         </Card>
 
-        <Card pad={20}>
+        <Card pad={20} dataInsight="matlab-script-panel">
           <div className={styles.scriptsWrap}>
             <AmbientOrbit
               tone="garnet"
@@ -230,7 +230,7 @@ export function Matlab() {
         </Card>
       </div>
 
-      <section className={styles.throughputBlock} aria-label="MATLAB throughput · last 24 h">
+      <section className={styles.throughputBlock} aria-label="MATLAB throughput · last 24 h" data-insight="matlab-throughput">
         <div className={styles.throughputCopy}>
           <SectionLabel>Throughput · last 24 h</SectionLabel>
           <h2 className={styles.throughputH}>Rows per hour landed in <code className="t-mono">data/interim/matlab/</code></h2>
@@ -263,9 +263,13 @@ export function Matlab() {
         </div>
       </section>
 
-      <section className={styles.options} aria-label="MATLAB integration options">
+      <section className={styles.options} aria-label="MATLAB integration options" data-insight="matlab-options">
         {options.map((opt) => (
-          <article key={opt.id} className={`${styles.opt} ${opt.id === "file" ? styles.optRec : ""}`}>
+          <article
+            key={opt.id}
+            className={`${styles.opt} ${opt.id === "file" ? styles.optRec : ""}`}
+            data-insight={`matlab-option-${opt.id}`}
+          >
             <header className={styles.optHead}>
               <h3 className={styles.optTitle}>{opt.title}</h3>
               <Badge kind={opt.id === "file" ? "ok" : opt.id === "engine" ? "warn" : "phi"} size="sm">
@@ -281,7 +285,7 @@ export function Matlab() {
         ))}
       </section>
 
-      <footer className={styles.bottomBar}>
+      <footer className={styles.bottomBar} data-insight="matlab-ask-buddy">
         <span className="t-mono">
           Bridge contract · same JSON schema in synthetic and live runs · PHI gated at the secure mount
         </span>
