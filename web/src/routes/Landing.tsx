@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, Presentation, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
@@ -542,6 +542,10 @@ export function Landing() {
                 <button type="button" className={styles.secondaryButton} onClick={() => openAssistant("Walk me through the NANO Study.")}>
                   Open assistant
                   <Sparkles size={14} strokeWidth={1.5} />
+                </button>
+                <button type="button" className={styles.secondaryButton} onClick={() => navigate("/presentation-maker")}>
+                  Make an explainer
+                  <Presentation size={14} strokeWidth={1.5} />
                 </button>
               </div>
 

@@ -64,6 +64,11 @@ export const INSIGHTS: Record<string, InsightData> = {
   "stage-hda": { term: "HDA", body: "Heart-rate Defined Attention labels are assigned here, separating orienting, sustained attention, inattention, and termination phases." },
   "stage-merge": { term: "Merge", body: "The final merge joins processed physiology with visit metadata and writes de-identified outputs for downstream modeling and reporting." },
   "pipeline-svg": { term: "Pipeline", body: "This animated DAG shows the six-stage flow from ingest to de-identified export. Active edges pulse when work is moving between stages." },
+  "pm-overview": { term: "Presentation Maker", body: "Turns one concept into a calm, minimal slide deck using the same local assistant as ESD Buddy. The deck plan is generated server-side; the PowerPoint file is built and downloaded entirely in your browser." },
+  "pm-status": { term: "Assistant status", body: "Generation depends on the local GGUF model being ready. If the assistant is offline or the model file is missing, the Generate action stays disabled and your inputs are preserved." },
+  "pm-composer": { term: "Concept composer", body: "Describe what you want explained, then nudge a few defaults: audience level, slide count, and whether to include an analogy or a worked example. Good defaults beat many options." },
+  "pm-deck": { term: "Deck preview", body: "Each card is one slide in the structured plan: a title slide, a why-this-matters slide, two to four concept slides, optional analogy or example, and a recap. Lab-grounded concepts carry citations; general ones are labeled as such." },
+  "pm-actions": { term: "Export & follow-up", body: "Download builds a real 16:9 .pptx with simple shapes and dividers, readable in PowerPoint, Keynote, and Google Slides. Ask ESD Buddy seeds the assistant with this deck's summary for a follow-up." },
 };
 
 export function lookupInsight(id: string | null | undefined): InsightData | null {

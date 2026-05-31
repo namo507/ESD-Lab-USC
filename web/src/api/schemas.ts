@@ -206,3 +206,71 @@ export const MatlabIntegration = z.object({
   options: z.array(MatlabOption),
 });
 export type MatlabIntegration = z.infer<typeof MatlabIntegration>;
+
+/* ------------------------------------------------------------------------ */
+/* Presentation Maker — concept-to-deck contracts                            */
+/* ------------------------------------------------------------------------ */
+
+/** Reading level the deck is written for. */
+export const PresentationAudience = z.enum(["beginner", "intermediate", "advanced"]);
+export type PresentationAudience = z.infer<typeof PresentationAudience>;
+
+/** Controlled slide vocabulary — mirrors the server normalizer exactly. */
+export const SlideType = z.enum([
+  "title",
+  "why",
+  "concept",
+  "analogy",
+  "example",
+  "recap",
+]);
+export type SlideType = z.infer<typeof SlideType>;
+
+/**
+ * Client-side request options. The server re-validates and clamps these, but
+ * keeping the contract here lets the form stay strongly typed.
+ */
+export const PresentationOptions = z.object({
+  audience_level: PresentationAudience,
+  slide_count: z.number().int().min(3).max(10),
+  include_analogy: z.boolean(),
+  include_worked_example: z.boolean(),
+});
+export type PresentationOptions = z.infer<typeof PresentationOptions>;
+
+/** One validated slide in the deck plan returned by /api/presentation/plan. */
+export const DeckSlide = z.object({
+  id: z.string(),
+  type: SlideType,
+  title: z.string(),
+  subtitle: z.string().nullable().optional(),
+  // The server caps bullets at five; title slides legitimately carry zero.
+  bullets: z.array(z.string()).max(5),
+  example: z.string().nullable().optional(),
+  analogy: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  citations: z.array(z.string()).default([]),
+  visual: z.string().nullable().optional(),
+});
+export type DeckSlide = z.infer<typeof DeckSlide>;
+
+/** Full structured deck plan. */
+export const DeckPlan = z.object({
+  title: z.string(),
+  subtitle: z.string(),
+  audience_level: PresentationAudience,
+  summary: z.string(),
+  disclaimer: z.string().nullable().optional(),
+  grounded: z.boolean(),
+  citations: z.array(z.string()).default([]),
+  concept: z.string().optional(),
+  generated_at: z.string().optional(),
+  slides: z.array(DeckSlide).min(1),
+});
+export type DeckPlan = z.infer<typeof DeckPlan>;
+
+/** Envelope returned by the server (extra keys like `status` are ignored). */
+export const PresentationPlanResponse = z.object({
+  plan: DeckPlan,
+});
+export type PresentationPlanResponse = z.infer<typeof PresentationPlanResponse>;

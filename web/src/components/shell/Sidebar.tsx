@@ -45,6 +45,13 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/results", label: "Results & Trajectories", icon: "line-chart" },
     ],
   },
+  {
+    id: "tools",
+    title: "Lab Tools",
+    items: [
+      { to: "/presentation-maker", label: "Presentation Maker", icon: "presentation" },
+    ],
+  },
 ];
 
 export function Sidebar({ study, qaPending, enrolled }: SidebarProps) {

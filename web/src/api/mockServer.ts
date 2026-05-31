@@ -229,12 +229,103 @@ function reply(body: unknown, status = 200): Response {
   });
 }
 
+interface MockPresentationOptions {
+  audience_level?: string;
+  slide_count?: number;
+  include_analogy?: boolean;
+  include_worked_example?: boolean;
+}
+
+/**
+ * Deterministic, schema-valid deck plan for development + the public Pages
+ * demo (where there is no live Python assistant). The real route is driven by
+ * the local GGUF model via the Python server; this mirror keeps the page fully
+ * functional offline without fabricating lab citations.
+ */
+function mockPresentationPlan(concept: string, options: MockPresentationOptions) {
+  const topic = (concept || "this concept").trim();
+  const title = topic.charAt(0).toUpperCase() + topic.slice(1);
+  const audience = ["beginner", "intermediate", "advanced"].includes(options.audience_level ?? "")
+    ? (options.audience_level as string)
+    : "beginner";
+  const includeAnalogy = options.include_analogy !== false;
+  const includeExample = options.include_worked_example !== false;
+
+  const slides: Array<Record<string, unknown>> = [
+    {
+      id: "title-1", type: "title", title: `Understanding ${title}`,
+      subtitle: `A simple, ${audience}-friendly explainer`, bullets: [],
+      example: null, analogy: null, note: null, citations: [], visual: "clean title with a thin garnet divider",
+    },
+    {
+      id: "why-2", type: "why", title: "Why this matters", subtitle: null,
+      bullets: [
+        `${title} shows up in everyday situations`,
+        "A simple mental model makes it easier to use",
+        "Getting the basics first prevents confusion later",
+      ],
+      example: null, analogy: null, note: null, citations: [], visual: null,
+    },
+    {
+      id: "concept-3", type: "concept", title: `What ${title} means`, subtitle: null,
+      bullets: ["The core idea in one plain sentence", "The key parts and how they fit", "A common misconception to avoid"],
+      example: null, analogy: null, note: "Keep this slide jargon-free.", citations: [], visual: null,
+    },
+    {
+      id: "concept-4", type: "concept", title: "How it works", subtitle: null,
+      bullets: ["Step through the cause and effect", "Note what changes and what stays fixed", "Where it tends to break down"],
+      example: null, analogy: null, note: null, citations: [], visual: "simple left-to-right flow of three nodes",
+    },
+  ];
+
+  if (includeAnalogy) {
+    slides.push({
+      id: "analogy-5", type: "analogy", title: "A helpful analogy", subtitle: null,
+      bullets: ["Compare it to a familiar everyday system", "The same pattern of cause and effect applies", "The analogy breaks down at the finest detail"],
+      example: null, analogy: `${title} behaves like a familiar everyday process.`, note: null, citations: [], visual: "two side-by-side panels joined by an arrow",
+    });
+  }
+  if (includeExample) {
+    slides.push({
+      id: "example-6", type: "example", title: "A worked example", subtitle: null,
+      bullets: ["Start from a concrete, simple case", "Apply the idea one step at a time", "Check the result against intuition"],
+      example: `A short step-by-step walkthrough of ${title}.`, analogy: null, note: null, citations: [], visual: "numbered steps stacked vertically",
+    });
+  }
+  slides.push({
+    id: "recap-7", type: "recap", title: "Recap", subtitle: null,
+    bullets: ["The one-sentence idea", "Why it matters in practice", "Where to look next"],
+    example: null, analogy: null, note: null, citations: [], visual: "three-line summary with a gold underline",
+  });
+
+  return {
+    plan: {
+      title: `Understanding ${title}`,
+      subtitle: `A simple, ${audience}-friendly explainer`,
+      audience_level: audience,
+      summary: `A clear, ${audience} introduction to ${title}.`,
+      disclaimer:
+        "This deck is a general, simplified explanation. It is not drawn from ESD Lab or NANO study materials, so it carries no lab-specific citations.",
+      grounded: false,
+      citations: [],
+      concept: topic,
+      generated_at: new Date().toISOString().slice(0, 19),
+      slides,
+    },
+    status: { status: "ready", error: null, model: "mock://qwen2.5-1.5b" },
+  };
+}
+
 const realFetch = window.fetch.bind(window);
 const LIVE_ASSISTANT_ROUTES = new Set([
   "/api/assistant/status",
   "/api/assistant/chat",
   "/api/chat/status",
   "/api/chat",
+  // Presentation planning reuses the same local assistant stack, so it must
+  // reach the real Python server (or the Pages /api worker proxy) when the
+  // live assistant is enabled rather than the in-browser mock below.
+  "/api/presentation/plan",
 ]);
 
 const liveAssistantEnabled = import.meta.env.VITE_LIVE_ASSISTANT === "true";
@@ -302,6 +393,16 @@ export function installMockServer() {
       const chunks: MockChatStreamChunk[] = words.map((part) => ({ delta: part }));
       chunks.push({ done: true });
       return ndjsonReply(chunks);
+    }
+    if (p === "/api/presentation/plan" && method === "POST") {
+      const payload = (await new Response(init?.body as BodyInit).json()) as {
+        concept?: string;
+        options?: MockPresentationOptions;
+      };
+      if (!payload.concept || !payload.concept.trim()) {
+        return reply({ error: "Please enter a concept you want explained." }, 400);
+      }
+      return reply(mockPresentationPlan(payload.concept, payload.options ?? {}));
     }
     if (p === "/api/audit") return new Response(null, { status: 204 });
 

@@ -49,6 +49,8 @@ SPA_ROUTE_PREFIXES = (
     "/results",
     "/runs",
     "/redcap",
+    "/matlab",
+    "/presentation-maker",
 )
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
@@ -418,6 +420,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._handle_stream_chat()
             return
 
+        if request_path == "/api/presentation/plan":
+            self._handle_presentation_plan()
+            return
+
         if request_path != "/api/chat":
             self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
             return
@@ -571,6 +577,56 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             logger.exception("Streaming chat request failed")
             self.wfile.write(json.dumps({"error": f"Unexpected chat failure: {exc}"}).encode("utf-8") + b"\n")
             self.wfile.flush()
+        finally:
+            ASSISTANT_CHAT_LOCK.release()
+
+    def _handle_presentation_plan(self) -> None:
+        """Generate a structured slide-deck plan via the local assistant.
+
+        Reuses the same generator and the shared model lock as the chat
+        endpoint, but returns a single structured JSON deck plan rather than a
+        free-form streamed reply. Errors mirror the operational style of the
+        existing assistant endpoints and never leak raw model text.
+        """
+        try:
+            payload = self._read_json_body()
+            concept = (payload.get("concept") or "").strip()
+            options = payload.get("options") or {}
+            if not isinstance(options, dict):
+                options = {}
+            if not concept:
+                self._send_json(
+                    {"error": "Please enter a concept you want explained."},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        if not ASSISTANT_CHAT_LOCK.acquire(blocking=False):
+            self._send_json(
+                {"error": "model busy — another request in flight"},
+                status=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+            return
+
+        try:
+            result = self.assistant.plan_presentation(concept, options=options)
+            self._send_json(result)
+        except AssistantUnavailable as exc:
+            self._send_json(
+                {"error": str(exc), "status": exc.status},
+                status=exc.http_status,
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive API path
+            logger.exception("Presentation plan request failed")
+            self._send_json(
+                {"error": f"Unexpected presentation failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
         finally:
             ASSISTANT_CHAT_LOCK.release()
 

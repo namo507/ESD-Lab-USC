@@ -17,6 +17,8 @@ const AuditEventSchema = z.object({
     "run.stop",
     "export.csv",
     "export.pdf",
+    "export.pptx",
+    "presentation.generate",
     "auth.login",
     "auth.timeout",
   ]),

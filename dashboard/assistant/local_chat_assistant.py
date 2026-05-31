@@ -12,6 +12,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -174,6 +175,21 @@ CONCISE_RESPONSE_TOKEN_LIMIT = 96
 DETAILED_RESPONSE_TOKEN_LIMIT = 144
 LOW_CONFIDENCE_SCORE_THRESHOLD = 3.0
 FOCUSED_CONFIDENCE_SCORE_THRESHOLD = 5.0
+
+# ---- Presentation planning -------------------------------------------------
+PRESENTATION_AUDIENCE_LEVELS = ("beginner", "intermediate", "advanced")
+PRESENTATION_SLIDE_TYPES = ("title", "why", "concept", "analogy", "example", "recap")
+PRESENTATION_DEFAULT_SLIDE_COUNT = 6
+PRESENTATION_MIN_SLIDES = 3
+PRESENTATION_MAX_SLIDES = 10
+PRESENTATION_MAX_BULLETS = 5
+PRESENTATION_DEFAULT_TONE = "calm, simple, and non-technical"
+PRESENTATION_CONTEXT_CHAR_CAP = 1200
+PRESENTATION_MAX_NEW_TOKENS = 768
+PRESENTATION_GENERAL_DISCLAIMER = (
+    "This deck is a general, simplified explanation. It is not drawn from ESD Lab "
+    "or NANO study materials, so it carries no lab-specific citations."
+)
 
 
 def _read_llm_model_config() -> dict[str, Any]:
@@ -451,6 +467,106 @@ class DashboardChatAssistant:
         except Exception as exc:  # pragma: no cover - depends on runtime model stack
             self._last_error = f"Assistant generation failed: {exc}"
             raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+
+    def plan_presentation(
+        self,
+        concept: str,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a strict, structured slide-deck plan for ``concept``.
+
+        Reuses the same local generator, readiness checks, and grounding
+        context as the chat assistant, but drives a dedicated
+        presentation-planning prompt that must return a single JSON object.
+
+        The model output is parsed and, if the JSON is malformed, retried once
+        with a repair instruction. A parseable-but-incomplete object is repaired
+        into a valid deck by :func:`normalize_deck_plan`; only an entirely
+        unparseable response raises so the caller can surface a clean error
+        instead of leaking raw model text.
+        """
+        topic = (concept or "").strip()
+        if not topic:
+            raise AssistantUnavailable(
+                "Please enter a concept you want explained before generating.",
+                self.get_status(),
+                http_status=400,
+            )
+
+        status = self.get_status()
+        if not status["ready"]:
+            raise AssistantUnavailable(status["message"], status, http_status=503)
+
+        opts = normalize_presentation_options(options or {})
+        context = self.build_context(topic)
+        grounding = {
+            "grounded": bool(context.get("grounded")),
+            "citations": list(context.get("citations") or [])[:6],
+            "focus_sections": list(context.get("focus_sections") or []),
+        }
+        context_block = (context.get("context") or "")[:PRESENTATION_CONTEXT_CHAR_CAP]
+
+        generator = self._ensure_generator()
+        messages = build_presentation_messages(topic, opts, context_block, grounding)
+        raw_text = self._complete_text(generator, messages, max_tokens=PRESENTATION_MAX_NEW_TOKENS)
+        raw_plan = extract_json_object(raw_text)
+
+        if raw_plan is None:
+            repair_messages = [
+                *messages,
+                {"role": "assistant", "content": raw_text[:600]},
+                {
+                    "role": "user",
+                    "content": (
+                        "That was not valid JSON. Respond again with ONLY a single valid "
+                        "JSON object that matches the requested schema. No prose, no "
+                        "explanation, no markdown code fences."
+                    ),
+                },
+            ]
+            raw_text = self._complete_text(
+                generator, repair_messages, max_tokens=PRESENTATION_MAX_NEW_TOKENS
+            )
+            raw_plan = extract_json_object(raw_text)
+
+        if raw_plan is None:
+            self._last_error = None  # not a model-health failure; just a bad sample
+            raise AssistantUnavailable(
+                "The assistant could not produce a valid presentation plan. "
+                "Please try again, optionally with a simpler concept.",
+                self.get_status(),
+                http_status=502,
+            )
+
+        plan = normalize_deck_plan(
+            raw_plan, concept=topic, options=opts, grounding=grounding
+        )
+        return {"plan": plan, "status": self.get_status()}
+
+    def _complete_text(
+        self,
+        generator: Any,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+    ) -> str:
+        """Run a non-streaming completion and return the assistant text."""
+        try:
+            output = generator.create_chat_completion(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+            )
+        except Exception as exc:  # pragma: no cover - depends on runtime model stack
+            self._last_error = f"Assistant generation failed: {exc}"
+            raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+
+        choices = (output or {}).get("choices") or []
+        if not choices:
+            return ""
+        message_payload = choices[0].get("message") or {}
+        return (message_payload.get("content") or "").strip()
 
     def build_context(self, question: str) -> dict[str, Any]:
         payload = self._load_dashboard_payload()
@@ -1221,3 +1337,447 @@ def _format_scalar_value(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.3f}".rstrip("0").rstrip(".")
     return str(value)
+
+
+# ---------------------------------------------------------------------------
+# Presentation planning helpers (pure functions, model-independent)
+# ---------------------------------------------------------------------------
+
+
+def _as_bool(value: Any, *, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _clean_text(value: Any, *, max_len: int = 240) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple)):
+        value = " ".join(str(part) for part in value)
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    # Strip stray markdown emphasis / bullet glyphs the model may emit.
+    text = text.strip("*•-–—> ").strip()
+    if len(text) > max_len:
+        text = text[: max_len - 1].rstrip() + "…"
+    return text
+
+
+def _title_case_concept(concept: str) -> str:
+    cleaned = _clean_text(concept, max_len=80)
+    if not cleaned:
+        return "This Concept"
+    if cleaned.isupper() or cleaned.islower():
+        return cleaned[:1].upper() + cleaned[1:]
+    return cleaned
+
+
+def _coerce_bullets(value: Any, *, limit: int = PRESENTATION_MAX_BULLETS) -> list[str]:
+    items: list[str] = []
+    if isinstance(value, (list, tuple)):
+        raw_items = list(value)
+    elif isinstance(value, str):
+        raw_items = re.split(r"[\n;]+|(?:^|\s)[•\-\*]\s+", value)
+    elif value is None:
+        raw_items = []
+    else:
+        raw_items = [value]
+
+    for item in raw_items:
+        cleaned = _clean_text(item, max_len=160)
+        if cleaned and cleaned not in items:
+            items.append(cleaned)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def _normalize_slide_type(value: Any) -> str:
+    candidate = _clean_text(value, max_len=24).lower()
+    if candidate in PRESENTATION_SLIDE_TYPES:
+        return candidate
+    aliases = {
+        "cover": "title",
+        "intro": "title",
+        "introduction": "why",
+        "motivation": "why",
+        "overview": "why",
+        "definition": "concept",
+        "detail": "concept",
+        "deep-dive": "concept",
+        "metaphor": "analogy",
+        "comparison": "analogy",
+        "worked-example": "example",
+        "worked_example": "example",
+        "walkthrough": "example",
+        "summary": "recap",
+        "conclusion": "recap",
+        "takeaways": "recap",
+    }
+    return aliases.get(candidate, "concept")
+
+
+def _normalize_raw_slide(raw: Any) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+
+    slide_type = _normalize_slide_type(
+        raw.get("type") or raw.get("slide_type") or raw.get("kind")
+    )
+    title = _clean_text(raw.get("title") or raw.get("heading") or raw.get("name"), max_len=120)
+    bullets = _coerce_bullets(
+        raw.get("bullets") or raw.get("points") or raw.get("content") or raw.get("body")
+    )
+    if not title and not bullets:
+        return None
+
+    return {
+        "type": slide_type,
+        "title": title or "Untitled slide",
+        "subtitle": _clean_text(raw.get("subtitle") or raw.get("subhead"), max_len=160) or None,
+        "bullets": bullets,
+        "example": _clean_text(raw.get("example") or raw.get("worked_example"), max_len=300) or None,
+        "analogy": _clean_text(raw.get("analogy") or raw.get("metaphor"), max_len=300) or None,
+        "note": _clean_text(
+            raw.get("note") or raw.get("speaker_note") or raw.get("notes"), max_len=300
+        ) or None,
+        "citations": _coerce_citations(
+            raw.get("citations") or raw.get("references") or raw.get("grounding")
+        ),
+        "visual": _clean_text(
+            raw.get("visual") or raw.get("visual_direction") or raw.get("visual_cue"), max_len=160
+        ) or None,
+    }
+
+
+def _coerce_citations(value: Any, *, limit: int = 4) -> list[str]:
+    items: list[str] = []
+    raw_items = value if isinstance(value, (list, tuple)) else [value] if value else []
+    for item in raw_items:
+        cleaned = _clean_text(item, max_len=120)
+        if cleaned and cleaned not in items:
+            items.append(cleaned)
+        if len(items) >= limit:
+            break
+    return items
+
+
+def normalize_presentation_options(raw: dict[str, Any] | None) -> dict[str, Any]:
+    """Coerce a raw options payload into a validated, defaulted option set."""
+    raw = raw or {}
+
+    audience = _clean_text(
+        raw.get("audience_level") or raw.get("audience"), max_len=24
+    ).lower()
+    if audience not in PRESENTATION_AUDIENCE_LEVELS:
+        audience = "beginner"
+
+    try:
+        slide_count = int(raw.get("slide_count") or raw.get("slides") or PRESENTATION_DEFAULT_SLIDE_COUNT)
+    except (TypeError, ValueError):
+        slide_count = PRESENTATION_DEFAULT_SLIDE_COUNT
+    slide_count = max(PRESENTATION_MIN_SLIDES, min(PRESENTATION_MAX_SLIDES, slide_count))
+
+    tone = _clean_text(raw.get("tone"), max_len=80) or PRESENTATION_DEFAULT_TONE
+
+    return {
+        "audience_level": audience,
+        "slide_count": slide_count,
+        "include_analogy": _as_bool(
+            raw.get("include_analogy", raw.get("analogy")), default=True
+        ),
+        "include_worked_example": _as_bool(
+            raw.get("include_worked_example", raw.get("worked_example", raw.get("example"))),
+            default=True,
+        ),
+        "tone": tone,
+    }
+
+
+def build_presentation_messages(
+    concept: str,
+    options: dict[str, Any],
+    context_block: str,
+    grounding: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Build the JSON-only presentation-planning chat messages."""
+    grounded = bool(grounding.get("grounded"))
+    citation_hint = ""
+    if grounded and grounding.get("citations"):
+        citation_hint = (
+            " Grounded dashboard references you may cite verbatim: "
+            + "; ".join(str(c) for c in grounding["citations"][:6])
+            + "."
+        )
+
+    grounding_rule = (
+        "The concept overlaps indexed NANO/ESD Lab study context provided below. "
+        "Where a slide uses that context, add the matching reference string to that "
+        "slide's \"citations\" array." + citation_hint
+        if grounded
+        else "The concept is general and is NOT grounded in local study data. Do not invent "
+        "lab citations, study numbers, or NANO-specific facts. Leave \"citations\" arrays empty "
+        "and set \"disclaimer\" to a short note that this is a general explanation."
+    )
+
+    schema = (
+        '{\n'
+        '  "title": string,\n'
+        '  "subtitle": string,\n'
+        '  "audience_level": "beginner" | "intermediate" | "advanced",\n'
+        '  "summary": string,            // one sentence\n'
+        '  "disclaimer": string | null,\n'
+        '  "slides": [\n'
+        '    {\n'
+        '      "id": string,\n'
+        '      "type": "title" | "why" | "concept" | "analogy" | "example" | "recap",\n'
+        '      "title": string,\n'
+        '      "subtitle": string | null,\n'
+        '      "bullets": string[],      // 3-5 short bullets, <= ~12 words each\n'
+        '      "example": string | null,\n'
+        '      "analogy": string | null,\n'
+        '      "note": string | null,    // optional speaker note\n'
+        '      "citations": string[],\n'
+        '      "visual": string | null   // abstract/geometric direction only\n'
+        '    }\n'
+        '  ]\n'
+        '}'
+    )
+
+    system = (
+        "You are a presentation planner embedded in the ESD Lab dashboard. "
+        "You turn a single concept into a minimal, calm, easy-to-understand slide deck. "
+        f"Write in a {options['tone']} tone for a {options['audience_level']} audience. "
+        "Return ONE valid JSON object and NOTHING else: no prose, no markdown, no code fences. "
+        "Deck structure, in order: exactly one title slide, then one short why-this-matters slide, "
+        "then two to four concept slides, "
+        + ("then one analogy slide, " if options["include_analogy"] else "")
+        + ("then one worked-example slide, " if options["include_worked_example"] else "")
+        + "then one recap slide. "
+        "Rules: at most five bullets per slide; aim for twelve words or fewer per bullet; "
+        "prefer plain language over jargon; never include protected health information. "
+        f"{grounding_rule}\n\n"
+        "JSON schema to follow exactly:\n"
+        f"{schema}\n\n"
+        "Grounded study context (may be empty):\n"
+        f"{context_block or '(no grounded study context available)'}"
+    )
+
+    user = (
+        f"Concept to explain: {concept}\n"
+        f"Audience level: {options['audience_level']}\n"
+        f"Target slide count: {options['slide_count']}\n"
+        f"Include analogy slide: {'yes' if options['include_analogy'] else 'no'}\n"
+        f"Include worked-example slide: {'yes' if options['include_worked_example'] else 'no'}\n"
+        "Respond with the JSON object only."
+    )
+
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+def extract_json_object(text: str) -> dict[str, Any] | None:
+    """Best-effort extraction of a single JSON object from model output."""
+    if not text:
+        return None
+
+    candidate = text.strip()
+    # Drop surrounding markdown code fences if present.
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", candidate, flags=re.DOTALL)
+    if fence:
+        candidate = fence.group(1).strip()
+
+    start = candidate.find("{")
+    end = candidate.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    snippet = candidate[start : end + 1]
+
+    for attempt in (snippet, re.sub(r",\s*([}\]])", r"\1", snippet)):
+        try:
+            parsed = json.loads(attempt)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return None
+
+
+def normalize_deck_plan(
+    raw_plan: dict[str, Any] | None,
+    *,
+    concept: str,
+    options: dict[str, Any],
+    grounding: dict[str, Any],
+) -> dict[str, Any]:
+    """Repair a parsed plan into the strict, render-ready deck contract.
+
+    A parseable-but-incomplete object is filled out so the deck always honours
+    the title -> why -> concepts -> (analogy) -> (example) -> recap structure,
+    the five-bullet cap, and grounding/citation gating. Synthesized slides use
+    generic scaffolding text only; no lab-specific facts are invented.
+    """
+    raw = raw_plan if isinstance(raw_plan, dict) else {}
+    grounded = bool(grounding.get("grounded"))
+    deck_citations = list(grounding.get("citations") or []) if grounded else []
+    concept_title = _title_case_concept(concept)
+
+    title = _clean_text(raw.get("title") or raw.get("deck_title"), max_len=120) or (
+        f"Understanding {concept_title}"
+    )
+    subtitle = _clean_text(
+        raw.get("subtitle") or raw.get("deck_subtitle"), max_len=160
+    ) or f"A simple, {options['audience_level']}-friendly explainer"
+    summary = _clean_text(
+        raw.get("summary") or raw.get("one_sentence_summary") or raw.get("overview"),
+        max_len=240,
+    ) or f"A clear, {options['audience_level']} introduction to {concept_title}."
+
+    if not grounded:
+        disclaimer: str | None = PRESENTATION_GENERAL_DISCLAIMER
+    else:
+        disclaimer = _clean_text(raw.get("disclaimer"), max_len=240) or None
+
+    model_slides: list[dict[str, Any]] = []
+    if isinstance(raw.get("slides"), list):
+        for item in raw["slides"]:
+            normalized = _normalize_raw_slide(item)
+            if normalized:
+                model_slides.append(normalized)
+
+    def first_of(slide_type: str) -> dict[str, Any] | None:
+        return next((s for s in model_slides if s["type"] == slide_type), None)
+
+    title_slide = first_of("title")
+    why_slide = first_of("why")
+    recap_slide = first_of("recap")
+    analogy_slide = first_of("analogy") if options["include_analogy"] else None
+    example_slide = first_of("example") if options["include_worked_example"] else None
+    concept_slides = [s for s in model_slides if s["type"] == "concept"]
+
+    reserved = 3  # title + why + recap
+    if analogy_slide is not None or options["include_analogy"]:
+        reserved += 1
+    if example_slide is not None or options["include_worked_example"]:
+        reserved += 1
+    concept_budget = max(1, options["slide_count"] - reserved)
+    if len(concept_slides) > concept_budget:
+        concept_slides = concept_slides[:concept_budget]
+
+    if title_slide is None:
+        title_slide = _scaffold_slide(
+            "title", title, subtitle=subtitle,
+            visual="clean title with a thin garnet divider",
+        )
+    if not concept_slides:
+        concept_slides = [
+            _scaffold_slide(
+                "concept", f"What {concept_title} means", bullets=[summary],
+            )
+        ]
+    if why_slide is None:
+        why_slide = _scaffold_slide(
+            "why", "Why this matters",
+            bullets=[
+                f"{concept_title} shows up in everyday situations",
+                "A simple mental model makes it easier to use",
+                "Getting the basics first prevents confusion later",
+            ],
+        )
+    if options["include_analogy"] and analogy_slide is None:
+        analogy_slide = _scaffold_slide(
+            "analogy", "A helpful analogy",
+            bullets=[
+                "Compare it to a familiar everyday system",
+                "The same cause and effect pattern applies",
+                "The analogy breaks down at the finest detail",
+            ],
+            analogy=f"{concept_title} behaves like a familiar everyday process.",
+            visual="two side-by-side panels joined by an arrow",
+        )
+    if options["include_worked_example"] and example_slide is None:
+        example_slide = _scaffold_slide(
+            "example", "A worked example",
+            bullets=[
+                "Start from a concrete, simple case",
+                "Apply the idea one step at a time",
+                "Check the result against intuition",
+            ],
+            example=f"A short step-by-step walkthrough of {concept_title}.",
+            visual="numbered steps stacked vertically",
+        )
+    if recap_slide is None:
+        recap_bullets = [s["bullets"][0] for s in concept_slides if s["bullets"]]
+        recap_slide = _scaffold_slide(
+            "recap", "Recap",
+            bullets=recap_bullets[:PRESENTATION_MAX_BULLETS] or [summary],
+            visual="three-line summary with a gold underline",
+        )
+
+    ordered: list[dict[str, Any]] = [title_slide, why_slide, *concept_slides]
+    if analogy_slide is not None:
+        ordered.append(analogy_slide)
+    if example_slide is not None:
+        ordered.append(example_slide)
+    ordered.append(recap_slide)
+
+    slides: list[dict[str, Any]] = []
+    for index, slide in enumerate(ordered, start=1):
+        bullets = [] if slide["type"] == "title" else slide["bullets"][:PRESENTATION_MAX_BULLETS]
+        citations = list(slide.get("citations") or []) if grounded else []
+        slides.append(
+            {
+                "id": f"{slide['type']}-{index}",
+                "type": slide["type"],
+                "title": slide["title"],
+                "subtitle": slide.get("subtitle"),
+                "bullets": bullets,
+                "example": slide.get("example"),
+                "analogy": slide.get("analogy"),
+                "note": slide.get("note"),
+                "citations": citations,
+                "visual": slide.get("visual"),
+            }
+        )
+
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "audience_level": options["audience_level"],
+        "summary": summary,
+        "disclaimer": disclaimer,
+        "grounded": grounded,
+        "citations": deck_citations,
+        "concept": _clean_text(concept, max_len=160),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "slides": slides,
+    }
+
+
+def _scaffold_slide(
+    slide_type: str,
+    title: str,
+    *,
+    subtitle: str | None = None,
+    bullets: list[str] | None = None,
+    example: str | None = None,
+    analogy: str | None = None,
+    visual: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "type": slide_type,
+        "title": title,
+        "subtitle": subtitle,
+        "bullets": list(bullets or []),
+        "example": example,
+        "analogy": analogy,
+        "note": None,
+        "citations": [],
+        "visual": visual,
+    }

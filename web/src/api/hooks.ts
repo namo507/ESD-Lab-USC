@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import * as S from "./schemas";
 import { z } from "zod";
+import { fetchAssistantStatus } from "./chatApi";
+import { planPresentation, type PlanPresentationInput } from "./presentationApi";
 
 const ParticipantList = z.array(S.Participant);
 const StageList = z.array(S.Stage);
@@ -128,5 +130,26 @@ export function useTriggerRun() {
     mutationFn: (body: { scope: string; stages: string; workers: number }) =>
       api.post("/api/runs", body, RunCreateResponse),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["runs"] }),
+  });
+}
+
+/**
+ * Local assistant readiness, shared by the Presentation Maker gate.
+ * Reuses the same status endpoint (with legacy fallback) as the chat drawer.
+ */
+export function useAssistantStatus() {
+  return useQuery({
+    queryKey: ["assistant", "status"],
+    queryFn: () => fetchAssistantStatus(),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    retry: false,
+  });
+}
+
+/** Concept → structured deck plan, via the local assistant. */
+export function usePresentationPlan() {
+  return useMutation({
+    mutationFn: (input: PlanPresentationInput) => planPresentation(input),
   });
 }

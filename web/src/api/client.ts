@@ -6,7 +6,7 @@
  * - PHI hygiene: never log response bodies, never put participant ids in
  *   query strings (use POST body or path params).
  */
-import type { ZodSchema } from "zod";
+import type { ZodType } from "zod";
 
 export class ApiError extends Error {
   constructor(
@@ -21,7 +21,7 @@ export class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  schema: ZodSchema<T>,
+  schema: ZodType<T, any, unknown>,
   init?: RequestInit,
 ): Promise<T> {
   const res = await fetch(path, {
@@ -48,13 +48,13 @@ async function request<T>(
 }
 
 export const api = {
-  get<T>(path: string, schema: ZodSchema<T>): Promise<T> {
+  get<T>(path: string, schema: ZodType<T, any, unknown>): Promise<T> {
     return request(path, schema);
   },
-  post<T>(path: string, body: unknown, schema: ZodSchema<T>): Promise<T> {
+  post<T>(path: string, body: unknown, schema: ZodType<T, any, unknown>): Promise<T> {
     return request(path, schema, { method: "POST", body: JSON.stringify(body) });
   },
-  patch<T>(path: string, body: unknown, schema: ZodSchema<T>): Promise<T> {
+  patch<T>(path: string, body: unknown, schema: ZodType<T, any, unknown>): Promise<T> {
     return request(path, schema, { method: "PATCH", body: JSON.stringify(body) });
   },
 };
