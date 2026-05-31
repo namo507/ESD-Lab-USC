@@ -26,6 +26,13 @@ cd "$ROOT_DIR"
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/esd-lab-usc-share"
 mkdir -p "$STATE_DIR"
 
+if [[ -f .env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
 DASHBOARD_HOST="${DASHBOARD_HOST:-127.0.0.1}"
 DASHBOARD_PORT="${DASHBOARD_PORT:-8080}"
 DASHBOARD_URL="http://${DASHBOARD_HOST}:${DASHBOARD_PORT}"
@@ -58,13 +65,6 @@ case "$mode" in
 esac
 
 publish_canonical_pages="${AUTO_DEPLOY_CANONICAL_PAGES:-$continuous}"
-
-if [[ -f .env ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
-fi
 
 named_tunnel_token="${CLOUDFLARE_TUNNEL_TOKEN:-}"
 public_hostname="${DASHBOARD_PUBLIC_HOSTNAME:-}"
