@@ -227,6 +227,10 @@ class AssistantConfig:
     context_window: int = DEFAULT_CONTEXT_WINDOW
     batch_size: int = DEFAULT_BATCH_SIZE
     thread_count: int = DEFAULT_THREAD_COUNT
+    # Presentation-planner specific knobs (tunable without touching chat).
+    presentation_max_new_tokens: int = PRESENTATION_MAX_NEW_TOKENS
+    presentation_context_char_cap: int = PRESENTATION_CONTEXT_CHAR_CAP
+    presentation_json_mode: bool = True
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
@@ -290,6 +294,18 @@ class AssistantConfig:
                 os.getenv("DASHBOARD_ASSISTANT_THREADS")
                 or os.getenv("LLM_N_THREADS"),
                 default=DEFAULT_THREAD_COUNT,
+            ),
+            presentation_max_new_tokens=_parse_int(
+                os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
+                default=PRESENTATION_MAX_NEW_TOKENS,
+            ),
+            presentation_context_char_cap=_parse_int(
+                os.getenv("DASHBOARD_PRESENTATION_CONTEXT_CAP"),
+                default=PRESENTATION_CONTEXT_CHAR_CAP,
+            ),
+            presentation_json_mode=_parse_bool(
+                os.getenv("DASHBOARD_PRESENTATION_JSON_MODE"),
+                default=True,
             ),
         )
 
@@ -504,11 +520,13 @@ class DashboardChatAssistant:
             "citations": list(context.get("citations") or [])[:6],
             "focus_sections": list(context.get("focus_sections") or []),
         }
-        context_block = (context.get("context") or "")[:PRESENTATION_CONTEXT_CHAR_CAP]
+        context_cap = max(400, int(self.config.presentation_context_char_cap))
+        context_block = (context.get("context") or "")[:context_cap]
+        max_tokens = max(256, int(self.config.presentation_max_new_tokens))
 
         generator = self._ensure_generator()
         messages = build_presentation_messages(topic, opts, context_block, grounding)
-        raw_text = self._complete_text(generator, messages, max_tokens=PRESENTATION_MAX_NEW_TOKENS)
+        raw_text = self._complete_text(generator, messages, max_tokens=max_tokens, json_mode=True)
         raw_plan = extract_json_object(raw_text)
 
         if raw_plan is None:
@@ -525,7 +543,7 @@ class DashboardChatAssistant:
                 },
             ]
             raw_text = self._complete_text(
-                generator, repair_messages, max_tokens=PRESENTATION_MAX_NEW_TOKENS
+                generator, repair_messages, max_tokens=max_tokens, json_mode=True
             )
             raw_plan = extract_json_object(raw_text)
 
@@ -549,15 +567,36 @@ class DashboardChatAssistant:
         messages: list[dict[str, str]],
         *,
         max_tokens: int,
+        json_mode: bool = False,
     ) -> str:
-        """Run a non-streaming completion and return the assistant text."""
+        """Run a non-streaming completion and return the assistant text.
+
+        When ``json_mode`` is requested and enabled in config, the call uses
+        llama-cpp-python's ``response_format={"type": "json_object"}`` grammar
+        constraint so the model is forced to emit syntactically valid JSON. If
+        the installed runtime predates that kwarg, we transparently fall back to
+        a plain completion (the extract-and-repair path still applies).
+        """
+        kwargs: dict[str, Any] = {
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
+        }
+        use_json = json_mode and self.config.presentation_json_mode
+        if use_json:
+            kwargs["response_format"] = {"type": "json_object"}
+
         try:
-            output = generator.create_chat_completion(
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=self.config.temperature,
-                top_p=self.config.top_p,
-            )
+            output = generator.create_chat_completion(**kwargs)
+        except TypeError:
+            # Older llama-cpp-python without response_format support.
+            kwargs.pop("response_format", None)
+            try:
+                output = generator.create_chat_completion(**kwargs)
+            except Exception as exc:  # pragma: no cover - runtime model stack
+                self._last_error = f"Assistant generation failed: {exc}"
+                raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
         except Exception as exc:  # pragma: no cover - depends on runtime model stack
             self._last_error = f"Assistant generation failed: {exc}"
             raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc

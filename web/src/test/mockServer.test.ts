@@ -12,8 +12,16 @@ describe("mockServer assistant passthrough", () => {
     expect(shouldBypassMock("/api/audit", true)).toBe(false);
   });
 
+  it("bypasses presentation job routes (create + dynamic poll id) when live", () => {
+    expect(shouldBypassMock("/api/presentation/jobs", true)).toBe(true);
+    expect(shouldBypassMock("/api/presentation/jobs/abc123", true)).toBe(true);
+    expect(shouldBypassMock("/api/presentation/plan", true)).toBe(true);
+  });
+
   it("keeps all routes mocked when live assistant is disabled", () => {
     expect(shouldBypassMock("/api/assistant/status", false)).toBe(false);
     expect(shouldBypassMock("/api/chat", false)).toBe(false);
+    expect(shouldBypassMock("/api/presentation/jobs", false)).toBe(false);
+    expect(shouldBypassMock("/api/presentation/jobs/abc123", false)).toBe(false);
   });
 });

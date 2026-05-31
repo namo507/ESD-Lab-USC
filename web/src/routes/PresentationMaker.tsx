@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Badge, Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { AmbientOrbit } from "@/components/warm";
-import { useAssistantStatus, usePresentationPlan } from "@/api/hooks";
+import { useAssistantStatus, usePresentationJob } from "@/api/hooks";
 import { mapDeckPlan, downloadDeck, type DeckSlideDef } from "@/lib/pptx";
 import { useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
@@ -48,7 +48,7 @@ export function PresentationMaker() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const status = useAssistantStatus();
-  const plan = usePresentationPlan();
+  const job = usePresentationJob();
 
   const assistantReady = status.data?.status === "ready";
   const statusTone = status.isLoading
@@ -65,13 +65,13 @@ export function PresentationMaker() {
         : "assistant offline";
 
   const trimmedConcept = concept.trim();
-  const canGenerate = assistantReady && trimmedConcept.length > 0 && !plan.isPending;
+  const canGenerate = assistantReady && trimmedConcept.length > 0 && !job.isPending;
 
   const runGenerate = useCallback(() => {
     const value = concept.trim();
-    if (!value || !assistantReady || plan.isPending) return;
+    if (!value || !assistantReady || job.isPending) return;
     setDownloadError(null);
-    plan.mutate({
+    job.start({
       concept: value,
       options: {
         audience_level: audience,
@@ -80,16 +80,16 @@ export function PresentationMaker() {
         include_worked_example: includeExample,
       },
     });
-  }, [concept, assistantReady, plan, audience, slideCount, includeAnalogy, includeExample]);
+  }, [concept, assistantReady, job, audience, slideCount, includeAnalogy, includeExample]);
 
-  const deck = useMemo(() => (plan.data ? mapDeckPlan(plan.data.plan) : null), [plan.data]);
+  const deck = useMemo(() => (job.data ? mapDeckPlan(job.data.plan) : null), [job.data]);
 
   const handleDownload = useCallback(async () => {
-    if (!plan.data) return;
+    if (!job.data) return;
     setDownloading(true);
     setDownloadError(null);
     try {
-      await downloadDeck(plan.data.plan);
+      await downloadDeck(job.data.plan);
     } catch (err) {
       setDownloadError(
         err instanceof Error ? err.message : "Could not build the PPTX file. Please try again.",
@@ -97,11 +97,11 @@ export function PresentationMaker() {
     } finally {
       setDownloading(false);
     }
-  }, [plan.data]);
+  }, [job.data]);
 
   const askBuddy = useCallback(() => {
-    if (!plan.data) return;
-    const p = plan.data.plan;
+    if (!job.data) return;
+    const p = job.data.plan;
     const bullets = p.slides
       .flatMap((s) => s.bullets)
       .slice(0, 4)
@@ -114,7 +114,7 @@ export function PresentationMaker() {
     setChatSeed(seed);
     setChatOpen(true);
     void logAudit({ action: "run.trigger", scope: "/presentation-maker/ask" });
-  }, [plan.data, trimmedConcept, setChatSeed, setChatOpen]);
+  }, [job.data, trimmedConcept, setChatSeed, setChatOpen]);
 
   return (
     <div className={styles.page}>
@@ -223,23 +223,31 @@ export function PresentationMaker() {
                 disabled={!canGenerate}
                 aria-label="Generate presentation"
               >
-                {plan.isPending ? "Generating…" : "Generate presentation"}
+                {job.isPending
+                  ? job.phase === "queued"
+                    ? "Queued…"
+                    : "Generating…"
+                  : "Generate presentation"}
               </Button>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* ---- Progress ---- */}
-      {plan.isPending && (
+      {/* ---- Progress (queued / generating) ---- */}
+      {job.isPending && (
         <Card pad={20} dataInsight="pm-progress">
           <div className={styles.progress}>
             <AmbientOrbit tone="garnet" size={120} opacity={0.18} spin={36} waveform className={styles.progressOrbit} />
             <span className={styles.spinner} aria-hidden />
             <div className={styles.progressBody}>
-              <p className={styles.progressTitle}>Composing your deck…</p>
+              <p className={styles.progressTitle}>
+                {job.phase === "queued" ? "Queued for the local model…" : "Composing your deck…"}
+              </p>
               <p className={styles.progressSub}>
-                The local model is planning slides for “{trimmedConcept}”. This usually takes a few seconds.
+                {job.progressMessage ??
+                  `The local model is planning slides for “${trimmedConcept}”.`}{" "}
+                You can keep this tab open; it updates on its own.
               </p>
             </div>
           </div>
@@ -247,14 +255,15 @@ export function PresentationMaker() {
       )}
 
       {/* ---- Error ---- */}
-      {plan.isError && !plan.isPending && (
+      {job.isError && !job.isPending && (
         <Card pad={18} dataInsight="pm-error">
           <div className={styles.errorCard}>
             <div className={styles.errorBody}>
               <span className={styles.errorTitle}>Generation didn’t complete</span>
               <span className={styles.errorMsg}>
-                The assistant couldn’t return a valid deck plan. Your concept and settings are still here —
-                try again, or simplify the concept slightly.
+                {job.error ??
+                  "The assistant couldn’t return a valid deck plan."}{" "}
+                Your concept and settings are still here — try again, or simplify the concept slightly.
               </span>
             </div>
             <Button variant="secondary" icon="refresh-cw" onClick={runGenerate} disabled={!canGenerate}>
@@ -265,7 +274,7 @@ export function PresentationMaker() {
       )}
 
       {/* ---- Preview ---- */}
-      {deck && plan.data && !plan.isPending && (
+      {deck && job.data && !job.isPending && (
         <>
           <Card pad={20} dataInsight="pm-deck">
             <div className={styles.deckHead}>
@@ -342,7 +351,7 @@ export function PresentationMaker() {
       )}
 
       {/* ---- Empty state ---- */}
-      {!plan.data && !plan.isPending && !plan.isError && (
+      {!job.data && !job.isPending && !job.isError && (
         <Card pad={24} dataInsight="pm-empty">
           <div className={styles.empty}>
             <AmbientOrbit tone="garnet" size={96} opacity={0.2} spin={40} waveform />

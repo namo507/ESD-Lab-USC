@@ -316,6 +316,68 @@ function mockPresentationPlan(concept: string, options: MockPresentationOptions)
   };
 }
 
+/* ---- Mock async job lifecycle ------------------------------------------ */
+// Mirrors the real async transport for local dev: a job starts queued, becomes
+// running on the next poll, then succeeds with the deck plan. Lets the UI
+// exercise queued/generating/ready states without a backend.
+interface MockJob {
+  job_id: string;
+  status: "queued" | "running" | "succeeded";
+  created_at: string;
+  updated_at: string;
+  concept: string;
+  options: MockPresentationOptions;
+  polls: number;
+}
+
+const mockJobs = new Map<string, MockJob>();
+
+function nowStamp(): string {
+  return new Date().toISOString().slice(0, 19);
+}
+
+function mockJobCreate(concept: string, options: MockPresentationOptions): MockJob {
+  const job_id = `pmjob_${Math.random().toString(36).slice(2, 10)}`;
+  const job: MockJob = {
+    job_id,
+    status: "queued",
+    created_at: nowStamp(),
+    updated_at: nowStamp(),
+    concept,
+    options,
+    polls: 0,
+  };
+  mockJobs.set(job_id, job);
+  return job;
+}
+
+function mockJobView(job: MockJob): Record<string, unknown> {
+  // Advance one step per poll: queued -> running -> succeeded.
+  job.polls += 1;
+  if (job.polls >= 3) job.status = "succeeded";
+  else if (job.polls === 2) job.status = "running";
+  else job.status = "queued";
+  job.updated_at = nowStamp();
+
+  const view: Record<string, unknown> = {
+    job_id: job.job_id,
+    status: job.status,
+    created_at: job.created_at,
+    updated_at: job.updated_at,
+    poll_after_ms: job.status === "queued" ? 900 : job.status === "running" ? 1400 : undefined,
+    progress_message:
+      job.status === "queued"
+        ? "Queued — waiting for the local model."
+        : job.status === "running"
+          ? "Composing your deck…"
+          : null,
+  };
+  if (job.status === "succeeded") {
+    view.result = mockPresentationPlan(job.concept, job.options);
+  }
+  return view;
+}
+
 const realFetch = window.fetch.bind(window);
 const LIVE_ASSISTANT_ROUTES = new Set([
   "/api/assistant/status",
@@ -328,10 +390,17 @@ const LIVE_ASSISTANT_ROUTES = new Set([
   "/api/presentation/plan",
 ]);
 
+// Prefix-matched live routes (dynamic path segments, e.g. job ids).
+const LIVE_ASSISTANT_PREFIXES = ["/api/presentation/jobs"];
+
 const liveAssistantEnabled = import.meta.env.VITE_LIVE_ASSISTANT === "true";
 
 export function shouldBypassMock(pathname: string, enabled = liveAssistantEnabled): boolean {
-  return enabled && LIVE_ASSISTANT_ROUTES.has(pathname);
+  if (!enabled) return false;
+  if (LIVE_ASSISTANT_ROUTES.has(pathname)) return true;
+  return LIVE_ASSISTANT_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 export function installMockServer() {
@@ -393,6 +462,38 @@ export function installMockServer() {
       const chunks: MockChatStreamChunk[] = words.map((part) => ({ delta: part }));
       chunks.push({ done: true });
       return ndjsonReply(chunks);
+    }
+    if (p === "/api/presentation/jobs" && method === "POST") {
+      const payload = (await new Response(init?.body as BodyInit).json()) as {
+        concept?: string;
+        options?: MockPresentationOptions;
+      };
+      if (!payload.concept || !payload.concept.trim()) {
+        return reply({ error: "Please enter a concept you want explained." }, 400);
+      }
+      const job = mockJobCreate(payload.concept, payload.options ?? {});
+      return reply(
+        {
+          job_id: job.job_id,
+          status: "queued",
+          created_at: job.created_at,
+          updated_at: job.updated_at,
+          poll_after_ms: 900,
+          progress_message: "Queued — waiting for the local model.",
+        },
+        202,
+      );
+    }
+    const jobGet = p.match(/^\/api\/presentation\/jobs\/([^/]+)$/);
+    if (jobGet && method === "GET") {
+      const job = mockJobs.get(jobGet[1] as string);
+      if (!job) {
+        return reply(
+          { error: "This presentation job was not found or has expired.", status: "expired" },
+          404,
+        );
+      }
+      return reply(mockJobView(job));
     }
     if (p === "/api/presentation/plan" && method === "POST") {
       const payload = (await new Response(init?.body as BodyInit).json()) as {

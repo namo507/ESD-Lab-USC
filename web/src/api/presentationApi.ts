@@ -37,3 +37,28 @@ export async function planPresentation(
     S.PresentationPlanResponse,
   );
 }
+
+/**
+ * Async flow (public default): create a job, then poll it to a terminal state.
+ *
+ * `createPresentationJob` scrubs PHI before the concept leaves the browser and
+ * audits exactly once, on creation. `getPresentationJob` is poll-only and never
+ * audits, so polling does not spam the audit log.
+ */
+export async function createPresentationJob(
+  { concept, options }: PlanPresentationInput,
+): Promise<S.PresentationJobCreated> {
+  const cleanConcept = scrubPhi(concept).text;
+
+  await logAudit({ action: "presentation.generate", scope: "/presentation-maker" });
+
+  return api.post(
+    "/api/presentation/jobs",
+    { concept: cleanConcept, options },
+    S.PresentationJobCreated,
+  );
+}
+
+export async function getPresentationJob(jobId: string): Promise<S.PresentationJobState> {
+  return api.get(`/api/presentation/jobs/${encodeURIComponent(jobId)}`, S.PresentationJobState);
+}

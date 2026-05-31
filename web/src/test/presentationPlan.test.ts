@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { DeckPlan, PresentationPlanResponse, type DeckPlan as DeckPlanT } from "@/api/schemas";
+import {
+  DeckPlan,
+  PresentationPlanResponse,
+  PresentationJobCreated,
+  PresentationJobState,
+  type DeckPlan as DeckPlanT,
+} from "@/api/schemas";
+import { presentationJobPollInterval } from "@/api/hooks";
 import { mapDeckPlan, deckPlanToSlideDefs, deckFileName, buildPresentation } from "@/lib/pptx";
 
 function makePlan(overrides: Partial<DeckPlanT> = {}): DeckPlanT {
@@ -25,6 +32,45 @@ function makePlan(overrides: Partial<DeckPlanT> = {}): DeckPlanT {
     ...overrides,
   };
 }
+
+describe("Presentation job schemas", () => {
+  it("parses a create-job response", () => {
+    const parsed = PresentationJobCreated.safeParse({
+      job_id: "abc123",
+      status: "queued",
+      created_at: "2026-05-31T00:00:00",
+      progress_message: "Queued — waiting for the local model.",
+      poll_after_ms: 900,
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("parses a queued/running poll with no result yet", () => {
+    const queued = PresentationJobState.safeParse({ job_id: "j", status: "queued", progress_message: "Queued…", poll_after_ms: 900 });
+    const running = PresentationJobState.safeParse({ job_id: "j", status: "running", progress_message: "Composing…", poll_after_ms: 1400 });
+    expect(queued.success).toBe(true);
+    expect(running.success).toBe(true);
+  });
+
+  it("parses a succeeded poll carrying the deck-plan envelope", () => {
+    const parsed = PresentationJobState.safeParse({
+      job_id: "j",
+      status: "succeeded",
+      result: { plan: makePlan() },
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.result?.plan.slides[0]?.type).toBe("title");
+    }
+  });
+
+  it("parses a failed poll carrying a clean error and rejects bad status", () => {
+    const failed = PresentationJobState.safeParse({ job_id: "j", status: "failed", error: "Generation failed." });
+    expect(failed.success).toBe(true);
+    const bad = PresentationJobState.safeParse({ job_id: "j", status: "exploded" });
+    expect(bad.success).toBe(false);
+  });
+});
 
 describe("DeckPlan schema", () => {
   it("accepts a well-formed deck plan response", () => {
@@ -57,6 +103,15 @@ describe("DeckPlan schema", () => {
   it("rejects a plan missing its title", () => {
     const { title: _omit, ...rest } = makePlan();
     expect(DeckPlan.safeParse(rest).success).toBe(false);
+  });
+});
+
+describe("presentationJobPollInterval", () => {
+  it("uses server-provided cadence and stops on terminal states", () => {
+    expect(presentationJobPollInterval(undefined)).toBe(900);
+    expect(presentationJobPollInterval({ status: "queued", poll_after_ms: 750 })).toBe(750);
+    expect(presentationJobPollInterval({ status: "running", poll_after_ms: 1800 })).toBe(1800);
+    expect(presentationJobPollInterval({ status: "failed" })).toBe(false);
   });
 });
 

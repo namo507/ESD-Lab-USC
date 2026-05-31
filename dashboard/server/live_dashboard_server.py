@@ -18,9 +18,12 @@ import hashlib
 import json
 import os
 import posixpath
+import sqlite3
 import subprocess
 import sys
 import threading
+import time
+import uuid
 from datetime import datetime
 from functools import partial
 from http import HTTPStatus
@@ -56,6 +59,74 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
+
+# ---- Async presentation jobs ----------------------------------------------
+# Jobs are persisted in SQLite so polls can hop across workers and in-flight
+# jobs can be recovered after a process restart on the same host.
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+PRESENTATION_JOB_TTL_SECONDS = _env_float(
+    "DASHBOARD_PRESENTATION_JOB_TTL_SECONDS",
+    900.0,
+)  # 15 min before a finished job is reaped
+PRESENTATION_JOB_MAX = _env_int("DASHBOARD_PRESENTATION_JOB_MAX", 64)
+PRESENTATION_JOB_LOCK_TIMEOUT = _env_float(
+    "DASHBOARD_PRESENTATION_JOB_LOCK_TIMEOUT",
+    180.0,
+)  # max wait for the model lock inside a worker
+PRESENTATION_JOB_STALE_SECONDS = _env_float(
+    "DASHBOARD_PRESENTATION_JOB_STALE_SECONDS",
+    15.0,
+)
+PRESENTATION_JOB_HEARTBEAT_SECONDS = _env_float(
+    "DASHBOARD_PRESENTATION_JOB_HEARTBEAT_SECONDS",
+    3.0,
+)
+PRESENTATION_JOB_POLL_QUEUED_MS = _env_int(
+    "DASHBOARD_PRESENTATION_POLL_QUEUED_MS",
+    900,
+)
+PRESENTATION_JOB_POLL_RUNNING_MS = _env_int(
+    "DASHBOARD_PRESENTATION_POLL_RUNNING_MS",
+    1400,
+)
+PRESENTATION_JOB_POLL_SLOW_MS = _env_int(
+    "DASHBOARD_PRESENTATION_POLL_SLOW_MS",
+    2400,
+)
+PRESENTATION_JOB_POLL_SLOW_AFTER_SECONDS = _env_float(
+    "DASHBOARD_PRESENTATION_POLL_SLOW_AFTER_SECONDS",
+    18.0,
+)
+PRESENTATION_JOB_DB_PATH = Path(
+    os.getenv(
+        "DASHBOARD_PRESENTATION_JOB_DB",
+        str(DATA_DIR / "presentation_jobs.sqlite3"),
+    )
+)
+PRESENTATION_TERMINAL_STATES = {"succeeded", "failed", "expired"}
+
+
+def _iso(ts: float) -> str:
+    return datetime.fromtimestamp(ts).isoformat(timespec="seconds")
 
 
 def atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
@@ -374,6 +445,420 @@ class DashboardRuntime:
                 self._mark_degraded(f"watch loop failure: {exc}")
 
 
+class PresentationJobStore:
+    """SQLite-backed registry of async presentation-plan jobs.
+
+    The store only tracks transport state. Plan quality, grounding, and schema
+    normalization remain inside ``DashboardChatAssistant.plan_presentation``.
+    """
+
+    def __init__(
+        self,
+        *,
+        db_path: Path = PRESENTATION_JOB_DB_PATH,
+        ttl_seconds: float = PRESENTATION_JOB_TTL_SECONDS,
+        max_jobs: int = PRESENTATION_JOB_MAX,
+        stale_seconds: float = PRESENTATION_JOB_STALE_SECONDS,
+        queued_poll_ms: int = PRESENTATION_JOB_POLL_QUEUED_MS,
+        running_poll_ms: int = PRESENTATION_JOB_POLL_RUNNING_MS,
+        slow_running_poll_ms: int = PRESENTATION_JOB_POLL_SLOW_MS,
+        slow_running_after_seconds: float = PRESENTATION_JOB_POLL_SLOW_AFTER_SECONDS,
+    ) -> None:
+        self._db_path = db_path
+        self._ttl = ttl_seconds
+        self._max = max_jobs
+        self._stale = stale_seconds
+        self._queued_poll_ms = max(250, queued_poll_ms)
+        self._running_poll_ms = max(250, running_poll_ms)
+        self._slow_running_poll_ms = max(self._running_poll_ms, slow_running_poll_ms)
+        self._slow_running_after = slow_running_after_seconds
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._initialize()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(
+            self._db_path,
+            timeout=30,
+            isolation_level=None,
+            check_same_thread=False,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout = 30000")
+        return conn
+
+    def _initialize(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS presentation_jobs (
+                    job_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL,
+                    created_ts REAL NOT NULL,
+                    updated_ts REAL NOT NULL,
+                    expires_at REAL,
+                    concept TEXT NOT NULL,
+                    options_json TEXT NOT NULL,
+                    result_json TEXT,
+                    error TEXT,
+                    progress_message TEXT,
+                    worker_id TEXT,
+                    heartbeat_at REAL
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_status ON presentation_jobs(status)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_expires ON presentation_jobs(expires_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_heartbeat ON presentation_jobs(status, heartbeat_at)"
+            )
+
+    @staticmethod
+    def _decode_json(payload: str | None) -> Any:
+        if not payload:
+            return None
+        return json.loads(payload)
+
+    @staticmethod
+    def _encode_json(payload: Any) -> str:
+        return json.dumps(payload, separators=(",", ":"))
+
+    def _row_to_job(self, row: sqlite3.Row) -> dict[str, Any]:
+        created_ts = float(row["created_ts"])
+        updated_ts = float(row["updated_ts"])
+        return {
+            "job_id": row["job_id"],
+            "status": row["status"],
+            "created_at": _iso(created_ts),
+            "updated_at": _iso(updated_ts),
+            "concept": row["concept"],
+            "options": self._decode_json(row["options_json"]) or {},
+            "result": self._decode_json(row["result_json"]),
+            "error": row["error"],
+            "progress_message": row["progress_message"],
+            "worker_id": row["worker_id"],
+            "heartbeat_at": row["heartbeat_at"],
+            "_created_ts": created_ts,
+            "_updated_ts": updated_ts,
+            "_expires_at": row["expires_at"],
+        }
+
+    def _release_stale_claims(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        job_id: str | None = None,
+    ) -> None:
+        now = time.time()
+        params: list[Any] = [
+            now,
+            "Queued — recovering after restart.",
+            now - self._stale,
+        ]
+        query = (
+            "UPDATE presentation_jobs "
+            "SET status = 'queued', worker_id = NULL, heartbeat_at = NULL, "
+            "updated_ts = ?, progress_message = ? "
+            "WHERE status IN ('queued', 'running') "
+            "AND worker_id IS NOT NULL "
+            "AND heartbeat_at IS NOT NULL "
+            "AND heartbeat_at <= ?"
+        )
+        if job_id is not None:
+            query += " AND job_id = ?"
+            params.append(job_id)
+        conn.execute(query, params)
+
+    def _prune(self, conn: sqlite3.Connection) -> None:
+        now = time.time()
+        conn.execute(
+            "DELETE FROM presentation_jobs WHERE status IN ('succeeded', 'failed', 'expired') "
+            "AND expires_at IS NOT NULL AND expires_at <= ?",
+            (now,),
+        )
+
+        count = int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+        if count <= self._max:
+            return
+
+        overflow = count - self._max
+        conn.execute(
+            "DELETE FROM presentation_jobs WHERE job_id IN ("
+            "SELECT job_id FROM presentation_jobs "
+            "WHERE status IN ('succeeded', 'failed', 'expired') "
+            "ORDER BY created_ts ASC LIMIT ?)",
+            (overflow,),
+        )
+
+        count = int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+        if count <= self._max:
+            return
+
+        overflow = count - self._max
+        conn.execute(
+            "DELETE FROM presentation_jobs WHERE job_id IN ("
+            "SELECT job_id FROM presentation_jobs ORDER BY created_ts ASC LIMIT ?)",
+            (overflow,),
+        )
+
+    def create(self, concept: str, options: dict[str, Any]) -> dict[str, Any]:
+        now = time.time()
+        job_id = uuid.uuid4().hex
+        with self._connect() as conn:
+            self._prune(conn)
+            conn.execute(
+                """
+                INSERT INTO presentation_jobs (
+                    job_id, status, created_ts, updated_ts, expires_at,
+                    concept, options_json, result_json, error, progress_message,
+                    worker_id, heartbeat_at
+                ) VALUES (?, 'queued', ?, ?, NULL, ?, ?, NULL, NULL, ?, NULL, NULL)
+                """,
+                (
+                    job_id,
+                    now,
+                    now,
+                    concept,
+                    self._encode_json(options),
+                    "Queued — waiting for the local model.",
+                ),
+            )
+            row = conn.execute(
+                "SELECT * FROM presentation_jobs WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+        return self._row_to_job(row)
+
+    def claim(self, job_id: str, worker_id: str) -> bool:
+        now = time.time()
+        with self._connect() as conn:
+            self._prune(conn)
+            self._release_stale_claims(conn, job_id=job_id)
+            updated = conn.execute(
+                """
+                UPDATE presentation_jobs
+                SET status = 'queued',
+                    worker_id = ?,
+                    heartbeat_at = ?,
+                    updated_ts = ?,
+                    progress_message = 'Queued — waiting for the local model.'
+                WHERE job_id = ?
+                  AND status IN ('queued', 'running')
+                  AND worker_id IS NULL
+                """,
+                (worker_id, now, now, job_id),
+            )
+            return updated.rowcount > 0
+
+    def heartbeat(self, job_id: str, worker_id: str) -> bool:
+        now = time.time()
+        with self._connect() as conn:
+            updated = conn.execute(
+                """
+                UPDATE presentation_jobs
+                SET heartbeat_at = ?, updated_ts = ?
+                WHERE job_id = ? AND worker_id = ?
+                  AND status IN ('queued', 'running')
+                """,
+                (now, now, job_id, worker_id),
+            )
+            return updated.rowcount > 0
+
+    def mark_running(self, job_id: str, worker_id: str, progress_message: str) -> None:
+        now = time.time()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE presentation_jobs
+                SET status = 'running', progress_message = ?,
+                    updated_ts = ?, heartbeat_at = ?
+                WHERE job_id = ? AND worker_id = ?
+                """,
+                (progress_message, now, now, job_id, worker_id),
+            )
+
+    def complete_success(self, job_id: str, worker_id: str, result: dict[str, Any]) -> None:
+        now = time.time()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE presentation_jobs
+                SET status = 'succeeded', result_json = ?, error = NULL,
+                    progress_message = NULL, worker_id = NULL, heartbeat_at = NULL,
+                    updated_ts = ?, expires_at = ?
+                WHERE job_id = ? AND worker_id = ?
+                """,
+                (
+                    self._encode_json(result),
+                    now,
+                    now + self._ttl,
+                    job_id,
+                    worker_id,
+                ),
+            )
+
+    def complete_failure(self, job_id: str, worker_id: str, error: str) -> None:
+        now = time.time()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE presentation_jobs
+                SET status = 'failed', result_json = NULL, error = ?,
+                    progress_message = NULL, worker_id = NULL, heartbeat_at = NULL,
+                    updated_ts = ?, expires_at = ?
+                WHERE job_id = ? AND worker_id = ?
+                """,
+                (error, now, now + self._ttl, job_id, worker_id),
+            )
+
+    def get(self, job_id: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            self._prune(conn)
+            self._release_stale_claims(conn, job_id=job_id)
+            row = conn.execute(
+                "SELECT * FROM presentation_jobs WHERE job_id = ?",
+                (job_id,),
+            ).fetchone()
+            return self._row_to_job(row) if row is not None else None
+
+    def recoverable_job_ids(self) -> list[str]:
+        with self._connect() as conn:
+            self._prune(conn)
+            self._release_stale_claims(conn)
+            rows = conn.execute(
+                """
+                SELECT job_id FROM presentation_jobs
+                WHERE status IN ('queued', 'running')
+                  AND worker_id IS NULL
+                ORDER BY created_ts ASC
+                """
+            ).fetchall()
+        return [str(row["job_id"]) for row in rows]
+
+    def should_recover(self, job: dict[str, Any]) -> bool:
+        return job["status"] in {"queued", "running"} and not job.get("worker_id")
+
+    def count(self) -> int:
+        with self._connect() as conn:
+            return int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+
+    def _poll_after_ms(self, job: dict[str, Any]) -> int | None:
+        if job["status"] in PRESENTATION_TERMINAL_STATES:
+            return None
+        age = max(0.0, time.time() - float(job.get("_created_ts") or time.time()))
+        if job["status"] == "queued":
+            return self._queued_poll_ms
+        if age >= self._slow_running_after:
+            return self._slow_running_poll_ms
+        return self._running_poll_ms
+
+    def public_view(self, job: dict[str, Any]) -> dict[str, Any]:
+        """User-safe projection — no worker ids, no raw model text."""
+        view: dict[str, Any] = {
+            "job_id": job["job_id"],
+            "status": job["status"],
+            "created_at": job["created_at"],
+            "updated_at": job["updated_at"],
+            "progress_message": job.get("progress_message"),
+        }
+        poll_after_ms = self._poll_after_ms(job)
+        if poll_after_ms is not None:
+            view["poll_after_ms"] = poll_after_ms
+        if job["status"] == "succeeded" and job.get("result") is not None:
+            view["result"] = job["result"]
+        if job["status"] in {"failed", "expired"} and job.get("error"):
+            view["error"] = job["error"]
+        return view
+
+
+def _job_heartbeat_loop(
+    store: PresentationJobStore,
+    job_id: str,
+    worker_id: str,
+    stop_event: threading.Event,
+) -> None:
+    while not stop_event.wait(PRESENTATION_JOB_HEARTBEAT_SECONDS):
+        if not store.heartbeat(job_id, worker_id):
+            return
+
+
+def _start_presentation_job_worker(
+    store: PresentationJobStore,
+    assistant: DashboardChatAssistant,
+    lock: threading.Semaphore,
+    job_id: str,
+) -> bool:
+    worker_id = uuid.uuid4().hex
+    if not store.claim(job_id, worker_id):
+        return False
+    worker = threading.Thread(
+        target=_run_presentation_job,
+        args=(store, assistant, lock, job_id, worker_id),
+        name=f"presentation-job-{job_id[:8]}",
+        daemon=True,
+    )
+    worker.start()
+    return True
+
+
+def _run_presentation_job(
+    store: PresentationJobStore,
+    assistant: DashboardChatAssistant,
+    lock: threading.Semaphore,
+    job_id: str,
+    worker_id: str,
+) -> None:
+    """Background worker: wait for the model lock, then generate the deck plan."""
+    job = store.get(job_id)
+    if job is None:
+        return
+
+    heartbeat_stop = threading.Event()
+    heartbeat = threading.Thread(
+        target=_job_heartbeat_loop,
+        args=(store, job_id, worker_id, heartbeat_stop),
+        name=f"presentation-heartbeat-{job_id[:8]}",
+        daemon=True,
+    )
+    heartbeat.start()
+
+    acquired = False
+    try:
+        acquired = lock.acquire(timeout=PRESENTATION_JOB_LOCK_TIMEOUT)
+        if not acquired:
+            store.complete_failure(
+                job_id,
+                worker_id,
+                "The local assistant stayed busy too long. Please try again in a moment.",
+            )
+            return
+
+        store.mark_running(job_id, worker_id, progress_message="Composing your deck…")
+        job = store.get(job_id)
+        if job is None:
+            return
+        result = assistant.plan_presentation(job["concept"], options=job["options"])
+        store.complete_success(job_id, worker_id, result)
+    except AssistantUnavailable as exc:
+        store.complete_failure(job_id, worker_id, str(exc))
+    except Exception:  # pragma: no cover - defensive worker path
+        logger.exception("Presentation job %s failed", job_id)
+        store.complete_failure(
+            job_id,
+            worker_id,
+            "Generation failed unexpectedly. Please try again.",
+        )
+    finally:
+        heartbeat_stop.set()
+        heartbeat.join(timeout=1)
+        if acquired:
+            lock.release()
+
+
 class RepoRequestHandler(SimpleHTTPRequestHandler):
     """Serve the repository root and expose a tiny health endpoint."""
 
@@ -382,11 +867,13 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         *args: Any,
         runtime: DashboardRuntime,
         assistant: DashboardChatAssistant,
+        jobs: PresentationJobStore,
         directory: str,
         **kwargs: Any,
     ) -> None:
         self.runtime = runtime
         self.assistant = assistant
+        self.jobs = jobs
         super().__init__(*args, directory=directory, **kwargs)
 
     def do_GET(self) -> None:
@@ -419,6 +906,12 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self._assistant_status_payload())
             return
 
+        if request_path.startswith("/api/presentation/jobs/"):
+            job_id = request_path[len("/api/presentation/jobs/"):].strip("/")
+            if job_id:
+                self._handle_get_presentation_job(job_id)
+                return
+
         super().do_GET()
 
     def do_HEAD(self) -> None:
@@ -431,6 +924,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         request_path = urlparse(self.path).path
         if request_path == "/api/assistant/chat":
             self._handle_stream_chat()
+            return
+
+        if request_path == "/api/presentation/jobs":
+            self._handle_create_presentation_job()
             return
 
         if request_path == "/api/presentation/plan":
@@ -643,6 +1140,62 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         finally:
             ASSISTANT_CHAT_LOCK.release()
 
+    def _handle_create_presentation_job(self) -> None:
+        """Create an async deck-plan job and return immediately (202).
+
+        Returns fast without touching the model. The model lock is acquired by
+        the background worker, so creation never blocks on another generation.
+        """
+        try:
+            payload = self._read_json_body()
+            concept = (payload.get("concept") or "").strip()
+            options = payload.get("options") or {}
+            if not isinstance(options, dict):
+                options = {}
+            if not concept:
+                self._send_json(
+                    {"error": "Please enter a concept you want explained."},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        job = self.jobs.create(concept, options)
+        _start_presentation_job_worker(
+            self.jobs,
+            self.assistant,
+            ASSISTANT_CHAT_LOCK,
+            job["job_id"],
+        )
+        created = self.jobs.get(job["job_id"]) or job
+        self._send_json(
+            self.jobs.public_view(created),
+            status=HTTPStatus.ACCEPTED,
+        )
+
+    def _handle_get_presentation_job(self, job_id: str) -> None:
+        job = self.jobs.get(job_id)
+        if job is None:
+            self._send_json(
+                {
+                    "error": "This presentation job was not found or has expired.",
+                    "status": "expired",
+                },
+                status=HTTPStatus.NOT_FOUND,
+            )
+            return
+        if self.jobs.should_recover(job):
+            _start_presentation_job_worker(
+                self.jobs,
+                self.assistant,
+                ASSISTANT_CHAT_LOCK,
+                job_id,
+            )
+            job = self.jobs.get(job_id) or job
+        self._send_json(self.jobs.public_view(job))
+
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
@@ -681,11 +1234,20 @@ def main(argv: Optional[list[str]] = None) -> int:
     ensure_public_spa_build()
     runtime.start()
     assistant = DashboardChatAssistant()
+    presentation_jobs = PresentationJobStore()
+    for job_id in presentation_jobs.recoverable_job_ids():
+        _start_presentation_job_worker(
+            presentation_jobs,
+            assistant,
+            ASSISTANT_CHAT_LOCK,
+            job_id,
+        )
 
     handler = partial(
         RepoRequestHandler,
         runtime=runtime,
         assistant=assistant,
+        jobs=presentation_jobs,
         directory=str(PROJECT_ROOT),
     )
     httpd = ThreadingHTTPServer((args.host, args.port), handler)

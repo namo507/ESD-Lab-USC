@@ -1,12 +1,18 @@
 /**
  * TanStack Query hooks. One hook per endpoint; type-safe via Zod schemas.
  */
+import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import * as S from "./schemas";
 import { z } from "zod";
 import { fetchAssistantStatus } from "./chatApi";
-import { planPresentation, type PlanPresentationInput } from "./presentationApi";
+import {
+  planPresentation,
+  createPresentationJob,
+  getPresentationJob,
+  type PlanPresentationInput,
+} from "./presentationApi";
 
 const ParticipantList = z.array(S.Participant);
 const StageList = z.array(S.Stage);
@@ -147,9 +153,128 @@ export function useAssistantStatus() {
   });
 }
 
-/** Concept → structured deck plan, via the local assistant. */
+/**
+ * Concept → structured deck plan, via the synchronous compatibility endpoint.
+ * Retained for back-compat; the public UI uses `usePresentationJob` instead.
+ */
 export function usePresentationPlan() {
   return useMutation({
     mutationFn: (input: PlanPresentationInput) => planPresentation(input),
   });
+}
+
+export type PresentationJobPhase =
+  | "idle"
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed";
+
+const DEFAULT_PRESENTATION_QUEUE_POLL_MS = 900;
+const DEFAULT_PRESENTATION_RUNNING_POLL_MS = 1400;
+
+export function presentationJobPollInterval(
+  job:
+    | Pick<S.PresentationJobCreated, "status" | "poll_after_ms">
+    | Pick<S.PresentationJobState, "status" | "poll_after_ms">
+    | null
+    | undefined,
+): number | false {
+  if (!job) return DEFAULT_PRESENTATION_QUEUE_POLL_MS;
+  if (job.status === "succeeded" || job.status === "failed" || job.status === "expired") {
+    return false;
+  }
+  if (typeof job.poll_after_ms === "number" && job.poll_after_ms > 0) {
+    return job.poll_after_ms;
+  }
+  return job.status === "running"
+    ? DEFAULT_PRESENTATION_RUNNING_POLL_MS
+    : DEFAULT_PRESENTATION_QUEUE_POLL_MS;
+}
+
+export interface PresentationJobView {
+  phase: PresentationJobPhase;
+  /** True while submitting, queued, or generating. */
+  isPending: boolean;
+  isError: boolean;
+  /** The deck-plan envelope, present only on success. */
+  data: S.PresentationPlanResponse | undefined;
+  progressMessage: string | null;
+  error: string | null;
+  start: (input: PlanPresentationInput) => void;
+  reset: () => void;
+}
+
+/**
+ * Async presentation generation: create a job, then poll until it reaches a
+ * terminal state. This is the public-safe path — each request is fast, so the
+ * Cloudflare Pages proxy never depends on one long-lived connection.
+ *
+ * Audit logging happens once (inside `createPresentationJob`); polling does not
+ * audit. Polling stops automatically on success/failure/expiry.
+ */
+export function usePresentationJob(): PresentationJobView {
+  const qc = useQueryClient();
+  const [jobId, setJobId] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: (input: PlanPresentationInput) => createPresentationJob(input),
+    onSuccess: (created) => setJobId(created.job_id),
+  });
+
+  const poll = useQuery({
+    queryKey: ["presentation", "job", jobId],
+    queryFn: () => getPresentationJob(jobId as string),
+    enabled: Boolean(jobId),
+    refetchOnWindowFocus: false,
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+    refetchInterval: (query) => presentationJobPollInterval(query.state.data),
+  });
+
+  const start = useCallback(
+    (input: PlanPresentationInput) => {
+      if (jobId) qc.removeQueries({ queryKey: ["presentation", "job", jobId] });
+      setJobId(null);
+      create.reset();
+      create.mutate(input);
+    },
+    [create, jobId, qc],
+  );
+
+  const reset = useCallback(() => {
+    if (jobId) qc.removeQueries({ queryKey: ["presentation", "job", jobId] });
+    setJobId(null);
+    create.reset();
+  }, [create, jobId, qc]);
+
+  const status = poll.data?.status;
+  const createFailed = create.isError;
+  const pollFailed = Boolean(jobId) && poll.isError;
+
+  let phase: PresentationJobPhase = "idle";
+  if (status === "succeeded") phase = "succeeded";
+  else if (status === "failed" || status === "expired" || createFailed || pollFailed) phase = "failed";
+  else if (status === "running") phase = "running";
+  else if (create.isPending || status === "queued" || Boolean(jobId)) phase = "queued";
+
+  const isError = phase === "failed";
+  const isPending = !isError && (phase === "queued" || phase === "running");
+  const data = status === "succeeded" ? poll.data?.result : undefined;
+
+  const error = isError
+    ? poll.data?.error
+      ?? (create.error instanceof Error ? create.error.message : null)
+      ?? "Generation didn’t complete. Please try again."
+    : null;
+
+  const progressMessage = poll.data?.progress_message
+    ?? (phase === "queued"
+      ? "Queued — waiting for the local model…"
+      : phase === "running"
+        ? "Composing your deck…"
+        : null);
+
+  return { phase, isPending, isError, data, progressMessage, error, start, reset };
 }

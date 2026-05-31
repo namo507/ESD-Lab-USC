@@ -274,3 +274,41 @@ export const PresentationPlanResponse = z.object({
   plan: DeckPlan,
 });
 export type PresentationPlanResponse = z.infer<typeof PresentationPlanResponse>;
+
+/* ---- Async presentation jobs (create + poll transport) ----------------- */
+
+export const PresentationJobStatus = z.enum([
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+  "expired",
+]);
+export type PresentationJobStatus = z.infer<typeof PresentationJobStatus>;
+
+/** Response to POST /api/presentation/jobs — returns fast with an id. */
+export const PresentationJobCreated = z.object({
+  job_id: z.string(),
+  status: PresentationJobStatus,
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  progress_message: z.string().nullable().optional(),
+  poll_after_ms: z.number().int().positive().optional(),
+});
+export type PresentationJobCreated = z.infer<typeof PresentationJobCreated>;
+
+/**
+ * Response to GET /api/presentation/jobs/{id}. `result` (the existing deck-plan
+ * envelope) is present only on success; `error` only on failure/expiry.
+ */
+export const PresentationJobState = z.object({
+  job_id: z.string(),
+  status: PresentationJobStatus,
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  progress_message: z.string().nullable().optional(),
+  poll_after_ms: z.number().int().positive().optional(),
+  result: PresentationPlanResponse.optional(),
+  error: z.string().nullable().optional(),
+});
+export type PresentationJobState = z.infer<typeof PresentationJobState>;
