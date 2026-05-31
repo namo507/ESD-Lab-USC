@@ -170,6 +170,19 @@ def read_json(path: Path) -> dict[str, Any]:
 
 def ensure_public_spa_build() -> None:
     """Build the React SPA used by the public Pages site for local runtime use."""
+    reuse_existing = os.getenv("DASHBOARD_REUSE_EXISTING_SPA_BUILD", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if reuse_existing and (SPA_BUILD_DIR / "index.html").exists():
+        logger.info(
+            "Reusing existing public SPA shell from %s",
+            SPA_BUILD_DIR,
+        )
+        return
+
     logger.info("Building public SPA shell for local runtime from web/")
     env = dict(os.environ)
     env.setdefault("VITE_USE_MOCKS", "true")
