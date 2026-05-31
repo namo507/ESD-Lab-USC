@@ -15,8 +15,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from scipy import stats
-from scipy.signal import cwt, morlet2
+from scipy import signal, stats
 
 from src.utils.logging_utils import get_pipeline_logger
 
@@ -165,9 +164,21 @@ def compute_rsa_cwt(
         coeff, _ = pywt.cwt(ibi_resampled, scales, "morl", sampling_period=1.0 / fs)
         power = np.mean(np.abs(coeff) ** 2)
     except ImportError:
-        widths = scales
-        coeff = cwt(ibi_resampled, morlet2, widths)
-        power = float(np.mean(np.abs(coeff) ** 2))
+        cwt = getattr(signal, "cwt", None)
+        morlet2 = getattr(signal, "morlet2", None)
+        if callable(cwt) and callable(morlet2):
+            coeff = cwt(ibi_resampled, morlet2, scales)
+            power = float(np.mean(np.abs(coeff) ** 2))
+        else:
+            freqs_psd, psd = signal.welch(
+                ibi_resampled,
+                fs=fs,
+                nperseg=min(256, len(ibi_resampled)),
+            )
+            band = (freqs_psd >= resp_band[0]) & (freqs_psd <= resp_band[1])
+            if not np.any(band):
+                return np.nan
+            power = float(np.trapezoid(psd[band], freqs_psd[band]))
 
     return float(power)
 

@@ -694,7 +694,7 @@ class DashboardChatAssistant:
             key=lambda item: _score_fragment(question_tokens, item[0], item[1], focus_sections),
             reverse=True,
         )
-        summary_limit = 3 if focus_sections else 5
+        summary_limit = len(core_summary_paths) + (2 if focus_sections else 3)
 
         for path, text in summary_fragments:
             if path not in core_summary_paths:

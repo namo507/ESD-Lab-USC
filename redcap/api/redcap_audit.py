@@ -30,6 +30,62 @@ import runpy
 import sys
 import warnings
 from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+
+def compute_completeness(
+    df: pd.DataFrame,
+    events: list[str],
+    required_fields_by_event: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    """Return event-level completeness stats for legacy callers and tests.
+
+    The full REDCap audit script moved out of this module, but a small part of
+    the old public surface is still used by tests and older call sites.
+    """
+    results: dict[str, Any] = {
+        "by_event": {},
+        "missing_records": [],
+        "n_participants": df["record_id"].nunique(),
+        "n_records": len(df),
+        "n_events": len(events),
+    }
+
+    all_participants = df["record_id"].dropna().unique()
+
+    for event in events:
+        event_df = df[df["redcap_event_name"] == event]
+        n_expected = len(all_participants)
+        n_present = event_df["record_id"].nunique()
+        missing_ids = set(all_participants) - set(event_df["record_id"].dropna().unique())
+
+        if required_fields_by_event and event in required_fields_by_event:
+            req_fields = [
+                field for field in required_fields_by_event[event] if field in event_df.columns
+            ]
+            if req_fields:
+                pct_complete = event_df[req_fields].notna().all(axis=1).mean() * 100
+            else:
+                pct_complete = float("nan")
+        else:
+            pct_complete = event_df.notna().mean().mean() * 100 if len(event_df) > 0 else 0.0
+
+        results["by_event"][event] = {
+            "n_expected": n_expected,
+            "n_present": n_present,
+            "n_missing": len(missing_ids),
+            "pct_enrolled": round(n_present / n_expected * 100, 1) if n_expected else 0,
+            "pct_complete": round(pct_complete, 1),
+        }
+
+        for participant_id in missing_ids:
+            results["missing_records"].append(
+                {"record_id": participant_id, "missing_event": event}
+            )
+
+    return results
 
 
 def main() -> int:

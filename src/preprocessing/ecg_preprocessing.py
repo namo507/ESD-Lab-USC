@@ -78,7 +78,7 @@ def remove_ecg_artifacts(
     ibi_series: np.ndarray | pd.Series,
     threshold_sd: float = 3.5,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Remove IBI outliers more than threshold_sd standard deviations from the mean.
+    """Remove IBI outliers using a robust center/spread estimate.
 
     Args:
         ibi_series: Inter-beat interval values in milliseconds.
@@ -88,9 +88,22 @@ def remove_ecg_artifacts(
         Tuple of (cleaned_ibi, mask) where mask is a boolean array (True = valid).
     """
     arr = np.asarray(ibi_series, dtype=np.float64)
-    mean = np.nanmean(arr)
-    sd = np.nanstd(arr)
-    mask = np.abs(arr - mean) <= threshold_sd * sd
+    finite_mask = np.isfinite(arr)
+    median = np.nanmedian(arr)
+    mad = np.nanmedian(np.abs(arr[finite_mask] - median)) if finite_mask.any() else np.nan
+
+    if np.isfinite(mad) and mad > 0:
+        center = median
+        spread = 1.4826 * mad
+    else:
+        center = np.nanmean(arr)
+        spread = np.nanstd(arr)
+
+    if not np.isfinite(spread) or spread == 0:
+        mask = finite_mask.copy()
+    else:
+        mask = finite_mask & (np.abs(arr - center) <= threshold_sd * spread)
+
     n_removed = int((~mask).sum())
     if n_removed > 0:
         logger.info("remove_ecg_artifacts: removed %d outlier beats (>%.1f SD).", n_removed, threshold_sd)

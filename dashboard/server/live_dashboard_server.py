@@ -527,6 +527,17 @@ class PresentationJobStore:
     def _encode_json(payload: Any) -> str:
         return json.dumps(payload, separators=(",", ":"))
 
+    def _fetch_job(
+        self,
+        conn: sqlite3.Connection,
+        job_id: str,
+    ) -> dict[str, Any] | None:
+        row = conn.execute(
+            "SELECT * FROM presentation_jobs WHERE job_id = ?",
+            (job_id,),
+        ).fetchone()
+        return self._row_to_job(row) if row is not None else None
+
     def _row_to_job(self, row: sqlite3.Row) -> dict[str, Any]:
         created_ts = float(row["created_ts"])
         updated_ts = float(row["updated_ts"])
@@ -609,7 +620,6 @@ class PresentationJobStore:
         now = time.time()
         job_id = uuid.uuid4().hex
         with self._connect() as conn:
-            self._prune(conn)
             conn.execute(
                 """
                 INSERT INTO presentation_jobs (
@@ -627,11 +637,11 @@ class PresentationJobStore:
                     "Queued — waiting for the local model.",
                 ),
             )
-            row = conn.execute(
-                "SELECT * FROM presentation_jobs WHERE job_id = ?",
-                (job_id,),
-            ).fetchone()
-        return self._row_to_job(row)
+            self._prune(conn)
+            job = self._fetch_job(conn, job_id)
+        if job is None:
+            raise RuntimeError(f"presentation job {job_id} was pruned unexpectedly")
+        return job
 
     def claim(self, job_id: str, worker_id: str) -> bool:
         now = time.time()
@@ -715,15 +725,20 @@ class PresentationJobStore:
                 (error, now, now + self._ttl, job_id, worker_id),
             )
 
-    def get(self, job_id: str) -> dict[str, Any] | None:
+    def release_stale_claims(self, *, job_id: str | None = None) -> None:
         with self._connect() as conn:
             self._prune(conn)
             self._release_stale_claims(conn, job_id=job_id)
-            row = conn.execute(
-                "SELECT * FROM presentation_jobs WHERE job_id = ?",
-                (job_id,),
-            ).fetchone()
-            return self._row_to_job(row) if row is not None else None
+
+    def _get(self, job_id: str, *, release_stale: bool = False) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            self._prune(conn)
+            if release_stale:
+                self._release_stale_claims(conn, job_id=job_id)
+            return self._fetch_job(conn, job_id)
+
+    def get(self, job_id: str) -> dict[str, Any] | None:
+        return self._get(job_id)
 
     def recoverable_job_ids(self) -> list[str]:
         with self._connect() as conn:
@@ -813,7 +828,7 @@ def _run_presentation_job(
     worker_id: str,
 ) -> None:
     """Background worker: wait for the model lock, then generate the deck plan."""
-    job = store.get(job_id)
+    job = store._get(job_id, release_stale=False)
     if job is None:
         return
 
@@ -838,7 +853,7 @@ def _run_presentation_job(
             return
 
         store.mark_running(job_id, worker_id, progress_message="Composing your deck…")
-        job = store.get(job_id)
+        job = store._get(job_id, release_stale=False)
         if job is None:
             return
         result = assistant.plan_presentation(job["concept"], options=job["options"])
@@ -1176,6 +1191,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         )
 
     def _handle_get_presentation_job(self, job_id: str) -> None:
+        self.jobs.release_stale_claims(job_id=job_id)
         job = self.jobs.get(job_id)
         if job is None:
             self._send_json(
