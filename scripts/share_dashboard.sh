@@ -423,6 +423,8 @@ EOF
 print_host_tunnel_result() {
   local deadline=$((SECONDS + 120))
   local named_registered="false"
+  local quick_url=""
+  local quick_registered="false"
   if [[ "$use_named" == "true" ]]; then
     echo "Waiting for named Cloudflare tunnel to register..."
   else
@@ -454,9 +456,13 @@ print_host_tunnel_result() {
         return 0
       fi
     fi
-    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]] && origin_healthy "${url}/"; then
-      emit_result "${url}/" "quick"
-      return 0
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+      quick_url="$url"
+      quick_registered="true"
+      if origin_healthy "${url}/"; then
+        emit_result "${url}/" "quick"
+        return 0
+      fi
     fi
     sleep 2
   done
@@ -465,6 +471,11 @@ print_host_tunnel_result() {
     echo "Timed out waiting for https://${public_hostname}/ to become reachable." >&2
     echo "The tunnel connected, but the named hostname is still not live yet." >&2
     echo "Check that the zone for ${public_hostname#*.} is active in Cloudflare and that public DNS for ${public_hostname} points to ${CLOUDFLARE_TUNNEL_ID:-<tunnel-id>}.cfargotunnel.com." >&2
+  elif [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
+    echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
+    echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
+    emit_result "${quick_url}/" "quick"
+    return 0
   else
     echo "Timed out waiting for the tunnel URL." >&2
   fi
@@ -485,6 +496,8 @@ share_with_docker() {
     echo "Waiting for public URL from Cloudflare quick tunnel..."
   fi
   local deadline=$((SECONDS + 120))
+  local quick_url=""
+  local quick_registered="false"
 
   while (( SECONDS < deadline )); do
     local recent_logs url registered
@@ -497,12 +510,23 @@ share_with_docker() {
         return 0
       fi
     fi
-    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]] && origin_healthy "${url}/"; then
-      emit_result "${url}/" "quick"
-      return 0
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+      quick_url="$url"
+      quick_registered="true"
+      if origin_healthy "${url}/"; then
+        emit_result "${url}/" "quick"
+        return 0
+      fi
     fi
     sleep 2
   done
+
+  if [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
+    echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
+    echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
+    emit_result "${quick_url}/" "quick"
+    return 0
+  fi
 
   echo "Timed out waiting for the tunnel URL." >&2
   docker compose logs --tail=80 "$share_service" 2>&1 | redact_sensitive_output >&2 || true

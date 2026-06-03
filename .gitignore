@@ -41,8 +41,13 @@ credentials/
 
 # ─── Environment & credentials ──────────────────────────────
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
+.dev.vars
+.cloudflared/
+cloudflared/
 config/redcap_config_local.yml
 *.pem
 *.key
