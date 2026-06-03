@@ -246,9 +246,12 @@ The Cloudflare-hosted links currently used for sharing this repository are:
 - Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
 - Active direct site URL from `make dashboard-share`: `https://<random-subdomain>.trycloudflare.com/`
 
-The Pages wrapper is the preferred public link, but on this machine it still
-depends on the currently active Cloudflare quick tunnel because no local named
-tunnel token/hostname pair is configured.
+The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
+depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
+hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
+Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
+is attached, the wrapper's `/api/*` proxy points at the currently active
+Cloudflare quick tunnel, which is temporary and rotates.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or

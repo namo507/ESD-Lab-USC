@@ -1,6 +1,20 @@
 # Named-Hostname Cutover Blockers
 
-> Goal: move the canonical public dashboard URL off
+## Current status (2026-06-03)
+
+The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
+depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
+hostname under a DNS zone controlled in this Cloudflare account. `pages.dev` is
+Cloudflare-owned and cannot be used as the tunnel DNS zone.
+
+The `/api/*` proxy on the Pages wrapper currently targets the live cloudflared
+quick-tunnel origin, which is temporary and rotates. The named-tunnel cutover is
+**not** complete: it is blocked on a real owned domain being added as a DNS zone
+in this Cloudflare account, plus an API token carrying `Account > Cloudflare
+Tunnel:Edit`.
+
+> Historical goal (plan changed; see Current status above): move the
+> canonical public dashboard URL off
 > `https://esd-lab-namo.pages.dev/` (Pages wrapper · iframes a rotating
 > trycloudflare origin) to `https://esd-lab-namo.sc.edu/`
 > (Cloudflare named tunnel · stable hostname).
@@ -47,7 +61,8 @@ that bypasses this — the record is at the parent zone's registrar.
 
 ## What is unblocked today
 
-- `https://esd-lab-namo.pages.dev/` remains the canonical public URL.
+- `https://esd-lab-namo.pages.dev/` remains the canonical public URL and no
+  longer depends on `esd-lab-namo.sc.edu`.
 - Every `make dashboard-share` run regenerates the wrapper and embeds the
   current cloudflared origin; every `make pages-deploy` pushes the
   refreshed wrapper to the production alias.
