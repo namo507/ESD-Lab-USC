@@ -4,15 +4,17 @@ services:
     build:
       context: .
       dockerfile: docker/dashboard/Dockerfile
+    image: esd-lab-dashboard:local
     ports:
-      - "${DASHBOARD_HOST_PORT:-8080}:8080"
+      - "8080:8080"
     environment:
       PYTHONUNBUFFERED: "1"
     cpus: "2.0"
     mem_limit: 2g
     pids_limit: 512
     volumes:
-      - .:/app
+      - ./dashboard/data:/app/dashboard/data
+      - ./ESD Lab readings:/app/ESD Lab readings:ro
     healthcheck:
       test:
         - CMD
@@ -41,16 +43,4 @@ services:
       dashboard:
         condition: service_healthy
     command: tunnel --no-autoupdate --url http://dashboard:8080
-    restart: unless-stopped
-
-  dashboard-share-named:
-    profiles: ["share"]
-    image: cloudflare/cloudflared:2026.5.2
-    cpus: "0.5"
-    mem_limit: 256m
-    pids_limit: 128
-    depends_on:
-      dashboard:
-        condition: service_healthy
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
     restart: unless-stopped

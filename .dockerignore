@@ -3,8 +3,11 @@
 .env
 .env.local
 .env.*.local
+.dev.vars
 config/redcap_config_local.yml
 credentials/
+.cloudflared/
+cloudflared/
 *.pem
 *.key
 *.p12

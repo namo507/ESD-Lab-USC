@@ -36,6 +36,7 @@ fi
 DASHBOARD_HOST="${DASHBOARD_HOST:-127.0.0.1}"
 DASHBOARD_PORT="${DASHBOARD_PORT:-8080}"
 DASHBOARD_URL="http://${DASHBOARD_HOST}:${DASHBOARD_PORT}"
+DASHBOARD_HEALTH_TIMEOUT="${DASHBOARD_HEALTH_TIMEOUT:-5}"
 DASHBOARD_PID_FILE="$STATE_DIR/dashboard.pid"
 DASHBOARD_LOG_FILE="$STATE_DIR/dashboard.log"
 TUNNEL_PID_FILE="$STATE_DIR/cloudflared.pid"
@@ -143,7 +144,7 @@ stop_pid_file() {
 wait_for_dashboard() {
   local deadline=$((SECONDS + 120))
   while (( SECONDS < deadline )); do
-    if curl -fsS "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
+    if curl -fsS --max-time "$DASHBOARD_HEALTH_TIMEOUT" "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
@@ -154,22 +155,28 @@ wait_for_dashboard() {
 resolve_python() {
   local candidate
   for candidate in \
+    "${DASHBOARD_PYTHON:-}" \
+    "${PYTHON:-}" \
     "$ROOT_DIR/.devcontainer/.venv/bin/python" \
     "$ROOT_DIR/.venv/bin/python" \
     "$(command -v python3 2>/dev/null || true)" \
     "$(command -v python 2>/dev/null || true)"
   do
-    if [[ -n "$candidate" && -x "$candidate" ]]; then
+    if [[ -n "$candidate" && -x "$candidate" ]] && "$candidate" - <<'PY' >/dev/null 2>&1; then
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 10) else 1)
+PY
       printf '%s\n' "$candidate"
       return 0
     fi
   done
 
+  echo "No Python 3.10+ interpreter was found. Set DASHBOARD_PYTHON to a compatible runtime." >&2
   return 1
 }
 
 ensure_local_dashboard() {
-  if curl -fsS "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
+  if curl -fsS --max-time "$DASHBOARD_HEALTH_TIMEOUT" "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
     echo "Using existing local website runtime on ${DASHBOARD_URL}/"
     return 0
   fi
@@ -570,7 +577,7 @@ share_without_docker() {
   while true; do
     sleep 5
 
-    if ! curl -fsS "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
+    if ! curl -fsS --max-time "$DASHBOARD_HEALTH_TIMEOUT" "${DASHBOARD_URL}/api/healthz" >/dev/null 2>&1; then
       echo "Dashboard health check failed; attempting local runtime restart..."
       ensure_local_dashboard
     fi

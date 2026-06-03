@@ -17,8 +17,8 @@ export default defineConfig({
   },
   build: {
     outDir: process.env.VITE_OUT_DIR ?? "build",
-    emptyOutDir: false,
-    sourcemap: true,
+    emptyOutDir: true,
+    sourcemap: false,
     chunkSizeWarningLimit: 250,
     rollupOptions: {
       output: {
