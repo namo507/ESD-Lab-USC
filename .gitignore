@@ -147,6 +147,11 @@ temp/
 *.bak
 *.orig
 dashboard/data/.readings_cache.json
+dashboard/data/readings_pipeline.lock
+dashboard/data/readings_pipeline_events.jsonl
+
+# ─── Vite / Vitest stale timestamp files ────────────────────
+web/*.timestamp-*.mjs
 
 # ─── Models (large binary files; store locally or in LFS) ────
 models/

@@ -135,7 +135,7 @@ def build(
     html = _read(out_index)
     resolved_api_origin = _resolve_api_origin(api_origin, manifest_path)
 
-    stamp = stamp or dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    stamp = stamp or dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     build_sha = _fingerprint_tree(build_dir)
 
     if "</head>" not in html:
