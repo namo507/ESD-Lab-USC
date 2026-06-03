@@ -32,14 +32,18 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dashboard.pipelines import build_dashboard_data, build_readings_index
 from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
+from dashboard.k8s_pipeline import PipelineConfig
+from dashboard.k8s_pipeline import assistant_freshness_payload
+from dashboard.k8s_pipeline import cluster_topology_payload
+from dashboard.k8s_pipeline import pipeline_status_payload
+from dashboard.k8s_pipeline import readings_freshness_payload
+from dashboard.k8s_pipeline.ledger import read_json as read_optional_json
 from src.utils.logging_utils import get_pipeline_logger
-
 
 DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
@@ -59,6 +63,7 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
+
 
 # ---- Async presentation jobs ----------------------------------------------
 # Jobs are persisted in SQLite so polls can hop across workers and in-flight
@@ -160,6 +165,7 @@ def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
         / "pipelines"
         / "generate_synthetic_dashboard_data.py",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_readings_index.py",
+        PROJECT_ROOT / "scripts" / "build_lab_readings_index.py",
     ]
 
     try:
@@ -241,7 +247,9 @@ def read_json(path: Path) -> dict[str, Any]:
 
 def ensure_public_spa_build() -> None:
     """Build the React SPA used by the public Pages site for local runtime use."""
-    reuse_existing = os.getenv("DASHBOARD_REUSE_EXISTING_SPA_BUILD", "").strip().lower() in {
+    reuse_existing = os.getenv(
+        "DASHBOARD_REUSE_EXISTING_SPA_BUILD", ""
+    ).strip().lower() in {
         "1",
         "true",
         "yes",
@@ -269,7 +277,9 @@ def ensure_public_spa_build() -> None:
     if completed.returncode != 0:
         raise RuntimeError(f"web build failed with exit code {completed.returncode}")
     if not (SPA_BUILD_DIR / "index.html").exists():
-        raise RuntimeError(f"built SPA missing expected entrypoint: {SPA_BUILD_DIR / 'index.html'}")
+        raise RuntimeError(
+            f"built SPA missing expected entrypoint: {SPA_BUILD_DIR / 'index.html'}"
+        )
 
 
 def is_spa_route(request_path: str) -> bool:
@@ -392,6 +402,22 @@ class DashboardRuntime:
             )
             if readings_code != 0:
                 errors.append(f"readings build exited with code {readings_code}")
+            else:
+                lab_readings_code = self._run_pipeline_command(
+                    PROJECT_ROOT / "scripts" / "build_lab_readings_index.py",
+                    [
+                        "--input",
+                        str(DATA_DIR / "readings_data.json"),
+                        "--output",
+                        str(PROJECT_ROOT / "web" / "lab-readings.json"),
+                        "--pdf-dir",
+                        str(self.readings_dir),
+                    ],
+                )
+                if lab_readings_code != 0:
+                    errors.append(
+                        f"lab readings build exited with code {lab_readings_code}"
+                    )
         except Exception as exc:  # pragma: no cover - runtime hardening path
             logger.exception("Unexpected rebuild failure")
             errors.append(f"unexpected rebuild failure: {exc}")
@@ -400,6 +426,8 @@ class DashboardRuntime:
             errors.append("dashboard_data.json was not created")
         if not (DATA_DIR / "readings_data.json").exists():
             errors.append("readings_data.json was not created")
+        if not (PROJECT_ROOT / "web" / "lab-readings.json").exists():
+            errors.append("lab-readings.json was not created")
 
         finished_at = datetime.now().isoformat(timespec="seconds")
         with self.state_lock:
@@ -489,8 +517,7 @@ class PresentationJobStore:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS presentation_jobs (
                     job_id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -505,8 +532,7 @@ class PresentationJobStore:
                     worker_id TEXT,
                     heartbeat_at REAL
                 )
-                """
-            )
+                """)
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_status ON presentation_jobs(status)"
             )
@@ -592,7 +618,9 @@ class PresentationJobStore:
             (now,),
         )
 
-        count = int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+        count = int(
+            conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0]
+        )
         if count <= self._max:
             return
 
@@ -605,7 +633,9 @@ class PresentationJobStore:
             (overflow,),
         )
 
-        count = int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+        count = int(
+            conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0]
+        )
         if count <= self._max:
             return
 
@@ -691,7 +721,9 @@ class PresentationJobStore:
                 (progress_message, now, now, job_id, worker_id),
             )
 
-    def complete_success(self, job_id: str, worker_id: str, result: dict[str, Any]) -> None:
+    def complete_success(
+        self, job_id: str, worker_id: str, result: dict[str, Any]
+    ) -> None:
         now = time.time()
         with self._connect() as conn:
             conn.execute(
@@ -730,7 +762,9 @@ class PresentationJobStore:
             self._prune(conn)
             self._release_stale_claims(conn, job_id=job_id)
 
-    def _get(self, job_id: str, *, release_stale: bool = False) -> dict[str, Any] | None:
+    def _get(
+        self, job_id: str, *, release_stale: bool = False
+    ) -> dict[str, Any] | None:
         with self._connect() as conn:
             self._prune(conn)
             if release_stale:
@@ -744,14 +778,12 @@ class PresentationJobStore:
         with self._connect() as conn:
             self._prune(conn)
             self._release_stale_claims(conn)
-            rows = conn.execute(
-                """
+            rows = conn.execute("""
                 SELECT job_id FROM presentation_jobs
                 WHERE status IN ('queued', 'running')
                   AND worker_id IS NULL
                 ORDER BY created_ts ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [str(row["job_id"]) for row in rows]
 
     def should_recover(self, job: dict[str, Any]) -> bool:
@@ -759,7 +791,9 @@ class PresentationJobStore:
 
     def count(self) -> int:
         with self._connect() as conn:
-            return int(conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0])
+            return int(
+                conn.execute("SELECT COUNT(*) FROM presentation_jobs").fetchone()[0]
+            )
 
     def _poll_after_ms(self, job: dict[str, Any]) -> int | None:
         if job["status"] in PRESENTATION_TERMINAL_STATES:
@@ -899,6 +933,22 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         if request_path == "/api/healthz":
             payload = self.runtime.read_state()
+            k8s_config = PipelineConfig.from_env()
+            if k8s_config.k8s_mode_enabled or k8s_config.cluster_visualization_enabled:
+                pipeline = pipeline_status_payload(k8s_config)
+                payload = {
+                    **payload,
+                    "kubernetes": {
+                        "mode": k8s_config.mode_label,
+                        "namespace": k8s_config.k8s_namespace,
+                        "pipeline_state": pipeline.get("state"),
+                        "last_event_id": (
+                            pipeline.get("last_success", {}).get("event_id")
+                            if isinstance(pipeline.get("last_success"), dict)
+                            else pipeline.get("last_event_id")
+                        ),
+                    },
+                }
             status = (
                 HTTPStatus.OK
                 if is_runtime_healthy(payload)
@@ -921,8 +971,34 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self._assistant_status_payload())
             return
 
+        if request_path == "/api/assistant/freshness":
+            config = PipelineConfig.from_env()
+            self._send_json(
+                assistant_freshness_payload(
+                    config,
+                    assistant_status=self.assistant.get_status(),
+                )
+            )
+            return
+
+        if request_path == "/api/cluster/topology":
+            self._send_json(cluster_topology_payload(PipelineConfig.from_env()))
+            return
+
+        if request_path == "/api/cluster/pipeline":
+            self._send_json(pipeline_status_payload(PipelineConfig.from_env()))
+            return
+
+        if request_path == "/api/readings/freshness":
+            self._send_json(readings_freshness_payload(PipelineConfig.from_env()))
+            return
+
+        if request_path == "/api/readings/library":
+            self._send_json(self._readings_library_payload())
+            return
+
         if request_path.startswith("/api/presentation/jobs/"):
-            job_id = request_path[len("/api/presentation/jobs/"):].strip("/")
+            job_id = request_path[len("/api/presentation/jobs/") :].strip("/")
             if job_id:
                 self._handle_get_presentation_job(job_id)
                 return
@@ -982,11 +1058,15 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             return str(SPA_BUILD_DIR / "index.html")
 
         spa_candidate = (SPA_BUILD_DIR / parsed_path.lstrip("/")).resolve()
-        if spa_candidate.exists() and spa_candidate.is_relative_to(SPA_BUILD_DIR.resolve()):
+        if spa_candidate.exists() and spa_candidate.is_relative_to(
+            SPA_BUILD_DIR.resolve()
+        ):
             return str(spa_candidate)
 
         repo_candidate = (PROJECT_ROOT / parsed_path.lstrip("/")).resolve()
-        if repo_candidate.exists() and repo_candidate.is_relative_to(PROJECT_ROOT.resolve()):
+        if repo_candidate.exists() and repo_candidate.is_relative_to(
+            PROJECT_ROOT.resolve()
+        ):
             return str(repo_candidate)
 
         return str(repo_candidate)
@@ -1038,10 +1118,62 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             status = "error"
             error = payload.get("last_error") or payload.get("message")
 
-        return {
+        config = PipelineConfig.from_env()
+        status_payload = {
             "status": status,
             "error": error,
             "model": payload.get("model_id"),
+        }
+        if config.assistant_cluster_context_enabled:
+            status_payload["freshness"] = assistant_freshness_payload(
+                config,
+                assistant_status=payload,
+            )
+        return status_payload
+
+    def _readings_library_payload(self) -> dict[str, Any]:
+        config = PipelineConfig.from_env()
+        payload = read_optional_json(config.lab_readings_path)
+        if payload:
+            return {
+                "schema": "readings_library.v1",
+                "mode": config.mode_label,
+                **payload,
+            }
+
+        readings_payload = read_optional_json(config.readings_data_path)
+        readings = (
+            readings_payload.get("readings") or readings_payload.get("featured") or []
+        )
+        summary = readings_payload.get("summary") or {}
+        return {
+            "schema": "readings_library.v1",
+            "mode": config.mode_label,
+            "generated_at": readings_payload.get("meta", {}).get("generated_at", ""),
+            "summary": {
+                "count": summary.get("total_readings", len(readings)),
+                "total_pages": summary.get("total_pages", 0),
+                "total_size_mb": summary.get("total_size_mb", 0),
+            },
+            "readings": [
+                {
+                    "id": item.get("id") or item.get("title") or "reading",
+                    "title": item.get("title")
+                    or item.get("display_name")
+                    or "Untitled",
+                    "year": item.get("year"),
+                    "category": item.get("category") or "Other",
+                    "source": item.get("source") or "",
+                    "keywords": item.get("keywords") or [],
+                    "abstract": item.get("excerpt") or "",
+                    "page_count": item.get("page_count") or 0,
+                    "size_mb": item.get("size_mb") or 0,
+                    "href": item.get("relative_href") or "#",
+                    "bucket": f"{item.get('category') or 'Other'} · {item.get('year') or 'n/a'}",
+                }
+                for item in readings
+                if isinstance(item, dict)
+            ],
         }
 
     def _redirect_legacy_dashboard(self, request_path: str) -> bool:
@@ -1072,16 +1204,21 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             message = (payload.get("message") or "").strip()
             history = payload.get("history") or []
             if not message:
-                self._send_json({"error": "Please ask a question before submitting."}, status=HTTPStatus.BAD_REQUEST)
+                self._send_json(
+                    {"error": "Please ask a question before submitting."},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
                 return
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
 
         if not ASSISTANT_CHAT_LOCK.acquire(blocking=False):
-            self._send_ndjson([
-                {"error": "model busy — another request in flight"},
-            ])
+            self._send_ndjson(
+                [
+                    {"error": "model busy — another request in flight"},
+                ]
+            )
             return
 
         try:
@@ -1100,7 +1237,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self.wfile.flush()
         except Exception as exc:  # pragma: no cover - defensive API path
             logger.exception("Streaming chat request failed")
-            self.wfile.write(json.dumps({"error": f"Unexpected chat failure: {exc}"}).encode("utf-8") + b"\n")
+            self.wfile.write(
+                json.dumps({"error": f"Unexpected chat failure: {exc}"}).encode("utf-8")
+                + b"\n"
+            )
             self.wfile.flush()
         finally:
             ASSISTANT_CHAT_LOCK.release()

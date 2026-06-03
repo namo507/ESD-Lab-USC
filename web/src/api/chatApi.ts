@@ -10,6 +10,18 @@ export interface AssistantStatus {
   status: "ready" | "unloaded" | "error";
   error: string | null;
   model: string | null;
+  freshness?: {
+    readings?: {
+      last_indexed_at?: string | null;
+      total_indexed?: number | null;
+      payload_version?: string | null;
+    };
+    pipeline?: {
+      state?: string | null;
+      last_event_id?: string | null;
+      warnings?: unknown[];
+    };
+  };
 }
 
 interface AssistantStatusPayload {
@@ -21,6 +33,7 @@ interface AssistantStatusPayload {
   last_error?: unknown;
   message?: unknown;
   model_id?: unknown;
+  freshness?: unknown;
 }
 
 interface LegacyChatPayload {
@@ -49,6 +62,10 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
           : typeof payload.model_id === "string"
             ? payload.model_id
             : null,
+      freshness:
+        payload.freshness && typeof payload.freshness === "object"
+          ? (payload.freshness as AssistantStatus["freshness"])
+          : undefined,
     };
   }
 
@@ -79,6 +96,10 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
         : typeof payload.model_id === "string"
           ? payload.model_id
           : null,
+    freshness:
+      payload.freshness && typeof payload.freshness === "object"
+        ? (payload.freshness as AssistantStatus["freshness"])
+        : undefined,
   };
 }
 

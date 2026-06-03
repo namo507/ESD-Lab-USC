@@ -1,0 +1,30 @@
+{{- define "esd-lab-dashboard.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.fullname" -}}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- include "esd-lab-dashboard.name" . -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{- default (include "esd-lab-dashboard.fullname" .) .Values.serviceAccount.name -}}
+{{- else -}}
+{{- default "default" .Values.serviceAccount.name -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.labels" -}}
+app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.image" -}}
+{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end -}}

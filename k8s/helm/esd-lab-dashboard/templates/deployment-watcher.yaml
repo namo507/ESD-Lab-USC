@@ -1,0 +1,57 @@
+{{- if .Values.watcher.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-watcher
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: readings-watcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: readings-watcher
+  template:
+    metadata:
+      labels:
+        {{- include "esd-lab-dashboard.labels" . | nindent 8 }}
+        app.kubernetes.io/component: readings-watcher
+    spec:
+      serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: watcher
+          image: {{ include "esd-lab-dashboard.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - python
+            - -m
+            - dashboard.k8s_pipeline.watcher
+          envFrom:
+            - configMapRef:
+                name: {{ include "esd-lab-dashboard.fullname" . }}-config
+          env:
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            {{- toYaml .Values.watcher.resources | nindent 12 }}
+          volumeMounts:
+            - name: readings
+              mountPath: "/app/ESD Lab readings"
+            - name: dashboard-data
+              mountPath: "/app/dashboard/data"
+      volumes:
+        - name: readings
+          persistentVolumeClaim:
+            claimName: {{ .Values.existingClaims.readings | default "REQUIRED_READINGS_PVC" | quote }}
+        - name: dashboard-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.existingClaims.data | default "REQUIRED_DATA_PVC" | quote }}
+{{- end }}

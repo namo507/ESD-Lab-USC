@@ -132,7 +132,7 @@ export interface ReadingsGeoData {
   activeCountries: ReadingGeoCountry[];
 }
 
-interface RawReadingsPayload {
+export interface RawReadingsPayload {
   readings?: Array<{
     id?: string;
     title?: string;
@@ -142,6 +142,7 @@ interface RawReadingsPayload {
     keywords?: string[];
     abstract?: string;
     page_count?: number;
+    pageCount?: number;
     href?: string;
   }>;
 }
@@ -193,17 +194,21 @@ const COUNTRY_PATTERNS = new Map<CountryCode, RegExp>(
 
 const rawPayload = rawReadings as RawReadingsPayload;
 
-export const READING_LIBRARY: ReadingGeoSource[] = (rawPayload.readings ?? []).map((reading) => ({
-  id: reading.id ?? "untitled-reading",
-  title: reading.title ?? "Untitled reading",
-  year: typeof reading.year === "number" ? reading.year : null,
-  category: reading.category ?? "Other",
-  source: reading.source ?? "Unknown source",
-  keywords: Array.isArray(reading.keywords) ? reading.keywords.filter(Boolean) : [],
-  abstract: reading.abstract ?? "",
-  pageCount: reading.page_count ?? 0,
-  href: reading.href ?? "#",
-}));
+export function normalizeReadingLibrary(payload: RawReadingsPayload | undefined): ReadingGeoSource[] {
+  return (payload?.readings ?? []).map((reading) => ({
+    id: reading.id ?? "untitled-reading",
+    title: reading.title ?? "Untitled reading",
+    year: typeof reading.year === "number" ? reading.year : null,
+    category: reading.category ?? "Other",
+    source: reading.source ?? "Unknown source",
+    keywords: Array.isArray(reading.keywords) ? reading.keywords.filter(Boolean) : [],
+    abstract: reading.abstract ?? "",
+    pageCount: reading.page_count ?? reading.pageCount ?? 0,
+    href: reading.href ?? "#",
+  }));
+}
+
+export const READING_LIBRARY: ReadingGeoSource[] = normalizeReadingLibrary(rawPayload);
 
 function compareReadings(left: ReadingGeoSummary, right: ReadingGeoSummary): number {
   const yearDelta = (right.year ?? 0) - (left.year ?? 0);

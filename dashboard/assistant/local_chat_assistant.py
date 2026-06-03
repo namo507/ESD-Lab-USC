@@ -16,12 +16,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
 DEFAULT_MODEL_ID = "bartowski/Qwen2.5-1.5B-Instruct-GGUF"
-DEFAULT_MODEL_DIR = PROJECT_ROOT / "models" / "local_llms" / "Qwen2.5-1.5B-Instruct-GGUF"
+DEFAULT_MODEL_DIR = (
+    PROJECT_ROOT / "models" / "local_llms" / "Qwen2.5-1.5B-Instruct-GGUF"
+)
 DEFAULT_MODEL_FILE = "Qwen2.5-1.5B-Instruct-Q3_K_S.gguf"
 DEFAULT_CONTEXT_WINDOW = 1536
 DEFAULT_BATCH_SIZE = 128
@@ -138,6 +139,21 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "mission",
         "team",
         "public",
+    },
+    "cluster": {
+        "cluster",
+        "kubernetes",
+        "k8s",
+        "pipeline",
+        "watcher",
+        "worker",
+        "job",
+        "jobs",
+        "cronjob",
+        "freshness",
+        "indexed",
+        "healthy",
+        "health",
     },
 }
 READING_SUMMARY_REQUEST_TOKENS = {
@@ -291,8 +307,7 @@ class AssistantConfig:
                 default=DEFAULT_BATCH_SIZE,
             ),
             thread_count=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_THREADS")
-                or os.getenv("LLM_N_THREADS"),
+                os.getenv("DASHBOARD_ASSISTANT_THREADS") or os.getenv("LLM_N_THREADS"),
                 default=DEFAULT_THREAD_COUNT,
             ),
             presentation_max_new_tokens=_parse_int(
@@ -350,7 +365,10 @@ class DashboardChatAssistant:
                 "requirements on the target machine before enabling chat."
             )
             can_chat = False
-        elif available_memory_gib and available_memory_gib < self.config.min_available_memory_gib:
+        elif (
+            available_memory_gib
+            and available_memory_gib < self.config.min_available_memory_gib
+        ):
             state = "memory-insufficient"
             message = (
                 "The current machine does not have enough free memory for the "
@@ -387,6 +405,7 @@ class DashboardChatAssistant:
             "recommended_memory_gib": self.config.min_available_memory_gib,
             "generator_loaded": self._generator is not None,
             "last_error": self._last_error,
+            "freshness": self._assistant_freshness_status(),
         }
 
     def _prepare_request(
@@ -414,7 +433,9 @@ class DashboardChatAssistant:
         )
         return context, messages
 
-    def answer(self, message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    def answer(
+        self, message: str, history: list[dict[str, str]] | None = None
+    ) -> dict[str, Any]:
         context, messages = self._prepare_request(message, history)
         quick_reply = self._maybe_short_circuit_response(message, context)
         if quick_reply is not None:
@@ -435,7 +456,9 @@ class DashboardChatAssistant:
             )
         except Exception as exc:  # pragma: no cover - depends on runtime model stack
             self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+            raise AssistantUnavailable(
+                self._last_error, self.get_status(), http_status=503
+            ) from exc
 
         reply = ""
         choices = (output or {}).get("choices") or []
@@ -482,7 +505,9 @@ class DashboardChatAssistant:
                     yield str(content)
         except Exception as exc:  # pragma: no cover - depends on runtime model stack
             self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+            raise AssistantUnavailable(
+                self._last_error, self.get_status(), http_status=503
+            ) from exc
 
     def plan_presentation(
         self,
@@ -526,7 +551,9 @@ class DashboardChatAssistant:
 
         generator = self._ensure_generator()
         messages = build_presentation_messages(topic, opts, context_block, grounding)
-        raw_text = self._complete_text(generator, messages, max_tokens=max_tokens, json_mode=True)
+        raw_text = self._complete_text(
+            generator, messages, max_tokens=max_tokens, json_mode=True
+        )
         raw_plan = extract_json_object(raw_text)
 
         if raw_plan is None:
@@ -596,10 +623,14 @@ class DashboardChatAssistant:
                 output = generator.create_chat_completion(**kwargs)
             except Exception as exc:  # pragma: no cover - runtime model stack
                 self._last_error = f"Assistant generation failed: {exc}"
-                raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+                raise AssistantUnavailable(
+                    self._last_error, self.get_status(), http_status=503
+                ) from exc
         except Exception as exc:  # pragma: no cover - depends on runtime model stack
             self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+            raise AssistantUnavailable(
+                self._last_error, self.get_status(), http_status=503
+            ) from exc
 
         choices = (output or {}).get("choices") or []
         if not choices:
@@ -614,29 +645,46 @@ class DashboardChatAssistant:
         focus_sections = _detect_focus_sections(question_tokens)
         summary_fragments = self._build_summary_fragments(payload, readings)
         summary_paths = {path for path, _ in summary_fragments}
-        reading_fragments, reading_fragment_index = _build_reading_catalog_fragments(readings)
+        reading_fragments, reading_fragment_index = _build_reading_catalog_fragments(
+            readings
+        )
 
         if focus_sections == {"readings"}:
             reading_ranked = sorted(
                 reading_fragments,
-                key=lambda item: _score_reading_match(question_tokens, reading_fragment_index.get(item[0], {})),
+                key=lambda item: _score_reading_match(
+                    question_tokens, reading_fragment_index.get(item[0], {})
+                ),
                 reverse=True,
             )
             reading_matches = [
                 reading_fragment_index[path]
                 for path, _ in reading_ranked
-                if _score_reading_match(question_tokens, reading_fragment_index.get(path, {})) > 0
+                if _score_reading_match(
+                    question_tokens, reading_fragment_index.get(path, {})
+                )
+                > 0
             ][:3]
 
             context_parts = [
                 f"- {text}"
                 for path, text in summary_fragments
-                if path in {"meta.study.name", "meta.data_source", "readings.summary.total_readings"}
+                if path
+                in {
+                    "meta.study.name",
+                    "meta.data_source",
+                    "readings.summary.total_readings",
+                }
             ]
             citations = [
                 path
                 for path, _ in summary_fragments
-                if path in {"meta.study.name", "meta.data_source", "readings.summary.total_readings"}
+                if path
+                in {
+                    "meta.study.name",
+                    "meta.data_source",
+                    "readings.summary.total_readings",
+                }
             ]
             for item in reading_matches:
                 context_parts.append(f"- {_reading_match_context_text(item)}")
@@ -644,7 +692,10 @@ class DashboardChatAssistant:
 
             top_score = 0.0
             if reading_ranked:
-                top_score = _score_reading_match(question_tokens, reading_fragment_index.get(reading_ranked[0][0], {}))
+                top_score = _score_reading_match(
+                    question_tokens,
+                    reading_fragment_index.get(reading_ranked[0][0], {}),
+                )
 
             return {
                 "context": "\n".join(part for part in context_parts if part),
@@ -666,7 +717,9 @@ class DashboardChatAssistant:
                 fragments.extend(_flatten_context(value, prefix=key))
 
         if readings:
-            fragments.extend(_flatten_context(readings.get("summary", {}), prefix="readings.summary"))
+            fragments.extend(
+                _flatten_context(readings.get("summary", {}), prefix="readings.summary")
+            )
             fragments.extend(reading_fragments)
 
         ranked = sorted(
@@ -675,13 +728,17 @@ class DashboardChatAssistant:
                 for item in fragments
                 if _should_include_fragment(item[0], focus_sections)
             ),
-            key=lambda item: _score_fragment(question_tokens, item[0], item[1], focus_sections),
+            key=lambda item: _score_fragment(
+                question_tokens, item[0], item[1], focus_sections
+            ),
             reverse=True,
         )
 
         top_score = 0.0
         if ranked:
-            top_score = _score_fragment(question_tokens, ranked[0][0], ranked[0][1], focus_sections)
+            top_score = _score_fragment(
+                question_tokens, ranked[0][0], ranked[0][1], focus_sections
+            )
 
         core_summary_paths = {"meta.study.name", "meta.data_source"}
         context_parts: list[str] = []
@@ -691,7 +748,9 @@ class DashboardChatAssistant:
 
         ranked_summary = sorted(
             summary_fragments,
-            key=lambda item: _score_fragment(question_tokens, item[0], item[1], focus_sections),
+            key=lambda item: _score_fragment(
+                question_tokens, item[0], item[1], focus_sections
+            ),
             reverse=True,
         )
         summary_limit = len(core_summary_paths) + (2 if focus_sections else 3)
@@ -717,7 +776,9 @@ class DashboardChatAssistant:
             if len(context_parts) >= summary_limit:
                 break
 
-        remaining = max(self._effective_context_char_budget() - len("\n".join(context_parts)), 0)
+        remaining = max(
+            self._effective_context_char_budget() - len("\n".join(context_parts)), 0
+        )
         reading_matches: list[dict[str, Any]] = []
 
         for path, text in ranked:
@@ -736,7 +797,11 @@ class DashboardChatAssistant:
             if len(citations) >= 8:
                 break
 
-        grounded_threshold = FOCUSED_CONFIDENCE_SCORE_THRESHOLD if focus_sections else LOW_CONFIDENCE_SCORE_THRESHOLD
+        grounded_threshold = (
+            FOCUSED_CONFIDENCE_SCORE_THRESHOLD
+            if focus_sections
+            else LOW_CONFIDENCE_SCORE_THRESHOLD
+        )
         grounded = bool(ranked) and top_score >= grounded_threshold
         if reading_matches and focus_sections == {"readings"}:
             grounded = True
@@ -747,7 +812,8 @@ class DashboardChatAssistant:
             "grounded": grounded,
             "focus_sections": sorted(focus_sections),
             "reading_matches": reading_matches,
-            "reading_metadata_only": bool(reading_matches) and focus_sections == {"readings"},
+            "reading_metadata_only": bool(reading_matches)
+            and focus_sections == {"readings"},
             "top_score": top_score,
             "facts": self._build_fact_map(payload, readings),
         }
@@ -767,26 +833,38 @@ class DashboardChatAssistant:
             try:
                 from llama_cpp import Llama
             except Exception as exc:  # pragma: no cover - optional runtime path
-                self._last_error = f"Assistant dependencies could not be imported: {exc}"
-                raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+                self._last_error = (
+                    f"Assistant dependencies could not be imported: {exc}"
+                )
+                raise AssistantUnavailable(
+                    self._last_error, self.get_status(), http_status=503
+                ) from exc
 
             model_path = self._resolve_model_path()
             if model_path is None:
                 self._last_error = "Assistant model file is missing. Download the configured GGUF asset first."
-                raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503)
+                raise AssistantUnavailable(
+                    self._last_error, self.get_status(), http_status=503
+                )
 
             try:
                 self._generator = Llama(
                     model_path=str(model_path),
                     n_ctx=max(512, self.config.context_window),
-                    n_batch=max(32, min(self.config.batch_size, self.config.context_window)),
-                    n_threads=max(1, min(self.config.thread_count, os.cpu_count() or 1)),
+                    n_batch=max(
+                        32, min(self.config.batch_size, self.config.context_window)
+                    ),
+                    n_threads=max(
+                        1, min(self.config.thread_count, os.cpu_count() or 1)
+                    ),
                     verbose=False,
                 )
                 self._last_error = None
             except Exception as exc:  # pragma: no cover - depends on local GGUF stack
                 self._last_error = f"Assistant model failed to initialize: {exc}"
-                raise AssistantUnavailable(self._last_error, self.get_status(), http_status=503) from exc
+                raise AssistantUnavailable(
+                    self._last_error, self.get_status(), http_status=503
+                ) from exc
 
         return self._generator
 
@@ -865,7 +943,9 @@ class DashboardChatAssistant:
         payload: dict[str, Any],
         readings: dict[str, Any],
     ) -> str:
-        return "\n".join(f"- {text}" for _, text in self._build_summary_fragments(payload, readings))
+        return "\n".join(
+            f"- {text}" for _, text in self._build_summary_fragments(payload, readings)
+        )
 
     def _build_summary_fragments(
         self,
@@ -882,8 +962,12 @@ class DashboardChatAssistant:
         readings_summary = readings.get("summary", {})
         fragments: list[tuple[str, str]] = []
 
-        fragments.append(("meta.study.name", f"Study: {study.get('name', 'NANO Study')}"))
-        fragments.append(("meta.data_source", f"Data source: {meta.get('data_source', 'unknown')}"))
+        fragments.append(
+            ("meta.study.name", f"Study: {study.get('name', 'NANO Study')}")
+        )
+        fragments.append(
+            ("meta.data_source", f"Data source: {meta.get('data_source', 'unknown')}")
+        )
 
         enrollment_current = overall.get("current")
         enrollment_target = overall.get("target") or study.get("n_target")
@@ -915,7 +999,12 @@ class DashboardChatAssistant:
         if open_queries is None:
             open_queries = redcap_audit_summary.get("open_queries")
             open_query_path = "redcap_audit.summary.open_queries"
-        fragments.append((open_query_path, f"Open REDCap queries: {open_queries if open_queries is not None else 'unknown'}"))
+        fragments.append(
+            (
+                open_query_path,
+                f"Open REDCap queries: {open_queries if open_queries is not None else 'unknown'}",
+            )
+        )
 
         fragments.append(
             (
@@ -923,53 +1012,154 @@ class DashboardChatAssistant:
                 f"Indexed readings: {readings_summary.get('total_readings', 0)}",
             )
         )
+        freshness = self._readings_freshness_status()
+        if freshness:
+            fragments.append(
+                (
+                    "readings.freshness.last_indexed_at",
+                    "Readings last indexed: "
+                    f"{freshness.get('last_indexed_at') or 'unknown'}; "
+                    f"total indexed: {freshness.get('total_indexed', 0)}",
+                )
+            )
+            warnings = freshness.get("warnings") or []
+            if warnings:
+                fragments.append(
+                    (
+                        "readings.freshness.warnings",
+                        f"Readings ingest warnings: {len(warnings)} pending failed or poisoned events",
+                    )
+                )
+
+        pipeline = self._cluster_pipeline_status()
+        if pipeline:
+            state = pipeline.get("state", "unknown")
+            last_success = pipeline.get("last_success") or {}
+            fragments.append(
+                (
+                    "cluster.pipeline.health",
+                    "Cluster readings pipeline: "
+                    f"{state}; last successful event: "
+                    f"{last_success.get('event_id') or 'none'}; "
+                    f"last trigger: {pipeline.get('last_trigger') or 'unknown'}",
+                )
+            )
 
         if by_group:
             group_summary = ", ".join(
                 f"{group}: {stats.get('current', 'unknown')}/{stats.get('target', 'unknown')}"
                 for group, stats in by_group.items()
             )
-            fragments.append(("enrollment.by_group", f"Enrollment by group: {group_summary}"))
+            fragments.append(
+                ("enrollment.by_group", f"Enrollment by group: {group_summary}")
+            )
 
-        best_index, best = _find_best_model_card(payload.get("ml_performance", {}).get("models") or [])
+        best_index, best = _find_best_model_card(
+            payload.get("ml_performance", {}).get("models") or []
+        )
         if best is not None:
             best_name = best.get("model_name") or best.get("name") or "best model"
             best_auc = best.get("auroc") or best.get("roc_auc")
-            fragments.append((f"ml_performance.models[{best_index}]", f"Best model: {best_name} ({best_auc})"))
+            fragments.append(
+                (
+                    f"ml_performance.models[{best_index}]",
+                    f"Best model: {best_name} ({best_auc})",
+                )
+            )
 
         return fragments
 
-    def _build_fact_map(self, payload: dict[str, Any], readings: dict[str, Any]) -> dict[str, Any]:
+    def _build_fact_map(
+        self, payload: dict[str, Any], readings: dict[str, Any]
+    ) -> dict[str, Any]:
         enrollment = payload.get("enrollment", {})
         overall = enrollment.get("overall", {})
         by_group = enrollment.get("by_group", {})
         readings_summary = readings.get("summary", {})
-        best_index, best_model = _find_best_model_card(payload.get("ml_performance", {}).get("models") or [])
+        best_index, best_model = _find_best_model_card(
+            payload.get("ml_performance", {}).get("models") or []
+        )
 
         enrollment_total_current = overall.get("current")
-        enrollment_total_target = overall.get("target") or payload.get("meta", {}).get("study", {}).get("n_target")
+        enrollment_total_target = overall.get("target") or payload.get("meta", {}).get(
+            "study", {}
+        ).get("n_target")
 
         if enrollment_total_current is None and by_group:
-            current_values = [stats.get("current") for stats in by_group.values() if isinstance(stats, dict)]
-            if current_values and all(isinstance(value, (int, float)) for value in current_values):
+            current_values = [
+                stats.get("current")
+                for stats in by_group.values()
+                if isinstance(stats, dict)
+            ]
+            if current_values and all(
+                isinstance(value, (int, float)) for value in current_values
+            ):
                 enrollment_total_current = int(sum(current_values))
 
         if enrollment_total_target is None and by_group:
-            target_values = [stats.get("target") for stats in by_group.values() if isinstance(stats, dict)]
-            if target_values and all(isinstance(value, (int, float)) for value in target_values):
+            target_values = [
+                stats.get("target")
+                for stats in by_group.values()
+                if isinstance(stats, dict)
+            ]
+            if target_values and all(
+                isinstance(value, (int, float)) for value in target_values
+            ):
                 enrollment_total_target = int(sum(target_values))
 
         return {
             "indexed_readings": readings_summary.get("total_readings"),
+            "readings_freshness": self._readings_freshness_status(),
+            "cluster_pipeline": self._cluster_pipeline_status(),
             "enrollment_total_current": enrollment_total_current,
             "enrollment_total_target": enrollment_total_target,
             "enrollment_by_group": by_group,
-            "best_model": {
-                "index": best_index,
-                "name": (best_model or {}).get("model_name") or (best_model or {}).get("name"),
-                "auroc": (best_model or {}).get("auroc") or (best_model or {}).get("roc_auc"),
-            } if best_model else None,
+            "best_model": (
+                {
+                    "index": best_index,
+                    "name": (best_model or {}).get("model_name")
+                    or (best_model or {}).get("name"),
+                    "auroc": (best_model or {}).get("auroc")
+                    or (best_model or {}).get("roc_auc"),
+                }
+                if best_model
+                else None
+            ),
         }
+
+    def _readings_freshness_status(self) -> dict[str, Any]:
+        try:
+            from dashboard.k8s_pipeline import PipelineConfig
+            from dashboard.k8s_pipeline import readings_freshness_payload
+
+            config = PipelineConfig.from_env()
+            return readings_freshness_payload(config)
+        except Exception:
+            return {}
+
+    def _cluster_pipeline_status(self) -> dict[str, Any]:
+        try:
+            from dashboard.k8s_pipeline import PipelineConfig
+            from dashboard.k8s_pipeline import pipeline_status_payload
+
+            config = PipelineConfig.from_env()
+            if not config.assistant_cluster_context_enabled:
+                return {}
+            return pipeline_status_payload(config)
+        except Exception:
+            return {}
+
+    def _assistant_freshness_status(self) -> dict[str, Any]:
+        try:
+            from dashboard.k8s_pipeline import PipelineConfig
+            from dashboard.k8s_pipeline import assistant_freshness_payload
+
+            config = PipelineConfig.from_env()
+            if not config.assistant_cluster_context_enabled:
+                return {}
+            return assistant_freshness_payload(config, assistant_status={})
+        except Exception:
+            return {}
 
     def _probe_dependencies(self) -> dict[str, Any]:
         missing: list[str] = []
@@ -992,7 +1182,9 @@ class DashboardChatAssistant:
 
     def _effective_context_char_budget(self) -> int:
         available_prompt_tokens = max(
-            self.config.context_window - self.config.max_new_tokens - CONTEXT_WINDOW_TOKEN_RESERVE,
+            self.config.context_window
+            - self.config.max_new_tokens
+            - CONTEXT_WINDOW_TOKEN_RESERVE,
             256,
         )
         derived_budget = available_prompt_tokens * APPROX_CONTEXT_CHARS_PER_TOKEN
@@ -1001,31 +1193,108 @@ class DashboardChatAssistant:
     def _response_token_limit(self, question: str) -> int:
         question_tokens = set(_tokenize(question))
         if question_tokens & DETAIL_REQUEST_TOKENS:
-            return max(64, min(self.config.max_new_tokens, DETAILED_RESPONSE_TOKEN_LIMIT))
+            return max(
+                64, min(self.config.max_new_tokens, DETAILED_RESPONSE_TOKEN_LIMIT)
+            )
         return max(48, min(self.config.max_new_tokens, CONCISE_RESPONSE_TOKEN_LIMIT))
 
-    def _maybe_short_circuit_response(self, question: str, context: dict[str, Any]) -> str | None:
+    def _maybe_short_circuit_response(
+        self, question: str, context: dict[str, Any]
+    ) -> str | None:
         question_tokens = set(_tokenize(question))
         reading_matches = context.get("reading_matches") or []
         facts = context.get("facts") or {}
 
-        if question_tokens & {"reading", "readings"} and question_tokens & {"count", "how", "many", "number", "indexed"}:
+        if question_tokens & {"reading", "readings"} and question_tokens & {
+            "count",
+            "how",
+            "many",
+            "number",
+            "indexed",
+        }:
             indexed_readings = facts.get("indexed_readings")
             if isinstance(indexed_readings, (int, float)):
                 return f"There are {int(indexed_readings)} indexed readings in the dashboard library."
 
-        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {"group", "groups", "cohort", "cohorts"}:
-            shortcut = self._format_enrollment_by_group_response(facts.get("enrollment_by_group") or {})
+        if question_tokens & {
+            "reading",
+            "readings",
+            "indexed",
+            "freshness",
+            "latest",
+            "new",
+            "updated",
+        }:
+            if question_tokens & {"freshness", "latest", "new", "updated", "indexed"}:
+                freshness = facts.get("readings_freshness") or {}
+                total = freshness.get("total_indexed") or facts.get("indexed_readings")
+                indexed_at = freshness.get("last_indexed_at") or "unknown"
+                warnings = freshness.get("warnings") or []
+                if total is not None:
+                    warning_text = (
+                        f" There are {len(warnings)} pending ingest warnings."
+                        if warnings
+                        else " There are no pending ingest warnings in the current status."
+                    )
+                    return (
+                        f"The readings library last indexed at {indexed_at} "
+                        f"and currently has {int(total)} indexed readings."
+                        f"{warning_text}"
+                    )
+
+        if question_tokens & {
+            "cluster",
+            "kubernetes",
+            "k8s",
+            "pipeline",
+            "watcher",
+            "worker",
+        }:
+            if question_tokens & {"healthy", "health", "status", "pipeline"}:
+                pipeline = facts.get("cluster_pipeline") or {}
+                state = pipeline.get("state") or "unknown"
+                last_success = pipeline.get("last_success") or {}
+                last_failure = pipeline.get("last_failure") or {}
+                if last_failure:
+                    return (
+                        "The cluster readings pipeline is degraded: "
+                        f"state is {state}, and the last failure was "
+                        f"{last_failure.get('error') or 'not detailed'}."
+                    )
+                return (
+                    "The cluster readings pipeline status is "
+                    f"{state}. Last successful event: "
+                    f"{last_success.get('event_id') or 'none recorded yet'}."
+                )
+
+        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {
+            "group",
+            "groups",
+            "cohort",
+            "cohorts",
+        }:
+            shortcut = self._format_enrollment_by_group_response(
+                facts.get("enrollment_by_group") or {}
+            )
             if shortcut is not None:
                 return shortcut
 
-        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {"current", "participants", "participant", "total", "overall"}:
+        if question_tokens & {"enrollment", "enrolled"} and question_tokens & {
+            "current",
+            "participants",
+            "participant",
+            "total",
+            "overall",
+        }:
             current = facts.get("enrollment_total_current")
             target = facts.get("enrollment_total_target")
             if isinstance(current, (int, float)) and isinstance(target, (int, float)):
                 return f"Current enrollment is {int(current)} of {int(target)} participants."
 
-        if context.get("reading_metadata_only") and question_tokens & READING_SUMMARY_REQUEST_TOKENS:
+        if (
+            context.get("reading_metadata_only")
+            and question_tokens & READING_SUMMARY_REQUEST_TOKENS
+        ):
             return self._format_reading_metadata_response(reading_matches)
 
         if not context.get("grounded"):
@@ -1048,7 +1317,11 @@ class DashboardChatAssistant:
         items: list[str] = []
         for item in matches[:3]:
             title = item.get("title") or item.get("display_name") or "Untitled reading"
-            display_name = item.get("display_name") or item.get("relative_path") or "file unavailable"
+            display_name = (
+                item.get("display_name")
+                or item.get("relative_path")
+                or "file unavailable"
+            )
             source = item.get("source") or "unknown source"
             page_count = item.get("page_count")
             authors = item.get("authors_display")
@@ -1069,7 +1342,9 @@ class DashboardChatAssistant:
             f"Best matches: {'; '.join(items)}. Open the matching PDF if you need the exact longitudinal design, measures, or analytic plan."
         )
 
-    def _format_enrollment_by_group_response(self, by_group: dict[str, Any]) -> str | None:
+    def _format_enrollment_by_group_response(
+        self, by_group: dict[str, Any]
+    ) -> str | None:
         if not by_group:
             return None
 
@@ -1160,10 +1435,23 @@ def _score_fragment(
     else:
         if top_section == "organization_site":
             section_bonus = -4.0
-        elif top_section in {"enrollment", "ml_performance", "redcap_audit", "data_quality", "visit_completion", "readings"}:
+        elif top_section in {
+            "enrollment",
+            "ml_performance",
+            "redcap_audit",
+            "data_quality",
+            "visit_completion",
+            "readings",
+        }:
             section_bonus = 2.0
 
-    return section_bonus + (path_overlap * 4.0) + (overlap * 2.0) - (len(path) / 200.0) - (min(len(text), 240) / 500.0)
+    return (
+        section_bonus
+        + (path_overlap * 4.0)
+        + (overlap * 2.0)
+        - (len(path) / 200.0)
+        - (min(len(text), 240) / 500.0)
+    )
 
 
 def _detect_focus_sections(question_tokens: set[str]) -> set[str]:
@@ -1190,7 +1478,9 @@ def _top_section(path: str) -> str:
     return path.split(".", 1)[0].split("[", 1)[0]
 
 
-def _find_best_model_card(model_cards: list[dict[str, Any]]) -> tuple[int, dict[str, Any] | None]:
+def _find_best_model_card(
+    model_cards: list[dict[str, Any]],
+) -> tuple[int, dict[str, Any] | None]:
     best_index = -1
     best_score = float("-inf")
     best_card: dict[str, Any] | None = None
@@ -1216,13 +1506,22 @@ def _build_reading_catalog_fragments(
         for item in readings.get(bucket, []) or []:
             if not isinstance(item, dict):
                 continue
-            reading_id = str(item.get("id") or item.get("display_name") or item.get("title") or "reading")
+            reading_id = str(
+                item.get("id")
+                or item.get("display_name")
+                or item.get("title")
+                or "reading"
+            )
             if reading_id in seen_ids:
                 continue
             seen_ids.add(reading_id)
 
-            title = (item.get("title") or item.get("display_name") or reading_id).strip()
-            display_name = item.get("display_name") or item.get("relative_path") or reading_id
+            title = (
+                item.get("title") or item.get("display_name") or reading_id
+            ).strip()
+            display_name = (
+                item.get("display_name") or item.get("relative_path") or reading_id
+            )
             source = item.get("source") or "unknown source"
             category = item.get("category") or "unknown category"
             authors_display = item.get("authors_display") or "Unknown authors"
@@ -1299,7 +1598,16 @@ def _score_reading_match(question_tokens: set[str], item: dict[str, Any]) -> flo
         score += 2.0
     if "researchstrategy" in str(item.get("display_name") or "").lower():
         score += 3.0
-    if question_tokens & {"research", "strategy", "grant", "analytic", "analysis", "design", "measure", "measures"}:
+    if question_tokens & {
+        "research",
+        "strategy",
+        "grant",
+        "analytic",
+        "analysis",
+        "design",
+        "measure",
+        "measures",
+    }:
         if item.get("category") == "Grant Materials":
             score += 6.0
 
@@ -1347,10 +1655,27 @@ def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:
             return fragments
         if prefix.endswith(".months"):
             return fragments
-        if all(isinstance(item, (str, int, float, bool)) or item is None for item in value[:8]):
-            if all(isinstance(item, (int, float)) or item is None for item in value[:8]) and len(value) > 4:
+        if all(
+            isinstance(item, (str, int, float, bool)) or item is None
+            for item in value[:8]
+        ):
+            if (
+                all(
+                    isinstance(item, (int, float)) or item is None for item in value[:8]
+                )
+                and len(value) > 4
+            ):
                 return fragments
-            fragments.append((prefix, ", ".join(_format_scalar_value(item) for item in value[:8] if item is not None)))
+            fragments.append(
+                (
+                    prefix,
+                    ", ".join(
+                        _format_scalar_value(item)
+                        for item in value[:8]
+                        if item is not None
+                    ),
+                )
+            )
             return fragments
         for index, item in enumerate(value[:6]):
             fragments.extend(_flatten_context(item, prefix=f"{prefix}[{index}]"))
@@ -1467,7 +1792,9 @@ def _normalize_raw_slide(raw: Any) -> dict[str, Any] | None:
     slide_type = _normalize_slide_type(
         raw.get("type") or raw.get("slide_type") or raw.get("kind")
     )
-    title = _clean_text(raw.get("title") or raw.get("heading") or raw.get("name"), max_len=120)
+    title = _clean_text(
+        raw.get("title") or raw.get("heading") or raw.get("name"), max_len=120
+    )
     bullets = _coerce_bullets(
         raw.get("bullets") or raw.get("points") or raw.get("content") or raw.get("body")
     )
@@ -1477,19 +1804,27 @@ def _normalize_raw_slide(raw: Any) -> dict[str, Any] | None:
     return {
         "type": slide_type,
         "title": title or "Untitled slide",
-        "subtitle": _clean_text(raw.get("subtitle") or raw.get("subhead"), max_len=160) or None,
+        "subtitle": _clean_text(raw.get("subtitle") or raw.get("subhead"), max_len=160)
+        or None,
         "bullets": bullets,
-        "example": _clean_text(raw.get("example") or raw.get("worked_example"), max_len=300) or None,
-        "analogy": _clean_text(raw.get("analogy") or raw.get("metaphor"), max_len=300) or None,
+        "example": _clean_text(
+            raw.get("example") or raw.get("worked_example"), max_len=300
+        )
+        or None,
+        "analogy": _clean_text(raw.get("analogy") or raw.get("metaphor"), max_len=300)
+        or None,
         "note": _clean_text(
             raw.get("note") or raw.get("speaker_note") or raw.get("notes"), max_len=300
-        ) or None,
+        )
+        or None,
         "citations": _coerce_citations(
             raw.get("citations") or raw.get("references") or raw.get("grounding")
         ),
         "visual": _clean_text(
-            raw.get("visual") or raw.get("visual_direction") or raw.get("visual_cue"), max_len=160
-        ) or None,
+            raw.get("visual") or raw.get("visual_direction") or raw.get("visual_cue"),
+            max_len=160,
+        )
+        or None,
     }
 
 
@@ -1516,10 +1851,16 @@ def normalize_presentation_options(raw: dict[str, Any] | None) -> dict[str, Any]
         audience = "beginner"
 
     try:
-        slide_count = int(raw.get("slide_count") or raw.get("slides") or PRESENTATION_DEFAULT_SLIDE_COUNT)
+        slide_count = int(
+            raw.get("slide_count")
+            or raw.get("slides")
+            or PRESENTATION_DEFAULT_SLIDE_COUNT
+        )
     except (TypeError, ValueError):
         slide_count = PRESENTATION_DEFAULT_SLIDE_COUNT
-    slide_count = max(PRESENTATION_MIN_SLIDES, min(PRESENTATION_MAX_SLIDES, slide_count))
+    slide_count = max(
+        PRESENTATION_MIN_SLIDES, min(PRESENTATION_MAX_SLIDES, slide_count)
+    )
 
     tone = _clean_text(raw.get("tone"), max_len=80) or PRESENTATION_DEFAULT_TONE
 
@@ -1530,7 +1871,9 @@ def normalize_presentation_options(raw: dict[str, Any] | None) -> dict[str, Any]
             raw.get("include_analogy", raw.get("analogy")), default=True
         ),
         "include_worked_example": _as_bool(
-            raw.get("include_worked_example", raw.get("worked_example", raw.get("example"))),
+            raw.get(
+                "include_worked_example", raw.get("worked_example", raw.get("example"))
+            ),
             default=True,
         ),
         "tone": tone,
@@ -1556,22 +1899,22 @@ def build_presentation_messages(
     grounding_rule = (
         "The concept overlaps indexed NANO/ESD Lab study context provided below. "
         "Where a slide uses that context, add the matching reference string to that "
-        "slide's \"citations\" array." + citation_hint
+        'slide\'s "citations" array.' + citation_hint
         if grounded
         else "The concept is general and is NOT grounded in local study data. Do not invent "
-        "lab citations, study numbers, or NANO-specific facts. Leave \"citations\" arrays empty "
-        "and set \"disclaimer\" to a short note that this is a general explanation."
+        'lab citations, study numbers, or NANO-specific facts. Leave "citations" arrays empty '
+        'and set "disclaimer" to a short note that this is a general explanation.'
     )
 
     schema = (
-        '{\n'
+        "{\n"
         '  "title": string,\n'
         '  "subtitle": string,\n'
         '  "audience_level": "beginner" | "intermediate" | "advanced",\n'
         '  "summary": string,            // one sentence\n'
         '  "disclaimer": string | null,\n'
         '  "slides": [\n'
-        '    {\n'
+        "    {\n"
         '      "id": string,\n'
         '      "type": "title" | "why" | "concept" | "analogy" | "example" | "recap",\n'
         '      "title": string,\n'
@@ -1582,9 +1925,9 @@ def build_presentation_messages(
         '      "note": string | null,    // optional speaker note\n'
         '      "citations": string[],\n'
         '      "visual": string | null   // abstract/geometric direction only\n'
-        '    }\n'
-        '  ]\n'
-        '}'
+        "    }\n"
+        "  ]\n"
+        "}"
     )
 
     system = (
@@ -1595,7 +1938,11 @@ def build_presentation_messages(
         "Deck structure, in order: exactly one title slide, then one short why-this-matters slide, "
         "then two to four concept slides, "
         + ("then one analogy slide, " if options["include_analogy"] else "")
-        + ("then one worked-example slide, " if options["include_worked_example"] else "")
+        + (
+            "then one worked-example slide, "
+            if options["include_worked_example"]
+            else ""
+        )
         + "then one recap slide. "
         "Rules: at most five bullets per slide; aim for twelve words or fewer per bullet; "
         "prefer plain language over jargon; never include protected health information. "
@@ -1670,13 +2017,19 @@ def normalize_deck_plan(
     title = _clean_text(raw.get("title") or raw.get("deck_title"), max_len=120) or (
         f"Understanding {concept_title}"
     )
-    subtitle = _clean_text(
-        raw.get("subtitle") or raw.get("deck_subtitle"), max_len=160
-    ) or f"A simple, {options['audience_level']}-friendly explainer"
-    summary = _clean_text(
-        raw.get("summary") or raw.get("one_sentence_summary") or raw.get("overview"),
-        max_len=240,
-    ) or f"A clear, {options['audience_level']} introduction to {concept_title}."
+    subtitle = (
+        _clean_text(raw.get("subtitle") or raw.get("deck_subtitle"), max_len=160)
+        or f"A simple, {options['audience_level']}-friendly explainer"
+    )
+    summary = (
+        _clean_text(
+            raw.get("summary")
+            or raw.get("one_sentence_summary")
+            or raw.get("overview"),
+            max_len=240,
+        )
+        or f"A clear, {options['audience_level']} introduction to {concept_title}."
+    )
 
     if not grounded:
         disclaimer: str | None = PRESENTATION_GENERAL_DISCLAIMER
@@ -1711,18 +2064,23 @@ def normalize_deck_plan(
 
     if title_slide is None:
         title_slide = _scaffold_slide(
-            "title", title, subtitle=subtitle,
+            "title",
+            title,
+            subtitle=subtitle,
             visual="clean title with a thin garnet divider",
         )
     if not concept_slides:
         concept_slides = [
             _scaffold_slide(
-                "concept", f"What {concept_title} means", bullets=[summary],
+                "concept",
+                f"What {concept_title} means",
+                bullets=[summary],
             )
         ]
     if why_slide is None:
         why_slide = _scaffold_slide(
-            "why", "Why this matters",
+            "why",
+            "Why this matters",
             bullets=[
                 f"{concept_title} shows up in everyday situations",
                 "A simple mental model makes it easier to use",
@@ -1731,7 +2089,8 @@ def normalize_deck_plan(
         )
     if options["include_analogy"] and analogy_slide is None:
         analogy_slide = _scaffold_slide(
-            "analogy", "A helpful analogy",
+            "analogy",
+            "A helpful analogy",
             bullets=[
                 "Compare it to a familiar everyday system",
                 "The same cause and effect pattern applies",
@@ -1742,7 +2101,8 @@ def normalize_deck_plan(
         )
     if options["include_worked_example"] and example_slide is None:
         example_slide = _scaffold_slide(
-            "example", "A worked example",
+            "example",
+            "A worked example",
             bullets=[
                 "Start from a concrete, simple case",
                 "Apply the idea one step at a time",
@@ -1754,7 +2114,8 @@ def normalize_deck_plan(
     if recap_slide is None:
         recap_bullets = [s["bullets"][0] for s in concept_slides if s["bullets"]]
         recap_slide = _scaffold_slide(
-            "recap", "Recap",
+            "recap",
+            "Recap",
             bullets=recap_bullets[:PRESENTATION_MAX_BULLETS] or [summary],
             visual="three-line summary with a gold underline",
         )
@@ -1768,7 +2129,11 @@ def normalize_deck_plan(
 
     slides: list[dict[str, Any]] = []
     for index, slide in enumerate(ordered, start=1):
-        bullets = [] if slide["type"] == "title" else slide["bullets"][:PRESENTATION_MAX_BULLETS]
+        bullets = (
+            []
+            if slide["type"] == "title"
+            else slide["bullets"][:PRESENTATION_MAX_BULLETS]
+        )
         citations = list(slide.get("citations") or []) if grounded else []
         slides.append(
             {

@@ -312,3 +312,110 @@ export const PresentationJobState = z.object({
   error: z.string().nullable().optional(),
 });
 export type PresentationJobState = z.infer<typeof PresentationJobState>;
+
+/* ------------------------------------------------------------------------ */
+/* Kubernetes cluster observability + readings freshness                     */
+/* ------------------------------------------------------------------------ */
+
+export const ClusterComponent = z.object({
+  id: z.string(),
+  name: z.string().nullable().optional(),
+  kind: z.string(),
+  status: z.string(),
+  role: z.string().nullable().optional(),
+  ready: z.number().nullable().optional(),
+  desired: z.number().nullable().optional(),
+  node: z.string().nullable().optional(),
+});
+export type ClusterComponent = z.infer<typeof ClusterComponent>;
+
+export const ClusterTopology = z.object({
+  schema: z.string().optional(),
+  mode: z.string(),
+  enabled: z.boolean(),
+  generated_at: z.string(),
+  degraded: z.boolean().default(false),
+  errors: z.array(z.string()).default([]),
+  summary: z.object({
+    nodes: z.number().int(),
+    pods: z.number().int(),
+    deployments: z.number().int(),
+    jobs: z.number().int(),
+    cronjobs: z.number().int(),
+    health: z.string(),
+  }),
+  components: z.array(ClusterComponent).default([]),
+  edges: z.array(z.object({ from: z.string(), to: z.string() })).default([]),
+});
+export type ClusterTopology = z.infer<typeof ClusterTopology>;
+
+export const ReadingsFreshness = z.object({
+  schema: z.string().optional(),
+  mode: z.string(),
+  generated_at: z.string(),
+  last_indexed_at: z.string().nullable().optional(),
+  readings_generated_at: z.string().nullable().optional(),
+  lab_readings_generated_at: z.string().nullable().optional(),
+  total_indexed: z.number().int().default(0),
+  total_pages: z.number().int().nullable().optional(),
+  files_changed_since_last_run: z.number().int().default(0),
+  last_trigger: z.string().nullable().optional(),
+  last_event_id: z.string().nullable().optional(),
+  warnings: z.array(z.record(z.unknown())).default([]),
+});
+export type ReadingsFreshness = z.infer<typeof ReadingsFreshness>;
+
+export const PipelineEvent = z.object({
+  schema: z.string().optional(),
+  recorded_at: z.string().optional(),
+  event_id: z.string().optional(),
+  trigger_source: z.string().optional(),
+  status: z.string(),
+  paths: z.array(z.string()).optional(),
+  error: z.string().optional(),
+  total_readings: z.number().int().optional(),
+  duration_ms: z.number().int().optional(),
+});
+export type PipelineEvent = z.infer<typeof PipelineEvent>;
+
+export const ClusterPipeline = z.object({
+  schema: z.string().optional(),
+  mode: z.string(),
+  generated_at: z.string(),
+  state: z.string(),
+  queue_depth: z.number().int().default(0),
+  running: z.boolean().default(false),
+  last_run: z.record(z.unknown()).nullable().optional(),
+  last_success: z.record(z.unknown()).nullable().optional(),
+  last_failure: z.record(z.unknown()).nullable().optional(),
+  last_duration_ms: z.number().int().nullable().optional(),
+  last_trigger: z.string().nullable().optional(),
+  freshness: ReadingsFreshness,
+  events: z.array(PipelineEvent).default([]),
+  degraded: z.boolean().default(false),
+});
+export type ClusterPipeline = z.infer<typeof ClusterPipeline>;
+
+export const ReadingLibraryEntry = z.object({
+  id: z.string(),
+  title: z.string(),
+  year: z.number().nullable().optional(),
+  category: z.string(),
+  source: z.string(),
+  keywords: z.array(z.string()).default([]),
+  abstract: z.string().default(""),
+  page_count: z.number().int().default(0),
+  size_mb: z.number().default(0),
+  href: z.string().default("#"),
+  bucket: z.string().optional(),
+});
+export type ReadingLibraryEntry = z.infer<typeof ReadingLibraryEntry>;
+
+export const ReadingsLibrary = z.object({
+  schema: z.string().optional(),
+  mode: z.string().optional(),
+  generated_at: z.string().optional(),
+  summary: z.record(z.unknown()).default({}),
+  readings: z.array(ReadingLibraryEntry).default([]),
+});
+export type ReadingsLibrary = z.infer<typeof ReadingsLibrary>;

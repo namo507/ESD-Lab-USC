@@ -11,7 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -89,6 +89,7 @@ run-pipeline:  ## Run full analysis pipeline end-to-end
 
 dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
 	$(PYTHON) dashboard/pipelines/build_readings_index.py
+	$(PYTHON) scripts/build_lab_readings_index.py
 	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
 	@echo "✓ Dashboard JSON refreshed."
 
@@ -132,6 +133,17 @@ pages-watch:  ## Watch the canonical Pages dashboard inputs and redeploy on chan
 
 pages-watch-once:  ## One-shot build + deploy of the canonical Pages dashboard site
 	$(PYTHON) scripts/watch_pages_site.py --once
+
+k8s-helm-lint:  ## Validate Kubernetes Helm templates locally
+	helm lint k8s/helm/esd-lab-dashboard
+	helm template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
+		--namespace esd-lab \
+		--set existingClaims.readings=esd-readings-rwx \
+		--set existingClaims.data=esd-dashboard-data-rwx >/tmp/esd-lab-dashboard.yaml
+	@echo "✓ Helm templates rendered to /tmp/esd-lab-dashboard.yaml"
+
+k8s-smoke:  ## Smoke-check readings pipeline endpoints against a running dashboard
+	$(PYTHON) scripts/check_k8s_readings_pipeline.py --base-url http://127.0.0.1:8080 --mode local
 
 pages-runtime-deploy:  ## Deploy the tunnel runtime wrapper to a non-production Pages preview branch
 	npx --yes wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper --project-name $${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share} --commit-dirty=true

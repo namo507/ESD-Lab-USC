@@ -83,11 +83,24 @@ def _bucket(category: str | None, year: int | None) -> str:
     return f"{cat} · {yr}"
 
 
-def build(with_abstracts: bool = False) -> pathlib.Path:
-    if not SRC.exists():
-        sys.exit(f"[build_lab_readings_index] missing {SRC}")
+def _display_path(path: pathlib.Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
-    data = json.loads(SRC.read_text(encoding="utf-8"))
+
+def build(
+    with_abstracts: bool = False,
+    *,
+    input_path: pathlib.Path = SRC,
+    output_path: pathlib.Path = OUT,
+    pdf_dir: pathlib.Path = PDF_DIR,
+) -> pathlib.Path:
+    if not input_path.exists():
+        sys.exit(f"[build_lab_readings_index] missing {input_path}")
+
+    data = json.loads(input_path.read_text(encoding="utf-8"))
     readings = data.get("readings", []) or data.get("featured", [])
 
     out_entries = []
@@ -113,7 +126,7 @@ def build(with_abstracts: bool = False) -> pathlib.Path:
         # Optional real-abstract pull
         abstract = excerpt
         if with_abstracts and display_name:
-            pdf = PDF_DIR / display_name
+            pdf = pdf_dir / display_name
             if pdf.exists():
                 real = _extract_abstract(pdf)
                 if real:
@@ -153,17 +166,17 @@ def build(with_abstracts: bool = False) -> pathlib.Path:
         "readings": out_entries,
     }
 
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(
-        f"[build_lab_readings_index] wrote {OUT.relative_to(REPO_ROOT)} "
+        f"[build_lab_readings_index] wrote {_display_path(output_path)} "
         f"({len(out_entries)} entries, {total_pages} pages, "
         f"{total_mb:.1f} MB)"
     )
-    return OUT
+    return output_path
 
 
 def main() -> int:
@@ -173,8 +186,16 @@ def main() -> int:
         action="store_true",
         help="Try to pull first 2000 chars of each PDF (needs pdfplumber).",
     )
+    p.add_argument("--input", type=pathlib.Path, default=SRC)
+    p.add_argument("--output", type=pathlib.Path, default=OUT)
+    p.add_argument("--pdf-dir", type=pathlib.Path, default=PDF_DIR)
     args = p.parse_args()
-    build(with_abstracts=args.with_abstracts)
+    build(
+        with_abstracts=args.with_abstracts,
+        input_path=args.input,
+        output_path=args.output,
+        pdf_dir=args.pdf_dir,
+    )
     return 0
 
 

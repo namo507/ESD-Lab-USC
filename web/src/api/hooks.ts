@@ -130,6 +130,42 @@ export function useMatlabIntegration() {
   });
 }
 
+export function useClusterTopology() {
+  return useQuery({
+    queryKey: ["cluster", "topology"],
+    queryFn: () => api.get("/api/cluster/topology", S.ClusterTopology),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+}
+
+export function useClusterPipeline() {
+  return useQuery({
+    queryKey: ["cluster", "pipeline"],
+    queryFn: () => api.get("/api/cluster/pipeline", S.ClusterPipeline),
+    refetchInterval: 10_000,
+    retry: false,
+  });
+}
+
+export function useReadingsFreshness() {
+  return useQuery({
+    queryKey: ["readings", "freshness"],
+    queryFn: () => api.get("/api/readings/freshness", S.ReadingsFreshness),
+    refetchInterval: 15_000,
+    retry: false,
+  });
+}
+
+export function useReadingsLibrary() {
+  return useQuery({
+    queryKey: ["readings", "library"],
+    queryFn: () => api.get("/api/readings/library", S.ReadingsLibrary),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}
+
 export function useTriggerRun() {
   const qc = useQueryClient();
   return useMutation({

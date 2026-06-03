@@ -1,0 +1,87 @@
+replicaCount: 1
+
+image:
+  repository: esd-lab-dashboard
+  tag: latest
+  pullPolicy: IfNotPresent
+
+existingClaims:
+  readings: ""
+  data: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+dashboard:
+  serverIntervalSeconds: 0
+  fallbackSynthetic: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi
+
+watcher:
+  enabled: true
+  pollSeconds: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+reconcile:
+  enabled: true
+  schedule: "*/15 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+worker:
+  maxRetries: 3
+  retryBaseSeconds: 1
+  retryMaxSeconds: 30
+  ttlSecondsAfterFinished: 86400
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+pipeline:
+  environment: kubernetes
+  debounceSeconds: 5
+  leaseTtlSeconds: 900
+  k8sApiTimeoutSeconds: 2.5
+  clusterVisualizationEnabled: true
+  assistantClusterContextEnabled: true
+
+secret:
+  create: false
+  name: esd-lab-dashboard-secrets
+  pagesDeployHookUrl: ""
+
+networkPolicy:
+  enabled: true
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL

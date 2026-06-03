@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-config
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+data:
+  PIPELINE_ENVIRONMENT: {{ .Values.pipeline.environment | quote }}
+  K8S_MODE_ENABLED: "true"
+  READINGS_WATCH_PATH: "/app/ESD Lab readings"
+  DASHBOARD_DATA_DIR: "/app/dashboard/data"
+  READINGS_DATA_OUTPUT: "/app/dashboard/data/readings_data.json"
+  LAB_READINGS_OUTPUT: "/app/dashboard/data/lab-readings.json"
+  READINGS_PIPELINE_STATUS_PATH: "/app/dashboard/data/readings_pipeline_status.json"
+  READINGS_PIPELINE_LEDGER_PATH: "/app/dashboard/data/readings_pipeline_events.jsonl"
+  READINGS_EVENT_STATE_PATH: "/app/dashboard/data/readings_event_state.json"
+  READINGS_PIPELINE_LEASE_PATH: "/app/dashboard/data/readings_pipeline.lock"
+  WEB_PACKAGE_TRIGGER_PATH: "/app/dashboard/data/web_package_trigger.json"
+  READINGS_EVENT_DEBOUNCE_SECONDS: {{ .Values.pipeline.debounceSeconds | quote }}
+  READINGS_WATCHER_POLL_SECONDS: {{ .Values.watcher.pollSeconds | quote }}
+  PIPELINE_MAX_RETRIES: {{ .Values.worker.maxRetries | quote }}
+  PIPELINE_RETRY_BASE_SECONDS: {{ .Values.worker.retryBaseSeconds | quote }}
+  PIPELINE_RETRY_MAX_SECONDS: {{ .Values.worker.retryMaxSeconds | quote }}
+  PIPELINE_LEASE_TTL_SECONDS: {{ .Values.pipeline.leaseTtlSeconds | quote }}
+  K8S_API_TIMEOUT_SECONDS: {{ .Values.pipeline.k8sApiTimeoutSeconds | quote }}
+  K8S_WORKER_IMAGE: {{ include "esd-lab-dashboard.image" . | quote }}
+  K8S_WORKER_SERVICE_ACCOUNT: {{ include "esd-lab-dashboard.serviceAccountName" . | quote }}
+  K8S_READINGS_PVC: {{ .Values.existingClaims.readings | quote }}
+  K8S_DATA_PVC: {{ .Values.existingClaims.data | quote }}
+  CLUSTER_VISUALIZATION_ENABLED: {{ .Values.pipeline.clusterVisualizationEnabled | quote }}
+  ASSISTANT_CLUSTER_CONTEXT_ENABLED: {{ .Values.pipeline.assistantClusterContextEnabled | quote }}

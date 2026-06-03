@@ -15,6 +15,7 @@ grounded dashboard QA usable on CPU over the earlier 0.5B default.
 - New runtime endpoints:
   - `GET /api/chat/status`
   - `POST /api/chat`
+  - `GET /api/assistant/freshness`
 - A collapsed chat widget inside the dashboard UI
 - A model preparation script: `scripts/prepare_dashboard_assistant.py`
 - Optional assistant dependencies in `dashboard/requirements-assistant.txt`
@@ -108,6 +109,17 @@ Relevant AI Toolkit commands:
 Returns the current assistant readiness, including dependency state, model
 directory, resolved GGUF file path, memory estimate, and whether the generator
 is loaded.
+
+The newer `/api/assistant/status` response also includes a `freshness` block
+when `ASSISTANT_CLUSTER_CONTEXT_ENABLED=true`. It reports:
+
+- readings payload version and latest successful index timestamp,
+- indexed readings count,
+- readings pipeline state and failed/poisoned warnings.
+
+The assistant uses these fields as grounding fragments, so it can answer
+whether new readings were indexed, how many readings are available, and whether
+the cluster readings pipeline is healthy without exposing full PDF text.
 
 ### `POST /api/chat`
 

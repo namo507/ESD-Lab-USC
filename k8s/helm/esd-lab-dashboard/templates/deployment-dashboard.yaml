@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: dashboard
+  template:
+    metadata:
+      labels:
+        {{- include "esd-lab-dashboard.labels" . | nindent 8 }}
+        app.kubernetes.io/component: dashboard
+    spec:
+      serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: dashboard
+          image: {{ include "esd-lab-dashboard.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - python
+            - dashboard/server/live_dashboard_server.py
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8080"
+            - --interval
+            - {{ .Values.dashboard.serverIntervalSeconds | quote }}
+            {{- if .Values.dashboard.fallbackSynthetic }}
+            - --fallback-synthetic
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "esd-lab-dashboard.fullname" . }}-config
+          env:
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PAGES_DEPLOY_HOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: pagesDeployHookUrl
+                  optional: true
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.dashboard.resources | nindent 12 }}
+          volumeMounts:
+            - name: readings
+              mountPath: "/app/ESD Lab readings"
+            - name: dashboard-data
+              mountPath: "/app/dashboard/data"
+      volumes:
+        - name: readings
+          persistentVolumeClaim:
+            claimName: {{ .Values.existingClaims.readings | default "REQUIRED_READINGS_PVC" | quote }}
+        - name: dashboard-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.existingClaims.data | default "REQUIRED_DATA_PVC" | quote }}

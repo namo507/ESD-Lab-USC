@@ -15,7 +15,10 @@ import {
   useParticipants,
   useRuns,
   useTrajectory,
+  useReadingsLibrary,
 } from "@/api/hooks";
+import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
+import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
 import type { ShellContext } from "@/components/shell/AppShell";
 
@@ -43,6 +46,11 @@ export function Overview() {
   const { data: runs = [] } = useRuns(20);
   const { data: participants = [] } = useParticipants();
   const { data: traj } = useTrajectory("rmssd");
+  const readingsLibrary = useReadingsLibrary();
+  const liveReadings = useMemo(
+    () => normalizeReadingLibrary(readingsLibrary.data),
+    [readingsLibrary.data],
+  );
 
   const totals = useMemo(() => {
     const inflight = stages.reduce((s, x) => s + x.inflight, 0);
@@ -197,8 +205,10 @@ export function Overview() {
         />
       </section>
 
+      <ClusterOpsPanel />
+
       <section aria-label="Reading geography">
-        <ReadingsGeoMap />
+        <ReadingsGeoMap readings={liveReadings} loading={readingsLibrary.isLoading} />
       </section>
 
       <section className="grid grid-cols-[1fr_1.1fr] gap-4">

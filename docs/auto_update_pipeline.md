@@ -40,6 +40,13 @@ The readings index is not tied to the REDCap cron. In live mode, the
 dashboard runtime watches `ESD Lab readings/` and regenerates the index
 whenever a new file lands in that folder.
 
+Kubernetes mode adds an event-driven path for the same readings outputs. A
+watcher Deployment observes the mounted readings volume, debounces file
+changes, and creates a worker Job that runs `build_readings_index.py` followed
+by `scripts/build_lab_readings_index.py`. A CronJob runs scheduled reconcile as
+a fallback for missed filesystem events. See
+`docs/kubernetes_event_pipeline.md`.
+
 ## 3. Live Docker mode
 
 ```bash
@@ -171,6 +178,8 @@ or run the Docker service for automatic refreshes.
 | `dashboard/data/dashboard_data.json` | Documented in `dashboard/context_skill/references/dashboard_schema.md` | `dashboard/server/live_dashboard_server.py` and the local SPA routes |
 | `dashboard/data/readings_data.json` | Reading metadata summary + searchable cards | `dashboard/server/live_dashboard_server.py` and the local SPA routes |
 | `dashboard/data/runtime_status.json` | Last rebuild state + watcher health | Live dashboard runtime + operators |
+| `dashboard/data/readings_pipeline_status.json` | Kubernetes/local readings event pipeline status | Cluster panel + assistant freshness |
+| `dashboard/data/readings_pipeline_events.jsonl` | Lightweight event ledger | Cluster panel + runbook diagnostics |
 | `logs/dashboard_build_<date>.log`    | plain text | Research Programmer when debugging |
 
 The dashboard JSON now also contains an `organization_site` block with:
@@ -203,6 +212,7 @@ does not extract PDF contents or transmit documents anywhere.
 | Trajectories chart is empty | `feature_matrix.parquet` missing `month` column | Re-run feature engineering |
 | ML tab is empty | `_metrics.json` missing or older than 30 days | Re-run `src/models/train_all.py` |
 | Reading library did not update | `build_readings_index.py` did not run or file extension is unsupported | Re-run the readings index or check the live service logs |
+| Kubernetes readings event is stale | Watcher down, stale lock, or poisoned event | Check `/api/cluster/pipeline` and follow `docs/kubernetes_runbook.md` |
 | ESD Lab organization section looks stale | The public site fetch failed during the last build | Re-run the build with network access and inspect `organization_site.meta.errors` |
 | Nightly cron failed silently | Check `logs/dashboard_build_<date>.log` | If missing, check cron mail or `scripts/redcap_daily_sync.py` |
 

@@ -8,8 +8,12 @@
  * Behind a feature flag — production builds NEVER pull this in.
  */
 import type {
+  ClusterPipeline,
+  ClusterTopology,
   Participant,
   ParticipantDetail,
+  ReadingsFreshness,
+  ReadingsLibrary,
   Stage,
   Run,
   Epoch,
@@ -128,6 +132,115 @@ const MATLAB_INTEGRATION: MatlabIntegration = {
     { id: "file",   title: "File handoff",             tag: "Recommended", coupling: "loose", cost: "low",    summary: "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh." },
     { id: "engine", title: "MATLAB Engine for Python", tag: "Real-time",   coupling: "tight", cost: "medium", summary: "build_dashboard_data.py invokes .m functions via matlab.engine in a single process." },
     { id: "rest",   title: "REST endpoint",            tag: "On-demand",   coupling: "loose", cost: "medium", summary: "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference." },
+  ],
+};
+
+const MOCK_READINGS_FRESHNESS: ReadingsFreshness = {
+  schema: "readings_freshness.v1",
+  mode: "local",
+  generated_at: new Date().toISOString(),
+  last_indexed_at: new Date().toISOString(),
+  readings_generated_at: new Date().toISOString(),
+  lab_readings_generated_at: new Date().toISOString(),
+  total_indexed: 20,
+  total_pages: 1124,
+  files_changed_since_last_run: 0,
+  last_trigger: "mock",
+  last_event_id: "readings-mock",
+  warnings: [],
+};
+
+const MOCK_CLUSTER_TOPOLOGY: ClusterTopology = {
+  schema: "cluster_topology.v1",
+  mode: "local",
+  enabled: true,
+  generated_at: new Date().toISOString(),
+  degraded: false,
+  errors: [],
+  summary: {
+    nodes: 1,
+    pods: 0,
+    deployments: 0,
+    jobs: 0,
+    cronjobs: 0,
+    health: "simulated",
+  },
+  components: [
+    { id: "local-runtime", name: "Local dashboard runtime", kind: "process", status: "ok", role: "dashboard" },
+    { id: "local-watcher", name: "Readings watcher", kind: "thread", status: "ok", role: "watcher" },
+    { id: "local-pipeline", name: "Pipeline worker", kind: "subprocess", status: "idle", role: "worker" },
+  ],
+  edges: [
+    { from: "local-watcher", to: "local-pipeline" },
+    { from: "local-pipeline", to: "local-runtime" },
+  ],
+};
+
+const MOCK_CLUSTER_PIPELINE: ClusterPipeline = {
+  schema: "cluster_pipeline.v1",
+  mode: "local",
+  generated_at: new Date().toISOString(),
+  state: "succeeded",
+  queue_depth: 0,
+  running: false,
+  last_run: { event_id: "readings-mock", trigger_source: "mock" },
+  last_success: {
+    event_id: "readings-mock",
+    trigger_source: "mock",
+    finished_at: new Date().toISOString(),
+    duration_ms: 2840,
+    total_readings: 20,
+  },
+  last_failure: null,
+  last_duration_ms: 2840,
+  last_trigger: "mock",
+  freshness: MOCK_READINGS_FRESHNESS,
+  events: [
+    {
+      event_id: "readings-mock",
+      trigger_source: "mock",
+      status: "succeeded",
+      recorded_at: new Date().toISOString(),
+      paths: ["ResearchStrategy_Final.pdf"],
+      total_readings: 20,
+      duration_ms: 2840,
+    },
+  ],
+  degraded: false,
+};
+
+const MOCK_READINGS_LIBRARY: ReadingsLibrary = {
+  schema: "readings_library.v1",
+  mode: "local",
+  generated_at: new Date().toISOString(),
+  summary: { count: 2, total_pages: 132 },
+  readings: [
+    {
+      id: "mock-autonomic",
+      title: "Autonomic pathways in autism",
+      year: 2025,
+      category: "Physiology and Autonomic",
+      source: "ESD Lab Reading Library",
+      keywords: ["autonomic", "attention", "infancy"],
+      abstract: "United States, South Carolina, and California affiliation signals for the mock map.",
+      page_count: 84,
+      size_mb: 1.2,
+      href: "#",
+      bucket: "Physiology and Autonomic · 2025",
+    },
+    {
+      id: "mock-family",
+      title: "Family engagement across developmental science",
+      year: 2024,
+      category: "Family and Parenting",
+      source: "ESD Lab Reading Library",
+      keywords: ["family", "community"],
+      abstract: "United Kingdom and Canada collaboration signals for the mock map.",
+      page_count: 48,
+      size_mb: 0.7,
+      href: "#",
+      bucket: "Family and Parenting · 2024",
+    },
   ],
 };
 
@@ -452,8 +565,41 @@ export function installMockServer() {
     if (p === "/api/results/hda") return reply(HDA);
     if (p === "/api/redcap/events") return reply(REDCAP_EVENTS);
     if (p === "/api/matlab/integration") return reply(MATLAB_INTEGRATION);
+    if (p === "/api/cluster/topology") return reply(MOCK_CLUSTER_TOPOLOGY);
+    if (p === "/api/cluster/pipeline") return reply(MOCK_CLUSTER_PIPELINE);
+    if (p === "/api/readings/freshness") return reply(MOCK_READINGS_FRESHNESS);
+    if (p === "/api/readings/library") return reply(MOCK_READINGS_LIBRARY);
+    if (p === "/api/assistant/freshness") {
+      return reply({
+        schema: "assistant_freshness.v1",
+        mode: "local",
+        generated_at: new Date().toISOString(),
+        assistant: { status: "ready" },
+        readings: {
+          last_indexed_at: MOCK_READINGS_FRESHNESS.last_indexed_at,
+          total_indexed: MOCK_READINGS_FRESHNESS.total_indexed,
+          payload_version: MOCK_READINGS_FRESHNESS.readings_generated_at,
+        },
+        pipeline: {
+          state: MOCK_CLUSTER_PIPELINE.state,
+          last_event_id: "readings-mock",
+          warnings: [],
+        },
+      });
+    }
     if (p === "/api/assistant/status") {
-      return reply({ status: "ready", error: null, model: "mock://qwen2.5-1.5b" });
+      return reply({
+        status: "ready",
+        error: null,
+        model: "mock://qwen2.5-1.5b",
+        freshness: {
+          readings: {
+            last_indexed_at: MOCK_READINGS_FRESHNESS.last_indexed_at,
+            total_indexed: MOCK_READINGS_FRESHNESS.total_indexed,
+          },
+          pipeline: { state: MOCK_CLUSTER_PIPELINE.state, warnings: [] },
+        },
+      });
     }
     if (p === "/api/assistant/chat" && method === "POST") {
       const payload = (await new Response(init?.body as BodyInit).json()) as { message?: string };
