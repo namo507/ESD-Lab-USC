@@ -6,7 +6,9 @@ metadata:
     {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
     app.kubernetes.io/component: dashboard
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
