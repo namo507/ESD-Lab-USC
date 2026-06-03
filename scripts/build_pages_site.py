@@ -73,6 +73,11 @@ def _worker_source(api_origin: str) -> str:
         + "export default {\n"
         + "  async fetch(request, env) {\n"
         + "    const url = new URL(request.url);\n"
+        + "    const legacyDashboardPaths = new Set([\"/dashboard\", \"/dashboard/\", \"/dashboard/index.html\"]);\n"
+        + "    if (legacyDashboardPaths.has(url.pathname)) {\n"
+        + "      const target = new URL(\"/overview\", url);\n"
+        + "      return Response.redirect(target.toString(), 308);\n"
+        + "    }\n\n"
         + "    if (url.pathname.startsWith(\"/api/\")) {\n"
         + "      const target = new URL(url.pathname + url.search, API_ORIGIN);\n"
         + "      return fetch(new Request(target.toString(), request));\n"
@@ -154,6 +159,9 @@ def build(
 
     redirects_path = out_dir / "_redirects"
     redirects_path.write_text(
+        "/dashboard /overview 308\n"
+        "/dashboard/ /overview 308\n"
+        "/dashboard/index.html /overview 308\n"
         "/* /index.html 200\n",
         encoding="utf-8",
     )
