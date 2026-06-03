@@ -270,7 +270,7 @@ class AssistantUnavailable(RuntimeError):
         self.http_status = http_status
 
 
-@dataclass(slots=True)
+@dataclass
 class AssistantConfig:
     enabled: bool = True
     model_id: str = DEFAULT_MODEL_ID

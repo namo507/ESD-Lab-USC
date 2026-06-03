@@ -10,8 +10,10 @@ PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
+DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
+HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -110,7 +112,7 @@ dashboard-logs:  ## Tail live dashboard logs
 	docker compose logs -f dashboard
 
 dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild loop
-	$(PYTHON) scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
+	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
@@ -135,10 +137,10 @@ pages-watch-once:  ## One-shot build + deploy of the canonical Pages dashboard s
 	$(PYTHON) scripts/watch_pages_site.py --once
 
 k8s-helm-lint:  ## Validate Kubernetes Helm templates locally
-	helm lint k8s/helm/esd-lab-dashboard \
+	$(HELM) lint k8s/helm/esd-lab-dashboard \
 		--set existingClaims.readings=esd-readings-rwx \
 		--set existingClaims.data=esd-dashboard-data-rwx
-	helm template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
+	$(HELM) template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
 		--namespace esd-lab \
 		--set existingClaims.readings=esd-readings-rwx \
 		--set existingClaims.data=esd-dashboard-data-rwx >/tmp/esd-lab-dashboard.yaml
@@ -177,7 +179,10 @@ clean:  ## Remove Python cache files and test artifacts
 
 
 docker-health:  ## Check Docker daemon and Compose service health
-	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url http://127.0.0.1:8080/ --json
+	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url $(DASHBOARD_LOCAL_URL)/ --json
+
+logs-prune:  ## Delete local log files older than LOG_RETENTION_DAYS (default: 30)
+	bash scripts/prune_logs.sh
 
 clean-all: clean  ## Remove virtualenv and all generated files
 	rm -rf $(VENV)
