@@ -24,6 +24,7 @@
 
   --gold-hover: #ffd633;
   --hipaa-bg: #faf2f2;
+  --terminal-bg: #121419;
   --ecg-grid: #1f2228;
   --terminal-fg: #e8e6e2;
 
@@ -143,7 +144,8 @@
   --tile-reject-border: #6e2a2e;
 
   --hipaa-bg: #2a1416;
-  --ecg-grid: #0a0c10;
+  --terminal-bg: #0a0d12;
+  --ecg-grid: #1b1f27;
   --terminal-fg: #f1ece1;
 
   --glass-100: rgba(20, 18, 14, 0.55);

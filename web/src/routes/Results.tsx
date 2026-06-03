@@ -5,7 +5,7 @@ import { HDABarStack } from "@/components/charts/HDABarStack";
 import { useHdaDist, useTrajectory } from "@/api/hooks";
 import { logAudit } from "@/lib/audit";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
-import { useUi } from "@/store/ui";
+import { resolveTheme, useUi } from "@/store/ui";
 import type { GroupCode } from "@/api/schemas";
 import styles from "./Results.module.css";
 
@@ -34,8 +34,10 @@ export function Results() {
   const [metric, setMetric] = useState<Metric>("rmssd");
   const { data: traj } = useTrajectory(metric);
   const { data: hda } = useHdaDist();
+  const theme = useUi((s) => s.theme);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const setChatSeed = useUi((s) => s.setChatSeed);
+  const fastPathTone = resolveTheme(theme);
 
   function fastPath(prompt: string) {
     setChatSeed(prompt);
@@ -66,7 +68,7 @@ export function Results() {
 
       <section className={styles.fastRow} aria-label="Model performance fast-paths">
         <div className={styles.fastRowInner}>
-          <FastPaths tone="light" density="wide" prompts={RESULTS_FAST_PATHS} onSelect={fastPath} />
+          <FastPaths tone={fastPathTone} density="wide" prompts={RESULTS_FAST_PATHS} onSelect={fastPath} />
         </div>
         <AmbientOrbit
           tone="ocean"

@@ -88,7 +88,7 @@
 }
 .ecgMeta { font-size: var(--text-micro); color: var(--slate-500); }
 .ecgBox {
-  background: var(--ink);
+  background: var(--terminal-bg);
   border-radius: var(--r-2);
   padding: 14px 12px;
   position: relative;

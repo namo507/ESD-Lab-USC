@@ -6,7 +6,7 @@ import { EpochInspector } from "@/components/qa/EpochInspector";
 import { epochReducer, tallyEpochs } from "@/components/qa/epochReducer";
 import { useEpochs, useEpochDecision, useParticipants } from "@/api/hooks";
 import { logAudit } from "@/lib/audit";
-import { useUi } from "@/store/ui";
+import { resolveTheme, useUi } from "@/store/ui";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import type { EpochDecision } from "@/api/schemas";
 import styles from "./QA.module.css";
@@ -32,11 +32,13 @@ export function QA() {
 
   const [epochs, dispatch] = useReducer(epochReducer, []);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const theme = useUi((s) => s.theme);
   const selected = useUi((s) => s.qaSelectedEpoch);
   const setSelected = useUi((s) => s.setQaEpoch);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const setChatSeed = useUi((s) => s.setChatSeed);
   const gridRef = useRef<HTMLDivElement | null>(null);
+  const fastPathTone = resolveTheme(theme);
 
   useEffect(() => {
     if (serverEpochs) dispatch({ type: "load", epochs: serverEpochs });
@@ -149,7 +151,7 @@ export function QA() {
 
       <section className={styles.fastRow} aria-label="QA fast-paths">
         <div className={styles.fastRowInner}>
-          <FastPaths tone="light" density="wide" prompts={scopedFastPaths} onSelect={fastPath} />
+          <FastPaths tone={fastPathTone} density="wide" prompts={scopedFastPaths} onSelect={fastPath} />
         </div>
         <AmbientOrbit
           tone="sage"

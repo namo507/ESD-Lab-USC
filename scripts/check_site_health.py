@@ -92,7 +92,8 @@ def _probe_assistant_status(
     timeout: int,
     require_ready: bool,
 ) -> tuple[str, str | None]:
-    assistant_url = urljoin(base_url.rstrip("/") + "/", assistant_status_path.lstrip("/"))
+    normalized_path = assistant_status_path if assistant_status_path.startswith("/") else f"/{assistant_status_path}"
+    assistant_url = urljoin(base_url.rstrip("/") + "/", normalized_path)
     try:
         status, raw = _fetch(assistant_url, timeout)
     except urllib.error.HTTPError as e:

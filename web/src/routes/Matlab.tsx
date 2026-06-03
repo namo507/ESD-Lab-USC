@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import { useMatlabIntegration } from "@/api/hooks";
-import { useUi } from "@/store/ui";
+import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import styles from "./Matlab.module.css";
 
@@ -50,8 +50,10 @@ function relMinutes(iso: string): string {
 
 export function Matlab() {
   const { data: integration } = useMatlabIntegration();
+  const theme = useUi((s) => s.theme);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const setChatSeed = useUi((s) => s.setChatSeed);
+  const fastPathTone = resolveTheme(theme);
 
   function fastPath(prompt: string) {
     setChatSeed(prompt);
@@ -106,7 +108,7 @@ export function Matlab() {
 
       <section className={styles.fastRow} aria-label="MATLAB fast-paths">
         <div className={styles.fastRowInner}>
-          <FastPaths tone="light" density="wide" prompts={MATLAB_FAST_PATHS} onSelect={fastPath} />
+          <FastPaths tone={fastPathTone} density="wide" prompts={MATLAB_FAST_PATHS} onSelect={fastPath} />
         </div>
         <AmbientOrbit
           tone="garnet"

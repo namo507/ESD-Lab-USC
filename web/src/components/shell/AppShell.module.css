@@ -3,7 +3,7 @@
   position: absolute;
   left: -1000px;
   top: 0;
-  background: var(--ink);
+  background: var(--usc-garnet);
   color: var(--fg-on-brand);
   padding: 8px 12px;
   border-radius: var(--r-2);

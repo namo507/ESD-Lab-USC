@@ -217,6 +217,50 @@ def _read_llm_model_config() -> dict[str, Any]:
         return {}
 
 
+def _find_existing_model_path(filename: str) -> Path | None:
+    if not filename:
+        return None
+
+    search_roots = [
+        PROJECT_ROOT / "models",
+        PROJECT_ROOT / "models" / "local_llms",
+        PROJECT_ROOT / "models" / "local_llms" / "runtime",
+    ]
+    seen: set[Path] = set()
+
+    for root in search_roots:
+        if root in seen or not root.exists():
+            continue
+        seen.add(root)
+
+        direct_path = root / filename
+        if direct_path.exists():
+            return direct_path
+
+        matches = sorted(root.rglob(filename))
+        if matches:
+            return matches[0]
+
+    return None
+
+
+def _select_llm_model_config(llm_config: dict[str, Any]) -> dict[str, Any]:
+    if not llm_config:
+        return {}
+
+    candidates = [llm_config, *((llm_config.get("fallbacks") or []))]
+    for candidate in candidates:
+        filename = str(candidate.get("filename") or "").strip()
+        resolved_path = _find_existing_model_path(filename)
+        if resolved_path is None:
+            continue
+        selected = dict(candidate)
+        selected["resolved_path"] = str(resolved_path)
+        return selected
+
+    return llm_config
+
+
 class AssistantUnavailable(RuntimeError):
     """Raised when the assistant is configured but cannot answer yet."""
 
@@ -250,8 +294,13 @@ class AssistantConfig:
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
-        llm_config = _read_llm_model_config()
-        config_model_dir = PROJECT_ROOT / "models" if llm_config else DEFAULT_MODEL_DIR
+        llm_config = _select_llm_model_config(_read_llm_model_config())
+        resolved_model_path = Path(str(llm_config.get("resolved_path"))) if llm_config.get("resolved_path") else None
+        config_model_dir = (
+            resolved_model_path.parent
+            if resolved_model_path is not None
+            else (PROJECT_ROOT / "models" if llm_config else DEFAULT_MODEL_DIR)
+        )
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
             model_id=(
@@ -266,6 +315,7 @@ class AssistantConfig:
             ),
             model_file=(
                 os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE")
+                or (resolved_model_path.name if resolved_model_path is not None else None)
                 or llm_config.get("filename")
                 or DEFAULT_MODEL_FILE
             ),

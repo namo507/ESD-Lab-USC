@@ -1,7 +1,7 @@
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
 import { useRedcapEvents } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
-import { useUi } from "@/store/ui";
+import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import styles from "./Redcap.module.css";
 
@@ -36,8 +36,10 @@ export function Redcap() {
   const okN = events.filter((e) => e.status === "ok").length;
   const warnN = events.filter((e) => e.status === "warn").length;
   const failN = events.filter((e) => e.status === "fail").length;
+  const theme = useUi((s) => s.theme);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const setChatSeed = useUi((s) => s.setChatSeed);
+  const fastPathTone = resolveTheme(theme);
 
   function fastPath(prompt: string) {
     setChatSeed(prompt);
@@ -65,7 +67,7 @@ export function Redcap() {
 
       <section className={styles.fastRow} aria-label="REDCap fast-paths">
         <div className={styles.fastRowInner}>
-          <FastPaths tone="light" density="wide" prompts={REDCAP_FAST_PATHS} onSelect={fastPath} />
+          <FastPaths tone={fastPathTone} density="wide" prompts={REDCAP_FAST_PATHS} onSelect={fastPath} />
         </div>
         <AmbientOrbit
           tone="garnet"

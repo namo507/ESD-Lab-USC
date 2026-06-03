@@ -94,7 +94,7 @@
 .detailActions { display: flex; gap: 6px; }
 
 .terminal {
-  background: var(--ink);
+  background: var(--terminal-bg);
   padding: 14px;
   font-family: var(--font-mono);
   font-size: 12px;

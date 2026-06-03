@@ -81,7 +81,7 @@
   position: relative;
   display: block;
   border: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(255,255,255,0.85) 100%);
+  background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-subtle) 58%, var(--bg-hover) 100%);
   border-radius: var(--r-card);
   padding: 12px 16px;
   overflow: hidden;
