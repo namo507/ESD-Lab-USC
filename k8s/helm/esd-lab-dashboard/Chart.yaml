@@ -2,5 +2,5 @@ apiVersion: v2
 name: esd-lab-dashboard
 description: ESD Lab dashboard runtime with Kubernetes readings pipeline automation.
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.14.2"

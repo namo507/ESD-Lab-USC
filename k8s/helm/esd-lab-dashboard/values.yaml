@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: esd-lab-dashboard
-  tag: latest
+  tag: "0.14.2"
   pullPolicy: IfNotPresent
 
 existingClaims:
@@ -42,6 +42,7 @@ watcher:
 reconcile:
   enabled: true
   schedule: "*/15 * * * *"
+  backoffLimit: 1
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
 

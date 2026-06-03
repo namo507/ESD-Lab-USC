@@ -28,3 +28,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "esd-lab-dashboard.image" -}}
 {{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end -}}
+
+{{- define "esd-lab-dashboard.requiredReadingsClaim" -}}
+{{- required "existingClaims.readings is required; set it to the RWX PVC mounted at /app/ESD Lab readings." .Values.existingClaims.readings -}}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.requiredDataClaim" -}}
+{{- required "existingClaims.data is required; set it to the RWX PVC mounted at /app/dashboard/data." .Values.existingClaims.data -}}
+{{- end -}}

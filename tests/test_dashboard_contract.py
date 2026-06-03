@@ -18,6 +18,28 @@ def test_synthetic_payload_contains_organization_site_block():
     json.loads(json.dumps(payload, allow_nan=False))
 
 
+def test_org_site_live_payload_tolerates_missing_optional_page(monkeypatch):
+    def fake_fetch_page(key: str, url: str, timeout: int = 12):
+        if key == "partners":
+            raise RuntimeError("404")
+        return build_org_site_data.PageDocument(
+            key=key,
+            url=url,
+            title=key,
+            blocks=[],
+        )
+
+    monkeypatch.setattr(build_org_site_data, "fetch_page", fake_fetch_page)
+
+    payload = build_org_site_data.build_payload(allow_network=True)
+
+    assert payload["meta"]["source_mode"] == "live_fetch"
+    assert any(error.startswith("partners:") for error in payload["meta"]["errors"])
+    assert payload["partners"]
+    assert payload["summary"]["partner_count"] == len(payload["partners"])
+    json.loads(json.dumps(payload, allow_nan=False))
+
+
 def test_production_payload_includes_organization_site_block(tmp_path):
     redcap_path = tmp_path / "redcap_latest.csv"
     feature_path = tmp_path / "feature_matrix.csv"
@@ -50,5 +72,8 @@ def test_production_payload_includes_organization_site_block(tmp_path):
 
     assert payload["organization_site"]["summary"]["partner_count"] >= 1
     assert payload["organization_site"]["contact"]["signup_url"]
-    assert any(item["kind"] == "story" for item in payload["organization_site"]["impact_feed"])
+    assert any(
+        item["kind"] == "story"
+        for item in payload["organization_site"]["impact_feed"]
+    )
     json.loads(json.dumps(payload, allow_nan=False))

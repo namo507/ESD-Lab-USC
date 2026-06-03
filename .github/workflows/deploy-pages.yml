@@ -76,8 +76,12 @@ jobs:
 
       - name: Smoke test live URL
         run: |
-          sleep 25
+          sleep 60
           python scripts/check_site_health.py \
             --url https://esd-lab-namo.pages.dev/ \
+            --timeout 30 \
+            --min-bytes 8192
+          python scripts/check_site_health.py \
+            --url https://esd-lab-namo.pages.dev/overview \
             --timeout 30 \
             --min-bytes 8192

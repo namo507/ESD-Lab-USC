@@ -25,7 +25,7 @@ data:
   K8S_API_TIMEOUT_SECONDS: {{ .Values.pipeline.k8sApiTimeoutSeconds | quote }}
   K8S_WORKER_IMAGE: {{ include "esd-lab-dashboard.image" . | quote }}
   K8S_WORKER_SERVICE_ACCOUNT: {{ include "esd-lab-dashboard.serviceAccountName" . | quote }}
-  K8S_READINGS_PVC: {{ .Values.existingClaims.readings | quote }}
-  K8S_DATA_PVC: {{ .Values.existingClaims.data | quote }}
+  K8S_READINGS_PVC: {{ include "esd-lab-dashboard.requiredReadingsClaim" . | quote }}
+  K8S_DATA_PVC: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}
   CLUSTER_VISUALIZATION_ENABLED: {{ .Values.pipeline.clusterVisualizationEnabled | quote }}
   ASSISTANT_CLUSTER_CONTEXT_ENABLED: {{ .Values.pipeline.assistantClusterContextEnabled | quote }}

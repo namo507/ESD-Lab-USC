@@ -60,16 +60,16 @@ spec:
             httpGet:
               path: /api/healthz
               port: http
-            initialDelaySeconds: 20
+            initialDelaySeconds: 30
             periodSeconds: 15
-            timeoutSeconds: 5
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/healthz
               port: http
             initialDelaySeconds: 60
             periodSeconds: 30
-            timeoutSeconds: 5
+            timeoutSeconds: 10
           resources:
             {{- toYaml .Values.dashboard.resources | nindent 12 }}
           volumeMounts:
@@ -80,7 +80,7 @@ spec:
       volumes:
         - name: readings
           persistentVolumeClaim:
-            claimName: {{ .Values.existingClaims.readings | default "REQUIRED_READINGS_PVC" | quote }}
+            claimName: {{ include "esd-lab-dashboard.requiredReadingsClaim" . | quote }}
         - name: dashboard-data
           persistentVolumeClaim:
-            claimName: {{ .Values.existingClaims.data | default "REQUIRED_DATA_PVC" | quote }}
+            claimName: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}

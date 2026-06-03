@@ -41,6 +41,7 @@ DASHBOARD_LOG_FILE="$STATE_DIR/dashboard.log"
 TUNNEL_PID_FILE="$STATE_DIR/cloudflared.pid"
 TUNNEL_LOG_FILE="$STATE_DIR/cloudflared.log"
 ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
+CLOUDFLARED_VERSION="${CLOUDFLARED_VERSION:-2026.5.2}"
 
 PAGES_RUNTIME_PROJECT="${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo}}"
 PAGES_RUNTIME_BRANCH="${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share}"
@@ -111,6 +112,18 @@ fi
 
 have_command() {
   command -v "$1" >/dev/null 2>&1
+}
+
+redact_sensitive_output() {
+  sed -E \
+    -e 's/(CLOUDFLARE_TUNNEL_TOKEN:)[^] ]+/\1<redacted>/g' \
+    -e 's/(CLOUDFLARE_API_TOKEN[:=])[A-Za-z0-9._~+\/=-]+/\1<redacted>/g' \
+    -e 's/(--token )[A-Za-z0-9._~+\/=-]+/\1<redacted>/g'
+}
+
+safe_tail_tunnel_log() {
+  local lines="${1:-120}"
+  tail -n "$lines" "$TUNNEL_LOG_FILE" 2>/dev/null | tr -d '\000' | redact_sensitive_output || true
 }
 
 stop_pid_file() {
@@ -186,19 +199,17 @@ ensure_local_dashboard() {
 }
 
 ensure_cloudflared() {
-  if have_command cloudflared; then
-    command -v cloudflared
-    return 0
+  if [[ -n "${CLOUDFLARED_BIN:-}" ]]; then
+    if [[ -x "$CLOUDFLARED_BIN" ]]; then
+      printf '%s\n' "$CLOUDFLARED_BIN"
+      return 0
+    fi
+    echo "CLOUDFLARED_BIN is set but not executable: ${CLOUDFLARED_BIN}" >&2
+    exit 1
   fi
 
   local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/esd-lab-usc/bin"
-  local cloudflared_bin="$cache_dir/cloudflared"
   mkdir -p "$cache_dir"
-
-  if [[ -x "$cloudflared_bin" ]]; then
-    printf '%s\n' "$cloudflared_bin"
-    return 0
-  fi
 
   local arch raw_arch download_url
   raw_arch="$(uname -m)"
@@ -215,8 +226,14 @@ ensure_cloudflared() {
       ;;
   esac
 
-  download_url="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}"
-  echo "Downloading cloudflared for ${raw_arch}..." >&2
+  local cloudflared_bin="$cache_dir/cloudflared-${CLOUDFLARED_VERSION}-linux-${arch}"
+  if [[ -x "$cloudflared_bin" ]]; then
+    printf '%s\n' "$cloudflared_bin"
+    return 0
+  fi
+
+  download_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-${arch}"
+  echo "Downloading cloudflared ${CLOUDFLARED_VERSION} for ${raw_arch}..." >&2
   curl -fsSL "$download_url" -o "${cloudflared_bin}.tmp"
   chmod +x "${cloudflared_bin}.tmp"
   mv "${cloudflared_bin}.tmp" "$cloudflared_bin"
@@ -225,11 +242,19 @@ ensure_cloudflared() {
 
 start_cloudflared() {
   local cloudflared_bin="$1"
+  local cloudflared_env=(
+    env
+    -u CLOUDFLARE_TUNNEL_TOKEN
+    -u CLOUDFLARE_TUNNEL_ID
+    -u CLOUDFLARE_TUNNEL_NAME
+    -u TUNNEL_TOKEN
+    -u TUNNEL_ORIGIN_CERT
+  )
 
   if [[ "$use_named" == "true" ]]; then
-    nohup "$cloudflared_bin" tunnel --metrics 127.0.0.1:20242 --no-autoupdate run --token "$named_tunnel_token" --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+    nohup "${cloudflared_env[@]}" "$cloudflared_bin" tunnel --metrics 127.0.0.1:20242 --no-autoupdate run --token "$named_tunnel_token" --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
   else
-    nohup "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+    nohup "${cloudflared_env[@]}" "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
   fi
 
   echo $! >"$TUNNEL_PID_FILE"
@@ -273,6 +298,12 @@ auto_deploy_canonical_pages_site() {
 
 canonical_pages_assistant_healthy() {
   curl -fsS --max-time 20 "${PAGES_CANONICAL_URL}api/assistant/status" >/dev/null 2>&1
+}
+
+origin_healthy() {
+  local origin="$1"
+  local base="${origin%/}"
+  curl -fsS --max-time 15 "${base}/api/healthz" >/dev/null 2>&1
 }
 
 # Print the result block. `origin_url` is the cloudflared origin (https://...).
@@ -399,7 +430,7 @@ print_host_tunnel_result() {
   fi
 
   named_hostname_ready() {
-    curl -fsSIL --max-time 10 "https://${public_hostname}/" >/dev/null 2>&1
+    origin_healthy "https://${public_hostname}/"
   }
 
   while (( SECONDS < deadline )); do
@@ -412,7 +443,7 @@ print_host_tunnel_result() {
     fi
 
     local recent_logs url registered
-  recent_logs="$(tail -n 200 "$TUNNEL_LOG_FILE" 2>/dev/null | tr -d '\000' || true)"
+    recent_logs="$(safe_tail_tunnel_log 200)"
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
 
@@ -423,7 +454,7 @@ print_host_tunnel_result() {
         return 0
       fi
     fi
-    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]] && origin_healthy "${url}/"; then
       emit_result "${url}/" "quick"
       return 0
     fi
@@ -437,7 +468,7 @@ print_host_tunnel_result() {
   else
     echo "Timed out waiting for the tunnel URL." >&2
   fi
-  tail -n 120 "$TUNNEL_LOG_FILE" >&2 || true
+  safe_tail_tunnel_log 120 >&2
   return 1
 }
 
@@ -445,6 +476,7 @@ share_with_docker() {
   echo "Starting dashboard and share tunnel with Docker Compose..."
   docker compose up -d dashboard >/dev/null
   docker compose --profile share rm -sf dashboard-share dashboard-share-named >/dev/null 2>&1 || true
+  rm -f "$ORIGIN_RECORD"
   docker compose --profile share up -d --force-recreate "$share_service" >/dev/null
 
   if [[ "$use_named" == "true" ]]; then
@@ -460,10 +492,12 @@ share_with_docker() {
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
-      emit_result "https://${public_hostname}/" "named"
-      return 0
+      if origin_healthy "https://${public_hostname}/"; then
+        emit_result "https://${public_hostname}/" "named"
+        return 0
+      fi
     fi
-    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]]; then
+    if [[ "$use_named" == "false" && -n "$url" && -n "$registered" ]] && origin_healthy "${url}/"; then
       emit_result "${url}/" "quick"
       return 0
     fi
@@ -471,7 +505,7 @@ share_with_docker() {
   done
 
   echo "Timed out waiting for the tunnel URL." >&2
-  docker compose logs --tail=80 "$share_service" >&2 || true
+  docker compose logs --tail=80 "$share_service" 2>&1 | redact_sensitive_output >&2 || true
   return 1
 }
 
@@ -488,6 +522,7 @@ share_without_docker() {
 
   stop_pid_file "$TUNNEL_PID_FILE"
   : >"$TUNNEL_LOG_FILE"
+  rm -f "$ORIGIN_RECORD"
 
   start_cloudflared "$cloudflared_bin"
 

@@ -38,6 +38,7 @@ PAGE_URLS = {
     "contact": f"{BASE_URL}/contact-us",
     "signup": f"{BASE_URL}/newborn-sign-up",
 }
+OPTIONAL_PAGE_KEYS = {"partners", "resources", "publications", "team", "signup"}
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; ESD-Lab-USC-Dashboard/1.0; +https://www.esdlabsc.com/)",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -666,13 +667,15 @@ def fallback_payload() -> dict[str, Any]:
 
 
 def build_payload_from_pages(pages: dict[str, PageDocument], timeout: int = 12) -> dict[str, Any]:
+    fallback = fallback_payload()
+
     about_page = pages["about"]
     home_page = pages["home"]
     studies_page = pages["studies"]
-    team_page = pages["team"]
-    partners_page = pages["partners"]
-    resources_page = pages["resources"]
-    publications_page = pages["publications"]
+    team_page = pages.get("team")
+    partners_page = pages.get("partners")
+    resources_page = pages.get("resources")
+    publications_page = pages.get("publications")
     news_page = pages["news"]
     stories_page = pages["stories"]
     contact_page = pages["contact"]
@@ -682,11 +685,27 @@ def build_payload_from_pages(pages: dict[str, PageDocument], timeout: int = 12) 
     studies = extract_studies(studies_page)
     stories = enrich_story_summaries(extract_story_links(stories_page), timeout=timeout)
     news = extract_news_items(news_page)
-    publications = extract_publication_items(publications_page)
-    resources = extract_resource_items(resources_page)
-    partners = extract_partner_items(partners_page)
+    publications = (
+        extract_publication_items(publications_page)
+        if publications_page
+        else fallback["publications"]
+    )
+    resources = (
+        extract_resource_items(resources_page)
+        if resources_page
+        else fallback["resources"]
+    )
+    partners = (
+        extract_partner_items(partners_page)
+        if partners_page
+        else fallback["partners"]
+    )
     pathway = extract_family_pathway(home_page)
-    team_highlights = extract_team_highlights(team_page)
+    team_highlights = (
+        extract_team_highlights(team_page)
+        if team_page
+        else fallback["team_highlights"]
+    )
 
     contact_text = f"{contact_page.text} {home_page.text}"
     phone = extract_phone(contact_text) or ""
@@ -769,7 +788,10 @@ def build_payload(allow_network: bool = True, timeout: int = 12) -> dict[str, An
             try:
                 pages[key] = fetch_page(key, url, timeout=timeout)
             except Exception as exc:  # pragma: no cover - defensive network path
-                logger.warning("Unable to fetch %s (%s): %s", key, url, exc)
+                if key in OPTIONAL_PAGE_KEYS:
+                    logger.info("Optional page unavailable: %s (%s): %s", key, url, exc)
+                else:
+                    logger.warning("Unable to fetch %s (%s): %s", key, url, exc)
                 errors.append(f"{key}: {exc}")
 
     required_pages = {"home", "about", "studies", "stories", "news", "contact"}

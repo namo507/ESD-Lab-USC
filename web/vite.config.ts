@@ -22,10 +22,16 @@ export default defineConfig({
     chunkSizeWarningLimit: 250,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ["react", "react-dom"],
-          router: ["react-router-dom"],
-          query: ["@tanstack/react-query"],
+        manualChunks(id) {
+          if (id.includes("node_modules/react-router-dom")) return "router";
+          if (id.includes("node_modules/@tanstack/react-query")) return "query";
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/")
+          ) {
+            return "react";
+          }
+          return undefined;
         },
       },
     },

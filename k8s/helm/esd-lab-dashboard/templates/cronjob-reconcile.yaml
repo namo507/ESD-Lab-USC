@@ -13,7 +13,7 @@ spec:
   failedJobsHistoryLimit: {{ .Values.reconcile.failedJobsHistoryLimit }}
   jobTemplate:
     spec:
-      backoffLimit: 0
+      backoffLimit: {{ .Values.reconcile.backoffLimit }}
       template:
         metadata:
           labels:
@@ -55,8 +55,8 @@ spec:
           volumes:
             - name: readings
               persistentVolumeClaim:
-                claimName: {{ .Values.existingClaims.readings | default "REQUIRED_READINGS_PVC" | quote }}
+                claimName: {{ include "esd-lab-dashboard.requiredReadingsClaim" . | quote }}
             - name: dashboard-data
               persistentVolumeClaim:
-                claimName: {{ .Values.existingClaims.data | default "REQUIRED_DATA_PVC" | quote }}
+                claimName: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}
 {{- end }}

@@ -22,7 +22,10 @@ jobs:
         uses: azure/setup-kubectl@v4
 
       - name: Lint chart
-        run: helm lint k8s/helm/esd-lab-dashboard
+        run: |
+          helm lint k8s/helm/esd-lab-dashboard \
+            --set existingClaims.readings=esd-readings-rwx \
+            --set existingClaims.data=esd-dashboard-data-rwx
 
       - name: Render manifests
         run: |

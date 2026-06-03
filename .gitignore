@@ -147,6 +147,8 @@ temp/
 *.bak
 *.orig
 dashboard/data/.readings_cache.json
+dashboard/data/*.sqlite3
+dashboard/data/*.sqlite3-*
 dashboard/data/readings_pipeline.lock
 dashboard/data/readings_pipeline_events.jsonl
 

@@ -1,12 +1,14 @@
 FROM python:3.11-slim
 
+ARG PIP_VERSION=25.3
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DASHBOARD_PORT=8080
 
 WORKDIR /app
 
-# Install Node.js 20 (required by live_dashboard_server.py → ensure_public_spa_build)
+# Install Node.js 20 + npm 10 (required by the Vite 8 public SPA build)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
     && mkdir -p /etc/apt/keyrings \
@@ -16,11 +18,12 @@ RUN apt-get update \
        > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g npm@10.9.8 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY dashboard/requirements-dashboard.txt /tmp/requirements-dashboard.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /tmp/requirements-dashboard.txt
+RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}" \
+    && python -m pip install --no-cache-dir -r /tmp/requirements-dashboard.txt
 
 # Install frontend dependencies so `npm run build` works at startup
 COPY web/package.json web/package-lock.json /app/web/

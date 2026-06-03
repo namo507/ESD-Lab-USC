@@ -135,7 +135,9 @@ pages-watch-once:  ## One-shot build + deploy of the canonical Pages dashboard s
 	$(PYTHON) scripts/watch_pages_site.py --once
 
 k8s-helm-lint:  ## Validate Kubernetes Helm templates locally
-	helm lint k8s/helm/esd-lab-dashboard
+	helm lint k8s/helm/esd-lab-dashboard \
+		--set existingClaims.readings=esd-readings-rwx \
+		--set existingClaims.data=esd-dashboard-data-rwx
 	helm template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
 		--namespace esd-lab \
 		--set existingClaims.readings=esd-readings-rwx \
