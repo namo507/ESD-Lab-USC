@@ -1,7 +1,10 @@
 .stage {
   position: fixed;
-  left: calc(var(--sidebar-w-dashboard) + 24px);
-  bottom: 88px;
+  /* Anchor is driven by custom properties so each surface can place Buddy
+     in context. Defaults keep the operator shell behaviour: sit just past
+     the dashboard sidebar, lifted above the footer/HIPAA banner. */
+  left: var(--buddy-left, calc(var(--sidebar-w-dashboard) + 24px));
+  bottom: var(--buddy-bottom, 88px);
   z-index: 92;
   width: 260px;
   pointer-events: none;
@@ -13,6 +16,14 @@
 
 .active {
   display: flex;
+}
+
+/* Public landing has no operator sidebar, so the dashboard offset shoves
+   Buddy toward the centre of the page. This modifier re-anchors it to the
+   true bottom-left of the viewport. */
+.page {
+  --buddy-left: 24px;
+  --buddy-bottom: 24px;
 }
 
 .buddy {

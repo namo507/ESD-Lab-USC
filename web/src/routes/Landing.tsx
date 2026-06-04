@@ -1136,7 +1136,7 @@ export function Landing() {
         <Sparkles size={20} strokeWidth={1.5} />
       </button>
 
-      <Buddy />
+      <Buddy anchor="page" />
       <ChatDrawer />
     </div>
   );

@@ -151,7 +151,16 @@ function BuddySvg({ talking, lookX, lookY }: BuddySvgProps) {
   );
 }
 
-export function Buddy() {
+export interface BuddyProps {
+  /**
+   * Placement context. "shell" (default) offsets past the operator sidebar;
+   * "page" anchors Buddy to the viewport bottom-left for sidebar-less
+   * surfaces such as the public landing route.
+   */
+  anchor?: "shell" | "page";
+}
+
+export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
   const [insight, setInsight] = useState<InsightData | null>(null);
   const [look, setLook] = useState({ x: 48, y: 48 });
 
@@ -240,7 +249,7 @@ export function Buddy() {
   }, []);
 
   return (
-    <div className={`${styles.stage} ${insight ? styles.active : ""}`} aria-live="polite">
+    <div className={`${styles.stage} ${anchor === "page" ? styles.page : ""} ${insight ? styles.active : ""}`} aria-live="polite">
       <div className={`${styles.buddy} ${insight ? styles.talking : ""}`} ref={buddyRef}>
         <BuddySvg talking={Boolean(insight)} lookX={look.x} lookY={look.y} />
       </div>
