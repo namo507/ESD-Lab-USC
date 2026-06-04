@@ -53,6 +53,20 @@ jobs:
       - name: Build React SPA
         working-directory: web
         env:
+          VITE_FEATURE_RSA_GROWTH_CURVES: "true"
+          VITE_FEATURE_HDA_TIMELINE_PLAYER: "true"
+          VITE_FEATURE_THERMAL_HEATMAP: "true"
+          VITE_FEATURE_SWIMMER_PLOT: "true"
+          VITE_FEATURE_ATTRITION_FUNNEL: "true"
+          VITE_FEATURE_SDOH_MAP: "true"
+          VITE_FEATURE_SHAP_BEESWARM: "true"
+          VITE_FEATURE_CLUSTER_VIEWER: "true"
+          VITE_FEATURE_MODEL_LEADERBOARD: "true"
+          VITE_FEATURE_CASCADE_DAG: "true"
+          VITE_FEATURE_REDCAP_COMPLETENESS: "true"
+          VITE_FEATURE_ECG_QUALITY_MONITOR: "true"
+          VITE_FEATURE_SPATIAL_ASSESSMENT_MATRIX: "true"
+          VITE_FEATURE_ATTACHMENT_HEATMAP: "true"
           VITE_USE_MOCKS: "true"
           VITE_LIVE_ASSISTANT: "true"
         run: |
