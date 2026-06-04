@@ -1,7 +1,10 @@
 import { z } from "zod";
 
 /** Core enums — match prototype's controlled vocabulary exactly. */
-export const GroupCode = z.enum(["VPT", "ASIB", "TD"]);
+export const GroupCode = z.preprocess(
+  (value) => (value === "PT" ? "VPT" : value),
+  z.enum(["VPT", "ASIB", "TD"]),
+);
 export type GroupCode = z.infer<typeof GroupCode>;
 
 export const VisitId = z.enum([
@@ -206,6 +209,213 @@ export const MatlabIntegration = z.object({
   options: z.array(MatlabOption),
 });
 export type MatlabIntegration = z.infer<typeof MatlabIntegration>;
+
+/* ------------------------------------------------------------------------ */
+/* Feature expansion API v2 contracts                                        */
+/* ------------------------------------------------------------------------ */
+
+export const ApiListMeta = z.object({
+  generatedAt: z.string(),
+  participantCount: z.number().int(),
+  source: z.enum(["mock", "live", "aggregate"]).optional(),
+});
+export type ApiListMeta = z.infer<typeof ApiListMeta>;
+
+export function ApiListResponse<T extends z.ZodTypeAny>(item: T) {
+  return z.object({
+    data: z.array(item),
+    meta: ApiListMeta,
+  });
+}
+
+export const RsaTrajectoryRow = z.object({
+  group: GroupCode,
+  ageMonths: z.number(),
+  adjustedAgeMonths: z.number(),
+  chronologicalAgeMonths: z.number(),
+  mean: z.number(),
+  ciLow: z.number(),
+  ciHigh: z.number(),
+  n: z.number().int(),
+});
+export type RsaTrajectoryRow = z.infer<typeof RsaTrajectoryRow>;
+export const RsaTrajectoryResponse = ApiListResponse(RsaTrajectoryRow);
+export type RsaTrajectoryResponse = z.infer<typeof RsaTrajectoryResponse>;
+
+export const RedcapCompletenessRow = z.object({
+  nanoId: z.string(),
+  group: GroupCode,
+  instrument: z.string(),
+  completenessPct: z.number(),
+  requiredMissing: z.number().int(),
+  requiredTotal: z.number().int(),
+  ndaRequired: z.boolean(),
+  dueDate: z.string().nullable(),
+  status: z.enum(["complete", "watch", "missing"]),
+});
+export type RedcapCompletenessRow = z.infer<typeof RedcapCompletenessRow>;
+export const RedcapCompletenessResponse = ApiListResponse(RedcapCompletenessRow);
+export type RedcapCompletenessResponse = z.infer<typeof RedcapCompletenessResponse>;
+
+export const HdaSessionRow = z.object({
+  nanoId: z.string(),
+  visitAge: z.number(),
+  t0: z.number(),
+  t1: z.number(),
+  phase: HdaPhase,
+  confidence: z.number().min(0).max(1),
+  rmssd: z.number(),
+  sqi: z.number().min(0).max(1),
+});
+export type HdaSessionRow = z.infer<typeof HdaSessionRow>;
+export const HdaSessionResponse = ApiListResponse(HdaSessionRow);
+export type HdaSessionResponse = z.infer<typeof HdaSessionResponse>;
+
+export const ThermalHeatmapRow = z.object({
+  nanoId: z.string(),
+  day: z.number().int(),
+  hour: z.number().int(),
+  centralTemp: z.number(),
+  peripheralTemp: z.number(),
+  gradient: z.number(),
+  hrc: z.number(),
+  medicalEvent: z.string().nullable(),
+});
+export type ThermalHeatmapRow = z.infer<typeof ThermalHeatmapRow>;
+export const ThermalHeatmapResponse = ApiListResponse(ThermalHeatmapRow);
+export type ThermalHeatmapResponse = z.infer<typeof ThermalHeatmapResponse>;
+
+export const CohortSwimmerRow = z.object({
+  nanoId: z.string(),
+  group: GroupCode,
+  enrolledAt: z.string(),
+  lastVisit: VisitId,
+  completedVisits: z.number().int(),
+  expectedVisits: z.number().int(),
+  completionPct: z.number(),
+  dropoutRisk: z.enum(["low", "watch", "high"]),
+  milestones: z.array(z.object({
+    visit: VisitId,
+    month: z.number(),
+    status: z.enum(["complete", "scheduled", "missed"]),
+  })),
+});
+export type CohortSwimmerRow = z.infer<typeof CohortSwimmerRow>;
+export const CohortSwimmerResponse = ApiListResponse(CohortSwimmerRow);
+export type CohortSwimmerResponse = z.infer<typeof CohortSwimmerResponse>;
+
+export const AttritionFunnelRow = z.object({
+  from: z.string(),
+  to: z.string(),
+  value: z.number(),
+  group: GroupCode,
+});
+export type AttritionFunnelRow = z.infer<typeof AttritionFunnelRow>;
+export const AttritionFunnelResponse = ApiListResponse(AttritionFunnelRow);
+export type AttritionFunnelResponse = z.infer<typeof AttritionFunnelResponse>;
+
+export const SdohMapRow = z.object({
+  county: z.string(),
+  fips: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  participants: z.number().int(),
+  deprivationIndex: z.number(),
+  broadbandPct: z.number(),
+  foodAccessPct: z.number(),
+  meanCompletion: z.number(),
+});
+export type SdohMapRow = z.infer<typeof SdohMapRow>;
+export const SdohMapResponse = ApiListResponse(SdohMapRow);
+export type SdohMapResponse = z.infer<typeof SdohMapResponse>;
+
+export const ShapValueRow = z.object({
+  participantId: z.string(),
+  feature: z.string(),
+  label: z.string(),
+  value: z.number(),
+  shap: z.number(),
+  modality: z.enum(["ecg", "hda", "redcap", "thermal", "demographic"]),
+  timeWindow: z.string(),
+});
+export type ShapValueRow = z.infer<typeof ShapValueRow>;
+export const ShapValuesResponse = ApiListResponse(ShapValueRow);
+export type ShapValuesResponse = z.infer<typeof ShapValuesResponse>;
+
+export const ClusterTsneRow = z.object({
+  nanoId: z.string(),
+  group: GroupCode,
+  x: z.number(),
+  y: z.number(),
+  cluster: z.string(),
+  timepoint: z.number(),
+  outcomeScore: z.number(),
+});
+export type ClusterTsneRow = z.infer<typeof ClusterTsneRow>;
+export const ClusterTsneResponse = ApiListResponse(ClusterTsneRow);
+export type ClusterTsneResponse = z.infer<typeof ClusterTsneResponse>;
+
+export const ModelLeaderboardRow = z.object({
+  modelId: z.string(),
+  name: z.string(),
+  auroc: z.number(),
+  sensitivity: z.number(),
+  specificity: z.number(),
+  f1: z.number(),
+  calibration: z.number(),
+  features: z.number().int(),
+  updatedAt: z.string(),
+});
+export type ModelLeaderboardRow = z.infer<typeof ModelLeaderboardRow>;
+export const ModelLeaderboardResponse = ApiListResponse(ModelLeaderboardRow);
+export type ModelLeaderboardResponse = z.infer<typeof ModelLeaderboardResponse>;
+
+export const ModelLeaderboardDetailRow = z.object({
+  modelId: z.string(),
+  epoch: z.number().int(),
+  trainAuroc: z.number(),
+  validationAuroc: z.number(),
+  ablation: z.string(),
+  ablationDelta: z.number(),
+});
+export type ModelLeaderboardDetailRow = z.infer<typeof ModelLeaderboardDetailRow>;
+export const ModelLeaderboardDetailResponse = ApiListResponse(ModelLeaderboardDetailRow);
+export type ModelLeaderboardDetailResponse = z.infer<typeof ModelLeaderboardDetailResponse>;
+
+export const CascadeDagRow = z.object({
+  source: z.string(),
+  target: z.string(),
+  sourceDomain: z.string(),
+  targetDomain: z.string(),
+  weight: z.number(),
+  evidence: z.string(),
+});
+export type CascadeDagRow = z.infer<typeof CascadeDagRow>;
+export const CascadeDagResponse = ApiListResponse(CascadeDagRow);
+export type CascadeDagResponse = z.infer<typeof CascadeDagResponse>;
+
+export const EcgQualityRow = z.object({
+  nanoId: z.string(),
+  hour: z.number().int(),
+  minute: z.number().int(),
+  sqi: z.number().min(0).max(1),
+  artifactType: z.enum(["none", "ectopic", "motion", "noise", "flatline"]),
+  pass: z.boolean(),
+  lead: z.string(),
+});
+export type EcgQualityRow = z.infer<typeof EcgQualityRow>;
+export const EcgQualityResponse = ApiListResponse(EcgQualityRow);
+export type EcgQualityResponse = z.infer<typeof EcgQualityResponse>;
+
+export const EcgQualitySummaryRow = z.object({
+  label: z.string(),
+  value: z.number(),
+  target: z.number(),
+  status: z.enum(["ok", "watch", "fail"]),
+});
+export type EcgQualitySummaryRow = z.infer<typeof EcgQualitySummaryRow>;
+export const EcgQualitySummaryResponse = ApiListResponse(EcgQualitySummaryRow);
+export type EcgQualitySummaryResponse = z.infer<typeof EcgQualitySummaryResponse>;
 
 /* ------------------------------------------------------------------------ */
 /* Presentation Maker — concept-to-deck contracts                            */

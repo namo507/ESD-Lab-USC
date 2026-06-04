@@ -1,0 +1,7 @@
+.wrap { display: flex; flex-direction: column; gap: 8px; }
+.svg { width: 100%; height: auto; display: block; overflow: visible; }
+.trackLabel { font-family: var(--font-mono); font-size: 10px; fill: var(--slate-500); letter-spacing: 0.04em; text-transform: uppercase; }
+.tick { font-family: var(--font-mono); font-size: 10px; fill: var(--slate-500); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 11px; color: var(--slate-500); }
+.legendItem { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.swatch { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }

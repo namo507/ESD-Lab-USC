@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
-import { useMatlabIntegration } from "@/api/hooks";
+import { useEcgQualitySummary, useMatlabIntegration } from "@/api/hooks";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import type { MatlabIntegration } from "@/api/schemas";
 import styles from "./Matlab.module.css";
 
 /**
@@ -232,6 +234,8 @@ export function Matlab() {
         </Card>
       </div>
 
+      <MatlabProcessingQueue integration={integration} />
+
       <section className={styles.throughputBlock} aria-label="MATLAB throughput · last 24 h" data-insight="matlab-throughput">
         <div className={styles.throughputCopy}>
           <SectionLabel>Throughput · last 24 h</SectionLabel>
@@ -300,5 +304,71 @@ export function Matlab() {
         </Button>
       </footer>
     </div>
+  );
+}
+
+function MatlabProcessingQueue({ integration }: { integration: MatlabIntegration | undefined }) {
+  const enabled = useFeatureFlag("ECG_QUALITY_MONITOR");
+  const { data: ecgSummary } = useEcgQualitySummary();
+  const [open, setOpen] = useState(true);
+  if (!enabled) return null;
+
+  const manifest = integration?.manifest;
+  const files = integration?.files ?? [];
+  const artifactRate = files.length
+    ? 1 - files.reduce((sum, file) => sum + file.qa_pass_pct, 0) / files.length
+    : 0;
+  const participantCount = ecgSummary?.meta.participantCount ?? 0;
+  const rows = [
+    {
+      batchId: "matlab-hrv-nightly",
+      participantCount,
+      matlabVersion: manifest?.matlab_version ?? "R2024a",
+      processingStatus: "running",
+      artifactRate,
+      startedAt: manifest?.generated_at ?? "—",
+      completedAt: "pending",
+    },
+    {
+      batchId: "matlab-hda-export",
+      participantCount: Math.round(participantCount * 0.7),
+      matlabVersion: manifest?.matlab_version ?? "R2024a",
+      processingStatus: "done",
+      artifactRate: artifactRate * 0.72,
+      startedAt: manifest?.generated_at ?? "—",
+      completedAt: manifest?.generated_at ?? "—",
+    },
+  ];
+
+  return (
+    <Card pad={0} dataInsight="matlab-processing-queue">
+      <button type="button" className={styles.queueToggle} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <SectionLabel>MATLAB Processing Queue</SectionLabel>
+        <span className="t-mono">{rows.length} batches · ECG QC linked</span>
+      </button>
+      {open && (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <caption className="sr-only">MATLAB processing queue.</caption>
+            <thead>
+              <tr>{["Batch", "Participants", "Version", "Status", "Artifact", "Started", "Completed"].map((h) => <th key={h} className={styles.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.batchId}>
+                  <td className={`${styles.td} t-mono`}>{row.batchId}</td>
+                  <td className={`${styles.td} t-mono`}>{row.participantCount}</td>
+                  <td className={`${styles.td} t-mono`}>{row.matlabVersion}</td>
+                  <td className={styles.td}><Badge kind={row.processingStatus === "done" ? "ok" : "pending"} size="sm">{row.processingStatus}</Badge></td>
+                  <td className={`${styles.td} t-mono`}>{(row.artifactRate * 100).toFixed(1)}%</td>
+                  <td className={`${styles.td} t-mono`}>{row.startedAt}</td>
+                  <td className={`${styles.td} t-mono`}>{row.completedAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

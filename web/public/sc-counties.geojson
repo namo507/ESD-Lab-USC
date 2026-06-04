@@ -1,0 +1,30 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Richland", "fips": "45079" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-81.35, 33.85], [-80.78, 33.85], [-80.78, 34.18], [-81.35, 34.18], [-81.35, 33.85]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Lexington", "fips": "45063" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-81.55, 33.7], [-81.05, 33.7], [-81.05, 34.05], [-81.55, 34.05], [-81.55, 33.7]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Greenville", "fips": "45045" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-82.75, 34.65], [-82.15, 34.65], [-82.15, 35.12], [-82.75, 35.12], [-82.75, 34.65]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Charleston", "fips": "45019" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-80.25, 32.55], [-79.65, 32.55], [-79.65, 33.05], [-80.25, 33.05], [-80.25, 32.55]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Florence", "fips": "45041" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-80.05, 34.02], [-79.45, 34.02], [-79.45, 34.42], [-80.05, 34.42], [-80.05, 34.02]]] }
+    }
+  ]
+}

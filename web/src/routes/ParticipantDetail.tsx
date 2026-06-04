@@ -1,8 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Gloss, Icon, KPI, SectionLabel, Tooltip } from "@/components/primitives";
-import { useParticipant } from "@/api/hooks";
+import { HdaTimeline } from "@/components/charts/HdaTimeline";
+import { useHdaSession, useParticipant } from "@/api/hooks";
 import { ecgPath } from "@/lib/ecgPath";
-import type { GroupCode, VisitId } from "@/api/schemas";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import type { GroupCode, ParticipantDetail as ParticipantDetailType, VisitId } from "@/api/schemas";
 import styles from "./ParticipantDetail.module.css";
 
 const VISITS: VisitId[] = ["nicu_dc", "cga_3mo", "cga_6mo", "cga_9mo", "cga_12mo", "cga_18mo", "cga_24mo"];
@@ -139,6 +141,7 @@ export function ParticipantDetail() {
               </div>
             ))}
           </div>
+          <HdaPreview participant={p} />
         </Card>
 
         <Card pad={0}>
@@ -167,6 +170,25 @@ export function ParticipantDetail() {
           </ul>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function HdaPreview({ participant }: { participant: ParticipantDetailType }) {
+  const enabled = useFeatureFlag("HDA_TIMELINE_PLAYER");
+  if (!enabled) return null;
+
+  const visitAge = VISITS.indexOf(participant.visit) <= 0 ? 0 : Number(participant.visit.match(/\d+/)?.[0] ?? 12);
+  const { data } = useHdaSession(participant.id, visitAge);
+  const rows = data?.data ?? [];
+
+  return (
+    <div className={styles.hdaPreview}>
+      <div className={styles.ecgHead}>
+        <SectionLabel>HDA Preview</SectionLabel>
+        <span className={`${styles.ecgMeta} t-mono`}>CGA {visitAge} mo · minimized player</span>
+      </div>
+      <HdaTimeline rows={rows} cursor={120} compact />
     </div>
   );
 }

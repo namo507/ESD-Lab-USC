@@ -12,16 +12,16 @@ interface HipaaBannerProps {
 export function HipaaBanner({ onDismiss, idleMinutes }: HipaaBannerProps) {
   return (
     <div
-      className="flex items-center gap-3 px-8 py-2 text-[12px] text-[color:var(--usc-garnet-800)] font-sans"
+      className="flex items-center gap-3 px-8 py-2 text-[12px] text-[color:var(--hipaa-fg)] font-sans"
       style={{
-        background: "linear-gradient(90deg, rgba(115,0,10,0.08) 0%, rgba(115,0,10,0.02) 100%)",
-        borderBottom: "1px solid rgba(115,0,10,0.15)",
+        background: "var(--hipaa-notice-bg)",
+        borderBottom: "1px solid var(--hipaa-border)",
       }}
       role="region"
       aria-label="HIPAA notice"
     >
       <span aria-hidden>⚠️</span>
-      <Icon name="shield-check" size={14} stroke={1.5} color="var(--usc-garnet)" />
+      <Icon name="shield-check" size={14} stroke={1.5} color="var(--hipaa-icon)" />
       <span>
         <Gloss term="PHI">PHI</Gloss> processing zone ·{" "}
         <Gloss term="HIPAA">HIPAA</Gloss>-compliant audit logging is active. All exports are stripped of

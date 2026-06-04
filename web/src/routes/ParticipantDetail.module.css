@@ -156,3 +156,9 @@
 .logTs { font-size: 10px; color: var(--slate-500); }
 .logDetail { font-size: 11px; color: var(--slate-500); margin-top: 2px; line-height: 1.4; }
 .logActor { font-size: 10px; color: var(--slate-400); margin-top: 2px; }
+
+.hdaPreview {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}

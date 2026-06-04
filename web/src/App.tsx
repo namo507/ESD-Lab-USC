@@ -16,6 +16,20 @@ const Matlab = lazy(() => import("@/routes/Matlab").then((m) => ({ default: m.Ma
 const PresentationMaker = lazy(() =>
   import("@/routes/PresentationMaker").then((m) => ({ default: m.PresentationMaker })),
 );
+const HdaPlayer = lazy(() => import("@/routes/HdaPlayer").then((m) => ({ default: m.HdaPlayer })));
+const ThermalHeatmap = lazy(() => import("@/routes/ThermalHeatmap").then((m) => ({ default: m.ThermalHeatmap })));
+const SwimmerPlot = lazy(() => import("@/routes/SwimmerPlot").then((m) => ({ default: m.SwimmerPlot })));
+const Attrition = lazy(() => import("@/routes/Attrition").then((m) => ({ default: m.Attrition })));
+const SdohMap = lazy(() => import("@/routes/SdohMap").then((m) => ({ default: m.SdohMap })));
+const ShapExplorer = lazy(() => import("@/routes/ShapExplorer").then((m) => ({ default: m.ShapExplorer })));
+const ClusterViewer = lazy(() => import("@/routes/ClusterViewer").then((m) => ({ default: m.ClusterViewer })));
+const ModelLeaderboard = lazy(() => import("@/routes/ModelLeaderboard").then((m) => ({ default: m.ModelLeaderboard })));
+const CascadeDag = lazy(() => import("@/routes/CascadeDag").then((m) => ({ default: m.CascadeDag })));
+const EcgQuality = lazy(() => import("@/routes/EcgQuality").then((m) => ({ default: m.EcgQuality })));
+const SpatialAssessmentMatrix = lazy(() =>
+  import("@/routes/SpatialAssessmentMatrix").then((m) => ({ default: m.SpatialAssessmentMatrix })),
+);
+const AttachmentHeatmap = lazy(() => import("@/routes/AttachmentHeatmap").then((m) => ({ default: m.AttachmentHeatmap })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +98,18 @@ export default function App() {
             <Route path="/redcap" element={<Redcap />} />
             <Route path="/matlab" element={<Matlab />} />
             <Route path="/presentation-maker" element={<PresentationMaker />} />
+            <Route path="/hda-player" element={<HdaPlayer />} />
+            <Route path="/thermal-heatmap" element={<ThermalHeatmap />} />
+            <Route path="/swimmer-plot" element={<SwimmerPlot />} />
+            <Route path="/attrition" element={<Attrition />} />
+            <Route path="/sdoh-map" element={<SdohMap />} />
+            <Route path="/shap-explorer" element={<ShapExplorer />} />
+            <Route path="/cluster-viewer" element={<ClusterViewer />} />
+            <Route path="/model-leaderboard" element={<ModelLeaderboard />} />
+            <Route path="/cascade-dag" element={<CascadeDag />} />
+            <Route path="/ecg-quality" element={<EcgQuality />} />
+            <Route path="/spatial-assessments" element={<SpatialAssessmentMatrix />} />
+            <Route path="/attachment-heatmap" element={<AttachmentHeatmap />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

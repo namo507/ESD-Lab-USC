@@ -23,6 +23,20 @@ import type {
   StudySummary,
   EpochDecision,
   MatlabIntegration,
+  RsaTrajectoryResponse,
+  RedcapCompletenessResponse,
+  HdaSessionResponse,
+  ThermalHeatmapResponse,
+  CohortSwimmerResponse,
+  AttritionFunnelResponse,
+  SdohMapResponse,
+  ShapValuesResponse,
+  ClusterTsneResponse,
+  ModelLeaderboardResponse,
+  ModelLeaderboardDetailResponse,
+  CascadeDagResponse,
+  EcgQualityResponse,
+  EcgQualitySummaryResponse,
 } from "./schemas";
 
 const STUDY: StudySummary = {
@@ -134,6 +148,302 @@ const MATLAB_INTEGRATION: MatlabIntegration = {
     { id: "rest",   title: "REST endpoint",            tag: "On-demand",   coupling: "loose", cost: "medium", summary: "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference." },
   ],
 };
+
+const V2_GENERATED_AT = new Date().toISOString();
+const VISIT_MONTHS = [
+  { visit: "nicu_dc", month: 0 },
+  { visit: "cga_3mo", month: 3 },
+  { visit: "cga_6mo", month: 6 },
+  { visit: "cga_9mo", month: 9 },
+  { visit: "cga_12mo", month: 12 },
+  { visit: "cga_18mo", month: 18 },
+  { visit: "cga_24mo", month: 24 },
+] as const;
+
+function v2Envelope<T>(
+  data: T[],
+  participantCount = PARTICIPANTS.length,
+): { data: T[]; meta: { generatedAt: string; participantCount: number; source: "mock" } } {
+  return { data, meta: { generatedAt: V2_GENERATED_AT, participantCount, source: "mock" } };
+}
+
+function makeRsaTrajectories(ageBasis: string): RsaTrajectoryResponse {
+  const baseMonths = [0, 1, 2, 3, 6, 9, 12, 24, 36];
+  const groupBase = { VPT: 3.14, ASIB: 3.11, TD: 3.13 };
+  const groupSlope = { VPT: 0.055, ASIB: 0.026, TD: 0.073 };
+  const data = (Object.keys(groupBase) as Array<keyof typeof groupBase>).flatMap((group) =>
+    baseMonths.map((month, i) => {
+      const chronologicalAgeMonths = month + (group === "VPT" ? 2.2 : group === "ASIB" ? 1.4 : 0);
+      const adjustedAgeMonths = month;
+      const ageMonths = ageBasis === "chronological" ? chronologicalAgeMonths : adjustedAgeMonths;
+      const mean = groupBase[group] + groupSlope[group] * ageMonths + Math.sin(i + group.length) * 0.025;
+      const band = group === "TD" ? 0.055 : group === "ASIB" ? 0.075 : 0.065;
+      return {
+        group,
+        ageMonths,
+        adjustedAgeMonths,
+        chronologicalAgeMonths,
+        mean: Number(mean.toFixed(3)),
+        ciLow: Number((mean - band).toFixed(3)),
+        ciHigh: Number((mean + band).toFixed(3)),
+        n: Math.max(8, STUDY.groups[group].count - i * (group === "VPT" ? 12 : 3)),
+      };
+    }),
+  );
+  return v2Envelope(data, STUDY.enrolled);
+}
+
+const REDCAP_INSTRUMENTS = [
+  { instrument: "visit_intake_v2", ndaRequired: true, requiredTotal: 18 },
+  { instrument: "medical_history_v1", ndaRequired: true, requiredTotal: 22 },
+  { instrument: "bayley4_scores", ndaRequired: true, requiredTotal: 16 },
+  { instrument: "mchat_r_tf", ndaRequired: true, requiredTotal: 12 },
+  { instrument: "caregiver_q_v3", ndaRequired: false, requiredTotal: 14 },
+  { instrument: "temperature_recording_log", ndaRequired: false, requiredTotal: 10 },
+];
+
+const REDCAP_COMPLETENESS: RedcapCompletenessResponse = v2Envelope(
+  PARTICIPANTS.slice(0, 12).flatMap((p, pi) =>
+    REDCAP_INSTRUMENTS.map((form, fi) => {
+      const requiredMissing = Math.max(0, ((pi + fi * 2) % 5) - (p.qa === "pass" ? 2 : 0));
+      const completenessPct = ((form.requiredTotal - requiredMissing) / form.requiredTotal) * 100;
+      return {
+        nanoId: p.id,
+        group: p.group,
+        instrument: form.instrument,
+        completenessPct: Number(completenessPct.toFixed(1)),
+        requiredMissing,
+        requiredTotal: form.requiredTotal,
+        ndaRequired: form.ndaRequired,
+        dueDate: form.ndaRequired ? "2026-08-01" : null,
+        status: requiredMissing === 0 ? "complete" : requiredMissing <= 2 ? "watch" : "missing",
+      };
+    }),
+  ),
+  STUDY.enrolled,
+);
+
+function visitAgeFromPath(raw: string): number {
+  const n = Number(raw);
+  if (Number.isFinite(n)) return n;
+  return VISIT_MONTHS.find((v) => v.visit === raw)?.month ?? 12;
+}
+
+function makeHdaSession(nanoId: string, visitAgeRaw: string): HdaSessionResponse {
+  const visitAge = visitAgeFromPath(visitAgeRaw);
+  const phases = ["orienting", "sustained", "inattention", "termination"] as const;
+  const data = Array.from({ length: 72 }, (_, i) => {
+    const phase = phases[(i < 10 ? 0 : i < 48 ? 1 : i < 64 ? 2 : 3) % phases.length]!;
+    return {
+      nanoId,
+      visitAge,
+      t0: i * 5,
+      t1: i * 5 + 5,
+      phase,
+      confidence: Number((0.74 + ((i * 7) % 19) / 100).toFixed(2)),
+      rmssd: Number((28 + visitAge * 0.9 + Math.sin(i / 4) * 4).toFixed(2)),
+      sqi: Number((0.72 + ((i * 5) % 23) / 100).toFixed(2)),
+    };
+  });
+  return v2Envelope(data, 1);
+}
+
+function makeThermalHeatmap(nanoId: string): ThermalHeatmapResponse {
+  const data = Array.from({ length: 7 * 24 }, (_, idx) => {
+    const day = Math.floor(idx / 24) + 1;
+    const hour = idx % 24;
+    const centralTemp = 36.6 + Math.sin((hour - 5) / 4) * 0.25 + day * 0.015;
+    const peripheralTemp = 35.9 + Math.cos(hour / 5) * 0.38 - day * 0.01;
+    return {
+      nanoId,
+      day,
+      hour,
+      centralTemp: Number(centralTemp.toFixed(2)),
+      peripheralTemp: Number(peripheralTemp.toFixed(2)),
+      gradient: Number((centralTemp - peripheralTemp).toFixed(2)),
+      hrc: Number((4.4 + Math.sin(idx / 9) * 1.2 + (hour > 18 ? 0.6 : 0)).toFixed(2)),
+      medicalEvent: hour === 7 && day === 2 ? "care cluster" : hour === 19 && day === 5 ? "feeding hold" : null,
+    };
+  });
+  return v2Envelope(data, 1);
+}
+
+const COHORT_SWIMMER: CohortSwimmerResponse = v2Envelope(
+  PARTICIPANTS.map((p, idx) => {
+    const completedVisits = Math.max(1, VISIT_MONTHS.findIndex((v) => v.visit === p.visit) + 1);
+    return {
+      nanoId: p.id,
+      group: p.group,
+      enrolledAt: p.enrolled,
+      lastVisit: p.visit,
+      completedVisits,
+      expectedVisits: VISIT_MONTHS.length,
+      completionPct: Number(((completedVisits / VISIT_MONTHS.length) * 100).toFixed(1)),
+      dropoutRisk: p.qa === "reject" ? "high" : p.qa === "pending" ? "watch" : "low",
+      milestones: VISIT_MONTHS.map((v, vi) => ({
+        visit: v.visit,
+        month: v.month,
+        status: vi < completedVisits ? "complete" : vi === completedVisits && idx % 5 === 0 ? "missed" : "scheduled",
+      })),
+    };
+  }),
+  STUDY.enrolled,
+);
+
+const ATTRITION_FUNNEL: AttritionFunnelResponse = v2Envelope(
+  (["VPT", "ASIB", "TD"] as const).flatMap((group) => [
+    { from: "enrolled", to: "nicu_dc", value: STUDY.groups[group].count, group },
+    { from: "nicu_dc", to: "cga_6mo", value: Math.round(STUDY.groups[group].count * 0.84), group },
+    { from: "cga_6mo", to: "cga_12mo", value: Math.round(STUDY.groups[group].count * 0.62), group },
+    { from: "cga_12mo", to: "cga_24mo", value: Math.round(STUDY.groups[group].count * 0.28), group },
+  ]),
+  STUDY.enrolled,
+);
+
+const SDOH_MAP: SdohMapResponse = v2Envelope(
+  [
+    ["Richland", "45079", 34.0007, -81.0348, 74, 0.43, 87, 72],
+    ["Lexington", "45063", 33.9815, -81.2362, 39, 0.31, 91, 78],
+    ["Greenville", "45045", 34.8526, -82.394, 31, 0.37, 89, 75],
+    ["Charleston", "45019", 32.7765, -79.9311, 22, 0.28, 92, 81],
+    ["Florence", "45041", 34.1954, -79.7626, 18, 0.52, 81, 69],
+  ].map(([county, fips, lat, lng, participants, deprivationIndex, broadbandPct, meanCompletion]) => ({
+    county: String(county),
+    fips: String(fips),
+    lat: Number(lat),
+    lng: Number(lng),
+    participants: Number(participants),
+    deprivationIndex: Number(deprivationIndex),
+    broadbandPct: Number(broadbandPct),
+    foodAccessPct: Number(100 - Number(deprivationIndex) * 45),
+    meanCompletion: Number(meanCompletion),
+  })),
+  STUDY.enrolled,
+);
+
+const SHAP_FEATURES = [
+  { feature: "rmssd_mean_m6", label: "RMSSD mean @ 6mo", modality: "ecg" },
+  { feature: "rsa_slope_0_12", label: "RSA slope 0-12mo", modality: "ecg" },
+  { feature: "hda_sa_latency_m3", label: "HDA sustained latency", modality: "hda" },
+  { feature: "cptd_nicu", label: "Central-peripheral temp delta", modality: "thermal" },
+  { feature: "mchat_total_m9", label: "M-CHAT total @ 9mo", modality: "redcap" },
+  { feature: "ga_weeks", label: "Gestational age", modality: "demographic" },
+] as const;
+
+const SHAP_VALUES: ShapValuesResponse = v2Envelope(
+  PARTICIPANTS.slice(0, 18).flatMap((p, pi) =>
+    SHAP_FEATURES.map((f, fi) => ({
+      participantId: p.id,
+      feature: f.feature,
+      label: f.label,
+      value: Number((0.8 + pi * 0.08 + fi * 0.12).toFixed(2)),
+      shap: Number((Math.sin(pi * 0.9 + fi) * 0.18 + (p.group === "VPT" ? 0.04 : -0.02)).toFixed(3)),
+      modality: f.modality,
+      timeWindow: fi % 2 ? "0-12 mo" : "6-24 mo",
+    })),
+  ),
+  STUDY.enrolled,
+);
+
+const CLUSTER_TSNE: ClusterTsneResponse = v2Envelope(
+  PARTICIPANTS.flatMap((p, idx) =>
+    [6, 12, 24].map((timepoint, ti) => {
+      const cluster = p.group === "TD" ? "regulated" : p.qa === "pending" ? "watchful" : idx % 3 === 0 ? "mixed-signal" : "maturing";
+      return {
+        nanoId: p.id,
+        group: p.group,
+        x: Number((Math.cos(idx * 0.7 + ti) * 7 + ti * 2).toFixed(2)),
+        y: Number((Math.sin(idx * 0.5 + ti) * 5 + (p.group === "VPT" ? 1.5 : -1)).toFixed(2)),
+        cluster,
+        timepoint,
+        outcomeScore: Number((62 + ti * 7 + (p.group === "TD" ? 8 : 0) - (p.qa === "reject" ? 9 : 0)).toFixed(1)),
+      };
+    }),
+  ),
+  STUDY.enrolled,
+);
+
+const MODEL_LEADERBOARD: ModelLeaderboardResponse = v2Envelope(
+  [
+    ["cnn_lstm", "1D-CNN + LSTM", 0.899, 0.766, 0.827, 0.82, 0.041, 128],
+    ["xgb", "XGBoost", 0.859, 0.865, 0.899, 0.678, 0.052, 46],
+    ["transformer", "Transformer", 0.865, 0.777, 0.866, 0.761, 0.047, 96],
+    ["rf", "Random Forest", 0.82, 0.772, 0.738, 0.674, 0.063, 52],
+    ["logreg", "Logistic Regression", 0.747, 0.726, 0.856, 0.674, 0.081, 24],
+  ].map(([modelId, name, auroc, sensitivity, specificity, f1, calibration, features]) => ({
+    modelId: String(modelId),
+    name: String(name),
+    auroc: Number(auroc),
+    sensitivity: Number(sensitivity),
+    specificity: Number(specificity),
+    f1: Number(f1),
+    calibration: Number(calibration),
+    features: Number(features),
+    updatedAt: "2026-06-03T02:56:59",
+  })),
+  STUDY.enrolled,
+);
+
+function makeModelDetail(modelId: string): ModelLeaderboardDetailResponse {
+  const data = Array.from({ length: 8 }, (_, i) => ({
+    modelId,
+    epoch: i + 1,
+    trainAuroc: Number((0.72 + i * 0.025 + (modelId === "cnn_lstm" ? 0.04 : 0)).toFixed(3)),
+    validationAuroc: Number((0.7 + i * 0.021 + (modelId === "cnn_lstm" ? 0.05 : 0)).toFixed(3)),
+    ablation: ["no HDA", "no ECG", "no REDCap", "no thermal"][i % 4]!,
+    ablationDelta: Number((-0.018 - (i % 4) * 0.011).toFixed(3)),
+  }));
+  return v2Envelope(data, STUDY.enrolled);
+}
+
+const CASCADE_DAG: CascadeDagResponse = v2Envelope(
+  [
+    ["NICU stress physiology", "Autonomic regulation", "context", "physiology", 0.78, "HRC + RSA coupling"],
+    ["Autonomic regulation", "Sustained attention", "physiology", "attention", 0.72, "HDA phase stability"],
+    ["Caregiver co-regulation", "Sustained attention", "family", "attention", 0.54, "home-study linkage"],
+    ["Sustained attention", "Social communication", "attention", "behavior", 0.64, "CSBS + M-CHAT"],
+    ["Thermal stability", "Autonomic regulation", "physiology", "physiology", 0.48, "central-peripheral gradient"],
+    ["Social communication", "Adaptive outcome", "behavior", "outcome", 0.69, "Bayley + Vineland"],
+  ].map(([source, target, sourceDomain, targetDomain, weight, evidence]) => ({
+    source: String(source),
+    target: String(target),
+    sourceDomain: String(sourceDomain),
+    targetDomain: String(targetDomain),
+    weight: Number(weight),
+    evidence: String(evidence),
+  })),
+  STUDY.enrolled,
+);
+
+function makeEcgQuality(nanoId: string): EcgQualityResponse {
+  const artifacts = ["none", "none", "none", "ectopic", "motion", "noise", "flatline"] as const;
+  const data = Array.from({ length: 12 * 12 }, (_, idx) => {
+    const hour = Math.floor(idx / 12);
+    const minute = (idx % 12) * 5;
+    const artifactType = artifacts[(idx * 5) % artifacts.length]!;
+    const sqi = artifactType === "none" ? 0.78 + ((idx * 3) % 18) / 100 : 0.35 + ((idx * 7) % 27) / 100;
+    return {
+      nanoId,
+      hour,
+      minute,
+      sqi: Number(Math.min(0.98, sqi).toFixed(2)),
+      artifactType,
+      pass: artifactType === "none" || sqi >= 0.7,
+      lead: "Actiheart-5 ch I",
+    };
+  });
+  return v2Envelope(data, 1);
+}
+
+const ECG_QUALITY_SUMMARY: EcgQualitySummaryResponse = v2Envelope(
+  [
+    { label: "ECG QC pass rate", value: 92.4, target: 90, status: "ok" },
+    { label: "Artifact review queue", value: 18, target: 24, status: "ok" },
+    { label: "Late transfers", value: 4, target: 0, status: "watch" },
+    { label: "NDA-ready windows", value: 88.6, target: 95, status: "watch" },
+  ],
+  STUDY.enrolled,
+);
 
 const MOCK_READINGS_FRESHNESS: ReadingsFreshness = {
   schema: "readings_freshness.v1",
@@ -261,6 +571,30 @@ function mockAssistantReply(message: string): string {
     return "The dashboard prototype reports a held-out AUROC near 0.899 for the risk model. The feature mix combines HRV, HDA composition, demographics, and recording quality, with HDA-derived features carrying much of the signal.";
   }
 
+  if (q.includes("new feature") || q.includes("new route") || q.includes("feature surface")) {
+    return "The expanded NANO surfaces include RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Assessment Matrix, and Attachment Heatmap. Each uses de-identified NANO IDs and v2 API envelopes.";
+  }
+
+  if (q.includes("shap") || q.includes("beeswarm")) {
+    return "The SHAP Explorer beeswarm shows how each feature pushes model risk up or down across de-identified participants. Use modality and time-window filters to narrow the view, then click a point to highlight that participant across the feature distribution.";
+  }
+
+  if (q.includes("redcap") && (q.includes("completeness") || q.includes("nda"))) {
+    return "The REDCap completeness scorecard focuses on NDA-required instruments, shows participant-by-instrument completeness, and flags missing required fields before the configured VITE_NDA_DEADLINE.";
+  }
+
+  if (q.includes("hda") && (q.includes("timeline") || q.includes("player") || q.includes("compare"))) {
+    return "The HDA Timeline Player synchronizes phase blocks with RMSSD and SQI tracks. Play/pause, step, speed, and scrubber controls move through the session, and compare mode overlays a second de-identified participant stack.";
+  }
+
+  if (q.includes("ecg") && (q.includes("quality") || q.includes("artifact") || q.includes("sqi"))) {
+    return "The ECG Quality Monitor renders SQI as a time grid and marks artifact windows with compact SVG markers. It can export a Markdown QC report summarizing pass windows and artifact counts.";
+  }
+
+  if (q.includes("matlab") && q.includes("queue")) {
+    return "The MATLAB Processing Queue is derived from the existing MATLAB manifest and file QA rates, then supplemented with ECG QC summary context. It reports batch ID, participant count, MATLAB version, processing status, artifact rate, and start/completion timestamps.";
+  }
+
   if (q.includes("pipeline") || q.includes("walk me through")) {
     return "The NANO pipeline moves from ingest to preprocess, QA, HRV features, HDA labeling, and a de-identified merge. Each stage card in the DAG shows in-flight work, throughput, and cumulative completed windows.";
   }
@@ -323,8 +657,8 @@ function makeTrajectory(metric: string): Trajectory {
     months,
     series: {
       VPT: months.map((m, i) => ({ x: m, y: base + i * step + (i === 5 ? -1 : 0), n: 184 - i * 8 })),
-      ASIB: months.map((m, i) => ({ x: m, y: base + 4 + i * (step + 0.4), n: 26 - i * 1.5 })),
-      TD: months.map((m, i) => ({ x: m, y: base + 7 + i * (step + 0.7), n: 21 - i * 1 })),
+      ASIB: months.map((m, i) => ({ x: m, y: base + 4 + i * (step + 0.4), n: Math.max(4, Math.round(26 - i * 1.5)) })),
+      TD: months.map((m, i) => ({ x: m, y: base + 7 + i * (step + 0.7), n: Math.max(4, 21 - i) })),
     },
   };
 }
@@ -534,6 +868,28 @@ export function installMockServer() {
     if (p === "/api/runs" && method === "GET") return reply(RUNS);
     if (p === "/api/runs" && method === "POST") return reply({ runId: `run_2026_${Math.floor(Math.random() * 999)}_x` }, 201);
     if (p === "/api/participants") return reply(PARTICIPANTS);
+    if (p === "/api/v2/rsa-trajectories") return reply(makeRsaTrajectories(u.searchParams.get("age") ?? "adjusted"));
+    if (p === "/api/v2/redcap-completeness") return reply(REDCAP_COMPLETENESS);
+    if (p === "/api/v2/cohort-swimmer") return reply(COHORT_SWIMMER);
+    if (p === "/api/v2/attrition-funnel") return reply(ATTRITION_FUNNEL);
+    if (p === "/api/v2/sdoh-map") return reply(SDOH_MAP);
+    if (p === "/api/v2/shap-values") return reply(SHAP_VALUES);
+    if (p === "/api/v2/cluster-tsne") return reply(CLUSTER_TSNE);
+    if (p === "/api/v2/model-leaderboard") return reply(MODEL_LEADERBOARD);
+    if (p === "/api/v2/cascade-dag") return reply(CASCADE_DAG);
+    if (p === "/api/v2/ecg-quality-summary") return reply(ECG_QUALITY_SUMMARY);
+
+    const hdaSession = p.match(/^\/api\/v2\/hda-session\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (hdaSession) return reply(makeHdaSession(hdaSession[1] as string, hdaSession[2] as string));
+
+    const thermal = p.match(/^\/api\/v2\/thermal-heatmap\/([A-Z0-9-]+)$/);
+    if (thermal) return reply(makeThermalHeatmap(thermal[1] as string));
+
+    const modelDetail = p.match(/^\/api\/v2\/model-leaderboard\/([^/]+)$/);
+    if (modelDetail) return reply(makeModelDetail(modelDetail[1] as string));
+
+    const ecgQuality = p.match(/^\/api\/v2\/ecg-quality\/([A-Z0-9-]+)$/);
+    if (ecgQuality) return reply(makeEcgQuality(ecgQuality[1] as string));
 
     const detail = p.match(/^\/api\/participants\/([A-Z0-9-]+)$/);
     if (detail) {

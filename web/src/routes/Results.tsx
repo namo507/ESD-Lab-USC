@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Button, Card, Gloss, SectionLabel, Segmented } from "@/components/primitives";
 import { TrajectoryChart } from "@/components/charts/TrajectoryChart";
 import { HDABarStack } from "@/components/charts/HDABarStack";
-import { useHdaDist, useTrajectory } from "@/api/hooks";
+import { RsaGrowthChart } from "@/components/charts/RsaGrowthChart";
+import { useHdaDist, useRsaTrajectories, useTrajectory } from "@/api/hooks";
 import { logAudit } from "@/lib/audit";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import { resolveTheme, useUi } from "@/store/ui";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { GroupCode } from "@/api/schemas";
 import styles from "./Results.module.css";
 
@@ -19,10 +21,15 @@ const RESULTS_FAST_PATHS: FastPathPrompt[] = [
 ];
 
 type Metric = "rmssd" | "hf" | "sdnn";
+type AgeBasis = "adjusted" | "chronological";
 const METRIC_OPTS: Array<{ value: Metric; label: string }> = [
   { value: "rmssd", label: "RMSSD" },
   { value: "hf", label: "HF" },
   { value: "sdnn", label: "SDNN" },
+];
+const AGE_BASIS_OPTS: Array<{ value: AgeBasis; label: string }> = [
+  { value: "adjusted", label: "Adjusted" },
+  { value: "chronological", label: "Chronological" },
 ];
 const GROUP_DOT: Record<GroupCode, string> = {
   VPT: "var(--usc-garnet)",
@@ -101,6 +108,8 @@ export function Results() {
         </Card>
       </div>
 
+      <RsaGrowthPanel />
+
       {traj && (
         <Card pad={20}>
           <div className={styles.tableHead}>
@@ -138,5 +147,47 @@ export function Results() {
         </Card>
       )}
     </div>
+  );
+}
+
+function RsaGrowthPanel() {
+  const enabled = useFeatureFlag("RSA_GROWTH_CURVES");
+  const [ageBasis, setAgeBasis] = useState<AgeBasis>("adjusted");
+  const { data } = useRsaTrajectories(ageBasis);
+  if (!enabled) return null;
+
+  const rows = data?.data ?? [];
+  const firstRows = rows.filter((row) => row.ageMonths <= 12).slice(0, 12);
+
+  return (
+    <Card pad={20}>
+      <div className={styles.cardHead}>
+        <div>
+          <SectionLabel>RSA growth curves · additive preview</SectionLabel>
+          <div className={styles.cardTitle}>Group trajectories with 95% confidence bands</div>
+        </div>
+        <Segmented<AgeBasis> size="sm" options={AGE_BASIS_OPTS} value={ageBasis} onChange={setAgeBasis} />
+      </div>
+      {rows.length > 0 && <RsaGrowthChart rows={rows} ageBasis={ageBasis} />}
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <caption className="sr-only">Exact RSA trajectory values.</caption>
+          <thead>
+            <tr>{["Group", "Age", "Mean RSA", "95% CI", "n"].map((h) => <th key={h} scope="col" className={styles.th}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {firstRows.map((row) => (
+              <tr key={`${row.group}-${row.ageMonths}`}>
+                <td className={`${styles.td} ${styles.groupCell}`}><span className={styles.dot} style={{ background: GROUP_DOT[row.group] }} />{row.group}</td>
+                <td className={`${styles.td} t-mono`}>{row.ageMonths.toFixed(1)} mo</td>
+                <td className={`${styles.td} t-mono`}>{row.mean.toFixed(3)}</td>
+                <td className={`${styles.td} t-mono`}>{row.ciLow.toFixed(3)}-{row.ciHigh.toFixed(3)}</td>
+                <td className={`${styles.td} t-mono`}>{row.n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }

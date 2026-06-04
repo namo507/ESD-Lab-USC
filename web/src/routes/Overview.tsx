@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { Gloss } from "@/components/primitives";
+import { Card, Gloss, SectionLabel } from "@/components/primitives";
 import {
   AnimatedDAG,
   MetricCard,
@@ -16,11 +16,16 @@ import {
   useRuns,
   useTrajectory,
   useReadingsLibrary,
+  useCohortSwimmer,
+  useEcgQualitySummary,
+  useRedcapCompleteness,
 } from "@/api/hooks";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { ShellContext } from "@/components/shell/AppShell";
+import type { StudySummary } from "@/api/schemas";
 
 /**
  * Overview — the warm "Lab Pulse" page.
@@ -215,6 +220,82 @@ export function Overview() {
         <AgenticQAPanel syncTick={syncTick} />
         <ParticipantFlow rows={participants.slice(0, 7)} />
       </section>
+
+      <OverviewProgressRings study={study} />
     </div>
+  );
+}
+
+function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
+  const enabled = useFeatureFlag("SWIMMER_PLOT");
+  if (!enabled) return null;
+
+  const { data: swimmer } = useCohortSwimmer();
+  const { data: ecg } = useEcgQualitySummary();
+  const { data: redcap } = useRedcapCompleteness();
+  const visitCompletion = swimmer?.data.length
+    ? swimmer.data.reduce((sum, row) => sum + row.completionPct, 0) / swimmer.data.length
+    : 0;
+  const ecgPass = ecg?.data.find((row) => row.label.toLowerCase().includes("pass"))?.value ?? 0;
+  const redcapRequired = redcap?.data.filter((row) => row.ndaRequired) ?? [];
+  const redcapComplete = redcapRequired.length
+    ? redcapRequired.reduce((sum, row) => sum + row.completenessPct, 0) / redcapRequired.length
+    : 0;
+
+  const rings = [
+    { label: "Enrollment", value: study ? (study.enrolled / study.target) * 100 : 0, sub: `${study?.enrolled ?? 0} / ${study?.target ?? 0}`, color: "var(--usc-garnet)" },
+    { label: "Visit forms", value: visitCompletion, sub: "expected visits", color: "var(--blue)" },
+    { label: "ECG QC", value: ecgPass, sub: "pass rate", color: "var(--green)" },
+    { label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--usc-gold)" },
+  ];
+
+  return (
+    <section aria-label="Research progress summary">
+      <Card pad={20}>
+        <div className="mb-4">
+          <SectionLabel>Research progress rings</SectionLabel>
+          <div className="font-serif text-[18px] font-semibold text-[color:var(--warm-fg1)] mt-1">
+            Enrollment, visit completion, ECG QC, and NDA readiness
+          </div>
+        </div>
+        <div className="grid grid-cols-4 max-[1100px]:grid-cols-2 gap-3.5">
+          {rings.map((ring) => (
+            <div key={ring.label} className="rounded-[var(--r-card)] border border-[color:var(--warm-border)] bg-[color:var(--bg-subtle)] p-4 flex items-center gap-3 min-w-0">
+              <ProgressRing value={ring.value} color={ring.color} label={ring.label} />
+              <div className="min-w-0">
+                <div className="text-[12px] font-semibold text-[color:var(--warm-fg2)]">{ring.label}</div>
+                <div className="t-mono text-[18px] font-semibold text-[color:var(--warm-fg1)]">{Math.round(ring.value)}%</div>
+                <div className="text-[11px] text-[color:var(--warm-fg4)] truncate">{ring.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function ProgressRing({ value, color, label }: { value: number; color: string; label: string }) {
+  const radius = 23;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.max(0, Math.min(100, value));
+  const offset = circumference * (1 - pct / 100);
+  return (
+    <svg width={58} height={58} viewBox="0 0 58 58" role="img" aria-label={`${label} ${Math.round(pct)} percent`}>
+      <circle cx={29} cy={29} r={radius} fill="none" stroke="var(--slate-100)" strokeWidth={7} />
+      <circle
+        cx={29}
+        cy={29}
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth={7}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform="rotate(-90 29 29)"
+        style={{ transition: "stroke-dashoffset 700ms var(--ease-standard)" }}
+      />
+    </svg>
   );
 }

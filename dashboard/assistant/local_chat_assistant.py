@@ -36,7 +36,10 @@ SUMMARY_KEYS = (
     "visit_completion",
     "data_quality",
     "ml_performance",
+    "trajectories",
     "redcap_audit",
+    "matlab_integration",
+    "cohort_table",
     "organization_site",
 )
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_]{2,}")
@@ -96,10 +99,50 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "f1",
         "cnn",
         "lstm",
+        "leaderboard",
+        "shap",
+        "beeswarm",
         "xgboost",
         "random",
         "forest",
         "confusion",
+    },
+    "trajectories": {
+        "trajectory",
+        "trajectories",
+        "rsa",
+        "growth",
+        "curve",
+        "curves",
+        "rmssd",
+        "sdnn",
+        "hda",
+        "age",
+        "adjusted",
+        "chronological",
+    },
+    "matlab_integration": {
+        "matlab",
+        "parquet",
+        "manifest",
+        "queue",
+        "processing",
+        "artifact",
+        "handoff",
+        "thermal",
+        "hda",
+        "hrv",
+    },
+    "cohort_table": {
+        "swimmer",
+        "attrition",
+        "dropout",
+        "cohort",
+        "participant",
+        "completion",
+        "missingness",
+        "redcap",
+        "nda",
     },
     "readings": {
         "reading",
@@ -1126,9 +1169,14 @@ class DashboardChatAssistant:
         overall = enrollment.get("overall", {})
         by_group = enrollment.get("by_group", {})
         readings_summary = readings.get("summary", {})
+        trajectories = payload.get("trajectories", {})
+        data_quality = payload.get("data_quality", {})
+        matlab = payload.get("matlab_integration", {})
+        cohort = payload.get("cohort_table") or []
         best_index, best_model = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
         )
+        shap = payload.get("ml_performance", {}).get("shap") or []
 
         enrollment_total_current = overall.get("current")
         enrollment_total_target = overall.get("target") or payload.get("meta", {}).get(
@@ -1164,6 +1212,13 @@ class DashboardChatAssistant:
             "enrollment_total_current": enrollment_total_current,
             "enrollment_total_target": enrollment_total_target,
             "enrollment_by_group": by_group,
+            "trajectory_biomarkers": trajectories.get("biomarkers") or [],
+            "trajectory_months": trajectories.get("months") or [],
+            "top_shap_features": shap[:5],
+            "matlab_version": (matlab.get("manifest") or {}).get("matlab_version"),
+            "matlab_files": matlab.get("files") or [],
+            "data_quality": data_quality,
+            "cohort_rows": len(cohort) if isinstance(cohort, list) else 0,
             "best_model": (
                 {
                     "index": best_index,
@@ -1340,6 +1395,68 @@ class DashboardChatAssistant:
             target = facts.get("enrollment_total_target")
             if isinstance(current, (int, float)) and isinstance(target, (int, float)):
                 return f"Current enrollment is {int(current)} of {int(target)} participants."
+
+        if question_tokens & {"feature", "features", "route", "routes", "new"}:
+            return (
+                "The expanded dashboard surfaces are RSA growth curves, REDCap completeness, HDA timeline/player, "
+                "thermal heatmap, cohort swimmer plot, attrition and missingness, SDOH map, SHAP explorer, "
+                "Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality Monitor, Spatial Assessment Matrix, "
+                "and Attachment Heatmap. They use de-identified NANO IDs and v2 list-style API contracts."
+            )
+
+        if question_tokens & {"rsa", "trajectory", "trajectories", "curve", "curves"}:
+            biomarkers = facts.get("trajectory_biomarkers") or []
+            months = facts.get("trajectory_months") or []
+            return (
+                "The RSA growth-curve panel compares normalized VPT, ASIB, and TD group trajectories with confidence bands. "
+                f"Available trajectory biomarkers in the aggregate payload are {', '.join(map(str, biomarkers)) or 'not listed'}, "
+                f"across {len(months)} visit-age points."
+            )
+
+        if question_tokens & {"shap", "beeswarm", "leaderboard", "model", "models"}:
+            best = facts.get("best_model") or {}
+            shap_features = facts.get("top_shap_features") or []
+            labels = [
+                str(item.get("label") or item.get("feature"))
+                for item in shap_features
+                if isinstance(item, dict)
+            ][:3]
+            return (
+                f"The model leaderboard is anchored on the aggregate model metrics; the current best model is {best.get('name') or 'not identified'} "
+                f"with AUROC {best.get('auroc') or 'not listed'}. "
+                f"Top SHAP features include {', '.join(labels) if labels else 'no indexed feature labels'}."
+            )
+
+        if question_tokens & {"matlab", "queue", "artifact", "parquet"}:
+            files = facts.get("matlab_files") or []
+            version = facts.get("matlab_version") or "unknown"
+            file_names = [
+                str(item.get("name"))
+                for item in files
+                if isinstance(item, dict) and item.get("name")
+            ][:4]
+            return (
+                f"The MATLAB queue enrichment reads the existing MATLAB integration block, including MATLAB {version}. "
+                f"Current derived files include {', '.join(file_names) if file_names else 'no files listed'}, and artifact rate is derived from file QA pass percentages."
+            )
+
+        if question_tokens & {"redcap", "nda", "completeness", "missingness"}:
+            dq = facts.get("data_quality") or {}
+            flags = dq.get("qc_flags") or {}
+            missing_required = flags.get("missing_required_fields")
+            return (
+                "The REDCap completeness scorecard focuses on NDA-required instruments, participant-by-instrument completeness, "
+                "and missing required fields near the configured deadline. "
+                f"The aggregate QC block currently lists missing_required_fields={missing_required if missing_required is not None else 'not available'}."
+            )
+
+        if question_tokens & {"ecg", "quality", "sqi", "artifact"}:
+            dq = facts.get("data_quality") or {}
+            flags = dq.get("qc_flags") or {}
+            return (
+                "The ECG Quality Monitor shows per-window SQI and artifact markers, then can export a Markdown QC report. "
+                f"The aggregate QC block lists ecg_transfer_late={flags.get('ecg_transfer_late', 'not available')} and temp_quality_rejected={flags.get('temp_quality_rejected', 'not available')}."
+            )
 
         if (
             context.get("reading_metadata_only")

@@ -24,6 +24,10 @@
 
   --gold-hover: #ffd633;
   --hipaa-bg: #faf2f2;
+  --hipaa-notice-bg: linear-gradient(90deg, rgba(115, 0, 10, 0.08) 0%, rgba(115, 0, 10, 0.02) 100%);
+  --hipaa-fg: var(--usc-garnet-800);
+  --hipaa-border: rgba(115, 0, 10, 0.15);
+  --hipaa-icon: var(--usc-garnet);
   --terminal-bg: #121419;
   --ecg-grid: #1f2228;
   --terminal-fg: #e8e6e2;
@@ -144,6 +148,10 @@
   --tile-reject-border: #6e2a2e;
 
   --hipaa-bg: #2a1416;
+  --hipaa-notice-bg: linear-gradient(90deg, rgba(196, 78, 82, 0.2) 0%, rgba(196, 78, 82, 0.06) 100%);
+  --hipaa-fg: var(--warm-fg2);
+  --hipaa-border: rgba(240, 177, 180, 0.26);
+  --hipaa-icon: var(--on-fail);
   --terminal-bg: #0a0d12;
   --ecg-grid: #1b1f27;
   --terminal-fg: #f1ece1;

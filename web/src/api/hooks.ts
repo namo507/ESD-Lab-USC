@@ -130,6 +130,136 @@ export function useMatlabIntegration() {
   });
 }
 
+export function useRsaTrajectories(ageBasis: "adjusted" | "chronological" = "adjusted") {
+  return useQuery({
+    queryKey: ["v2", "rsa-trajectories", ageBasis],
+    queryFn: () => api.get(`/api/v2/rsa-trajectories?age=${ageBasis}`, S.RsaTrajectoryResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useRedcapCompleteness() {
+  return useQuery({
+    queryKey: ["v2", "redcap-completeness"],
+    queryFn: () => api.get("/api/v2/redcap-completeness", S.RedcapCompletenessResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useHdaSession(nanoId: string | undefined, visitAge: number | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "hda-session", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/hda-session/${nanoId}/${visitAge}`, S.HdaSessionResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useThermalHeatmap(nanoId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId),
+    queryKey: ["v2", "thermal-heatmap", nanoId],
+    queryFn: () => api.get(`/api/v2/thermal-heatmap/${nanoId}`, S.ThermalHeatmapResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useCohortSwimmer() {
+  return useQuery({
+    queryKey: ["v2", "cohort-swimmer"],
+    queryFn: () => api.get("/api/v2/cohort-swimmer", S.CohortSwimmerResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useAttritionFunnel() {
+  return useQuery({
+    queryKey: ["v2", "attrition-funnel"],
+    queryFn: () => api.get("/api/v2/attrition-funnel", S.AttritionFunnelResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useSdohMap() {
+  return useQuery({
+    queryKey: ["v2", "sdoh-map"],
+    queryFn: () => api.get("/api/v2/sdoh-map", S.SdohMapResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useShapValues() {
+  return useQuery({
+    queryKey: ["v2", "shap-values"],
+    queryFn: () => api.get("/api/v2/shap-values", S.ShapValuesResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useClusterTsne() {
+  return useQuery({
+    queryKey: ["v2", "cluster-tsne"],
+    queryFn: () => api.get("/api/v2/cluster-tsne", S.ClusterTsneResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useModelLeaderboard() {
+  return useQuery({
+    queryKey: ["v2", "model-leaderboard"],
+    queryFn: () => api.get("/api/v2/model-leaderboard", S.ModelLeaderboardResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useModelLeaderboardDetail(modelId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(modelId),
+    queryKey: ["v2", "model-leaderboard", modelId],
+    queryFn: () => api.get(`/api/v2/model-leaderboard/${modelId}`, S.ModelLeaderboardDetailResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useCascadeDag() {
+  return useQuery({
+    queryKey: ["v2", "cascade-dag"],
+    queryFn: () => api.get("/api/v2/cascade-dag", S.CascadeDagResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useEcgQuality(nanoId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId),
+    queryKey: ["v2", "ecg-quality", nanoId],
+    queryFn: () => api.get(`/api/v2/ecg-quality/${nanoId}`, S.EcgQualityResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useEcgQualitySummary() {
+  return useQuery({
+    queryKey: ["v2", "ecg-quality-summary"],
+    queryFn: () => api.get("/api/v2/ecg-quality-summary", S.EcgQualitySummaryResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
 export function useClusterTopology() {
   return useQuery({
     queryKey: ["cluster", "topology"],

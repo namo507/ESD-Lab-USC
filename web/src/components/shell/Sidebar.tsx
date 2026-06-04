@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
 import { Icon } from "@/components/primitives";
 import type { StudySummary } from "@/api/schemas";
+import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
+import type { FeatureFlag } from "@/config/featureFlags";
 
 interface SidebarProps {
   study: StudySummary;
@@ -14,6 +16,7 @@ interface NavItem {
   icon: string;
   badge?: number;
   external?: boolean;
+  flag?: FeatureFlag;
 }
 
 const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
@@ -43,6 +46,16 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/redcap", label: "REDCap Sync", icon: "refresh-cw" },
       { to: "/matlab", label: "MATLAB Bridge", icon: "function-square" },
       { to: "/results", label: "Results & Trajectories", icon: "line-chart" },
+      { to: "/hda-player", label: "HDA Timeline", icon: "audio-lines", flag: "HDA_TIMELINE_PLAYER" },
+      { to: "/thermal-heatmap", label: "Thermal Heatmap", icon: "thermometer-sun", flag: "THERMAL_HEATMAP" },
+      { to: "/swimmer-plot", label: "Swimmer Plot", icon: "waves", flag: "SWIMMER_PLOT" },
+      { to: "/attrition", label: "Attrition", icon: "git-merge", flag: "ATTRITION_FUNNEL" },
+      { to: "/ecg-quality", label: "ECG Quality", icon: "heart-pulse", flag: "ECG_QUALITY_MONITOR" },
+      { to: "/sdoh-map", label: "SDOH Map", icon: "map", flag: "SDOH_MAP" },
+      { to: "/shap-explorer", label: "SHAP Explorer", icon: "scatter-chart", flag: "SHAP_BEESWARM" },
+      { to: "/cluster-viewer", label: "Outcome Clusters", icon: "git-fork", flag: "CLUSTER_VIEWER" },
+      { to: "/model-leaderboard", label: "Model Leaderboard", icon: "list-checks", flag: "MODEL_LEADERBOARD" },
+      { to: "/cascade-dag", label: "Cascade DAG", icon: "network", flag: "CASCADE_DAG" },
     ],
   },
   {
@@ -50,6 +63,8 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     title: "Lab Tools",
     items: [
       { to: "/presentation-maker", label: "Presentation Maker", icon: "presentation" },
+      { to: "/spatial-assessments", label: "Spatial Matrix", icon: "grid-3x3", flag: "SPATIAL_ASSESSMENT_MATRIX" },
+      { to: "/attachment-heatmap", label: "Attachment Heatmap", icon: "table-2", flag: "ATTACHMENT_HEATMAP" },
     ],
   },
 ];
@@ -89,7 +104,7 @@ export function Sidebar({ study, qaPending, enrolled }: SidebarProps) {
             {g.title}
           </div>
           <div className="flex flex-col gap-px">
-            {g.items.map((it, i) => {
+            {g.items.filter((it) => !it.flag || isFeatureFlagEnabled(it.flag)).map((it, i) => {
               const badge =
                 it.label === "Window QA" && qaPending > 0
                   ? qaPending

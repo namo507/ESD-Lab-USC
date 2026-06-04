@@ -1,8 +1,9 @@
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
-import { useRedcapEvents } from "@/api/hooks";
+import { useRedcapCompleteness, useRedcapEvents } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import styles from "./Redcap.module.css";
 
 const REDCAP_FAST_PATHS: FastPathPrompt[] = [
@@ -93,6 +94,8 @@ export function Redcap() {
         />
       </section>
 
+      <RedcapCompletenessScorecard />
+
       <div className={styles.split}>
         <Card pad={0}>
           <div className={styles.listHead}>
@@ -154,5 +157,72 @@ export function Redcap() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function RedcapCompletenessScorecard() {
+  const enabled = useFeatureFlag("REDCAP_COMPLETENESS");
+  const { data } = useRedcapCompleteness();
+  if (!enabled) return null;
+
+  const deadline = import.meta.env.VITE_NDA_DEADLINE ?? "2026-08-01";
+  const rows = data?.data ?? [];
+  const required = rows.filter((row) => row.ndaRequired);
+  const missingCount = required.reduce((sum, row) => sum + row.requiredMissing, 0);
+  const instruments = Array.from(new Set(required.map((row) => row.instrument))).slice(0, 6);
+  const participants = Array.from(new Set(required.map((row) => row.nanoId))).slice(0, 9);
+  const byInstrument = instruments.map((instrument) => {
+    const instRows = required.filter((row) => row.instrument === instrument);
+    const avg = instRows.reduce((sum, row) => sum + row.completenessPct, 0) / Math.max(1, instRows.length);
+    return { instrument, avg };
+  });
+
+  return (
+    <Card pad={0}>
+      {missingCount > 0 && (
+        <div className={styles.deadlineAlert}>
+          {missingCount} NDA-required REDCap fields are still missing before {deadline}.
+        </div>
+      )}
+      <div className={styles.listHead}>
+        <SectionLabel>Completeness scorecard · NDA-required forms</SectionLabel>
+      </div>
+      <div className={styles.scoreBars}>
+        {byInstrument.map((item) => (
+          <div key={item.instrument} className={styles.scoreBar}>
+            <div className={`${styles.scoreMeta} t-mono`}><span>{item.instrument}</span><span>{item.avg.toFixed(1)}%</span></div>
+            <div className={styles.scoreTrack}><span style={{ width: `${item.avg}%` }} /></div>
+          </div>
+        ))}
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <caption className="sr-only">Participant by instrument REDCap completeness matrix.</caption>
+          <thead>
+            <tr>
+              <th className={styles.th}>Participant</th>
+              {instruments.map((instrument) => <th key={instrument} className={styles.th}>{instrument}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {participants.map((nanoId) => (
+              <tr key={nanoId}>
+                <td className={`${styles.td} t-mono`}>{nanoId}</td>
+                {instruments.map((instrument) => {
+                  const cell = required.find((row) => row.nanoId === nanoId && row.instrument === instrument);
+                  return (
+                    <td key={instrument} className={`${styles.td} t-mono`}>
+                      <span className={cell?.status === "complete" ? styles.cellOk : cell?.status === "watch" ? styles.cellWarn : styles.cellFail}>
+                        {cell ? `${cell.completenessPct.toFixed(0)}%` : "—"}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }

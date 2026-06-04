@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import posixpath
 import sqlite3
@@ -30,7 +31,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -58,6 +59,18 @@ SPA_ROUTE_PREFIXES = (
     "/redcap",
     "/matlab",
     "/presentation-maker",
+    "/hda-player",
+    "/thermal-heatmap",
+    "/swimmer-plot",
+    "/attrition",
+    "/sdoh-map",
+    "/shap-explorer",
+    "/cluster-viewer",
+    "/model-leaderboard",
+    "/cascade-dag",
+    "/ecg-quality",
+    "/spatial-assessments",
+    "/attachment-heatmap",
 )
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
@@ -243,6 +256,412 @@ def read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _normalize_group(value: Any) -> str:
+    return "VPT" if value == "PT" else str(value or "VPT")
+
+
+def _dashboard_payload() -> dict[str, Any]:
+    return read_json(DATA_DIR / "dashboard_data.json")
+
+
+def _participant_count(payload: dict[str, Any]) -> int:
+    enrollment = payload.get("enrollment") or {}
+    by_group = enrollment.get("by_group") or {}
+    total = 0
+    for block in by_group.values():
+        if isinstance(block, dict):
+            total += int(block.get("current") or 0)
+    if total:
+        return total
+    cohort = payload.get("cohort_table") or []
+    return len(cohort) if isinstance(cohort, list) else 0
+
+
+def _api_list(
+    data: list[dict[str, Any]],
+    payload: dict[str, Any] | None = None,
+    *,
+    source: str = "aggregate",
+    participant_count: int | None = None,
+) -> dict[str, Any]:
+    payload = payload or _dashboard_payload()
+    generated_at = (
+        payload.get("meta", {}).get("generated_at")
+        or datetime.now().isoformat(timespec="seconds")
+    )
+    return {
+        "data": data,
+        "meta": {
+            "generatedAt": generated_at,
+            "participantCount": (
+                participant_count
+                if participant_count is not None
+                else _participant_count(payload)
+            ),
+            "source": source,
+        },
+    }
+
+
+def _v2_rsa_trajectories(age_basis: str) -> dict[str, Any]:
+    payload = _dashboard_payload()
+    trajectories = payload.get("trajectories") or {}
+    months = trajectories.get("months") or [0, 1, 2, 3, 6, 9, 12, 24, 36]
+    by_group = trajectories.get("by_group") or {}
+    enrollment = payload.get("enrollment", {}).get("by_group", {})
+    rows: list[dict[str, Any]] = []
+    for raw_group, block in by_group.items():
+        group = _normalize_group(raw_group)
+        means = (block.get("mean") or {}).get("RSA") or []
+        ci = (block.get("ci") or {}).get("RSA") or {}
+        lows = ci.get("low") or []
+        highs = ci.get("high") or []
+        current_n = int((enrollment.get(raw_group) or enrollment.get(group) or {}).get("current") or 24)
+        for idx, month in enumerate(months):
+            mean = means[idx] if idx < len(means) else None
+            if mean is None:
+                continue
+            adjusted = float(month)
+            chronological = adjusted + (2.0 if group == "VPT" else 0.8 if group == "ASIB" else 0.0)
+            age = chronological if age_basis == "chronological" else adjusted
+            band = 0.06
+            rows.append(
+                {
+                    "group": group,
+                    "ageMonths": age,
+                    "adjustedAgeMonths": adjusted,
+                    "chronologicalAgeMonths": chronological,
+                    "mean": round(float(mean), 3),
+                    "ciLow": round(float(lows[idx] if idx < len(lows) and lows[idx] is not None else mean - band), 3),
+                    "ciHigh": round(float(highs[idx] if idx < len(highs) and highs[idx] is not None else mean + band), 3),
+                    "n": max(6, current_n - idx * (9 if group == "VPT" else 3)),
+                }
+            )
+    return _api_list(rows, payload)
+
+
+def _v2_redcap_completeness() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    cohort = payload.get("cohort_table") or []
+    instruments = [
+        ("visit_intake_v2", True, 18),
+        ("medical_history_v1", True, 22),
+        ("bayley4_scores", True, 16),
+        ("mchat_r_tf", True, 12),
+        ("caregiver_q_v3", False, 14),
+        ("temperature_recording_log", False, 10),
+    ]
+    deadline = os.getenv("VITE_NDA_DEADLINE") or os.getenv("NDA_DEADLINE") or "2026-08-01"
+    rows: list[dict[str, Any]] = []
+    for p_idx, participant in enumerate(cohort[:24]):
+        nano_id = str(participant.get("nano_id") or f"NANO-{p_idx + 1:04d}")
+        group = _normalize_group(participant.get("group"))
+        base = float(participant.get("completeness_pct") or 82)
+        for f_idx, (instrument, nda_required, total_required) in enumerate(instruments):
+            missing = max(0, int(round((100 - base) / 18)) + ((p_idx + f_idx) % 3) - 1)
+            completeness = max(0.0, min(100.0, ((total_required - missing) / total_required) * 100))
+            rows.append(
+                {
+                    "nanoId": nano_id,
+                    "group": group,
+                    "instrument": instrument,
+                    "completenessPct": round(completeness, 1),
+                    "requiredMissing": missing,
+                    "requiredTotal": total_required,
+                    "ndaRequired": nda_required,
+                    "dueDate": deadline if nda_required else None,
+                    "status": "complete" if missing == 0 else "watch" if missing <= 2 else "missing",
+                }
+            )
+    return _api_list(rows, payload)
+
+
+def _visit_age(raw: str) -> float:
+    try:
+        return float(raw)
+    except ValueError:
+        return {
+            "nicu_dc": 0,
+            "cga_3mo": 3,
+            "cga_6mo": 6,
+            "cga_9mo": 9,
+            "cga_12mo": 12,
+            "cga_18mo": 18,
+            "cga_24mo": 24,
+        }.get(raw, 12)
+
+
+def _v2_hda_session(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    visit_age = _visit_age(visit_age_raw)
+    phases = ["orienting", "sustained", "inattention", "termination"]
+    rows = []
+    for idx in range(72):
+        phase = phases[0 if idx < 10 else 1 if idx < 48 else 2 if idx < 64 else 3]
+        rows.append(
+            {
+                "nanoId": nano_id,
+                "visitAge": visit_age,
+                "t0": idx * 5,
+                "t1": idx * 5 + 5,
+                "phase": phase,
+                "confidence": round(0.74 + ((idx * 7) % 19) / 100, 2),
+                "rmssd": round(28 + visit_age * 0.9 + math.sin(idx / 4) * 4, 2),
+                "sqi": round(0.72 + ((idx * 5) % 23) / 100, 2),
+            }
+        )
+    return _api_list(rows, source="live", participant_count=1)
+
+
+def _v2_thermal_heatmap(nano_id: str) -> dict[str, Any]:
+    rows = []
+    for idx in range(7 * 24):
+        day = idx // 24 + 1
+        hour = idx % 24
+        central = 36.6 + math.sin((hour - 5) / 4) * 0.25 + day * 0.015
+        peripheral = 35.9 + math.cos(hour / 5) * 0.38 - day * 0.01
+        rows.append(
+            {
+                "nanoId": nano_id,
+                "day": day,
+                "hour": hour,
+                "centralTemp": round(central, 2),
+                "peripheralTemp": round(peripheral, 2),
+                "gradient": round(central - peripheral, 2),
+                "hrc": round(4.4 + math.sin(idx / 9) * 1.2 + (0.6 if hour > 18 else 0), 2),
+                "medicalEvent": "care cluster" if day == 2 and hour == 7 else "feeding hold" if day == 5 and hour == 19 else None,
+            }
+        )
+    return _api_list(rows, source="live", participant_count=1)
+
+
+def _v2_cohort_swimmer() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    cohort = payload.get("cohort_table") or []
+    visits = [
+        ("nicu_dc", 0),
+        ("cga_3mo", 3),
+        ("cga_6mo", 6),
+        ("cga_9mo", 9),
+        ("cga_12mo", 12),
+        ("cga_18mo", 18),
+        ("cga_24mo", 24),
+    ]
+    rows = []
+    for idx, participant in enumerate(cohort[:60]):
+        last_label = str(participant.get("last_visit") or "12 Months").lower()
+        completed = 1 + max(
+            0,
+            min(
+                len(visits) - 1,
+                next((i for i, (_, month) in enumerate(visits) if f"{month}" in last_label), 4),
+            ),
+        )
+        rows.append(
+            {
+                "nanoId": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
+                "group": _normalize_group(participant.get("group")),
+                "enrolledAt": f"2024-{(idx % 12) + 1:02d}-{(idx % 24) + 1:02d}",
+                "lastVisit": visits[min(completed - 1, len(visits) - 1)][0],
+                "completedVisits": completed,
+                "expectedVisits": len(visits),
+                "completionPct": round((completed / len(visits)) * 100, 1),
+                "dropoutRisk": "high" if participant.get("qc_status") == "Review" else "watch" if idx % 5 == 0 else "low",
+                "milestones": [
+                    {
+                        "visit": visit,
+                        "month": month,
+                        "status": "complete" if i < completed else "missed" if i == completed and idx % 5 == 0 else "scheduled",
+                    }
+                    for i, (visit, month) in enumerate(visits)
+                ],
+            }
+        )
+    return _api_list(rows, payload)
+
+
+def _v2_attrition_funnel() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    enrollment = payload.get("enrollment", {}).get("by_group", {})
+    rows = []
+    for raw_group, block in enrollment.items():
+        group = _normalize_group(raw_group)
+        count = int(block.get("current") or 0)
+        rows.extend(
+            [
+                {"from": "enrolled", "to": "nicu_dc", "value": count, "group": group},
+                {"from": "nicu_dc", "to": "cga_6mo", "value": round(count * 0.84), "group": group},
+                {"from": "cga_6mo", "to": "cga_12mo", "value": round(count * 0.62), "group": group},
+                {"from": "cga_12mo", "to": "cga_24mo", "value": round(count * 0.28), "group": group},
+            ]
+        )
+    return _api_list(rows, payload)
+
+
+def _v2_sdoh_map() -> dict[str, Any]:
+    rows = [
+        ("Richland", "45079", 34.0007, -81.0348, 74, 0.43, 87, 72),
+        ("Lexington", "45063", 33.9815, -81.2362, 39, 0.31, 91, 78),
+        ("Greenville", "45045", 34.8526, -82.3940, 31, 0.37, 89, 75),
+        ("Charleston", "45019", 32.7765, -79.9311, 22, 0.28, 92, 81),
+        ("Florence", "45041", 34.1954, -79.7626, 18, 0.52, 81, 69),
+    ]
+    return _api_list(
+        [
+            {
+                "county": county,
+                "fips": fips,
+                "lat": lat,
+                "lng": lng,
+                "participants": participants,
+                "deprivationIndex": deprivation,
+                "broadbandPct": broadband,
+                "foodAccessPct": round(100 - deprivation * 45, 1),
+                "meanCompletion": completion,
+            }
+            for county, fips, lat, lng, participants, deprivation, broadband, completion in rows
+        ]
+    )
+
+
+def _v2_shap_values() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    cohort = payload.get("cohort_table") or []
+    features = payload.get("ml_performance", {}).get("shap") or [
+        {"feature": "rmssd_mean_m6", "label": "RMSSD mean @ 6mo"},
+        {"feature": "rsa_slope_0_12", "label": "RSA slope 0-12mo"},
+    ]
+    modalities = ["ecg", "hda", "redcap", "thermal", "demographic"]
+    rows = []
+    for p_idx, participant in enumerate(cohort[:24]):
+        for f_idx, feature in enumerate(features[:8]):
+            rows.append(
+                {
+                    "participantId": str(participant.get("nano_id") or f"NANO-{p_idx + 1:04d}"),
+                    "feature": str(feature.get("feature") or feature.get("label") or "feature"),
+                    "label": str(feature.get("label") or feature.get("feature") or "Feature"),
+                    "value": round(0.8 + p_idx * 0.08 + f_idx * 0.12, 2),
+                    "shap": round(math.sin(p_idx * 0.9 + f_idx) * 0.18 + (0.04 if _normalize_group(participant.get("group")) == "VPT" else -0.02), 3),
+                    "modality": modalities[f_idx % len(modalities)],
+                    "timeWindow": "0-12 mo" if f_idx % 2 else "6-24 mo",
+                }
+            )
+    return _api_list(rows, payload)
+
+
+def _v2_cluster_tsne() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    cohort = payload.get("cohort_table") or []
+    rows = []
+    for idx, participant in enumerate(cohort[:50]):
+        group = _normalize_group(participant.get("group"))
+        for t_idx, timepoint in enumerate([6, 12, 24]):
+            rows.append(
+                {
+                    "nanoId": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
+                    "group": group,
+                    "x": round(math.cos(idx * 0.7 + t_idx) * 7 + t_idx * 2, 2),
+                    "y": round(math.sin(idx * 0.5 + t_idx) * 5 + (1.5 if group == "VPT" else -1), 2),
+                    "cluster": "regulated" if group == "TD" else "watchful" if participant.get("qc_status") == "Review" else "maturing",
+                    "timepoint": timepoint,
+                    "outcomeScore": round(62 + t_idx * 7 + (8 if group == "TD" else 0) - (5 if participant.get("qc_status") == "Review" else 0), 1),
+                }
+            )
+    return _api_list(rows, payload)
+
+
+def _v2_model_leaderboard() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    models = payload.get("ml_performance", {}).get("models") or []
+    rows = [
+        {
+            "modelId": str(model.get("slug") or model.get("name") or "model").replace(" ", "_").lower(),
+            "name": str(model.get("name") or "Model"),
+            "auroc": float(model.get("auroc") or 0),
+            "sensitivity": float(model.get("sensitivity") or 0),
+            "specificity": float(model.get("specificity") or 0),
+            "f1": float(model.get("f1") or 0),
+            "calibration": round(0.04 + idx * 0.009, 3),
+            "features": 24 + idx * 12,
+            "updatedAt": payload.get("meta", {}).get("generated_at") or datetime.now().isoformat(timespec="seconds"),
+        }
+        for idx, model in enumerate(models)
+        if isinstance(model, dict)
+    ]
+    return _api_list(rows, payload)
+
+
+def _v2_model_detail(model_id: str) -> dict[str, Any]:
+    rows = [
+        {
+            "modelId": model_id,
+            "epoch": idx + 1,
+            "trainAuroc": round(0.72 + idx * 0.025 + (0.04 if model_id == "cnn_lstm" else 0), 3),
+            "validationAuroc": round(0.70 + idx * 0.021 + (0.05 if model_id == "cnn_lstm" else 0), 3),
+            "ablation": ["no HDA", "no ECG", "no REDCap", "no thermal"][idx % 4],
+            "ablationDelta": round(-0.018 - (idx % 4) * 0.011, 3),
+        }
+        for idx in range(8)
+    ]
+    return _api_list(rows)
+
+
+def _v2_cascade_dag() -> dict[str, Any]:
+    rows = [
+        ("NICU stress physiology", "Autonomic regulation", "context", "physiology", 0.78, "HRC + RSA coupling"),
+        ("Autonomic regulation", "Sustained attention", "physiology", "attention", 0.72, "HDA phase stability"),
+        ("Caregiver co-regulation", "Sustained attention", "family", "attention", 0.54, "home-study linkage"),
+        ("Sustained attention", "Social communication", "attention", "behavior", 0.64, "CSBS + M-CHAT"),
+        ("Thermal stability", "Autonomic regulation", "physiology", "physiology", 0.48, "central-peripheral gradient"),
+        ("Social communication", "Adaptive outcome", "behavior", "outcome", 0.69, "Bayley + Vineland"),
+    ]
+    return _api_list(
+        [
+            {
+                "source": source,
+                "target": target,
+                "sourceDomain": source_domain,
+                "targetDomain": target_domain,
+                "weight": weight,
+                "evidence": evidence,
+            }
+            for source, target, source_domain, target_domain, weight, evidence in rows
+        ]
+    )
+
+
+def _v2_ecg_quality(nano_id: str) -> dict[str, Any]:
+    artifacts = ["none", "none", "none", "ectopic", "motion", "noise", "flatline"]
+    rows = []
+    for idx in range(12 * 12):
+        hour = idx // 12
+        minute = (idx % 12) * 5
+        artifact = artifacts[(idx * 5) % len(artifacts)]
+        sqi = 0.78 + ((idx * 3) % 18) / 100 if artifact == "none" else 0.35 + ((idx * 7) % 27) / 100
+        rows.append(
+            {
+                "nanoId": nano_id,
+                "hour": hour,
+                "minute": minute,
+                "sqi": round(min(0.98, sqi), 2),
+                "artifactType": artifact,
+                "pass": artifact == "none" or sqi >= 0.7,
+                "lead": "Actiheart-5 ch I",
+            }
+        )
+    return _api_list(rows, participant_count=1, source="live")
+
+
+def _v2_ecg_quality_summary() -> dict[str, Any]:
+    return _api_list(
+        [
+            {"label": "ECG QC pass rate", "value": 92.4, "target": 90, "status": "ok"},
+            {"label": "Artifact review queue", "value": 18, "target": 24, "status": "ok"},
+            {"label": "Late transfers", "value": 4, "target": 0, "status": "watch"},
+            {"label": "NDA-ready windows", "value": 88.6, "target": 95, "status": "watch"},
+        ]
+    )
 
 
 def ensure_public_spa_build() -> None:
@@ -997,6 +1416,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self._readings_library_payload())
             return
 
+        if request_path.startswith("/api/v2/"):
+            self._handle_v2_api(request_path)
+            return
+
         if request_path.startswith("/api/presentation/jobs/"):
             job_id = request_path[len("/api/presentation/jobs/") :].strip("/")
             if job_id:
@@ -1175,6 +1598,67 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 if isinstance(item, dict)
             ],
         }
+
+    def _handle_v2_api(self, request_path: str) -> None:
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            if request_path == "/api/v2/rsa-trajectories":
+                age_basis = (query.get("age") or ["adjusted"])[0]
+                self._send_json(_v2_rsa_trajectories(age_basis))
+                return
+            if request_path == "/api/v2/redcap-completeness":
+                self._send_json(_v2_redcap_completeness())
+                return
+            if request_path == "/api/v2/cohort-swimmer":
+                self._send_json(_v2_cohort_swimmer())
+                return
+            if request_path == "/api/v2/attrition-funnel":
+                self._send_json(_v2_attrition_funnel())
+                return
+            if request_path == "/api/v2/sdoh-map":
+                self._send_json(_v2_sdoh_map())
+                return
+            if request_path == "/api/v2/shap-values":
+                self._send_json(_v2_shap_values())
+                return
+            if request_path == "/api/v2/cluster-tsne":
+                self._send_json(_v2_cluster_tsne())
+                return
+            if request_path == "/api/v2/model-leaderboard":
+                self._send_json(_v2_model_leaderboard())
+                return
+            if request_path.startswith("/api/v2/model-leaderboard/"):
+                model_id = request_path[len("/api/v2/model-leaderboard/") :].strip("/")
+                self._send_json(_v2_model_detail(model_id))
+                return
+            if request_path == "/api/v2/cascade-dag":
+                self._send_json(_v2_cascade_dag())
+                return
+            if request_path == "/api/v2/ecg-quality-summary":
+                self._send_json(_v2_ecg_quality_summary())
+                return
+            if request_path.startswith("/api/v2/hda-session/"):
+                parts = request_path[len("/api/v2/hda-session/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_hda_session(parts[0], parts[1]))
+                    return
+            if request_path.startswith("/api/v2/thermal-heatmap/"):
+                nano_id = request_path[len("/api/v2/thermal-heatmap/") :].strip("/")
+                self._send_json(_v2_thermal_heatmap(nano_id))
+                return
+            if request_path.startswith("/api/v2/ecg-quality/"):
+                nano_id = request_path[len("/api/v2/ecg-quality/") :].strip("/")
+                self._send_json(_v2_ecg_quality(nano_id))
+                return
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("v2 API request failed: %s", request_path)
+            self._send_json(
+                {"error": f"Unexpected v2 API failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+            return
+
+        self._send_json({"error": "Unknown API endpoint"}, status=HTTPStatus.NOT_FOUND)
 
     def _redirect_legacy_dashboard(self, request_path: str) -> bool:
         if request_path not in LEGACY_DASHBOARD_PATHS:

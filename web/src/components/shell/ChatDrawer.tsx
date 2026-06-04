@@ -11,11 +11,17 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "qa",     label: "When to reject an epoch?",    prompt: "Walk me through when I should reject an epoch versus mark it for review. Use the current NANO QA rubric." },
   { lane: "model",  label: "Risk classifier validation",  prompt: "How is the NANO risk classifier validated? Cover AUROC, calibration, and out-of-site holdout." },
   { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
+  { lane: "model",  label: "SHAP explorer",                prompt: "Explain how to read the SHAP Explorer beeswarm and what participant highlighting changes." },
+  { lane: "model",  label: "Model leaderboard",            prompt: "Summarize the Model Leaderboard and which metrics I should compare before trusting a model." },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
   { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
+  { lane: "redcap", label: "NDA completeness",            prompt: "How should I use the REDCap completeness scorecard before an NDA deadline?" },
+  { lane: "qa",     label: "ECG quality monitor",         prompt: "How do I interpret the ECG Quality Monitor grid, SQI colors, and artifact markers?" },
+  { lane: "qa",     label: "HDA timeline player",         prompt: "Walk me through the HDA Timeline Player controls and compare mode." },
   { lane: "matlab", label: "How MATLAB hands off",        prompt: "Explain the MATLAB → Parquet → Python merge handoff. Which script writes which file under data/interim/matlab/?" },
   { lane: "matlab", label: "Run all MATLAB exports",      prompt: "Walk me through running MATLAB/scripts/run_all.m end-to-end, including the manifest the dashboard reads." },
   { lane: "matlab", label: "MATLAB Engine vs file",       prompt: "When should I use the MATLAB Engine for Python path instead of the Parquet file handoff?" },
+  { lane: "matlab", label: "Processing queue",             prompt: "Explain the MATLAB Processing Queue fields and how artifact rate is derived." },
 ];
 
 interface Message {

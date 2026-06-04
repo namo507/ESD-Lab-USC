@@ -240,7 +240,7 @@ export function Buddy() {
   }, []);
 
   return (
-    <div className={styles.stage} aria-live="polite">
+    <div className={`${styles.stage} ${insight ? styles.active : ""}`} aria-live="polite">
       <div className={`${styles.buddy} ${insight ? styles.talking : ""}`} ref={buddyRef}>
         <BuddySvg talking={Boolean(insight)} lookX={look.x} lookY={look.y} />
       </div>
