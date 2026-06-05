@@ -12,7 +12,7 @@ import { Icon } from "@/components/primitives";
  * stays intact across surfaces. Tone variants (`dark` / `light`) keep contrast
  * legible on both the dark agentic panel and the cream glass chat drawer.
  */
-export type FastPathLane = "qa" | "model" | "redcap" | "matlab";
+export type FastPathLane = "qa" | "model" | "redcap" | "matlab" | "dyn";
 
 export interface FastPathPrompt {
   lane: FastPathLane;
@@ -82,6 +82,7 @@ const LANE_META: Record<FastPathLane, { label: string; iconKind: string; dot: st
   model:  { label: "Model",     iconKind: "activity",        dot: "var(--ocean-ring)" },
   redcap: { label: "REDCap",    iconKind: "database",        dot: "var(--usc-gold)" },
   matlab: { label: "MATLAB",    iconKind: "function-square", dot: "var(--usc-garnet)" },
+  dyn:    { label: "DYN",       iconKind: "git-merge",       dot: "var(--blue)" },
 };
 
 interface Props {
@@ -97,7 +98,7 @@ interface Props {
 
 export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, density = "wide" }: Props) {
   const [active, setActive] = useState<FastPathLane | "all">("all");
-  const lanes: FastPathLane[] = ["qa", "model", "redcap", "matlab"];
+  const lanes: FastPathLane[] = ["qa", "model", "redcap", "matlab", "dyn"];
 
   const dark = tone === "dark";
   const baseChip = dark
@@ -131,13 +132,13 @@ export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, densi
   };
 
   const filtered = active === "all" ? prompts : prompts.filter((p) => p.lane === active);
-  const grouped: Record<FastPathLane, FastPathPrompt[]> = { qa: [], model: [], redcap: [], matlab: [] };
+  const grouped: Record<FastPathLane, FastPathPrompt[]> = { qa: [], model: [], redcap: [], matlab: [], dyn: [] };
   filtered.forEach((p) => grouped[p.lane].push(p));
 
   return (
     <div className="flex flex-col gap-2.5" aria-label="Fast-path prompts">
       <div className="flex items-center justify-between gap-2">
-        <span className={baseLabel}>Fast-paths · QA · Model · REDCap · MATLAB</span>
+        <span className={baseLabel}>Fast-paths · QA · Model · REDCap · MATLAB · DYN</span>
         <div className="flex gap-1.5">
           {filterTab("all", "all")}
           {lanes.map((l) => filterTab(l, LANE_META[l].label))}

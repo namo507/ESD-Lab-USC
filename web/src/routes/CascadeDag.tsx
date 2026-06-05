@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import { useMemo } from "react";
-import { Card, SectionLabel } from "@/components/primitives";
+import { useNavigate } from "react-router-dom";
+import { Button, Card, SectionLabel } from "@/components/primitives";
 import { useCascadeDag } from "@/api/hooks";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import styles from "./FeatureRoutes.module.css";
@@ -30,6 +31,8 @@ export function CascadeDag() {
   const enabled = useFeatureFlag("CASCADE_DAG");
   if (!enabled) return null;
 
+  const navigate = useNavigate();
+  const showSim = useFeatureFlag("DYN_CASCADE_SIMULATOR");
   const { data } = useCascadeDag();
   const rows = data?.data ?? [];
   const graph = useMemo(() => {
@@ -59,6 +62,11 @@ export function CascadeDag() {
           <h1 className={styles.h1}>Developmental Cascade DAG</h1>
           <p className={styles.lede}>Mechanistic links from NICU physiology through attention and developmental outcomes.</p>
         </div>
+        {showSim && (
+          <Button icon="sliders" onClick={() => navigate("/cascade-sim")}>
+            Run a what-if
+          </Button>
+        )}
       </header>
 
       <Card pad={20}>

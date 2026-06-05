@@ -30,6 +30,17 @@ const SpatialAssessmentMatrix = lazy(() =>
   import("@/routes/SpatialAssessmentMatrix").then((m) => ({ default: m.SpatialAssessmentMatrix })),
 );
 const AttachmentHeatmap = lazy(() => import("@/routes/AttachmentHeatmap").then((m) => ({ default: m.AttachmentHeatmap })));
+const CoRegulation = lazy(() => import("@/routes/CoRegulation").then((m) => ({ default: m.CoRegulation })));
+const PhasePortrait = lazy(() => import("@/routes/PhasePortrait").then((m) => ({ default: m.PhasePortrait })));
+const CvaTheater = lazy(() => import("@/routes/CvaTheater").then((m) => ({ default: m.CvaTheater })));
+const HrDeceleration = lazy(() => import("@/routes/HrDeceleration").then((m) => ({ default: m.HrDeceleration })));
+const StillFace = lazy(() => import("@/routes/StillFace").then((m) => ({ default: m.StillFace })));
+const HdaBypass = lazy(() => import("@/routes/HdaBypass").then((m) => ({ default: m.HdaBypass })));
+const Passport = lazy(() => import("@/routes/Passport").then((m) => ({ default: m.Passport })));
+const Archetypes = lazy(() => import("@/routes/Archetypes").then((m) => ({ default: m.Archetypes })));
+const CascadeSimulator = lazy(() => import("@/routes/CascadeSimulator").then((m) => ({ default: m.CascadeSimulator })));
+const EcoValidity = lazy(() => import("@/routes/EcoValidity").then((m) => ({ default: m.EcoValidity })));
+const StreamCoverage = lazy(() => import("@/routes/StreamCoverage").then((m) => ({ default: m.StreamCoverage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +121,17 @@ export default function App() {
             <Route path="/ecg-quality" element={<EcgQuality />} />
             <Route path="/spatial-assessments" element={<SpatialAssessmentMatrix />} />
             <Route path="/attachment-heatmap" element={<AttachmentHeatmap />} />
+            <Route path="/dyad-coregulation" element={<CoRegulation />} />
+            <Route path="/phase-portrait" element={<PhasePortrait />} />
+            <Route path="/cva-theater" element={<CvaTheater />} />
+            <Route path="/hr-deceleration" element={<HrDeceleration />} />
+            <Route path="/stillface" element={<StillFace />} />
+            <Route path="/hda-bypass" element={<HdaBypass />} />
+            <Route path="/passport" element={<Passport />} />
+            <Route path="/archetypes" element={<Archetypes />} />
+            <Route path="/cascade-sim" element={<CascadeSimulator />} />
+            <Route path="/eco-validity" element={<EcoValidity />} />
+            <Route path="/stream-coverage" element={<StreamCoverage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, Card, Gloss, SectionLabel, Segmented } from "@/components/primitives";
 import { TrajectoryChart } from "@/components/charts/TrajectoryChart";
 import { HDABarStack } from "@/components/charts/HDABarStack";
@@ -152,6 +153,9 @@ export function Results() {
 
 function RsaGrowthPanel() {
   const enabled = useFeatureFlag("RSA_GROWTH_CURVES");
+  const showStillFace = useFeatureFlag("DYN_STILLFACE_SUPPRESSION");
+  const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
+  const navigate = useNavigate();
   const [ageBasis, setAgeBasis] = useState<AgeBasis>("adjusted");
   const { data } = useRsaTrajectories(ageBasis);
   if (!enabled) return null;
@@ -166,7 +170,11 @@ function RsaGrowthPanel() {
           <SectionLabel>RSA growth curves · additive preview</SectionLabel>
           <div className={styles.cardTitle}>Group trajectories with 95% confidence bands</div>
         </div>
-        <Segmented<AgeBasis> size="sm" options={AGE_BASIS_OPTS} value={ageBasis} onChange={setAgeBasis} />
+        <div className={styles.actions}>
+          {showStillFace && <Button size="sm" variant="secondary" icon="pause-circle" onClick={() => navigate("/stillface")}>View suppression paradigm</Button>}
+          {showPassport && <Button size="sm" variant="secondary" icon="id-card" onClick={() => navigate("/passport")}>Open developmental passport</Button>}
+          <Segmented<AgeBasis> size="sm" options={AGE_BASIS_OPTS} value={ageBasis} onChange={setAgeBasis} />
+        </div>
       </div>
       {rows.length > 0 && <RsaGrowthChart rows={rows} ageBasis={ageBasis} />}
       <div className={styles.tableWrap}>

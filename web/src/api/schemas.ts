@@ -418,6 +418,219 @@ export const EcgQualitySummaryResponse = ApiListResponse(EcgQualitySummaryRow);
 export type EcgQualitySummaryResponse = z.infer<typeof EcgQualitySummaryResponse>;
 
 /* ------------------------------------------------------------------------ */
+/* Dynamics & Dyads V2 contracts                                             */
+/* ------------------------------------------------------------------------ */
+
+export const DynEventType = z.enum(["arousal_spike", "still_face", "reunion"]);
+export type DynEventType = z.infer<typeof DynEventType>;
+
+export const DyadCoregulationResponse = z.object({
+  fs: z.number(),
+  caregiver: z.object({
+    rsa: z.array(z.number()),
+    heartPeriod: z.array(z.number()),
+  }),
+  infant: z.object({
+    rsa: z.array(z.number()),
+    heartPeriod: z.array(z.number()),
+    hdaPhase: z.array(z.string()),
+  }),
+  events: z.array(z.object({
+    onset: z.number(),
+    type: DynEventType,
+  })),
+  groupContext: z.array(z.object({
+    group: GroupCode,
+    synchronyIndex: z.number(),
+    leadLagSec: z.number(),
+  })).optional(),
+});
+export type DyadCoregulationResponse = z.infer<typeof DyadCoregulationResponse>;
+
+export const PhasePortraitResponse = z.object({
+  fs: z.number(),
+  arousal: z.array(z.number()),
+  attention: z.array(z.number()),
+  t: z.array(z.number()),
+  prototypes: z.array(z.object({
+    group: GroupCode,
+    points: z.array(z.object({ arousal: z.number(), attention: z.number() })),
+  })).optional(),
+});
+export type PhasePortraitResponse = z.infer<typeof PhasePortraitResponse>;
+
+export const CvaTarget = z.enum(["face", "toy", "other", "away", "infant_face"]);
+export type CvaTarget = z.infer<typeof CvaTarget>;
+
+export const CvaSegment = z.object({
+  start: z.number(),
+  end: z.number(),
+  target: CvaTarget,
+  toyId: z.string().optional(),
+});
+export type CvaSegment = z.infer<typeof CvaSegment>;
+
+export const CvaResponse = z.object({
+  durationSec: z.number(),
+  infantGaze: z.array(CvaSegment),
+  caregiverGaze: z.array(CvaSegment),
+  faceAvailability: z.array(z.object({ start: z.number(), end: z.number() })),
+  scaffoldEvents: z.array(z.object({
+    t: z.number(),
+    type: z.enum(["name", "touch", "position"]),
+  })).optional(),
+});
+export type CvaResponse = z.infer<typeof CvaResponse>;
+
+export const HrDecelerationResponse = z.object({
+  preSec: z.number(),
+  postSec: z.number(),
+  fs: z.number(),
+  episodes: z.array(z.object({
+    nanoid: z.string(),
+    group: GroupCode,
+    ageBin: z.string(),
+    hr: z.array(z.number()),
+  })),
+});
+export type HrDecelerationResponse = z.infer<typeof HrDecelerationResponse>;
+
+export const StillFaceResponse = z.object({
+  phases: z.array(z.object({
+    name: z.enum(["baseline", "play", "stillface", "reunion"]),
+    startSec: z.number(),
+    endSec: z.number(),
+  })),
+  rsa: z.array(z.number()),
+  fs: z.number(),
+  caregiverRsa: z.array(z.number()).optional(),
+});
+export type StillFaceResponse = z.infer<typeof StillFaceResponse>;
+
+export const HdaTransitionsResponse = z.object({
+  transitions: z.array(z.object({
+    group: GroupCode,
+    ageBin: z.string(),
+    from: z.string(),
+    to: z.string(),
+    probability: z.number(),
+    ci95: z.tuple([z.number(), z.number()]),
+  })),
+  perParticipant: z.array(z.object({
+    nanoid: z.string(),
+    group: GroupCode,
+    ageBin: z.string(),
+    bypassIndex: z.number(),
+    sustainedDwellSec: z.number(),
+  })),
+});
+export type HdaTransitionsResponse = z.infer<typeof HdaTransitionsResponse>;
+
+export const PassportResponse = z.object({
+  group: GroupCode,
+  sex: z.enum(["F", "M", "X"]),
+  gestationalAge: z.number(),
+  timeline: z.array(z.object({
+    ageMonths: z.number(),
+    modality: z.string(),
+    metric: z.string(),
+    value: z.number(),
+    groupMean: z.number().optional(),
+    groupSd: z.number().optional(),
+  })),
+  milestones: z.array(z.object({
+    ageMonths: z.number(),
+    label: z.string(),
+  })),
+  nicu: z.object({
+    hrcSummary: z.string(),
+    thermalSummary: z.string(),
+  }).optional(),
+  outcome: z.object({
+    adosCSS: z.number(),
+    ageMonths: z.number(),
+  }).optional(),
+});
+export type PassportResponse = z.infer<typeof PassportResponse>;
+
+export const ArchetypesResponse = z.object({
+  measure: z.string(),
+  archetypes: z.array(z.object({
+    id: z.number(),
+    label: z.string(),
+    meanCurve: z.array(z.object({ ageMonths: z.number(), value: z.number() })),
+    band: z.array(z.object({ lo: z.number(), hi: z.number() })),
+  })),
+  members: z.array(z.object({
+    nanoid: z.string(),
+    group: GroupCode,
+    archetypeId: z.number(),
+    posterior: z.number(),
+  })),
+});
+export type ArchetypesResponse = z.infer<typeof ArchetypesResponse>;
+
+export const CascadePathsResponse = z.object({
+  nodes: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    domain: z.string(),
+    manipulable: z.boolean().optional(),
+  })),
+  paths: z.array(z.object({
+    from: z.string(),
+    to: z.string(),
+    beta: z.number(),
+    se: z.number(),
+  })),
+  baseline: z.array(z.object({
+    nodeId: z.string(),
+    value: z.number(),
+  })),
+  fit: z.object({
+    rmsea: z.number(),
+    cfi: z.number(),
+  }).optional(),
+});
+export type CascadePathsResponse = z.infer<typeof CascadePathsResponse>;
+
+export const EcoValidityResponse = z.object({
+  arms: z.array(z.enum(["lab", "home"])),
+  behavior: z.array(z.object({
+    metric: z.string(),
+    lab: z.number(),
+    home: z.number(),
+    test: z.string().optional(),
+    p: z.number().optional(),
+  })),
+  quality: z.array(z.object({
+    metric: z.string(),
+    lab: z.number(),
+    home: z.number(),
+  })),
+  representation: z.array(z.object({
+    metric: z.string(),
+    lab: z.number(),
+    home: z.number(),
+    localReference: z.number().optional(),
+  })),
+});
+export type EcoValidityResponse = z.infer<typeof EcoValidityResponse>;
+
+export const StreamCoverageResponse = z.object({
+  durationSec: z.number(),
+  streams: z.array(z.object({
+    name: z.enum(["ecg_infant", "ecg_caregiver", "audio", "video", "markers"]),
+    valid: z.array(z.object({ start: z.number(), end: z.number() })),
+  })),
+  syncOffsetsMs: z.array(z.object({
+    pair: z.string(),
+    offsetMs: z.number(),
+  })).optional(),
+});
+export type StreamCoverageResponse = z.infer<typeof StreamCoverageResponse>;
+
+/* ------------------------------------------------------------------------ */
 /* Presentation Maker — concept-to-deck contracts                            */
 /* ------------------------------------------------------------------------ */
 

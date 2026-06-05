@@ -13,6 +13,7 @@ const GROUP_KIND: Record<GroupCode, "vpt" | "asib" | "td"> = { VPT: "vpt", ASIB:
 export function ParticipantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
   const { data: p, isLoading } = useParticipant(id);
 
   if (isLoading || !p) {
@@ -55,6 +56,7 @@ export function ParticipantDetail() {
           <div className={styles.actions}>
             <Button variant="secondary" icon="file-text">Open SOP</Button>
             <Button variant="secondary" icon="download">Export · de-id</Button>
+            {showPassport && <Button variant="secondary" icon="id-card" onClick={() => navigate(`/passport?nanoid=${encodeURIComponent(p.id)}`)}>Open passport</Button>}
             <Button icon="shield-check" onClick={() => navigate(`/qa/${p.id}`)}>Open QA</Button>
           </div>
         </div>

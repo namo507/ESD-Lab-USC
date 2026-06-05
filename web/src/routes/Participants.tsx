@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { Badge, Button, Card, Gloss, Icon, Segmented, Tooltip } from "@/components/primitives";
 import { useParticipants } from "@/api/hooks";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { Participant, GroupCode, QaStatus, VisitId } from "@/api/schemas";
 import styles from "./Participants.module.css";
 
@@ -20,6 +21,7 @@ interface ShellCtx {
 
 export function Participants() {
   const navigate = useNavigate();
+  const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
   const { query } = useOutletContext<ShellCtx>();
   const { data: rows = [] } = useParticipants();
 
@@ -95,6 +97,7 @@ export function Participants() {
         <div className={styles.actions}>
           <Button variant="secondary" icon="filter">Saved filters</Button>
           <Button variant="secondary" icon="download">Export · CSV</Button>
+          {showPassport && <Button variant="secondary" icon="id-card" onClick={() => navigate("/passport")}>Open passport</Button>}
           <Button icon="user-plus">Add visit</Button>
         </div>
       </header>

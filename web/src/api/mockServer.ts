@@ -37,6 +37,17 @@ import type {
   CascadeDagResponse,
   EcgQualityResponse,
   EcgQualitySummaryResponse,
+  DyadCoregulationResponse,
+  PhasePortraitResponse,
+  CvaResponse,
+  HrDecelerationResponse,
+  StillFaceResponse,
+  HdaTransitionsResponse,
+  PassportResponse,
+  ArchetypesResponse,
+  CascadePathsResponse,
+  EcoValidityResponse,
+  StreamCoverageResponse,
 } from "./schemas";
 
 const STUDY: StudySummary = {
@@ -445,6 +456,262 @@ const ECG_QUALITY_SUMMARY: EcgQualitySummaryResponse = v2Envelope(
   STUDY.enrolled,
 );
 
+function wave(length: number, base: number, amp: number, period: number, phase = 0): number[] {
+  return Array.from({ length }, (_, i) =>
+    Number((base + Math.sin(i / period + phase) * amp + Math.cos(i / (period * 0.47) + phase) * amp * 0.28).toFixed(3)),
+  );
+}
+
+function makeDyadCoregulation(_nanoId: string, visitAgeRaw: string): DyadCoregulationResponse {
+  const visitAge = visitAgeFromPath(visitAgeRaw);
+  const length = 210;
+  const caregiverRsa = wave(length, 4.7 + visitAge * 0.015, 0.23, 9, 0.4);
+  const infantRsa = caregiverRsa.map((v, i) =>
+    Number((v - 0.42 + Math.sin((i - 5) / 10) * 0.18 + Math.cos(i / 17) * 0.08).toFixed(3)),
+  );
+  const caregiverHp = wave(length, 470, 24, 11, 0.8);
+  const infantHp = caregiverHp.map((v, i) => Number((v - 42 + Math.sin((i - 4) / 8) * 18).toFixed(2)));
+  const phases = ["orienting", "sustained", "sustained", "inattention", "termination"];
+  return {
+    fs: 1,
+    caregiver: { rsa: caregiverRsa, heartPeriod: caregiverHp },
+    infant: {
+      rsa: infantRsa,
+      heartPeriod: infantHp,
+      hdaPhase: Array.from({ length }, (_, i) => phases[Math.floor(i / 38) % phases.length] as string),
+    },
+    events: [
+      { onset: 42, type: "arousal_spike" },
+      { onset: 96, type: "still_face" },
+      { onset: 138, type: "reunion" },
+      { onset: 172, type: "arousal_spike" },
+    ],
+    groupContext: [
+      { group: "ASIB", synchronyIndex: 0.49, leadLagSec: 3.2 },
+      { group: "TD", synchronyIndex: 0.61, leadLagSec: 4.6 },
+      { group: "VPT", synchronyIndex: 0.44, leadLagSec: 2.1 },
+    ],
+  };
+}
+
+function makePhasePortrait(_nanoId: string, visitAgeRaw: string): PhasePortraitResponse {
+  const visitAge = visitAgeFromPath(visitAgeRaw);
+  const length = 240;
+  const t = Array.from({ length }, (_, i) => i);
+  const arousal = t.map((i) => Number((0.52 + Math.sin(i / 18) * 0.24 + Math.cos(i / 7) * 0.08 + visitAge * 0.003).toFixed(3)));
+  const attention = t.map((i) => Number((0.54 + Math.cos(i / 21) * 0.24 - Math.sin(i / 9) * 0.07 + visitAge * 0.002).toFixed(3)));
+  return {
+    fs: 1,
+    arousal,
+    attention,
+    t,
+    prototypes: (["ASIB", "TD", "VPT"] as const).map((group, gi) => ({
+      group,
+      points: Array.from({ length: 60 }, (_, i) => ({
+        arousal: Number((0.48 + gi * 0.035 + Math.sin(i / 9 + gi) * 0.16).toFixed(3)),
+        attention: Number((0.56 - gi * 0.018 + Math.cos(i / 11 + gi) * 0.16).toFixed(3)),
+      })),
+    })),
+  };
+}
+
+function makeCvaTheater(_nanoId: string, _visitAgeRaw: string): CvaResponse {
+  const infantTargets = ["toy", "face", "toy", "away", "toy", "other", "face", "toy"] as const;
+  const caregiverTargets = ["toy", "infant_face", "toy", "toy", "toy", "other", "infant_face", "toy"] as const;
+  let cursor = 0;
+  const infantGaze = infantTargets.map((target, i) => {
+    const start = cursor;
+    const end = start + 18 + (i % 3) * 7;
+    cursor = end;
+    return { start, end, target, toyId: target === "toy" ? `toy-${(i % 3) + 1}` : undefined };
+  });
+  cursor = 0;
+  const caregiverGaze = caregiverTargets.map((target, i) => {
+    const start = cursor;
+    const end = start + 20 + ((i + 1) % 3) * 6;
+    cursor = end;
+    return { start, end, target, toyId: target === "toy" ? `toy-${(i % 3) + 1}` : undefined };
+  });
+  return {
+    durationSec: 210,
+    infantGaze,
+    caregiverGaze,
+    faceAvailability: [{ start: 12, end: 68 }, { start: 92, end: 132 }, { start: 154, end: 198 }],
+    scaffoldEvents: [{ t: 35, type: "name" }, { t: 89, type: "touch" }, { t: 148, type: "position" }],
+  };
+}
+
+function makeHrDeceleration(groupFilter = "ASIB", ageBin = "6mo"): HrDecelerationResponse {
+  const groups = groupFilter === "all" ? (["ASIB", "TD", "VPT"] as const) : ([groupFilter as "ASIB" | "TD" | "VPT"] as const);
+  const preSec = 6;
+  const postSec = 12;
+  const fs = 2;
+  const length = (preSec + postSec) * fs + 1;
+  const episodes = groups.flatMap((group, gi) =>
+    Array.from({ length: 18 }, (_, i) => {
+      const depth = group === "TD" ? 5.2 : group === "ASIB" ? 4.2 : 5.8;
+      const hr = Array.from({ length }, (_, sample) => {
+        const t = (sample - preSec * fs) / fs;
+        const trough = -depth * Math.exp(-Math.pow((t - 3.2 - gi * 0.3) / 3.1, 2));
+        return Number((132 + gi * 3 + Math.sin(sample / 4 + i) * 1.3 + trough).toFixed(2));
+      });
+      return { nanoid: `NANO-${String(100 + gi * 30 + i).padStart(4, "0")}`, group, ageBin, hr };
+    }),
+  );
+  return { preSec, postSec, fs, episodes };
+}
+
+function makeStillFace(_nanoId: string, visitAgeRaw: string): StillFaceResponse {
+  const visitAge = visitAgeFromPath(visitAgeRaw);
+  const fs = 1;
+  const phases = [
+    { name: "baseline" as const, startSec: 0, endSec: 45 },
+    { name: "play" as const, startSec: 45, endSec: 105 },
+    { name: "stillface" as const, startSec: 105, endSec: 155 },
+    { name: "reunion" as const, startSec: 155, endSec: 215 },
+  ];
+  const rsa = Array.from({ length: 216 }, (_, i) => {
+    const phaseShift = i >= 105 && i < 155 ? -0.42 : i >= 155 ? 0.2 : i >= 45 ? 0.16 : 0;
+    return Number((4.15 + visitAge * 0.018 + phaseShift + Math.sin(i / 11) * 0.14).toFixed(3));
+  });
+  const caregiverRsa = rsa.map((v, i) => Number((v + 0.28 + Math.sin(i / 15) * 0.08).toFixed(3)));
+  return { phases, rsa, caregiverRsa, fs };
+}
+
+const HDA_TRANSITIONS: HdaTransitionsResponse = {
+  transitions: (["ASIB", "TD", "VPT"] as const).flatMap((group) => {
+    const bypass = group === "ASIB" ? 0.34 : group === "VPT" ? 0.29 : 0.18;
+    const sustained = group === "TD" ? 0.62 : group === "VPT" ? 0.48 : 0.43;
+    return [
+      { group, ageBin: "6mo", from: "orienting", to: "sustained", probability: sustained, ci95: [sustained - 0.06, sustained + 0.06] as [number, number] },
+      { group, ageBin: "6mo", from: "orienting", to: "termination", probability: bypass, ci95: [bypass - 0.05, bypass + 0.05] as [number, number] },
+      { group, ageBin: "6mo", from: "sustained", to: "termination", probability: 0.22, ci95: [0.17, 0.27] as [number, number] },
+      { group, ageBin: "6mo", from: "sustained", to: "inattention", probability: 0.16, ci95: [0.11, 0.21] as [number, number] },
+    ];
+  }),
+  perParticipant: PARTICIPANTS.slice(0, 20).map((p, i) => ({
+    nanoid: p.id,
+    group: p.group,
+    ageBin: `${[3, 6, 9, 12][i % 4]}mo`,
+    bypassIndex: Number((0.35 + (p.group === "TD" ? -0.16 : p.group === "ASIB" ? 0.12 : 0.02) + Math.sin(i) * 0.07).toFixed(2)),
+    sustainedDwellSec: Number((24 + (p.group === "TD" ? 9 : 0) - (p.group === "ASIB" ? 3 : 0) + Math.cos(i) * 4).toFixed(1)),
+  })),
+};
+
+function makePassport(nanoId: string): PassportResponse {
+  const p = PARTICIPANTS.find((row) => row.id === nanoId) ?? PARTICIPANTS[0]!;
+  const modalities = ["RSA", "HDA", "CVA", "Attachment", "Spatial", "Risk"];
+  return {
+    group: p.group,
+    sex: p.sex,
+    gestationalAge: p.cga_wks,
+    timeline: modalities.flatMap((modality, mi) =>
+      [3, 6, 9, 12, 18, 24].map((age, ai) => ({
+        ageMonths: age,
+        modality,
+        metric: modality === "Risk" ? "model score" : modality === "HDA" ? "sustained dwell" : "summary z",
+        value: Number((0.42 + mi * 0.08 + ai * 0.035 + Math.sin(ai + mi) * 0.05).toFixed(3)),
+        groupMean: Number((0.5 + mi * 0.06 + ai * 0.025).toFixed(3)),
+        groupSd: 0.12,
+      })),
+    ),
+    milestones: [
+      { ageMonths: 3, label: "baseline physiology" },
+      { ageMonths: 12, label: "midpoint review" },
+      { ageMonths: 24, label: "outcome prep" },
+    ],
+    nicu: p.group === "VPT" ? { hrcSummary: "HRC summary available", thermalSummary: "Thermal gradient stable" } : undefined,
+    outcome: { adosCSS: p.group === "TD" ? 2 : p.group === "ASIB" ? 4 : 3, ageMonths: 36 },
+  };
+}
+
+function makeArchetypes(measure = "rsa"): ArchetypesResponse {
+  const labels = ["steady regulators", "late gain", "variable recovery"];
+  return {
+    measure,
+    archetypes: labels.map((label, i) => ({
+      id: i + 1,
+      label,
+      meanCurve: [3, 6, 9, 12, 18, 24].map((age, ai) => ({
+        ageMonths: age,
+        value: Number((0.42 + i * 0.16 + ai * (0.035 + i * 0.008) + Math.sin(ai + i) * 0.03).toFixed(3)),
+      })),
+      band: [3, 6, 9, 12, 18, 24].map((_, ai) => ({
+        lo: Number((0.34 + i * 0.16 + ai * 0.03).toFixed(3)),
+        hi: Number((0.52 + i * 0.16 + ai * 0.04).toFixed(3)),
+      })),
+    })),
+    members: PARTICIPANTS.slice(0, 21).map((p, i) => ({
+      nanoid: p.id,
+      group: p.group,
+      archetypeId: (i % 3) + 1,
+      posterior: Number((0.58 + ((i * 7) % 35) / 100).toFixed(2)),
+    })),
+  };
+}
+
+const CASCADE_PATHS: CascadePathsResponse = {
+  nodes: [
+    { id: "rsa_suppression_3m", label: "RSA suppression 3 mo", domain: "physiology", manipulable: true },
+    { id: "sustained_dwell_6m", label: "Sustained dwell 6 mo", domain: "attention", manipulable: true },
+    { id: "caregiver_coreg", label: "Caregiver co-regulation", domain: "family", manipulable: true },
+    { id: "social_attention_12m", label: "Social attention 12 mo", domain: "behavior" },
+    { id: "communication_24m", label: "Communication 24 mo", domain: "behavior" },
+    { id: "outcome_36m", label: "36 mo outcome projection", domain: "outcome" },
+  ],
+  paths: [
+    { from: "rsa_suppression_3m", to: "sustained_dwell_6m", beta: 0.34, se: 0.07 },
+    { from: "caregiver_coreg", to: "sustained_dwell_6m", beta: 0.28, se: 0.08 },
+    { from: "sustained_dwell_6m", to: "social_attention_12m", beta: 0.42, se: 0.09 },
+    { from: "social_attention_12m", to: "communication_24m", beta: 0.38, se: 0.08 },
+    { from: "communication_24m", to: "outcome_36m", beta: -0.46, se: 0.1 },
+    { from: "rsa_suppression_3m", to: "outcome_36m", beta: -0.12, se: 0.06 },
+  ],
+  baseline: [
+    { nodeId: "rsa_suppression_3m", value: 0 },
+    { nodeId: "sustained_dwell_6m", value: 0 },
+    { nodeId: "caregiver_coreg", value: 0 },
+    { nodeId: "outcome_36m", value: 0 },
+  ],
+  fit: { rmsea: 0.047, cfi: 0.94 },
+};
+
+const ECO_VALIDITY: EcoValidityResponse = {
+  arms: ["lab", "home"],
+  behavior: [
+    { metric: "negative reactivity", lab: 0.58, home: 0.49, test: "Welch t", p: 0.04 },
+    { metric: "engagement score", lab: 0.62, home: 0.71, test: "Welch t", p: 0.03 },
+  ],
+  quality: [
+    { metric: "valid ECG", lab: 87.4, home: 84.2 },
+    { metric: "valid behavior video", lab: 92.1, home: 89.7 },
+    { metric: "complete forms", lab: 95.3, home: 93.8 },
+  ],
+  representation: [
+    { metric: "BIPOC enrollment", lab: 39.2, home: 47.1, localReference: 43.5 },
+    { metric: "rural households", lab: 14.4, home: 24.8, localReference: 22.1 },
+    { metric: "median round-trip miles", lab: 42, home: 18 },
+  ],
+};
+
+function makeStreamCoverage(_nanoId: string, _visitAgeRaw: string): StreamCoverageResponse {
+  return {
+    durationSec: 240,
+    streams: [
+      { name: "ecg_infant", valid: [{ start: 0, end: 74 }, { start: 86, end: 168 }, { start: 181, end: 240 }] },
+      { name: "ecg_caregiver", valid: [{ start: 0, end: 112 }, { start: 120, end: 240 }] },
+      { name: "audio", valid: [{ start: 4, end: 240 }] },
+      { name: "video", valid: [{ start: 0, end: 92 }, { start: 101, end: 240 }] },
+      { name: "markers", valid: [{ start: 0, end: 240 }] },
+    ],
+    syncOffsetsMs: [
+      { pair: "ecg_infant · markers", offsetMs: 12 },
+      { pair: "ecg_caregiver · markers", offsetMs: -18 },
+      { pair: "video · audio", offsetMs: 34 },
+    ],
+  };
+}
+
 const MOCK_READINGS_FRESHNESS: ReadingsFreshness = {
   schema: "readings_freshness.v1",
   mode: "local",
@@ -572,7 +839,27 @@ function mockAssistantReply(message: string): string {
   }
 
   if (q.includes("new feature") || q.includes("new route") || q.includes("feature surface")) {
-    return "The expanded NANO surfaces include RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Assessment Matrix, and Attachment Heatmap. Each uses de-identified NANO IDs and v2 API envelopes.";
+    return "The expanded NANO surfaces include RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Matrix, Attachment Heatmap, and the Dynamics & Dyads layer: co-regulation, phase portrait, CVA theater, HR deceleration, still-face suppression, HDA bypass, passport, archetypes, cascade simulation, eco-validity, and stream coverage.";
+  }
+
+  if (q.includes("co-regulation") || q.includes("dyad") || q.includes("coregulation")) {
+    return "The Co-Regulation page pairs caregiver and infant Actiheart-derived streams. The headline metrics summarize synchrony, signed lead-lag, coupling stability, and event-linked recovery while the heatmap shows where coupling is strongest across time and lag.";
+  }
+
+  if (q.includes("phase portrait") || q.includes("arousal") || q.includes("attention portrait")) {
+    return "The Phase Portrait plots arousal against attention so a session becomes a trajectory through state space. The shaded adaptive region, occupancy density, and recovery metrics make regulation geometry visible instead of only timeline labels.";
+  }
+
+  if (q.includes("cva") || q.includes("coordinated visual") || q.includes("gaze")) {
+    return "The CVA Theater aligns infant and caregiver gaze ribbons, marks face availability, and highlights overlapping toy or face targets as coordinated visual attention bouts. It also recomputes availability gap, bout count, and sticky-look measures from the selected window.";
+  }
+
+  if (q.includes("bypass")) {
+    return "The HDA Bypass page focuses on the orienting-to-termination pathway. It compares P(orienting→termination) with P(orienting→sustained), shows transition intervals, and plots participant bypass index against age.";
+  }
+
+  if (q.includes("cascade sim") || q.includes("what-if") || q.includes("counterfactual")) {
+    return "The Cascade Simulator is a model-projection surface, not an individual clinical prediction. Slider changes propagate through fitted standardized paths and always show uncertainty plus model fit so the output stays interpretable and appropriately cautious.";
   }
 
   if (q.includes("shap") || q.includes("beeswarm")) {
@@ -878,9 +1165,32 @@ export function installMockServer() {
     if (p === "/api/v2/model-leaderboard") return reply(MODEL_LEADERBOARD);
     if (p === "/api/v2/cascade-dag") return reply(CASCADE_DAG);
     if (p === "/api/v2/ecg-quality-summary") return reply(ECG_QUALITY_SUMMARY);
+    if (p === "/api/v2/hr-deceleration") return reply(makeHrDeceleration(u.searchParams.get("group") ?? "ASIB", u.searchParams.get("ageBin") ?? "6mo"));
+    if (p === "/api/v2/hda-transitions") return reply(HDA_TRANSITIONS);
+    if (p === "/api/v2/archetypes") return reply(makeArchetypes(u.searchParams.get("measure") ?? "rsa"));
+    if (p === "/api/v2/cascade-paths") return reply(CASCADE_PATHS);
+    if (p === "/api/v2/eco-validity") return reply(ECO_VALIDITY);
 
     const hdaSession = p.match(/^\/api\/v2\/hda-session\/([A-Z0-9-]+)\/([^/]+)$/);
     if (hdaSession) return reply(makeHdaSession(hdaSession[1] as string, hdaSession[2] as string));
+
+    const dyad = p.match(/^\/api\/v2\/dyad\/coregulation\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (dyad) return reply(makeDyadCoregulation(dyad[1] as string, dyad[2] as string));
+
+    const phasePortrait = p.match(/^\/api\/v2\/phase-portrait\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (phasePortrait) return reply(makePhasePortrait(phasePortrait[1] as string, phasePortrait[2] as string));
+
+    const cva = p.match(/^\/api\/v2\/cva\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (cva) return reply(makeCvaTheater(cva[1] as string, cva[2] as string));
+
+    const stillFace = p.match(/^\/api\/v2\/stillface\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (stillFace) return reply(makeStillFace(stillFace[1] as string, stillFace[2] as string));
+
+    const passport = p.match(/^\/api\/v2\/passport\/([A-Z0-9-]+)$/);
+    if (passport) return reply(makePassport(passport[1] as string));
+
+    const streamCoverage = p.match(/^\/api\/v2\/stream-coverage\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (streamCoverage) return reply(makeStreamCoverage(streamCoverage[1] as string, streamCoverage[2] as string));
 
     const thermal = p.match(/^\/api\/v2\/thermal-heatmap\/([A-Z0-9-]+)$/);
     if (thermal) return reply(makeThermalHeatmap(thermal[1] as string));

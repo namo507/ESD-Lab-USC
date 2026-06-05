@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
-import { Badge, Card, SectionLabel } from "@/components/primitives";
+import { Badge, Button, Card, SectionLabel } from "@/components/primitives";
 import { useClusterTsne } from "@/api/hooks";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { ClusterTsneRow, GroupCode } from "@/api/schemas";
@@ -24,6 +25,8 @@ export function ClusterViewer() {
   const enabled = useFeatureFlag("CLUSTER_VIEWER");
   if (!enabled) return null;
 
+  const navigate = useNavigate();
+  const showArchetypes = useFeatureFlag("DYN_TRAJECTORY_ARCHETYPES");
   const { data } = useClusterTsne();
   const rows = data?.data ?? [];
   const [timepoint, setTimepoint] = useState(12);
@@ -51,6 +54,11 @@ export function ClusterViewer() {
           <input className={styles.range} type="range" min={6} max={24} step={6} value={timepoint} onChange={(e) => setTimepoint(Number(e.target.value))} />
           <span className="t-mono">{timepoint} mo</span>
         </label>
+        {showArchetypes && (
+          <Button icon="git-branch" onClick={() => navigate("/archetypes")}>
+            View trajectory archetypes
+          </Button>
+        )}
       </header>
 
       <div className={styles.split}>

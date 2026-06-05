@@ -22,6 +22,14 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "matlab", label: "Run all MATLAB exports",      prompt: "Walk me through running MATLAB/scripts/run_all.m end-to-end, including the manifest the dashboard reads." },
   { lane: "matlab", label: "MATLAB Engine vs file",       prompt: "When should I use the MATLAB Engine for Python path instead of the Parquet file handoff?" },
   { lane: "matlab", label: "Processing queue",             prompt: "Explain the MATLAB Processing Queue fields and how artifact rate is derived." },
+  { lane: "dyn",    label: "Co-regulation",                prompt: "Explain how to read the Dyadic Autonomic Co-Regulation page, especially synchrony index, signed lead-lag, coupling stability, and the lag surface ridge." },
+  { lane: "dyn",    label: "Phase portrait",               prompt: "Walk me through the Arousal-Attention Phase Portrait and what adaptive-region occupancy, recovery time, entropy, and centroid drift mean." },
+  { lane: "dyn",    label: "CVA theater",                  prompt: "How should I interpret the CVA Theater gaze ribbons, face-availability gap, CVA bouts, and sticky-look index?" },
+  { lane: "dyn",    label: "Still-face suppression",       prompt: "Explain the Still-Face and Suppression Explorer metrics: suppression, recovery, ratio, and blunted suppression flag." },
+  { lane: "dyn",    label: "HDA bypass",                   prompt: "Explain the HDA Bypass Index and how orienting-to-termination compares with orienting-to-sustained attention." },
+  { lane: "dyn",    label: "Passport",                     prompt: "How do I use the Infant Developmental Passport to review one de-identified participant across modalities?" },
+  { lane: "dyn",    label: "Eco-validity",                 prompt: "Summarize the Ecological Validity and Equity Panel and how lab versus home deltas should be interpreted." },
+  { lane: "dyn",    label: "Cascade what-if",              prompt: "Explain the Cascade Intervention Simulator guardrails and how slider changes propagate through the fitted paths." },
 ];
 
 interface Message {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { HdaTimeline } from "@/components/charts/HdaTimeline";
 import { useHdaSession, useParticipants } from "@/api/hooks";
@@ -18,6 +19,10 @@ export function HdaPlayer() {
   const enabled = useFeatureFlag("HDA_TIMELINE_PLAYER");
   if (!enabled) return null;
 
+  const navigate = useNavigate();
+  const showCoReg = useFeatureFlag("DYN_CO_REGULATION_BRAID");
+  const showPhase = useFeatureFlag("DYN_AROUSAL_ATTENTION_PORTRAIT");
+  const showBypass = useFeatureFlag("DYN_HDA_BYPASS_INDEX");
   const { data: participants = [] } = useParticipants();
   const [nanoId, setNanoId] = useState("");
   const [visitAge, setVisitAge] = useState("12");
@@ -95,6 +100,9 @@ export function HdaPlayer() {
             <input className={styles.range} style={{ flex: 1 }} type="range" min={0} max={duration} step={5} value={cursor} onChange={(e) => setCursor(Number(e.target.value))} />
             <span className="t-mono">{Math.round(cursor)}s</span>
           </label>
+          {showCoReg && <Button variant="secondary" icon="git-merge" onClick={() => navigate("/dyad-coregulation")}>View co-regulation</Button>}
+          {showPhase && <Button variant="secondary" icon="git-commit" onClick={() => navigate("/phase-portrait")}>View phase portrait</Button>}
+          {showBypass && <Button variant="secondary" icon="shuffle" onClick={() => navigate("/hda-bypass")}>See bypass analysis</Button>}
         </div>
       </Card>
     </div>

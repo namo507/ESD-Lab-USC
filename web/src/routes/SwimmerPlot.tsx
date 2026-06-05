@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Badge, Card, SectionLabel, Segmented } from "@/components/primitives";
+import { useNavigate } from "react-router-dom";
+import { Badge, Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { useCohortSwimmer } from "@/api/hooks";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { CohortSwimmerRow, GroupCode } from "@/api/schemas";
@@ -15,6 +16,9 @@ export function SwimmerPlot() {
   const enabled = useFeatureFlag("SWIMMER_PLOT");
   if (!enabled) return null;
 
+  const navigate = useNavigate();
+  const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
+  const showCoverage = useFeatureFlag("DYN_STREAM_COVERAGE");
   const { data } = useCohortSwimmer();
   const rows = data?.data ?? [];
   const [group, setGroup] = useState<GroupFilter>("all");
@@ -105,6 +109,10 @@ export function SwimmerPlot() {
                 <div className={styles.metric}><div className={styles.metricLabel}>Risk</div><div className={styles.metricValue}>{selected.dropoutRisk}</div></div>
                 <div className={styles.metric}><div className={styles.metricLabel}>Visits</div><div className={styles.metricValue}>{selected.completedVisits}/{selected.expectedVisits}</div></div>
                 <div className={styles.metric}><div className={styles.metricLabel}>Last</div><div className={styles.metricValue}>{selected.lastVisit.replace("cga_", "")}</div></div>
+              </div>
+              <div className={styles.actions} style={{ marginTop: 14, justifyContent: "flex-start" }}>
+                {showPassport && <Button size="sm" variant="secondary" icon="id-card" onClick={() => navigate(`/passport?nanoid=${encodeURIComponent(selected.nanoId)}`)}>Open passport</Button>}
+                {showCoverage && <Button size="sm" variant="secondary" icon="layers" onClick={() => navigate(`/stream-coverage?nanoid=${encodeURIComponent(selected.nanoId)}`)}>View stream coverage</Button>}
               </div>
             </>
           ) : (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Gloss, KPI, SectionLabel, Segmented } from "@/components/primitives";
 import { EpochTile } from "@/components/qa/EpochTile";
 import { EpochInspector } from "@/components/qa/EpochInspector";
@@ -8,6 +8,7 @@ import { useEpochs, useEpochDecision, useParticipants } from "@/api/hooks";
 import { logAudit } from "@/lib/audit";
 import { resolveTheme, useUi } from "@/store/ui";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { EpochDecision } from "@/api/schemas";
 import styles from "./QA.module.css";
 
@@ -23,6 +24,9 @@ const GRID_COLS = 8;
 
 export function QA() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const showCoverage = useFeatureFlag("DYN_STREAM_COVERAGE");
+  const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
   const { data: participants = [] } = useParticipants();
   const subject = participants.find((p) => p.id === (id ?? "NANO-0102")) ?? participants[0];
   const visitId = subject ? `${subject.id}__${subject.visit}` : "demo-visit";
@@ -145,6 +149,8 @@ export function QA() {
           <Button variant="secondary" icon="check" onClick={bulkAccept}>Auto-accept clean</Button>
           <Button variant="secondary" icon="x" onClick={bulkReject}>Auto-reject bad</Button>
           <Button variant="ghost" icon="rotate-ccw" onClick={clearAll}>Clear</Button>
+          {showCoverage && <Button variant="secondary" icon="layers" onClick={() => navigate(`/stream-coverage?nanoid=${encodeURIComponent(subject.id)}`)}>View stream coverage</Button>}
+          {showPassport && <Button variant="secondary" icon="id-card" onClick={() => navigate(`/passport?nanoid=${encodeURIComponent(subject.id)}`)}>Open passport</Button>}
           <Button icon="check-check">Save QA decisions</Button>
         </div>
       </header>

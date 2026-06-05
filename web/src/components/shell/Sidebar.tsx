@@ -59,6 +59,23 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     ],
   },
   {
+    id: "dyn",
+    title: "Dynamics & Dyads",
+    items: [
+      { to: "/dyad-coregulation", label: "Co-Regulation", icon: "git-merge", flag: "DYN_CO_REGULATION_BRAID" },
+      { to: "/phase-portrait", label: "Phase Portrait", icon: "git-commit", flag: "DYN_AROUSAL_ATTENTION_PORTRAIT" },
+      { to: "/cva-theater", label: "CVA Theater", icon: "eye", flag: "DYN_CVA_GAZE_THEATER" },
+      { to: "/hr-deceleration", label: "HR Deceleration", icon: "activity", flag: "DYN_HR_DECELERATION_PROFILES" },
+      { to: "/stillface", label: "Still-Face", icon: "pause-circle", flag: "DYN_STILLFACE_SUPPRESSION" },
+      { to: "/hda-bypass", label: "HDA Bypass", icon: "shuffle", flag: "DYN_HDA_BYPASS_INDEX" },
+      { to: "/passport", label: "Passport", icon: "id-card", flag: "DYN_INFANT_PASSPORT" },
+      { to: "/archetypes", label: "Archetypes", icon: "git-branch", flag: "DYN_TRAJECTORY_ARCHETYPES" },
+      { to: "/cascade-sim", label: "Cascade Sim", icon: "sliders", flag: "DYN_CASCADE_SIMULATOR" },
+      { to: "/eco-validity", label: "Eco-Validity", icon: "scale", flag: "DYN_ECOVALIDITY_EQUITY" },
+      { to: "/stream-coverage", label: "Stream Coverage", icon: "layers", flag: "DYN_STREAM_COVERAGE" },
+    ],
+  },
+  {
     id: "tools",
     title: "Lab Tools",
     items: [

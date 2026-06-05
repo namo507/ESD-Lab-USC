@@ -198,6 +198,34 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "healthy",
         "health",
     },
+    "dynamics": {
+        "dyad",
+        "dyadic",
+        "coregulation",
+        "co-regulation",
+        "synchrony",
+        "lead",
+        "lag",
+        "phase",
+        "portrait",
+        "arousal",
+        "attention",
+        "cva",
+        "gaze",
+        "stillface",
+        "still-face",
+        "suppression",
+        "bypass",
+        "passport",
+        "archetype",
+        "archetypes",
+        "cascade",
+        "simulator",
+        "eco-validity",
+        "ecological",
+        "stream",
+        "coverage",
+    },
 }
 READING_SUMMARY_REQUEST_TOKENS = {
     "summarize",
@@ -1401,7 +1429,40 @@ class DashboardChatAssistant:
                 "The expanded dashboard surfaces are RSA growth curves, REDCap completeness, HDA timeline/player, "
                 "thermal heatmap, cohort swimmer plot, attrition and missingness, SDOH map, SHAP explorer, "
                 "Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality Monitor, Spatial Assessment Matrix, "
-                "and Attachment Heatmap. They use de-identified NANO IDs and v2 list-style API contracts."
+                "Attachment Heatmap, and the Dynamics & Dyads layer: Co-Regulation, Phase Portrait, CVA Theater, "
+                "HR Deceleration, Still-Face, HDA Bypass, Passport, Archetypes, Cascade Simulator, Eco-Validity, "
+                "and Stream Coverage. They use de-identified NANO IDs and v2 API contracts."
+            )
+
+        if question_tokens & {"coregulation", "co-regulation", "dyad", "dyadic", "synchrony"}:
+            return (
+                "The Co-Regulation route aligns caregiver and infant Actiheart-derived streams. "
+                "It summarizes synchrony index, signed caregiver/infant lead-lag, coupling stability, recovery concordance, "
+                "and a windowed cross-correlation lag surface. Caregiver streams stay NANOID-keyed and never named."
+            )
+
+        if question_tokens & {"phase", "portrait", "arousal"} and question_tokens & {"attention", "orbit", "trajectory"}:
+            return (
+                "The Phase Portrait route plots arousal against attentional engagement so a session becomes an orbit through state space. "
+                "Adaptive occupancy, recovery time, entropy, and centroid drift are computed from the endpoint values."
+            )
+
+        if question_tokens & {"cva", "gaze", "visual"}:
+            return (
+                "The CVA Theater aligns infant and caregiver gaze ribbons, shades face availability, and highlights overlapping targets as coordinated visual attention bouts. "
+                "The face-availability gap and sticky-look index are recomputed from the de-identified segment data."
+            )
+
+        if question_tokens & {"bypass", "transition", "transitions"}:
+            return (
+                "The HDA Bypass route tests the orienting-to-termination hypothesis by comparing P(orienting to termination) with P(orienting to sustained). "
+                "It also shows transition intervals and participant-level bypass index trends by age."
+            )
+
+        if question_tokens & {"cascade", "simulator", "what-if", "counterfactual"}:
+            return (
+                "The Cascade Simulator is a model-projection tool, not a clinical predictor. "
+                "Slider changes propagate through fitted standardized paths and the page always surfaces uncertainty and model fit."
             )
 
         if question_tokens & {"rsa", "trajectory", "trajectories", "curve", "curves"}:

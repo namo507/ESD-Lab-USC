@@ -23,7 +23,8 @@ import {
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
-import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
+import type { FeatureFlag } from "@/config/featureFlags";
 import type { ShellContext } from "@/components/shell/AppShell";
 import type { StudySummary } from "@/api/schemas";
 
@@ -212,6 +213,8 @@ export function Overview() {
 
       <ClusterOpsPanel />
 
+      <DynamicsDiscovery />
+
       <section aria-label="Reading geography">
         <ReadingsGeoMap readings={liveReadings} loading={readingsLibrary.isLoading} />
       </section>
@@ -223,6 +226,47 @@ export function Overview() {
 
       <OverviewProgressRings study={study} />
     </div>
+  );
+}
+
+const DYN_DISCOVERY: Array<{ flag: FeatureFlag; to: string; title: string; body: string }> = [
+  { flag: "DYN_CO_REGULATION_BRAID", to: "/dyad-coregulation", title: "Co-Regulation", body: "Caregiver-infant autonomic synchrony, lead-lag, and lag surface." },
+  { flag: "DYN_AROUSAL_ATTENTION_PORTRAIT", to: "/phase-portrait", title: "Phase Portrait", body: "Arousal-attention orbit, adaptive occupancy, and recovery geometry." },
+  { flag: "DYN_CVA_GAZE_THEATER", to: "/cva-theater", title: "CVA Theater", body: "Dyadic gaze overlap, face-availability gap, and scaffold timing." },
+  { flag: "DYN_HDA_BYPASS_INDEX", to: "/hda-bypass", title: "HDA Bypass", body: "Orienting-to-termination transition hypothesis with intervals." },
+  { flag: "DYN_INFANT_PASSPORT", to: "/passport", title: "Passport", body: "Single-infant longitudinal synthesis across modalities." },
+  { flag: "DYN_CASCADE_SIMULATOR", to: "/cascade-sim", title: "Cascade Sim", body: "Counterfactual model projections with uncertainty guardrails." },
+];
+
+function DynamicsDiscovery() {
+  const navigate = useNavigate();
+  const items = DYN_DISCOVERY.filter((item) => isFeatureFlagEnabled(item.flag));
+  if (!items.length) return null;
+  return (
+    <section aria-label="Dynamics and dyads discovery">
+      <Card pad={20} dataInsight="dyn-discovery">
+        <div className="mb-4">
+          <SectionLabel>Dynamics &amp; Dyads</SectionLabel>
+          <div className="font-serif text-[18px] font-semibold text-[color:var(--warm-fg1)] mt-1">
+            Relationship-over-time surfaces now available
+          </div>
+        </div>
+        <div className="grid grid-cols-3 max-[1100px]:grid-cols-2 gap-3">
+          {items.map((item) => (
+            <button
+              key={item.to}
+              type="button"
+              onClick={() => navigate(item.to)}
+              className="text-left rounded-[var(--r-card)] border border-[color:var(--warm-border)] bg-[color:var(--bg-subtle)] p-4 hover:bg-[color:var(--warm-pill)] transition"
+              data-insight="dyn-discovery-card"
+            >
+              <div className="font-serif text-[16px] font-semibold text-[color:var(--warm-fg1)]">{item.title}</div>
+              <div className="mt-1 text-[12px] text-[color:var(--warm-fg3)] leading-snug">{item.body}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+    </section>
   );
 }
 

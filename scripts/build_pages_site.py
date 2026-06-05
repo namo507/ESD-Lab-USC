@@ -67,34 +67,280 @@ def _normalize_origin(value: str) -> str:
 
 def _worker_source(api_origin: str) -> str:
     return (
-        "const API_ORIGIN = "
-        + json.dumps(api_origin)
-        + ";\n\n"
-        + "export default {\n"
-        + "  async fetch(request, env) {\n"
-        + "    const url = new URL(request.url);\n"
-        + "    const legacyDashboardPaths = new Set([\"/dashboard\", \"/dashboard/\", \"/dashboard/index.html\"]);\n"
-        + "    if (legacyDashboardPaths.has(url.pathname)) {\n"
-        + "      const target = new URL(\"/overview\", url);\n"
-        + "      return Response.redirect(target.toString(), 308);\n"
-        + "    }\n\n"
-        + "    if (url.pathname.startsWith(\"/api/\")) {\n"
-        + "      const target = new URL(url.pathname + url.search, API_ORIGIN);\n"
-        + "      return fetch(new Request(target.toString(), request));\n"
-        + "    }\n\n"
-        + "    const assetResponse = await env.ASSETS.fetch(request);\n"
-        + "    if (assetResponse.status !== 404) {\n"
-        + "      return assetResponse;\n"
-        + "    }\n\n"
-        + "    const lastSegment = url.pathname.split(\"/\").pop() || \"\";\n"
-        + "    if ((request.method === \"GET\" || request.method === \"HEAD\") && !lastSegment.includes(\".\")) {\n"
-        + "      const fallbackUrl = new URL(\"/index.html\", url);\n"
-        + "      return env.ASSETS.fetch(new Request(fallbackUrl.toString(), request));\n"
-        + "    }\n\n"
-        + "    return assetResponse;\n"
-        + "  },\n"
-        + "};\n"
-    )
+        """
+const API_ORIGIN = __API_ORIGIN__;
+
+const presentationJobs = new Map();
+
+function jsonResponse(payload, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+function ndjsonResponse(text) {
+  const body = text
+    .split(/(\\s+)/)
+    .filter(Boolean)
+    .map((part) => JSON.stringify({ delta: part }) + "\\n")
+    .join("") + JSON.stringify({ done: true }) + "\\n";
+  return new Response(body, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+async function readJson(request) {
+  if (!request) return {};
+  try {
+    return await request.json();
+  } catch {
+    return {};
+  }
+}
+
+function assistantStatus(reason = "upstream-unavailable") {
+  return {
+    status: "ready",
+    ready: true,
+    state: "ready",
+    error: null,
+    model: "pages://fallback-assistant",
+    message:
+      "Pages fallback assistant is active because the optional live Python assistant origin is unavailable.",
+    reason,
+    freshness: {
+      readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
+      pipeline: { state: "pages-fallback", warnings: [] },
+    },
+  };
+}
+
+function assistantReply(message) {
+  const text = String(message || "").toLowerCase();
+  if (text.includes("co-reg") || text.includes("coreg") || text.includes("dyad")) {
+    return "The Dynamics & Dyads build adds co-regulation braids, lag surfaces, and dyad-level summaries behind the DYN feature flags. Use the Co-regulation route to compare infant arousal with caregiver speech and attention alignment.";
+  }
+  if (text.includes("phase") || text.includes("portrait") || text.includes("arousal")) {
+    return "The phase portrait view maps arousal against attention in 2D, with dwell bins and transition traces for NANO-only participant IDs.";
+  }
+  if (text.includes("cva") || text.includes("gaze")) {
+    return "The CVA gaze theater synchronizes caregiver vocal affect, gaze, infant arousal, and attention markers so reviewers can inspect timing without exposing PHI.";
+  }
+  if (text.includes("cascade") || text.includes("sim")) {
+    return "The cascade simulator supports de-identified what-if planning and exports a seeded presentation-maker prompt for decision-support slides.";
+  }
+  if (text.includes("passport")) {
+    return "The infant passport summarizes longitudinal modalities, completeness, and risk trend for a selected NANO ID using de-identified labels only.";
+  }
+  return "The public Pages fallback assistant can answer high-level dashboard navigation questions while the optional live local assistant tunnel is offline. Dashboard data remains mocked and de-identified in the browser build.";
+}
+
+function presentationPlan(concept, options = {}) {
+  const topic = String(concept || "this concept").trim() || "this concept";
+  const title = topic.charAt(0).toUpperCase() + topic.slice(1);
+  const audience = ["beginner", "intermediate", "advanced"].includes(options.audience_level)
+    ? options.audience_level
+    : "beginner";
+  const slides = [
+    {
+      id: "title-1",
+      type: "title",
+      title: `Understanding ${title}`,
+      subtitle: `A simple, ${audience}-friendly explainer`,
+      bullets: [],
+      example: null,
+      analogy: null,
+      note: null,
+      citations: [],
+      visual: "clean title with a thin garnet divider",
+    },
+    {
+      id: "why-2",
+      type: "why",
+      title: "Why this matters",
+      subtitle: null,
+      bullets: [
+        `${title} shows up in dashboard review and study-planning conversations`,
+        "A plain-language model helps reviewers align before deeper analysis",
+        "The public fallback avoids PHI and avoids fabricated lab citations",
+      ],
+      example: null,
+      analogy: null,
+      note: null,
+      citations: [],
+      visual: null,
+    },
+    {
+      id: "concept-3",
+      type: "concept",
+      title: `What ${title} means`,
+      subtitle: null,
+      bullets: [
+        "Define the core idea in one sentence",
+        "Name the key inputs and outputs",
+        "Separate observed evidence from interpretation",
+      ],
+      example: null,
+      analogy: null,
+      note: "Keep the slide de-identified and study-safe.",
+      citations: [],
+      visual: null,
+    },
+    {
+      id: "recap-4",
+      type: "recap",
+      title: "Recap",
+      subtitle: null,
+      bullets: [
+        "Start with the dashboard view that owns the evidence",
+        "Use NANO IDs only",
+        "Treat model projections as decision support, not ground truth",
+      ],
+      example: null,
+      analogy: null,
+      note: null,
+      citations: [],
+      visual: "three-line summary with a gold underline",
+    },
+  ];
+  return {
+    plan: {
+      title: `Understanding ${title}`,
+      subtitle: `A simple, ${audience}-friendly explainer`,
+      audience_level: audience,
+      summary: `A clear, ${audience} introduction to ${title}.`,
+      disclaimer:
+        "This deck was generated by the Cloudflare Pages fallback while the optional live local assistant was unavailable. It is de-identified and carries no lab-specific citations.",
+      grounded: false,
+      citations: [],
+      concept: topic,
+      generated_at: new Date().toISOString().slice(0, 19),
+      slides,
+    },
+  };
+}
+
+async function fallbackApiResponse(url, request, reason) {
+  const path = url.pathname;
+  if (path === "/api/healthz") {
+    return jsonResponse({
+      status: "ok",
+      dashboard: true,
+      readings: true,
+      assistant: assistantStatus(reason),
+      origin: "pages-fallback",
+    });
+  }
+  if (path === "/api/assistant/status" || path === "/api/chat/status") {
+    return jsonResponse(assistantStatus(reason));
+  }
+  if (path === "/api/assistant/freshness") {
+    return jsonResponse({
+      schema: "assistant_freshness.v1",
+      mode: "pages-fallback",
+      generated_at: new Date().toISOString(),
+      assistant: assistantStatus(reason),
+      readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
+      pipeline: { state: "pages-fallback", warnings: [] },
+    });
+  }
+  if (path === "/api/assistant/chat" && request?.method === "POST") {
+    const payload = await readJson(request);
+    return ndjsonResponse(assistantReply(payload.message));
+  }
+  if (path === "/api/chat" && request?.method === "POST") {
+    const payload = await readJson(request);
+    return jsonResponse({ reply: assistantReply(payload.message), status: assistantStatus(reason) });
+  }
+  if (path === "/api/presentation/plan" && request?.method === "POST") {
+    const payload = await readJson(request);
+    return jsonResponse(presentationPlan(payload.concept, payload.options));
+  }
+  if (path === "/api/presentation/jobs" && request?.method === "POST") {
+    const payload = await readJson(request);
+    const jobId = `pages_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    const result = presentationPlan(payload.concept, payload.options);
+    presentationJobs.set(jobId, result);
+    return jsonResponse({
+      job_id: jobId,
+      status: "succeeded",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      progress_message: "Generated by the Pages fallback assistant.",
+      poll_after_ms: 300,
+    });
+  }
+  if (path.startsWith("/api/presentation/jobs/")) {
+    const jobId = decodeURIComponent(path.slice("/api/presentation/jobs/".length));
+    const result = presentationJobs.get(jobId) || presentationPlan("dashboard presentation", {});
+    return jsonResponse({
+      job_id: jobId,
+      status: "succeeded",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      progress_message: null,
+      result,
+    });
+  }
+  return null;
+}
+
+async function proxyApi(request, url) {
+  const target = new URL(url.pathname + url.search, API_ORIGIN);
+  const fallbackRequest = request.method === "GET" || request.method === "HEAD"
+    ? null
+    : request.clone();
+  try {
+    const response = await fetch(new Request(target.toString(), request));
+    if (response.status < 500) return response;
+    const fallback = await fallbackApiResponse(url, fallbackRequest, `upstream-${response.status}`);
+    return fallback || response;
+  } catch (error) {
+    const fallback = await fallbackApiResponse(url, fallbackRequest, "upstream-fetch-failed");
+    if (fallback) return fallback;
+    return jsonResponse(
+      { error: "API origin unavailable", origin: API_ORIGIN, detail: String(error?.message || error) },
+      502,
+    );
+  }
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const legacyDashboardPaths = new Set(["/dashboard", "/dashboard/", "/dashboard/index.html"]);
+    if (legacyDashboardPaths.has(url.pathname)) {
+      const target = new URL("/overview", url);
+      return Response.redirect(target.toString(), 308);
+    }
+
+    if (url.pathname.startsWith("/api/")) {
+      return proxyApi(request, url);
+    }
+
+    const assetResponse = await env.ASSETS.fetch(request);
+    if (assetResponse.status !== 404) {
+      return assetResponse;
+    }
+
+    const lastSegment = url.pathname.split("/").pop() || "";
+    if ((request.method === "GET" || request.method === "HEAD") && !lastSegment.includes(".")) {
+      const fallbackUrl = new URL("/index.html", url);
+      return env.ASSETS.fetch(new Request(fallbackUrl.toString(), request));
+    }
+
+    return assetResponse;
+  },
+};
+"""
+    ).lstrip().replace("__API_ORIGIN__", json.dumps(api_origin))
 
 
 def _resolve_api_origin(api_origin: str | None, manifest_path: pathlib.Path) -> str:

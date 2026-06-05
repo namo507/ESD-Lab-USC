@@ -260,6 +260,111 @@ export function useEcgQualitySummary() {
   });
 }
 
+export function useDyadCoregulation(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "dyad-coregulation", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/dyad/coregulation/${nanoId}/${visitAge}`, S.DyadCoregulationResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function usePhasePortrait(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "phase-portrait", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/phase-portrait/${nanoId}/${visitAge}`, S.PhasePortraitResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useCvaTheater(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "cva", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/cva/${nanoId}/${visitAge}`, S.CvaResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useHrDeceleration(group = "ASIB", ageBin = "6mo") {
+  return useQuery({
+    queryKey: ["v2", "hr-deceleration", group, ageBin],
+    queryFn: () => api.get(`/api/v2/hr-deceleration?group=${group}&ageBin=${ageBin}`, S.HrDecelerationResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useStillFace(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "stillface", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/stillface/${nanoId}/${visitAge}`, S.StillFaceResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useHdaTransitions(group = "ASIB", ageBin = "6mo") {
+  return useQuery({
+    queryKey: ["v2", "hda-transitions", group, ageBin],
+    queryFn: () => api.get(`/api/v2/hda-transitions?group=${group}&ageBin=${ageBin}`, S.HdaTransitionsResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function usePassport(nanoId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId),
+    queryKey: ["v2", "passport", nanoId],
+    queryFn: () => api.get(`/api/v2/passport/${nanoId}`, S.PassportResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useArchetypes(measure = "rsa") {
+  return useQuery({
+    queryKey: ["v2", "archetypes", measure],
+    queryFn: () => api.get(`/api/v2/archetypes?measure=${measure}`, S.ArchetypesResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
+export function useCascadePaths() {
+  return useQuery({
+    queryKey: ["v2", "cascade-paths"],
+    queryFn: () => api.get("/api/v2/cascade-paths", S.CascadePathsResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useEcoValidity() {
+  return useQuery({
+    queryKey: ["v2", "eco-validity"],
+    queryFn: () => api.get("/api/v2/eco-validity", S.EcoValidityResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
+  });
+}
+
+export function useStreamCoverage(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "stream-coverage", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/stream-coverage/${nanoId}/${visitAge}`, S.StreamCoverageResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
 export function useClusterTopology() {
   return useQuery({
     queryKey: ["cluster", "topology"],

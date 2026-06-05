@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { AmbientOrbit } from "@/components/warm";
 import { useAssistantStatus, usePresentationJob } from "@/api/hooks";
@@ -49,6 +49,22 @@ export function PresentationMaker() {
 
   const status = useAssistantStatus();
   const job = usePresentationJob();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+    const seed = searchParams.get("seed");
+    if (!seed) return;
+    const nanoid = searchParams.get("nanoid");
+    const seededConcept =
+      seed === "passport"
+        ? `Create a one-slide developmental passport summary for ${nanoid ?? "the selected NANO participant"}, covering longitudinal modalities, completeness, and risk trend with de-identified wording.`
+        : seed === "eco-validity"
+          ? "Create a grant-ready ecological validity and equity slide comparing lab versus home collection arms, with behavior, data-quality, and representation deltas."
+          : seed === "cascade-sim"
+            ? "Create a decision-support slide explaining the cascade simulator what-if result, including model-projection guardrails, uncertainty, and fitted path interpretation."
+            : "";
+    if (seededConcept) setConcept(seededConcept);
+  }, []);
 
   const assistantReady = status.data?.status === "ready";
   const statusTone = status.isLoading

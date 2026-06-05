@@ -8,6 +8,8 @@ import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { useUi } from "@/store/ui";
+import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
+import type { FeatureFlag } from "@/config/featureFlags";
 import styles from "./Landing.module.css";
 
 type SectionId = "overview" | "metrics" | "aims" | "architecture" | "pipeline" | "qa" | "cohort" | "ml" | "studio" | "assistant" | "library";
@@ -156,6 +158,13 @@ const ASSISTANT_SUGGESTIONS = [
   "How is the classifier validated?",
   "What should a clinician look at first on this site?",
 ] as const;
+
+const DYN_LANDING: Array<{ flag: FeatureFlag; title: string; body: string; to: string }> = [
+  { flag: "DYN_CO_REGULATION_BRAID", title: "Co-Regulation", body: "Caregiver-infant physiology coupling over time.", to: "/dyad-coregulation" },
+  { flag: "DYN_AROUSAL_ATTENTION_PORTRAIT", title: "Phase Portrait", body: "Arousal-attention state-space trajectory.", to: "/phase-portrait" },
+  { flag: "DYN_CVA_GAZE_THEATER", title: "CVA Theater", body: "Dyadic gaze overlap and face-availability gap.", to: "/cva-theater" },
+  { flag: "DYN_CASCADE_SIMULATOR", title: "Cascade Sim", body: "Guardrailed what-if model projections.", to: "/cascade-sim" },
+];
 
 const STUDIO_INPUTS = [
   { id: "rmssd", label: "RMSSD @ 3mo", min: 15, max: 60, step: 0.5, defaultValue: 38.4, weight: -0.32, suffix: "ms" },
@@ -374,6 +383,11 @@ export function Landing() {
       },
     ];
   }, [participants, runs, totals.fail]);
+
+  const dynLandingItems = useMemo(
+    () => DYN_LANDING.filter((item) => isFeatureFlagEnabled(item.flag)),
+    [],
+  );
 
   useEffect(() => {
     const sections = NAV_SECTIONS.flatMap((section) => {
@@ -642,6 +656,34 @@ export function Landing() {
             </article>
           </div>
         </section>
+
+        {dynLandingItems.length > 0 && (
+          <section className={styles.section} data-insight="dyn-discovery">
+            <header className={styles.sectionHeader}>
+              <div>
+                <span className={styles.sectionEyebrow}>Dynamics &amp; Dyads</span>
+                <h2>Relationships across time.</h2>
+              </div>
+              <div className={styles.sectionNote}>Feature-flagged V2 previews, all NANOID-only.</div>
+            </header>
+            <div className={styles.metricGrid}>
+              {dynLandingItems.map((item) => (
+                <button
+                  key={item.to}
+                  type="button"
+                  className={styles.metricCard}
+                  onClick={() => navigate(item.to)}
+                  data-insight="dyn-discovery-card"
+                >
+                  <span>{item.title}</span>
+                  <strong>Open</strong>
+                  <p>{item.body}</p>
+                  <div className={styles.metricFooter}>Dynamics route</div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section id="aims" className={styles.section} data-insight="landing-aims">
           <header className={styles.sectionHeader}>

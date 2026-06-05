@@ -71,6 +71,17 @@ SPA_ROUTE_PREFIXES = (
     "/ecg-quality",
     "/spatial-assessments",
     "/attachment-heatmap",
+    "/dyad-coregulation",
+    "/phase-portrait",
+    "/cva-theater",
+    "/hr-deceleration",
+    "/stillface",
+    "/hda-bypass",
+    "/passport",
+    "/archetypes",
+    "/cascade-sim",
+    "/eco-validity",
+    "/stream-coverage",
 )
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
@@ -662,6 +673,352 @@ def _v2_ecg_quality_summary() -> dict[str, Any]:
             {"label": "NDA-ready windows", "value": 88.6, "target": 95, "status": "watch"},
         ]
     )
+
+
+def _wave(length: int, base: float, amp: float, period: float, phase: float = 0.0) -> list[float]:
+    return [
+        round(
+            base
+            + math.sin(i / period + phase) * amp
+            + math.cos(i / (period * 0.47) + phase) * amp * 0.28,
+            3,
+        )
+        for i in range(length)
+    ]
+
+
+def _v2_dyad_coregulation(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id
+    visit_age = _visit_age(visit_age_raw)
+    length = 210
+    caregiver_rsa = _wave(length, 4.7 + visit_age * 0.015, 0.23, 9, 0.4)
+    infant_rsa = [
+        round(v - 0.42 + math.sin((i - 5) / 10) * 0.18 + math.cos(i / 17) * 0.08, 3)
+        for i, v in enumerate(caregiver_rsa)
+    ]
+    caregiver_hp = _wave(length, 470, 24, 11, 0.8)
+    infant_hp = [
+        round(v - 42 + math.sin((i - 4) / 8) * 18, 2)
+        for i, v in enumerate(caregiver_hp)
+    ]
+    phases = ["orienting", "sustained", "sustained", "inattention", "termination"]
+    return {
+        "fs": 1,
+        "caregiver": {"rsa": caregiver_rsa, "heartPeriod": caregiver_hp},
+        "infant": {
+            "rsa": infant_rsa,
+            "heartPeriod": infant_hp,
+            "hdaPhase": [phases[(i // 38) % len(phases)] for i in range(length)],
+        },
+        "events": [
+            {"onset": 42, "type": "arousal_spike"},
+            {"onset": 96, "type": "still_face"},
+            {"onset": 138, "type": "reunion"},
+            {"onset": 172, "type": "arousal_spike"},
+        ],
+        "groupContext": [
+            {"group": "ASIB", "synchronyIndex": 0.49, "leadLagSec": 3.2},
+            {"group": "TD", "synchronyIndex": 0.61, "leadLagSec": 4.6},
+            {"group": "VPT", "synchronyIndex": 0.44, "leadLagSec": 2.1},
+        ],
+    }
+
+
+def _v2_phase_portrait(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id
+    visit_age = _visit_age(visit_age_raw)
+    length = 240
+    t = list(range(length))
+    arousal = [
+        round(0.52 + math.sin(i / 18) * 0.24 + math.cos(i / 7) * 0.08 + visit_age * 0.003, 3)
+        for i in t
+    ]
+    attention = [
+        round(0.54 + math.cos(i / 21) * 0.24 - math.sin(i / 9) * 0.07 + visit_age * 0.002, 3)
+        for i in t
+    ]
+    return {
+        "fs": 1,
+        "arousal": arousal,
+        "attention": attention,
+        "t": t,
+        "prototypes": [
+            {
+                "group": group,
+                "points": [
+                    {
+                        "arousal": round(0.48 + gi * 0.035 + math.sin(i / 9 + gi) * 0.16, 3),
+                        "attention": round(0.56 - gi * 0.018 + math.cos(i / 11 + gi) * 0.16, 3),
+                    }
+                    for i in range(60)
+                ],
+            }
+            for gi, group in enumerate(["ASIB", "TD", "VPT"])
+        ],
+    }
+
+
+def _v2_cva(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id, visit_age_raw
+    infant_targets = ["toy", "face", "toy", "away", "toy", "other", "face", "toy"]
+    caregiver_targets = ["toy", "infant_face", "toy", "toy", "toy", "other", "infant_face", "toy"]
+    cursor = 0
+    infant = []
+    for idx, target in enumerate(infant_targets):
+        start = cursor
+        end = start + 18 + (idx % 3) * 7
+        cursor = end
+        infant.append(
+            {
+                "start": start,
+                "end": end,
+                "target": target,
+                **({"toyId": f"toy-{idx % 3 + 1}"} if target == "toy" else {}),
+            }
+        )
+    cursor = 0
+    caregiver = []
+    for idx, target in enumerate(caregiver_targets):
+        start = cursor
+        end = start + 20 + ((idx + 1) % 3) * 6
+        cursor = end
+        caregiver.append(
+            {
+                "start": start,
+                "end": end,
+                "target": target,
+                **({"toyId": f"toy-{idx % 3 + 1}"} if target == "toy" else {}),
+            }
+        )
+    return {
+        "durationSec": 210,
+        "infantGaze": infant,
+        "caregiverGaze": caregiver,
+        "faceAvailability": [
+            {"start": 12, "end": 68},
+            {"start": 92, "end": 132},
+            {"start": 154, "end": 198},
+        ],
+        "scaffoldEvents": [
+            {"t": 35, "type": "name"},
+            {"t": 89, "type": "touch"},
+            {"t": 148, "type": "position"},
+        ],
+    }
+
+
+def _v2_hr_deceleration(group_filter: str, age_bin: str) -> dict[str, Any]:
+    groups = ["ASIB", "TD", "VPT"] if group_filter == "all" else [group_filter]
+    pre_sec = 6
+    post_sec = 12
+    fs = 2
+    length = (pre_sec + post_sec) * fs + 1
+    episodes = []
+    for gi, group in enumerate(groups):
+        for idx in range(18):
+            depth = 5.2 if group == "TD" else 4.2 if group == "ASIB" else 5.8
+            hr = []
+            for sample in range(length):
+                t = (sample - pre_sec * fs) / fs
+                trough = -depth * math.exp(-((t - 3.2 - gi * 0.3) / 3.1) ** 2)
+                hr.append(round(132 + gi * 3 + math.sin(sample / 4 + idx) * 1.3 + trough, 2))
+            episodes.append(
+                {
+                    "nanoid": f"NANO-{100 + gi * 30 + idx:04d}",
+                    "group": _normalize_group(group),
+                    "ageBin": age_bin,
+                    "hr": hr,
+                }
+            )
+    return {"preSec": pre_sec, "postSec": post_sec, "fs": fs, "episodes": episodes}
+
+
+def _v2_stillface(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id
+    visit_age = _visit_age(visit_age_raw)
+    phases = [
+        {"name": "baseline", "startSec": 0, "endSec": 45},
+        {"name": "play", "startSec": 45, "endSec": 105},
+        {"name": "stillface", "startSec": 105, "endSec": 155},
+        {"name": "reunion", "startSec": 155, "endSec": 215},
+    ]
+    rsa = []
+    for i in range(216):
+        phase_shift = -0.42 if 105 <= i < 155 else 0.2 if i >= 155 else 0.16 if i >= 45 else 0
+        rsa.append(round(4.15 + visit_age * 0.018 + phase_shift + math.sin(i / 11) * 0.14, 3))
+    caregiver = [round(v + 0.28 + math.sin(i / 15) * 0.08, 3) for i, v in enumerate(rsa)]
+    return {"phases": phases, "rsa": rsa, "caregiverRsa": caregiver, "fs": 1}
+
+
+def _v2_hda_transitions() -> dict[str, Any]:
+    transitions = []
+    for group in ["ASIB", "TD", "VPT"]:
+        bypass = 0.34 if group == "ASIB" else 0.29 if group == "VPT" else 0.18
+        sustained = 0.62 if group == "TD" else 0.48 if group == "VPT" else 0.43
+        transitions.extend(
+            [
+                {"group": group, "ageBin": "6mo", "from": "orienting", "to": "sustained", "probability": sustained, "ci95": [round(sustained - 0.06, 2), round(sustained + 0.06, 2)]},
+                {"group": group, "ageBin": "6mo", "from": "orienting", "to": "termination", "probability": bypass, "ci95": [round(bypass - 0.05, 2), round(bypass + 0.05, 2)]},
+                {"group": group, "ageBin": "6mo", "from": "sustained", "to": "termination", "probability": 0.22, "ci95": [0.17, 0.27]},
+                {"group": group, "ageBin": "6mo", "from": "sustained", "to": "inattention", "probability": 0.16, "ci95": [0.11, 0.21]},
+            ]
+        )
+    cohort = (_dashboard_payload().get("cohort_table") or [])[:20]
+    if not cohort:
+        cohort = [{"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]} for i in range(20)]
+    per_participant = []
+    for idx, participant in enumerate(cohort):
+        group = _normalize_group(participant.get("group"))
+        per_participant.append(
+            {
+                "nanoid": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
+                "group": group,
+                "ageBin": f"{[3, 6, 9, 12][idx % 4]}mo",
+                "bypassIndex": round(0.35 + (-0.16 if group == "TD" else 0.12 if group == "ASIB" else 0.02) + math.sin(idx) * 0.07, 2),
+                "sustainedDwellSec": round(24 + (9 if group == "TD" else 0) - (3 if group == "ASIB" else 0) + math.cos(idx) * 4, 1),
+            }
+        )
+    return {"transitions": transitions, "perParticipant": per_participant}
+
+
+def _v2_passport(nano_id: str) -> dict[str, Any]:
+    payload = _dashboard_payload()
+    cohort = payload.get("cohort_table") or []
+    participant = next((p for p in cohort if p.get("nano_id") == nano_id), None) or {}
+    group = _normalize_group(participant.get("group") or "VPT")
+    modalities = ["RSA", "HDA", "CVA", "Attachment", "Spatial", "Risk"]
+    timeline = []
+    for mi, modality in enumerate(modalities):
+        for ai, age in enumerate([3, 6, 9, 12, 18, 24]):
+            timeline.append(
+                {
+                    "ageMonths": age,
+                    "modality": modality,
+                    "metric": "model score" if modality == "Risk" else "sustained dwell" if modality == "HDA" else "summary z",
+                    "value": round(0.42 + mi * 0.08 + ai * 0.035 + math.sin(ai + mi) * 0.05, 3),
+                    "groupMean": round(0.5 + mi * 0.06 + ai * 0.025, 3),
+                    "groupSd": 0.12,
+                }
+            )
+    return {
+        "group": group,
+        "sex": str(participant.get("sex") or "F")[:1] if str(participant.get("sex") or "F")[:1] in {"F", "M", "X"} else "F",
+        "gestationalAge": float(participant.get("gestational_age") or participant.get("cga_wks") or 30.4),
+        "timeline": timeline,
+        "milestones": [
+            {"ageMonths": 3, "label": "baseline physiology"},
+            {"ageMonths": 12, "label": "midpoint review"},
+            {"ageMonths": 24, "label": "outcome prep"},
+        ],
+        **({"nicu": {"hrcSummary": "HRC summary available", "thermalSummary": "Thermal gradient stable"}} if group == "VPT" else {}),
+        "outcome": {"adosCSS": 2 if group == "TD" else 4 if group == "ASIB" else 3, "ageMonths": 36},
+    }
+
+
+def _v2_archetypes(measure: str) -> dict[str, Any]:
+    labels = ["steady regulators", "late gain", "variable recovery"]
+    archetypes = []
+    for idx, label in enumerate(labels):
+        archetypes.append(
+            {
+                "id": idx + 1,
+                "label": label,
+                "meanCurve": [
+                    {
+                        "ageMonths": age,
+                        "value": round(0.42 + idx * 0.16 + ai * (0.035 + idx * 0.008) + math.sin(ai + idx) * 0.03, 3),
+                    }
+                    for ai, age in enumerate([3, 6, 9, 12, 18, 24])
+                ],
+                "band": [
+                    {"lo": round(0.34 + idx * 0.16 + ai * 0.03, 3), "hi": round(0.52 + idx * 0.16 + ai * 0.04, 3)}
+                    for ai in range(6)
+                ],
+            }
+        )
+    cohort = (_dashboard_payload().get("cohort_table") or [])[:21]
+    if not cohort:
+        cohort = [{"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]} for i in range(21)]
+    return {
+        "measure": measure,
+        "archetypes": archetypes,
+        "members": [
+            {
+                "nanoid": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
+                "group": _normalize_group(participant.get("group")),
+                "archetypeId": idx % 3 + 1,
+                "posterior": round(0.58 + ((idx * 7) % 35) / 100, 2),
+            }
+            for idx, participant in enumerate(cohort)
+        ],
+    }
+
+
+def _v2_cascade_paths() -> dict[str, Any]:
+    return {
+        "nodes": [
+            {"id": "rsa_suppression_3m", "label": "RSA suppression 3 mo", "domain": "physiology", "manipulable": True},
+            {"id": "sustained_dwell_6m", "label": "Sustained dwell 6 mo", "domain": "attention", "manipulable": True},
+            {"id": "caregiver_coreg", "label": "Caregiver co-regulation", "domain": "family", "manipulable": True},
+            {"id": "social_attention_12m", "label": "Social attention 12 mo", "domain": "behavior"},
+            {"id": "communication_24m", "label": "Communication 24 mo", "domain": "behavior"},
+            {"id": "outcome_36m", "label": "36 mo outcome projection", "domain": "outcome"},
+        ],
+        "paths": [
+            {"from": "rsa_suppression_3m", "to": "sustained_dwell_6m", "beta": 0.34, "se": 0.07},
+            {"from": "caregiver_coreg", "to": "sustained_dwell_6m", "beta": 0.28, "se": 0.08},
+            {"from": "sustained_dwell_6m", "to": "social_attention_12m", "beta": 0.42, "se": 0.09},
+            {"from": "social_attention_12m", "to": "communication_24m", "beta": 0.38, "se": 0.08},
+            {"from": "communication_24m", "to": "outcome_36m", "beta": -0.46, "se": 0.1},
+            {"from": "rsa_suppression_3m", "to": "outcome_36m", "beta": -0.12, "se": 0.06},
+        ],
+        "baseline": [
+            {"nodeId": "rsa_suppression_3m", "value": 0},
+            {"nodeId": "sustained_dwell_6m", "value": 0},
+            {"nodeId": "caregiver_coreg", "value": 0},
+            {"nodeId": "outcome_36m", "value": 0},
+        ],
+        "fit": {"rmsea": 0.047, "cfi": 0.94},
+    }
+
+
+def _v2_eco_validity() -> dict[str, Any]:
+    return {
+        "arms": ["lab", "home"],
+        "behavior": [
+            {"metric": "negative reactivity", "lab": 0.58, "home": 0.49, "test": "Welch t", "p": 0.04},
+            {"metric": "engagement score", "lab": 0.62, "home": 0.71, "test": "Welch t", "p": 0.03},
+        ],
+        "quality": [
+            {"metric": "valid ECG", "lab": 87.4, "home": 84.2},
+            {"metric": "valid behavior video", "lab": 92.1, "home": 89.7},
+            {"metric": "complete forms", "lab": 95.3, "home": 93.8},
+        ],
+        "representation": [
+            {"metric": "BIPOC enrollment", "lab": 39.2, "home": 47.1, "localReference": 43.5},
+            {"metric": "rural households", "lab": 14.4, "home": 24.8, "localReference": 22.1},
+            {"metric": "median round-trip miles", "lab": 42, "home": 18},
+        ],
+    }
+
+
+def _v2_stream_coverage(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id, visit_age_raw
+    return {
+        "durationSec": 240,
+        "streams": [
+            {"name": "ecg_infant", "valid": [{"start": 0, "end": 74}, {"start": 86, "end": 168}, {"start": 181, "end": 240}]},
+            {"name": "ecg_caregiver", "valid": [{"start": 0, "end": 112}, {"start": 120, "end": 240}]},
+            {"name": "audio", "valid": [{"start": 4, "end": 240}]},
+            {"name": "video", "valid": [{"start": 0, "end": 92}, {"start": 101, "end": 240}]},
+            {"name": "markers", "valid": [{"start": 0, "end": 240}]},
+        ],
+        "syncOffsetsMs": [
+            {"pair": "ecg_infant · markers", "offsetMs": 12},
+            {"pair": "ecg_caregiver · markers", "offsetMs": -18},
+            {"pair": "video · audio", "offsetMs": 34},
+        ],
+    }
 
 
 def ensure_public_spa_build() -> None:
@@ -1637,6 +1994,53 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             if request_path == "/api/v2/ecg-quality-summary":
                 self._send_json(_v2_ecg_quality_summary())
                 return
+            if request_path == "/api/v2/hr-deceleration":
+                group = (query.get("group") or ["ASIB"])[0]
+                age_bin = (query.get("ageBin") or ["6mo"])[0]
+                self._send_json(_v2_hr_deceleration(group, age_bin))
+                return
+            if request_path == "/api/v2/hda-transitions":
+                self._send_json(_v2_hda_transitions())
+                return
+            if request_path == "/api/v2/archetypes":
+                measure = (query.get("measure") or ["rsa"])[0]
+                self._send_json(_v2_archetypes(measure))
+                return
+            if request_path == "/api/v2/cascade-paths":
+                self._send_json(_v2_cascade_paths())
+                return
+            if request_path == "/api/v2/eco-validity":
+                self._send_json(_v2_eco_validity())
+                return
+            if request_path.startswith("/api/v2/dyad/coregulation/"):
+                parts = request_path[len("/api/v2/dyad/coregulation/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_dyad_coregulation(parts[0], parts[1]))
+                    return
+            if request_path.startswith("/api/v2/phase-portrait/"):
+                parts = request_path[len("/api/v2/phase-portrait/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_phase_portrait(parts[0], parts[1]))
+                    return
+            if request_path.startswith("/api/v2/cva/"):
+                parts = request_path[len("/api/v2/cva/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_cva(parts[0], parts[1]))
+                    return
+            if request_path.startswith("/api/v2/stillface/"):
+                parts = request_path[len("/api/v2/stillface/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_stillface(parts[0], parts[1]))
+                    return
+            if request_path.startswith("/api/v2/passport/"):
+                nano_id = request_path[len("/api/v2/passport/") :].strip("/")
+                self._send_json(_v2_passport(nano_id))
+                return
+            if request_path.startswith("/api/v2/stream-coverage/"):
+                parts = request_path[len("/api/v2/stream-coverage/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_stream_coverage(parts[0], parts[1]))
+                    return
             if request_path.startswith("/api/v2/hda-session/"):
                 parts = request_path[len("/api/v2/hda-session/") :].strip("/").split("/")
                 if len(parts) == 2:
