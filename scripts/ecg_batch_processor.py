@@ -46,9 +46,7 @@ def discover_ecg_files(raw_ecg_dir: str | Path) -> list[Path]:
     if not root.exists():
         logger.warning("raw_ecg_dir does not exist: %s", root)
         return []
-    files = sorted(
-        p for p in root.rglob("*") if p.suffix.lower() in ECG_EXTENSIONS
-    )
+    files = sorted(p for p in root.rglob("*") if p.suffix.lower() in ECG_EXTENSIONS)
     logger.info("Discovered %d ECG files in %s.", len(files), root)
     return files
 
@@ -111,7 +109,9 @@ def process_single_file(args: tuple[Path, Path, bool]) -> dict:
                 return result
 
             fs_col = df.attrs.get("sampling_rate", 1024)
-            preprocessed = preprocess_ecg_pipeline(df["signal"].values, sampling_rate=fs_col)
+            preprocessed = preprocess_ecg_pipeline(
+                df["signal"].values, sampling_rate=fs_col
+            )
             valid_ibi = preprocessed.loc[
                 preprocessed["quality_flag"] == 1, "ibi_ms"
             ].values
@@ -159,6 +159,7 @@ def run_batch(
     """
     try:
         from tqdm import tqdm
+
         progress = tqdm
     except ImportError:
         progress = iter  # type: ignore[assignment]
@@ -166,7 +167,12 @@ def run_batch(
     task_args = [(f, output_dir, dry_run) for f in ecg_files]
 
     with multiprocessing.Pool(processes=n_workers) as pool:
-        results = list(progress(pool.imap_unordered(process_single_file, task_args), total=len(task_args)))
+        results = list(
+            progress(
+                pool.imap_unordered(process_single_file, task_args),
+                total=len(task_args),
+            )
+        )
 
     summary = pd.DataFrame(results)
     n_ok = (summary["status"] == "ok").sum()
@@ -179,14 +185,20 @@ def run_batch(
 def main() -> None:
     """Entry point for the ECG batch processor."""
     parser = argparse.ArgumentParser(description="Batch ECG processor for NANO Study.")
-    parser.add_argument("--workers", type=int, default=4, help="Number of worker processes.")
-    parser.add_argument("--dry-run", action="store_true", help="Skip writing output files.")
+    parser.add_argument(
+        "--workers", type=int, default=4, help="Number of worker processes."
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Skip writing output files."
+    )
     args = parser.parse_args()
 
     cfg = load_config()
     nano_root = os.environ.get("NANO_DATA_ROOT", "")
-    raw_ecg_dir = cfg.get("raw", {}).get("ecg_dir", f"{nano_root}/raw/ecg").replace(
-        "${NANO_DATA_ROOT}", nano_root
+    raw_ecg_dir = (
+        cfg.get("raw", {})
+        .get("ecg_dir", f"{nano_root}/raw/ecg")
+        .replace("${NANO_DATA_ROOT}", nano_root)
     )
     output_dir = Path(
         cfg.get("processed", {})
@@ -199,7 +211,9 @@ def main() -> None:
         logger.info("No ECG files found. Exiting.")
         return
 
-    summary = run_batch(ecg_files, output_dir, n_workers=args.workers, dry_run=args.dry_run)
+    summary = run_batch(
+        ecg_files, output_dir, n_workers=args.workers, dry_run=args.dry_run
+    )
     logger.info("Summary:\n%s", summary["status"].value_counts().to_string())
 
 

@@ -29,13 +29,11 @@ const DOMAIN_COLOR: Record<string, string> = {
 
 export function CascadeDag() {
   const enabled = useFeatureFlag("CASCADE_DAG");
-  if (!enabled) return null;
-
   const navigate = useNavigate();
   const showSim = useFeatureFlag("DYN_CASCADE_SIMULATOR");
   const { data } = useCascadeDag();
-  const rows = data?.data ?? [];
   const graph = useMemo(() => {
+    const rows = data?.data ?? [];
     const nodeMap = new Map<string, Node>();
     rows.forEach((row) => {
       if (!nodeMap.has(row.source)) nodeMap.set(row.source, { id: row.source, domain: row.sourceDomain });
@@ -52,7 +50,9 @@ export function CascadeDag() {
       .stop();
     for (let i = 0; i < 120; i += 1) simulation.tick();
     return { nodes, links };
-  }, [rows]);
+  }, [data?.data]);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

@@ -42,7 +42,13 @@ def compute_hourly_cptd_stats(temp_df: pd.DataFrame) -> pd.DataFrame:
     hourly = (
         df["cptd"]
         .resample("1h")
-        .agg(mean_cptd="mean", std_cptd="std", min_cptd="min", max_cptd="max", n_obs="count")
+        .agg(
+            mean_cptd="mean",
+            std_cptd="std",
+            min_cptd="min",
+            max_cptd="max",
+            n_obs="count",
+        )
         .reset_index()
     )
     logger.info("compute_hourly_cptd_stats: %d hours computed.", len(hourly))
@@ -80,7 +86,9 @@ def flag_abnormal_gradients(
     n_flagged = int(df["abnormal_gradient"].sum())
     logger.info(
         "flag_abnormal_gradients: %d/%d rows flagged (threshold=%.2f °C/min).",
-        n_flagged, len(df), max_gradient_per_min,
+        n_flagged,
+        len(df),
+        max_gradient_per_min,
     )
     return df
 
@@ -108,7 +116,9 @@ def drop_invalid_days(
 
     daily_stats_df = daily_stats_df.copy()
     daily_stats_df["date"] = pd.to_datetime(daily_stats_df["date"]).dt.date
-    valid_days = set(daily_stats_df.loc[daily_stats_df["valid_pct"] >= min_valid_pct, "date"])
+    valid_days = set(
+        daily_stats_df.loc[daily_stats_df["valid_pct"] >= min_valid_pct, "date"]
+    )
 
     df = df[df["_date"].isin(valid_days)].drop(columns=["_date"]).reset_index(drop=True)
     log_pipeline_step(logger, "drop_invalid_days", n_input, len(df))
@@ -145,7 +155,9 @@ def compute_temperature_features(temp_df: pd.DataFrame) -> dict[str, float]:
             "pct_time_normothermic": np.nan,
         }
 
-    normothermic = ((vals >= _NORMOTHERMIA_LOW) & (vals <= _NORMOTHERMIA_HIGH)).mean() * 100.0
+    normothermic = (
+        (vals >= _NORMOTHERMIA_LOW) & (vals <= _NORMOTHERMIA_HIGH)
+    ).mean() * 100.0
 
     return {
         "mean_cpTd": float(np.mean(vals)),

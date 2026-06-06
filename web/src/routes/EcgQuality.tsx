@@ -7,8 +7,6 @@ import styles from "./FeatureRoutes.module.css";
 
 export function EcgQuality() {
   const enabled = useFeatureFlag("ECG_QUALITY_MONITOR");
-  if (!enabled) return null;
-
   const { data: participants = [] } = useParticipants();
   const [nanoId, setNanoId] = useState("");
   const selected = nanoId || participants[0]?.id;
@@ -37,6 +35,8 @@ export function EcgQuality() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

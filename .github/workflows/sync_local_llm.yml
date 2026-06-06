@@ -20,6 +20,14 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Cache Hugging Face metadata
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: local-llm-${{ hashFiles('scripts/select_best_local_llm.py', 'config/llm_model.json') }}
+          restore-keys: |
+            local-llm-
+
       - name: Install deps
         run: pip install requests 'huggingface-hub>=0.23.0'
 

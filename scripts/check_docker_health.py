@@ -4,6 +4,7 @@
 This script is intended for local/devcontainer smoke checks before running
 runtime scripts that depend on Docker services.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +19,9 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_command(command: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def run_command(
+    command: list[str], cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         command,
         cwd=cwd,
@@ -90,7 +93,9 @@ def is_running_state(value: str) -> bool:
     return normalized in {"running", "up"} or normalized.startswith("running")
 
 
-def check_compose_services(compose_cmd: list[str], project_name: str | None, services: list[str]) -> list[dict[str, Any]]:
+def check_compose_services(
+    compose_cmd: list[str], project_name: str | None, services: list[str]
+) -> list[dict[str, Any]]:
     command = [*compose_cmd]
     if project_name:
         command.extend(["-p", project_name])
@@ -114,7 +119,8 @@ def check_compose_services(compose_cmd: list[str], project_name: str | None, ser
         ]
         if not rows:
             raise RuntimeError(
-                "Requested services were not found in Compose status: " + ", ".join(services)
+                "Requested services were not found in Compose status: "
+                + ", ".join(services)
             )
 
     unhealthy: list[str] = []
@@ -130,13 +136,17 @@ def check_compose_services(compose_cmd: list[str], project_name: str | None, ser
             unhealthy.append(f"{service}: health={health}")
 
     if unhealthy:
-        raise RuntimeError("Compose service health check failed: " + "; ".join(unhealthy))
+        raise RuntimeError(
+            "Compose service health check failed: " + "; ".join(unhealthy)
+        )
 
     return rows
 
 
 def check_http_endpoint(url: str, timeout: int) -> int:
-    request = urllib.request.Request(url, headers={"User-Agent": "dashboard-docker-health/1.0"})
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "dashboard-docker-health/1.0"}
+    )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         return int(response.status)
 
@@ -181,13 +191,17 @@ def main(argv: list[str] | None = None) -> int:
 
     ensure_docker_daemon()
     compose_cmd = resolve_compose_command()
-    services = check_compose_services(compose_cmd, args.project_name or None, args.service)
+    services = check_compose_services(
+        compose_cmd, args.project_name or None, args.service
+    )
 
     checked_urls: list[dict[str, Any]] = []
     for url in args.check_url:
         status_code = check_http_endpoint(url, timeout=args.timeout)
         if status_code < 200 or status_code >= 400:
-            raise RuntimeError(f"Endpoint check failed: {url} returned HTTP {status_code}")
+            raise RuntimeError(
+                f"Endpoint check failed: {url} returned HTTP {status_code}"
+            )
         checked_urls.append({"url": url, "status": status_code})
 
     output = {

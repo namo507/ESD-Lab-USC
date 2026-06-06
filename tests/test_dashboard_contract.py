@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 
-from dashboard.pipelines import build_dashboard_data
-from dashboard.pipelines import build_org_site_data
-from dashboard.pipelines import generate_synthetic_dashboard_data
+from dashboard.pipelines import (
+    build_dashboard_data,
+    build_org_site_data,
+    generate_synthetic_dashboard_data,
+)
 
 
 def test_synthetic_payload_contains_organization_site_block():
@@ -73,7 +75,6 @@ def test_production_payload_includes_organization_site_block(tmp_path):
     assert payload["organization_site"]["summary"]["partner_count"] >= 1
     assert payload["organization_site"]["contact"]["signup_url"]
     assert any(
-        item["kind"] == "story"
-        for item in payload["organization_site"]["impact_feed"]
+        item["kind"] == "story" for item in payload["organization_site"]["impact_feed"]
     )
     json.loads(json.dumps(payload, allow_nan=False))

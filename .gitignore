@@ -127,6 +127,10 @@ desktop.ini
 *.class
 *.o
 *.a
+*.tar.gz
+*.tgz
+*.pptx
+*.js.map
 
 # ─── Reports (generated artifacts; keep templates) ──────────
 reports/figures/*.png
@@ -141,6 +145,10 @@ reports/manuscripts/*.pdf
 
 # ─── Node (REDCap hooks dev) ────────────────────────────────
 node_modules/
+web/node_modules/
+web/build/
+web/dist/
+web/build-merge/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -168,3 +176,6 @@ models/
 config/llm_model.local.json
 models/local_llms/
 models/_metrics.json
+
+# ─── Generated design exports ───────────────────────────────
+Design Ideas/**/*.html

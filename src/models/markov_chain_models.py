@@ -142,6 +142,7 @@ def compare_group_transitions(
 
     # LRT: approximate log-likelihood from off-diagonal rates
     def _log_lik(Q: np.ndarray, df: pd.DataFrame) -> float:
+        """Compute an approximate continuous-time Markov log-likelihood."""
         n = Q.shape[0]
         states = _DEFAULT_STATES[:n]
         state_idx = {s: i for i, s in enumerate(states)}

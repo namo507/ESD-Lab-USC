@@ -86,7 +86,9 @@ def _signature() -> tuple[tuple[str, int | None, int | None], ...]:
 def _build_site(quiet: bool) -> bool:
     cmd = [sys.executable, str(ROOT / "scripts" / "build_pages_site.py")]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, capture_output=True, text=True, check=False
+        )
     except OSError as exc:
         _log("error", f"build_pages_site.py invocation failed: {exc}")
         return False
@@ -132,7 +134,9 @@ def _deploy_site(quiet: bool) -> bool:
         "--commit-dirty=true",
     ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, capture_output=True, text=True, check=False
+        )
     except OSError as exc:
         _log("error", f"wrangler invocation failed: {exc}")
         return False
@@ -147,7 +151,10 @@ def _deploy_site(quiet: bool) -> bool:
 
 def sync_once(*, deploy: bool, quiet: bool) -> int:
     if deploy and not _load_env_token():
-        _log("error", "CLOUDFLARE_API_TOKEN missing (.env or shell). Pages deploy will fail.")
+        _log(
+            "error",
+            "CLOUDFLARE_API_TOKEN missing (.env or shell). Pages deploy will fail.",
+        )
         return 78
     if not _build_site(quiet):
         return 1
@@ -159,7 +166,10 @@ def sync_once(*, deploy: bool, quiet: bool) -> int:
 def watch_forever(interval: float, *, deploy: bool, quiet: bool) -> int:
     _log("info", f"watching canonical Pages inputs every {interval:g}s")
     if deploy and not _load_env_token():
-        _log("error", "CLOUDFLARE_API_TOKEN missing — watcher will idle until you set it in .env.")
+        _log(
+            "error",
+            "CLOUDFLARE_API_TOKEN missing — watcher will idle until you set it in .env.",
+        )
     last_sig: tuple[tuple[str, int | None, int | None], ...] | None = None
     backoff = interval
     while True:
@@ -181,15 +191,28 @@ def watch_forever(interval: float, *, deploy: bool, quiet: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--once", action="store_true", help="One sync pass, then exit.")
-    parser.add_argument("--interval", type=float, default=5.0, help="Polling interval in seconds (default 5).")
-    parser.add_argument("--quiet", action="store_true", help="Only log warnings + errors.")
-    parser.add_argument("--no-deploy", action="store_true", help="Build only; skip wrangler deploy.")
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        help="Polling interval in seconds (default 5).",
+    )
+    parser.add_argument(
+        "--quiet", action="store_true", help="Only log warnings + errors."
+    )
+    parser.add_argument(
+        "--no-deploy", action="store_true", help="Build only; skip wrangler deploy."
+    )
     args = parser.parse_args(argv)
     if args.once:
         return sync_once(deploy=not args.no_deploy, quiet=args.quiet)
-    return watch_forever(interval=args.interval, deploy=not args.no_deploy, quiet=args.quiet)
+    return watch_forever(
+        interval=args.interval, deploy=not args.no_deploy, quiet=args.quiet
+    )
 
 
 if __name__ == "__main__":

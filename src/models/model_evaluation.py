@@ -190,38 +190,45 @@ def ablation_study(
         ``mean_score``, ``std_score``.
     """
     from sklearn.base import clone
-    from sklearn.model_selection import cross_val_score
+    from sklearn.model_selection import StratifiedKFold, cross_val_score
 
     rows = []
     # Baseline (all features)
     base_scores = cross_val_score(
-        clone(pipeline), X, y,
+        clone(pipeline),
+        X,
+        y,
         cv=StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42),
         scoring=scoring,
     )
-    rows.append({
-        "ablated_group": "none (baseline)",
-        "n_features_removed": 0,
-        "mean_score": float(base_scores.mean()),
-        "std_score": float(base_scores.std()),
-    })
+    rows.append(
+        {
+            "ablated_group": "none (baseline)",
+            "n_features_removed": 0,
+            "mean_score": float(base_scores.mean()),
+            "std_score": float(base_scores.std()),
+        }
+    )
 
     for group_name, cols in feature_groups.items():
         cols_to_drop = [c for c in cols if c in X.columns]
         X_ablated = X.drop(columns=cols_to_drop)
         try:
-            from sklearn.model_selection import StratifiedKFold as SKF
             scores = cross_val_score(
-                clone(pipeline), X_ablated, y,
-                cv=SKF(n_splits=cv_folds, shuffle=True, random_state=42),
+                clone(pipeline),
+                X_ablated,
+                y,
+                cv=StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42),
                 scoring=scoring,
             )
-            rows.append({
-                "ablated_group": group_name,
-                "n_features_removed": len(cols_to_drop),
-                "mean_score": float(scores.mean()),
-                "std_score": float(scores.std()),
-            })
+            rows.append(
+                {
+                    "ablated_group": group_name,
+                    "n_features_removed": len(cols_to_drop),
+                    "mean_score": float(scores.mean()),
+                    "std_score": float(scores.std()),
+                }
+            )
         except Exception as exc:
             logger.warning("ablation_study: group '%s' failed: %s", group_name, exc)
 
@@ -245,6 +252,3 @@ def compare_models(results_dict: dict[str, dict[str, float]]) -> pd.DataFrame:
     df = df.sort_values(sort_col, ascending=False).reset_index(drop=True)
     logger.info("compare_models: comparing %d models.", len(df))
     return df
-
-
-

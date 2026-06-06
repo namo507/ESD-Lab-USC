@@ -79,7 +79,9 @@ jobs:
               log.trim(),
               "```",
               "",
-              "A redeploy has been requested automatically. If the failing probe references a stale trycloudflare api-origin, restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin.",
+              "A redeploy has been requested automatically.",
+              "If the failing probe references a stale trycloudflare api-origin,",
+              "restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,

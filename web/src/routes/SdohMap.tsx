@@ -10,8 +10,6 @@ import styles from "./FeatureRoutes.module.css";
 
 export function SdohMap() {
   const enabled = useFeatureFlag("SDOH_MAP");
-  if (!enabled) return null;
-
   const { data } = useSdohMap();
   const rows = data?.data ?? [];
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
@@ -25,6 +23,8 @@ export function SdohMap() {
 
   const sx = d3.scaleLinear().domain([0.2, 0.6]).range([48, 700]);
   const sy = d3.scaleLinear().domain([60, 90]).range([210, 20]);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

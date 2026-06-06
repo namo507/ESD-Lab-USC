@@ -7,13 +7,11 @@ import styles from "./FeatureRoutes.module.css";
 
 export function Attrition() {
   const enabled = useFeatureFlag("ATTRITION_FUNNEL");
-  if (!enabled) return null;
-
   const { data: funnel } = useAttritionFunnel();
   const { data: completeness } = useRedcapCompleteness();
-  const rows = funnel?.data ?? [];
   const matrix = completeness?.data.filter((row) => row.ndaRequired).slice(0, 36) ?? [];
   const sankey = useMemo(() => {
+    const rows = funnel?.data ?? [];
     const nodeIds = Array.from(new Set(rows.flatMap((row) => [`${row.group}:${row.from}`, `${row.group}:${row.to}`])));
     return {
       nodes: nodeIds.map((id) => ({ id })),
@@ -23,7 +21,9 @@ export function Attrition() {
         value: row.value,
       })),
     };
-  }, [rows]);
+  }, [funnel?.data]);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

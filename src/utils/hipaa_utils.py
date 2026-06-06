@@ -29,13 +29,13 @@ logger = get_pipeline_logger(__name__)
 
 # Patterns that may indicate PHI in strings
 _PHI_PATTERNS = [
-    re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),            # SSN
-    re.compile(r"\b\d{10}\b"),                         # MRN (10-digit)
-    re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"),       # Name pattern (First Last)
-    re.compile(r"\b\d{1,2}/\d{1,2}/\d{4}\b"),         # Date MM/DD/YYYY
-    re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),              # Date YYYY-MM-DD
+    re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),  # SSN
+    re.compile(r"\b\d{10}\b"),  # MRN (10-digit)
+    re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"),  # Name pattern (First Last)
+    re.compile(r"\b\d{1,2}/\d{1,2}/\d{4}\b"),  # Date MM/DD/YYYY
+    re.compile(r"\b\d{4}-\d{2}-\d{2}\b"),  # Date YYYY-MM-DD
     re.compile(r"\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b"),  # Email
-    re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),     # Phone number
+    re.compile(r"\b\d{3}[-.]?\d{3}[-.]?\d{4}\b"),  # Phone number
 ]
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -110,7 +110,9 @@ def hash_participant_id(
         raise ValueError("participant_id cannot be empty.")
 
     if salt is None:
-        salt = os.environ.get("HASH_SALT", os.environ.get("REDCAP_API_TOKEN", "nano_study_2024"))
+        salt = os.environ.get(
+            "HASH_SALT", os.environ.get("REDCAP_API_TOKEN", "nano_study_2024")
+        )
 
     combined = f"{salt}:{participant_id.strip()}"
     digest = hashlib.sha256(combined.encode("utf-8")).hexdigest()
@@ -151,10 +153,13 @@ def audit_trail(func: F) -> F:
     Returns:
         Wrapped function with audit trail logging.
     """
-    audit_logger = get_pipeline_logger("nano.audit_trail", log_file="data_access_audit.log")
+    audit_logger = get_pipeline_logger(
+        "nano.audit_trail", log_file="data_access_audit.log"
+    )
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        """Log audit metadata before and after the wrapped pipeline call."""
         import pandas as pd
 
         func_name = f"{func.__module__}.{func.__qualname__}"
@@ -178,7 +183,9 @@ def audit_trail(func: F) -> F:
         n_output = None
         if isinstance(result, pd.DataFrame):
             n_output = len(result)
-        elif isinstance(result, tuple) and result and isinstance(result[0], pd.DataFrame):
+        elif (
+            isinstance(result, tuple) and result and isinstance(result[0], pd.DataFrame)
+        ):
             n_output = len(result[0])
 
         audit_logger.info(

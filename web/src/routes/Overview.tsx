@@ -272,8 +272,6 @@ function DynamicsDiscovery() {
 
 function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
   const enabled = useFeatureFlag("SWIMMER_PLOT");
-  if (!enabled) return null;
-
   const { data: swimmer } = useCohortSwimmer();
   const { data: ecg } = useEcgQualitySummary();
   const { data: redcap } = useRedcapCompleteness();
@@ -292,6 +290,8 @@ function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
     { label: "ECG QC", value: ecgPass, sub: "pass rate", color: "var(--green)" },
     { label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--usc-gold)" },
   ];
+
+  if (!enabled) return null;
 
   return (
     <section aria-label="Research progress summary">

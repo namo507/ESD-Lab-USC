@@ -4,7 +4,7 @@ import { Button, Card, SectionLabel } from "@/components/primitives";
 import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useParticipants, usePassport } from "@/api/hooks";
-import { FeatureGate, firstParticipant, GROUP_COLORS, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, round } from "./dynRouteUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 export function Passport() {

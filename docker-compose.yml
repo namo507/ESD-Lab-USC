@@ -52,5 +52,5 @@ services:
     depends_on:
       dashboard:
         condition: service_healthy
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
     restart: unless-stopped

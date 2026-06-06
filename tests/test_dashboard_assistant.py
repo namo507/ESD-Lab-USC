@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 
-from dashboard.assistant.local_chat_assistant import AssistantConfig
-from dashboard.assistant.local_chat_assistant import DashboardChatAssistant
+from dashboard.assistant.local_chat_assistant import (
+    AssistantConfig,
+    DashboardChatAssistant,
+)
 
 
 def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
@@ -33,7 +35,10 @@ def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
         },
         "organization_site": {
             "stories": [
-                {"title": "Enrollment news", "summary": "Current model story with noisy terms."},
+                {
+                    "title": "Enrollment news",
+                    "summary": "Current model story with noisy terms.",
+                },
             ]
         },
     }
@@ -50,15 +55,23 @@ def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
         data_dir=data_dir,
     )
 
-    context = assistant.build_context("What is the best model AUROC and current enrollment?")
+    context = assistant.build_context(
+        "What is the best model AUROC and current enrollment?"
+    )
 
     assert "Enrollment total: 209 of 260" in context["context"]
     assert any(citation == "enrollment.overall" for citation in context["citations"])
-    assert any(citation == "ml_performance.models[1]" for citation in context["citations"])
-    assert not any(citation.startswith("organization_site") for citation in context["citations"])
+    assert any(
+        citation == "ml_performance.models[1]" for citation in context["citations"]
+    )
+    assert not any(
+        citation.startswith("organization_site") for citation in context["citations"]
+    )
 
 
-def test_status_reports_missing_model_when_dependencies_are_available(tmp_path, monkeypatch):
+def test_status_reports_missing_model_when_dependencies_are_available(
+    tmp_path, monkeypatch
+):
     assistant = DashboardChatAssistant(
         config=AssistantConfig(model_dir=tmp_path / "missing-model"),
         data_dir=tmp_path,
@@ -154,4 +167,7 @@ def test_summary_uses_best_model_actual_index(tmp_path):
         readings={"summary": {"total_readings": 20}},
     )
 
-    assert ("ml_performance.models[1]", "Best model: 1D-CNN + LSTM (0.899)") in fragments
+    assert (
+        "ml_performance.models[1]",
+        "Best model: 1D-CNN + LSTM (0.899)",
+    ) in fragments

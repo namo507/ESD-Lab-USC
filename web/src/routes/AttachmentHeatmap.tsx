@@ -7,12 +7,12 @@ import styles from "./FeatureRoutes.module.css";
 
 export function AttachmentHeatmap() {
   const enabled = useFeatureFlag("ATTACHMENT_HEATMAP");
-  if (!enabled) return null;
-
   const [hover, setHover] = useState<AttachmentCorrelation | null>(null);
   const color = d3.scaleLinear<string>().domain([-0.7, 0, 0.7]).range(["var(--blue)", "var(--bg-surface)", "var(--usc-garnet)"]);
   const cell = 76;
   const offset = 170;
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

@@ -24,6 +24,7 @@ the aggregation logic (see
 This stub forwards any legacy invocation to the canonical script
 so existing cron lines keep working.
 """
+
 from __future__ import annotations
 
 import runpy
@@ -59,18 +60,24 @@ def compute_completeness(
         event_df = df[df["redcap_event_name"] == event]
         n_expected = len(all_participants)
         n_present = event_df["record_id"].nunique()
-        missing_ids = set(all_participants) - set(event_df["record_id"].dropna().unique())
+        missing_ids = set(all_participants) - set(
+            event_df["record_id"].dropna().unique()
+        )
 
         if required_fields_by_event and event in required_fields_by_event:
             req_fields = [
-                field for field in required_fields_by_event[event] if field in event_df.columns
+                field
+                for field in required_fields_by_event[event]
+                if field in event_df.columns
             ]
             if req_fields:
                 pct_complete = event_df[req_fields].notna().all(axis=1).mean() * 100
             else:
                 pct_complete = float("nan")
         else:
-            pct_complete = event_df.notna().mean().mean() * 100 if len(event_df) > 0 else 0.0
+            pct_complete = (
+                event_df.notna().mean().mean() * 100 if len(event_df) > 0 else 0.0
+            )
 
         results["by_event"][event] = {
             "n_expected": n_expected,
@@ -89,12 +96,18 @@ def compute_completeness(
 
 
 def main() -> int:
+    """Forward the deprecated REDCap audit CLI to the maintained report script."""
     warnings.warn(
         "redcap/api/redcap_audit.py is deprecated — forwarding to "
         "scripts/generate_data_quality_report.py. Update your cron entries.",
-        DeprecationWarning, stacklevel=2,
+        DeprecationWarning,
+        stacklevel=2,
     )
-    target = Path(__file__).resolve().parents[2] / "scripts" / "generate_data_quality_report.py"
+    target = (
+        Path(__file__).resolve().parents[2]
+        / "scripts"
+        / "generate_data_quality_report.py"
+    )
     if not target.exists():
         print("[fatal] replacement script not found:", target, file=sys.stderr)
         return 2

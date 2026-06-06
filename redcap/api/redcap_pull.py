@@ -19,9 +19,10 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import redcap
-import yaml
+import yaml  # type: ignore[import-untyped]
 from dotenv import load_dotenv
+
+import redcap
 
 # Load environment variables from .env
 load_dotenv()
@@ -73,15 +74,17 @@ def pull_records(
     Returns:
         pd.DataFrame: Combined DataFrame of all records across all pages.
     """
-    logger.info(
-        "Pulling REDCap records (chunk_size=%d, events=%s)", chunk_size, events
-    )
+    logger.info("Pulling REDCap records (chunk_size=%d, events=%s)", chunk_size, events)
 
     # Get total record count for pagination planning
-    all_record_ids: list[str] = project.export_records(
-        fields=["record_id"],
-        format_type="df",
-    )["record_id"].tolist() if fields and "record_id" not in fields else []
+    all_record_ids: list[str] = (
+        project.export_records(
+            fields=["record_id"],
+            format_type="df",
+        )["record_id"].tolist()
+        if fields and "record_id" not in fields
+        else []
+    )
 
     # Use redcap library's built-in chunked export
     kwargs: dict[str, Any] = {

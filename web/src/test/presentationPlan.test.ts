@@ -101,8 +101,9 @@ describe("DeckPlan schema", () => {
   });
 
   it("rejects a plan missing its title", () => {
-    const { title: _omit, ...rest } = makePlan();
-    expect(DeckPlan.safeParse(rest).success).toBe(false);
+    const plan = makePlan() as Partial<ReturnType<typeof makePlan>>;
+    delete plan.title;
+    expect(DeckPlan.safeParse(plan).success).toBe(false);
   });
 });
 

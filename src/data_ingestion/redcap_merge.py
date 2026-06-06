@@ -60,7 +60,9 @@ def load_redcap_export(export_path: Path) -> pd.DataFrame:
 
     logger.info(
         "Loaded REDCap export: %d records, %d columns from %s",
-        len(df), len(df.columns), export_path.name,
+        len(df),
+        len(df.columns),
+        export_path.name,
     )
     return df
 
@@ -94,7 +96,9 @@ def merge_redcap_with_physio(
     )
     logger.info(
         "Merging: %d REDCap records × %d physio records | %d overlapping participants.",
-        len(redcap_df), len(physio_df), overlap_before,
+        len(redcap_df),
+        len(physio_df),
+        overlap_before,
     )
 
     merged = redcap_df.merge(
@@ -131,7 +135,9 @@ def merge_all_sources(
     n_before = len(base_df)
 
     if hrv_df is not None and not hrv_df.empty:
-        base_df = merge_redcap_with_physio(base_df, hrv_df, how=how, physio_suffix="_hrv")
+        base_df = merge_redcap_with_physio(
+            base_df, hrv_df, how=how, physio_suffix="_hrv"
+        )
         logger.info("After HRV merge: %d rows (was %d).", len(base_df), n_before)
 
     if temperature_df is not None and not temperature_df.empty:
@@ -189,5 +195,9 @@ def _log_merge_statistics(
     logger.info(
         "Merge complete (how='%s'): %d left + %d right → %d rows. "
         "Rows with no physio match: %d",
-        how, n_left, n_right, n_merged, n_unmatched,
+        how,
+        n_left,
+        n_right,
+        n_merged,
+        n_unmatched,
     )

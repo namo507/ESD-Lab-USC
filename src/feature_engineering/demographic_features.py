@@ -94,7 +94,9 @@ def compute_morbidity_score(nicu_df: pd.DataFrame) -> pd.Series:
     score = (ivh + bpd + nec + rop + sepsis).clip(0, 10).astype(int)
     logger.info(
         "compute_morbidity_score: mean=%.2f, range=[%d, %d].",
-        float(score.mean()), int(score.min()), int(score.max()),
+        float(score.mean()),
+        int(score.min()),
+        int(score.max()),
     )
     return score
 
@@ -116,22 +118,38 @@ def encode_ses_indicators(redcap_df: pd.DataFrame) -> pd.DataFrame:
     """
     df = redcap_df.copy()
 
-    edu_map = {"<hs": 0, "hs": 1, "ged": 1, "some_college": 2, "bachelors": 3, "graduate": 4}
+    edu_map = {
+        "<hs": 0,
+        "hs": 1,
+        "ged": 1,
+        "some_college": 2,
+        "bachelors": 3,
+        "graduate": 4,
+    }
     income_map = {"<20k": 0, "20-40k": 1, "40-60k": 2, "60-80k": 3, ">80k": 4}
     insurance_map = {"none": 0, "medicaid": 1, "private": 2}
 
     out = pd.DataFrame(index=df.index)
     out["mat_edu_ord"] = (
         df.get("maternal_education", pd.Series(np.nan, index=df.index))
-        .astype(str).str.lower().str.strip().map(edu_map)
+        .astype(str)
+        .str.lower()
+        .str.strip()
+        .map(edu_map)
     )
     out["income_ord"] = (
         df.get("income_bracket", pd.Series(np.nan, index=df.index))
-        .astype(str).str.lower().str.strip().map(income_map)
+        .astype(str)
+        .str.lower()
+        .str.strip()
+        .map(income_map)
     )
     out["insurance_ord"] = (
         df.get("insurance_type", pd.Series(np.nan, index=df.index))
-        .astype(str).str.lower().str.strip().map(insurance_map)
+        .astype(str)
+        .str.lower()
+        .str.strip()
+        .map(insurance_map)
     )
 
     logger.info("encode_ses_indicators: encoded SES for %d rows.", len(out))
@@ -168,8 +186,15 @@ def build_demographic_feature_matrix(redcap_df: pd.DataFrame) -> pd.DataFrame:
     ses = encode_ses_indicators(df)
 
     result = pd.concat(
-        [ga_bins.rename("ga_bin"), group_dummies, morbidity.rename("morbidity_score"), ses],
+        [
+            ga_bins.rename("ga_bin"),
+            group_dummies,
+            morbidity.rename("morbidity_score"),
+            ses,
+        ],
         axis=1,
     )
-    logger.info("build_demographic_feature_matrix: %d rows × %d columns.", *result.shape)
+    logger.info(
+        "build_demographic_feature_matrix: %d rows × %d columns.", *result.shape
+    )
     return result

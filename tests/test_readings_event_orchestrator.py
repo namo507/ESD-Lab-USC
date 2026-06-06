@@ -4,10 +4,9 @@ import json
 import time
 from pathlib import Path
 
-from dashboard.k8s_pipeline.config import PROJECT_ROOT
-from dashboard.k8s_pipeline.config import PipelineConfig
-from dashboard.k8s_pipeline.ledger import EventDeduper
+from dashboard.k8s_pipeline.config import PROJECT_ROOT, PipelineConfig
 from dashboard.k8s_pipeline.lease import FileLease
+from dashboard.k8s_pipeline.ledger import EventDeduper
 from dashboard.k8s_pipeline.worker import run_pipeline
 
 

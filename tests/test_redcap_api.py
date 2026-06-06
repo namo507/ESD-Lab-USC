@@ -10,6 +10,7 @@ import pytest
 
 try:
     import responses as responses_lib
+
     HAS_RESPONSES = True
 except ImportError:
     HAS_RESPONSES = False
@@ -55,6 +56,7 @@ def _make_redcap_df(records: list[dict] | None = None) -> pd.DataFrame:
 # pull_records — mock HTTP
 # ---------------------------------------------------------------------------
 
+
 def test_pull_records_returns_dataframe(mock_redcap_records):
     """pull_records should return a non-empty DataFrame from API response.
 
@@ -68,10 +70,18 @@ def test_pull_records_returns_dataframe(mock_redcap_records):
 
     with patch("redcap.api.redcap_pull.get_redcap_project", return_value=mock_project):
         from redcap.api.redcap_pull import pull_records
+
         result = pull_records(mock_project)
 
     assert isinstance(result, pd.DataFrame)
     assert len(result) > 0
+
+
+def test_redcap_namespace_exposes_pycap_project():
+    """The local redcap package must expose PyCap's Project class."""
+    import redcap
+
+    assert getattr(redcap.Project, "__module__", "") == "redcap.project"
 
 
 def test_pull_records_contains_expected_columns(mock_redcap_records):
@@ -81,6 +91,7 @@ def test_pull_records_contains_expected_columns(mock_redcap_records):
     mock_project.export_records.return_value = df_fixture
 
     from redcap.api.redcap_pull import pull_records
+
     result = pull_records(mock_project)
 
     assert "record_id" in result.columns
@@ -91,11 +102,10 @@ def test_pull_records_contains_expected_columns(mock_redcap_records):
 # validate_records_for_push
 # ---------------------------------------------------------------------------
 
+
 def test_push_validates_required_fields():
     """validate_records_for_push raises ValueError when record_id column absent."""
-    df_no_id = pd.DataFrame(
-        [{"redcap_event_name": "baseline_arm_1", "ga_weeks": 32}]
-    )
+    df_no_id = pd.DataFrame([{"redcap_event_name": "baseline_arm_1", "ga_weeks": 32}])
     with pytest.raises(ValueError, match="record_id"):
         validate_records_for_push(df_no_id)
 
@@ -117,6 +127,7 @@ def test_push_returns_count():
 
     with patch("redcap.api.redcap_push.get_redcap_project", return_value=mock_project):
         from redcap.api.redcap_push import push_records
+
         result = push_records(mock_project, df, dry_run=True)
 
     # dry_run returns a stub dict; count should be present
@@ -134,6 +145,7 @@ def test_push_valid_records_pass_validation():
 # ---------------------------------------------------------------------------
 # compute_completeness
 # ---------------------------------------------------------------------------
+
 
 def test_audit_completeness_by_event():
     """compute_completeness must return a dict with expected event keys."""

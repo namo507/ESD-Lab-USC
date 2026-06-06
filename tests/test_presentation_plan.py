@@ -23,8 +23,8 @@ from dashboard.assistant.local_chat_assistant import (
 from dashboard.server import live_dashboard_server as server
 from dashboard.server.live_dashboard_server import (
     PresentationJobStore,
-    _start_presentation_job_worker,
     _run_presentation_job,
+    _start_presentation_job_worker,
     is_spa_route,
 )
 
@@ -35,9 +35,16 @@ def _grounding(grounded: bool = False, citations=None):
 
 _OK_PLAN = {
     "plan": {
-        "title": "T", "subtitle": "s", "audience_level": "beginner", "summary": "x",
-        "disclaimer": None, "grounded": False, "citations": [],
-        "slides": [{"id": "t", "type": "title", "title": "T", "bullets": [], "citations": []}],
+        "title": "T",
+        "subtitle": "s",
+        "audience_level": "beginner",
+        "summary": "x",
+        "disclaimer": None,
+        "grounded": False,
+        "citations": [],
+        "slides": [
+            {"id": "t", "type": "title", "title": "T", "bullets": [], "citations": []}
+        ],
     },
     "status": {"ready": True},
 }
@@ -50,7 +57,9 @@ class _OkAssistant:
 
 class _UnavailableAssistant:
     def plan_presentation(self, concept, options=None):
-        raise AssistantUnavailable("model-missing: download the GGUF asset", {"ready": False}, http_status=503)
+        raise AssistantUnavailable(
+            "model-missing: download the GGUF asset", {"ready": False}, http_status=503
+        )
 
 
 class _CrashAssistant:
@@ -78,13 +87,17 @@ def test_normalize_options_clamps_and_coerces():
     assert opts["include_analogy"] is False
     assert opts["include_worked_example"] is False
 
-    low = normalize_presentation_options({"slide_count": 1, "audience_level": "advanced"})
+    low = normalize_presentation_options(
+        {"slide_count": 1, "audience_level": "advanced"}
+    )
     assert low["slide_count"] == 3  # clamped to min
     assert low["audience_level"] == "advanced"
 
 
 def test_extract_json_object_handles_fences_and_trailing_commas():
-    text = 'Sure!\n```json\n{"title":"X","slides":[{"type":"concept","title":"A"},],}\n```'
+    text = (
+        'Sure!\n```json\n{"title":"X","slides":[{"type":"concept","title":"A"},],}\n```'
+    )
     parsed = extract_json_object(text)
     assert parsed is not None
     assert parsed["title"] == "X"
@@ -108,7 +121,9 @@ def test_normalize_deck_plan_enforces_structure_and_caps():
         ],
     }
     opts = normalize_presentation_options({})
-    plan = normalize_deck_plan(raw, concept="gradient descent", options=opts, grounding=_grounding())
+    plan = normalize_deck_plan(
+        raw, concept="gradient descent", options=opts, grounding=_grounding()
+    )
 
     types = [s["type"] for s in plan["slides"]]
     assert types[0] == "title"
@@ -121,15 +136,32 @@ def test_normalize_deck_plan_enforces_structure_and_caps():
     # Every slide carries the strict contract keys.
     for slide in plan["slides"]:
         assert set(slide) == {
-            "id", "type", "title", "subtitle", "bullets",
-            "example", "analogy", "note", "citations", "visual",
+            "id",
+            "type",
+            "title",
+            "subtitle",
+            "bullets",
+            "example",
+            "analogy",
+            "note",
+            "citations",
+            "visual",
         }
 
 
 def test_normalize_deck_plan_disclaimer_and_citation_gating():
     # Ungrounded: a disclaimer is added and no citations survive.
     ungrounded = normalize_deck_plan(
-        {"slides": [{"type": "concept", "title": "A", "bullets": ["x"], "citations": ["fake.ref"]}]},
+        {
+            "slides": [
+                {
+                    "type": "concept",
+                    "title": "A",
+                    "bullets": ["x"],
+                    "citations": ["fake.ref"],
+                }
+            ]
+        },
         concept="photosynthesis",
         options=normalize_presentation_options({}),
         grounding=_grounding(grounded=False),
@@ -141,7 +173,16 @@ def test_normalize_deck_plan_disclaimer_and_citation_gating():
 
     # Grounded: deck-level citations pass through and slide refs are kept.
     grounded = normalize_deck_plan(
-        {"slides": [{"type": "concept", "title": "A", "bullets": ["x"], "citations": ["enrollment.overall"]}]},
+        {
+            "slides": [
+                {
+                    "type": "concept",
+                    "title": "A",
+                    "bullets": ["x"],
+                    "citations": ["enrollment.overall"],
+                }
+            ]
+        },
         concept="HRV",
         options=normalize_presentation_options({}),
         grounding=_grounding(grounded=True, citations=["meta.study.name"]),
@@ -152,8 +193,12 @@ def test_normalize_deck_plan_disclaimer_and_citation_gating():
 
 
 def test_normalize_deck_plan_respects_toggle_off():
-    opts = normalize_presentation_options({"include_analogy": False, "include_worked_example": False})
-    plan = normalize_deck_plan({}, concept="entropy", options=opts, grounding=_grounding())
+    opts = normalize_presentation_options(
+        {"include_analogy": False, "include_worked_example": False}
+    )
+    plan = normalize_deck_plan(
+        {}, concept="entropy", options=opts, grounding=_grounding()
+    )
     types = [s["type"] for s in plan["slides"]]
     assert "analogy" not in types
     assert "example" not in types
@@ -162,13 +207,20 @@ def test_normalize_deck_plan_respects_toggle_off():
 
 def test_build_presentation_messages_shape_and_grounding_rules():
     opts = normalize_presentation_options({})
-    msgs = build_presentation_messages("HRV", opts, "Study: NANO", _grounding(grounded=True, citations=["meta.study.name"]))
+    msgs = build_presentation_messages(
+        "HRV",
+        opts,
+        "Study: NANO",
+        _grounding(grounded=True, citations=["meta.study.name"]),
+    )
     assert [m["role"] for m in msgs] == ["system", "user"]
     system = msgs[0]["content"]
     assert "JSON" in system
     assert "meta.study.name" in system  # grounded citation hint surfaced
 
-    ungrounded = build_presentation_messages("black holes", opts, "", _grounding(grounded=False))
+    ungrounded = build_presentation_messages(
+        "black holes", opts, "", _grounding(grounded=False)
+    )
     assert "do not invent" in ungrounded[0]["content"].lower()
 
 
@@ -223,7 +275,9 @@ def test_job_worker_assistant_unavailable_is_clean_failure(tmp_path):
     job = store.create("rmssd", {})
     lock = threading.Semaphore(1)
     assert store.claim(job["job_id"], "worker-1")
-    _run_presentation_job(store, _UnavailableAssistant(), lock, job["job_id"], "worker-1")
+    _run_presentation_job(
+        store, _UnavailableAssistant(), lock, job["job_id"], "worker-1"
+    )
     view = store.public_view(store.get(job["job_id"]))
     assert view["status"] == "failed"
     assert "download the GGUF" in view["error"]
@@ -327,7 +381,9 @@ def test_recoverable_job_can_finish_after_restart(tmp_path):
 
 def test_complete_text_uses_json_mode_then_falls_back(tmp_path):
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(model_dir=tmp_path / "missing", presentation_json_mode=True),
+        config=AssistantConfig(
+            model_dir=tmp_path / "missing", presentation_json_mode=True
+        ),
         data_dir=tmp_path,
     )
     seen = []
@@ -349,7 +405,9 @@ def test_complete_text_uses_json_mode_then_falls_back(tmp_path):
 
 def test_complete_text_respects_disabled_json_mode(tmp_path):
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(model_dir=tmp_path / "missing", presentation_json_mode=False),
+        config=AssistantConfig(
+            model_dir=tmp_path / "missing", presentation_json_mode=False
+        ),
         data_dir=tmp_path,
     )
     seen = {}

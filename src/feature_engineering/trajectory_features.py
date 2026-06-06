@@ -45,17 +45,24 @@ def fit_linear_growth(
     valid = ~(np.isnan(x) | np.isnan(y))
 
     if valid.sum() < 2:
-        return {"intercept": np.nan, "slope": np.nan, "residual_var": np.nan, "r_squared": np.nan}
+        return {
+            "intercept": np.nan,
+            "slope": np.nan,
+            "residual_var": np.nan,
+            "r_squared": np.nan,
+        }
 
     slope, intercept, r_value, p_value, stderr = stats.linregress(x[valid], y[valid])
     y_hat = intercept + slope * x[valid]
-    residual_var = float(np.var(y[valid] - y_hat, ddof=2)) if valid.sum() > 2 else np.nan
+    residual_var = (
+        float(np.var(y[valid] - y_hat, ddof=2)) if valid.sum() > 2 else np.nan
+    )
 
     return {
         "intercept": float(intercept),
         "slope": float(slope),
         "residual_var": residual_var,
-        "r_squared": float(r_value ** 2),
+        "r_squared": float(r_value**2),
     }
 
 
@@ -94,7 +101,11 @@ def fit_quadratic_growth(
 
     xv, yv = x[valid], y[valid]
     coeffs = np.polyfit(xv, yv, deg=2)
-    quad_slope, linear_slope, intercept = float(coeffs[0]), float(coeffs[1]), float(coeffs[2])
+    quad_slope, linear_slope, intercept = (
+        float(coeffs[0]),
+        float(coeffs[1]),
+        float(coeffs[2]),
+    )
 
     y_hat = np.polyval(coeffs, xv)
     ss_res = float(np.sum((yv - y_hat) ** 2))
@@ -136,7 +147,9 @@ def extract_trajectory_features(
 
     for col in feature_cols:
         if col not in participant_df.columns:
-            logger.warning("extract_trajectory_features: column '%s' not found, skipping.", col)
+            logger.warning(
+                "extract_trajectory_features: column '%s' not found, skipping.", col
+            )
             continue
         vals = participant_df[col].to_numpy(dtype=np.float64)
 
@@ -150,6 +163,7 @@ def extract_trajectory_features(
 
     logger.info(
         "extract_trajectory_features: %d trajectory features from %d input features.",
-        len(features), len(feature_cols),
+        len(features),
+        len(feature_cols),
     )
     return pd.Series(features)

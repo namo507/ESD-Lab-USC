@@ -63,10 +63,13 @@ export function Matlab() {
     void logAudit({ action: "run.trigger", scope: "/matlab/fast-path" });
   }
 
-  const files = integration?.files ?? [];
-  const scripts = integration?.scripts ?? [];
-  const throughput = integration?.throughput_24h ?? { hours: [], rows: [] };
-  const options = integration?.options ?? [];
+  const files = useMemo(() => integration?.files ?? [], [integration?.files]);
+  const scripts = useMemo(() => integration?.scripts ?? [], [integration?.scripts]);
+  const throughput = useMemo(
+    () => integration?.throughput_24h ?? { hours: [], rows: [] },
+    [integration?.throughput_24h],
+  );
+  const options = useMemo(() => integration?.options ?? [], [integration?.options]);
   const manifest = integration?.manifest;
 
   const totalRows = useMemo(() => files.reduce((s, f) => s + f.rows, 0), [files]);
@@ -311,10 +314,9 @@ function MatlabProcessingQueue({ integration }: { integration: MatlabIntegration
   const enabled = useFeatureFlag("ECG_QUALITY_MONITOR");
   const { data: ecgSummary } = useEcgQualitySummary();
   const [open, setOpen] = useState(true);
-  if (!enabled) return null;
 
   const manifest = integration?.manifest;
-  const files = integration?.files ?? [];
+  const files = useMemo(() => integration?.files ?? [], [integration?.files]);
   const artifactRate = files.length
     ? 1 - files.reduce((sum, file) => sum + file.qa_pass_pct, 0) / files.length
     : 0;
@@ -339,6 +341,8 @@ function MatlabProcessingQueue({ integration }: { integration: MatlabIntegration
       completedAt: manifest?.generated_at ?? "—",
     },
   ];
+
+  if (!enabled) return null;
 
   return (
     <Card pad={0} dataInsight="matlab-processing-queue">

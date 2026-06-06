@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -39,12 +39,15 @@ def _substitute_env_vars(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_substitute_env_vars(item) for item in obj]
     if isinstance(obj, str):
+
         def replace_match(m: re.Match) -> str:
+            """Replace one ${VAR} placeholder with its environment value."""
             var_name = m.group(1)
             value = os.environ.get(var_name)
             if value is None:
                 return m.group(0)  # leave unreplaced if env var not set
             return value
+
         return re.sub(r"\$\{([^}]+)\}", replace_match, obj)
     return obj
 

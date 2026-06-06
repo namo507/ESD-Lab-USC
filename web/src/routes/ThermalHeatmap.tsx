@@ -7,14 +7,12 @@ import styles from "./FeatureRoutes.module.css";
 
 export function ThermalHeatmap() {
   const enabled = useFeatureFlag("THERMAL_HEATMAP");
-  if (!enabled) return null;
-
   const { data: participants = [] } = useParticipants();
   const vpt = participants.filter((p) => p.group === "VPT");
   const [nanoId, setNanoId] = useState("");
   const selected = nanoId || vpt[0]?.id;
   const { data } = useThermalHeatmap(selected);
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const gradients = rows.map((row) => row.gradient);
   const color = d3.scaleSequential(d3.interpolateRdBu).domain([Math.max(...gradients, 1.6), Math.min(...gradients, -0.2)]);
   const hrcPath = useMemo(() => {
@@ -37,6 +35,8 @@ export function ThermalHeatmap() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

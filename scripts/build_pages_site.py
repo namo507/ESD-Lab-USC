@@ -35,11 +35,12 @@ import shutil
 import sys
 from urllib.parse import urlparse
 
-
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_BUILD_DIR = REPO_ROOT / "web" / "build"
 DEFAULT_OUT_DIR = REPO_ROOT / "dist" / "pages-wrapper"
-DEFAULT_MANIFEST = REPO_ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
+DEFAULT_MANIFEST = (
+    REPO_ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
+)
 
 
 def _read(path: pathlib.Path) -> str:
@@ -66,8 +67,7 @@ def _normalize_origin(value: str) -> str:
 
 
 def _worker_source(api_origin: str) -> str:
-    return (
-        """
+    return ("""
 const API_ORIGIN = __API_ORIGIN__;
 
 const presentationJobs = new Map();
@@ -339,12 +339,13 @@ export default {
     return assetResponse;
   },
 };
-"""
-    ).lstrip().replace("__API_ORIGIN__", json.dumps(api_origin))
+""").lstrip().replace("__API_ORIGIN__", json.dumps(api_origin))
 
 
 def _resolve_api_origin(api_origin: str | None, manifest_path: pathlib.Path) -> str:
-    explicit = api_origin or os.getenv("PAGES_API_ORIGIN") or os.getenv("DASHBOARD_API_ORIGIN")
+    explicit = (
+        api_origin or os.getenv("PAGES_API_ORIGIN") or os.getenv("DASHBOARD_API_ORIGIN")
+    )
     if explicit:
         return _normalize_origin(explicit)
 
@@ -352,7 +353,9 @@ def _resolve_api_origin(api_origin: str | None, manifest_path: pathlib.Path) -> 
         try:
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            sys.exit(f"[build_pages_site] invalid manifest JSON at {manifest_path}: {exc}")
+            sys.exit(
+                f"[build_pages_site] invalid manifest JSON at {manifest_path}: {exc}"
+            )
 
         dashboard_url = payload.get("dashboard_url") or payload.get("api_origin")
         if dashboard_url:

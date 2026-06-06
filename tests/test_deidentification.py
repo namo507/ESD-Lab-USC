@@ -17,10 +17,10 @@ from src.preprocessing.deidentification import (
 )
 from src.utils.hipaa_utils import hash_participant_id
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_phi_df() -> pd.DataFrame:
     """Return a minimal DataFrame containing PHI-like fields."""
@@ -38,6 +38,7 @@ def _make_phi_df() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_phi_fields_removed():
     """strip_phi_fields must set 'dob' column values to NaN."""
@@ -88,9 +89,9 @@ def test_participant_ids_hashed():
     df = _make_phi_df()
     result = hash_all_participant_ids(df, id_col="participant_id")
     for val in result["participant_id"]:
-        assert not str(val).startswith("NANO-"), (
-            f"Original NANO- prefix found in hashed ID: {val}"
-        )
+        assert not str(val).startswith(
+            "NANO-"
+        ), f"Original NANO- prefix found in hashed ID: {val}"
 
 
 def test_hash_is_deterministic():
@@ -117,12 +118,12 @@ def test_no_phi_patterns_in_output():
 
     for col in result.columns:
         for val in result[col].dropna().astype(str):
-            assert not date_pattern.search(val), (
-                f"PHI date pattern found in column '{col}': {val}"
-            )
-            assert not nano_pattern.search(val), (
-                f"NANO ID pattern found in column '{col}': {val}"
-            )
+            assert not date_pattern.search(
+                val
+            ), f"PHI date pattern found in column '{col}': {val}"
+            assert not nano_pattern.search(
+                val
+            ), f"NANO ID pattern found in column '{col}': {val}"
 
 
 def test_deidentify_preserves_row_count():

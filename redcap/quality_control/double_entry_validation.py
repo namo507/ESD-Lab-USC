@@ -57,9 +57,7 @@ def align_double_entry_datasets(
         raise ValueError("No ID columns found for alignment.")
 
     merged = df1.merge(df2, on=id_cols, suffixes=("_e1", "_e2"), how="inner")
-    logger.info(
-        "Aligned %d matching records across both entry instances.", len(merged)
-    )
+    logger.info("Aligned %d matching records across both entry instances.", len(merged))
     return merged
 
 
@@ -122,8 +120,16 @@ def compare_fields(
             (one_missing, "one_entry_missing"),
         ]:
             for idx in merged[mask].index:
-                record_id = merged.loc[idx, "record_id"] if "record_id" in merged.columns else idx
-                event = merged.loc[idx, "redcap_event_name"] if "redcap_event_name" in merged.columns else ""
+                record_id = (
+                    merged.loc[idx, "record_id"]
+                    if "record_id" in merged.columns
+                    else idx
+                )
+                event = (
+                    merged.loc[idx, "redcap_event_name"]
+                    if "redcap_event_name" in merged.columns
+                    else ""
+                )
                 discrepancies.append(
                     {
                         "record_id": record_id,
@@ -136,11 +142,15 @@ def compare_fields(
                 )
 
     df_disc = pd.DataFrame(discrepancies)
-    logger.info("Found %d discrepancies across %d fields.", len(df_disc), len(fields_to_compare))
+    logger.info(
+        "Found %d discrepancies across %d fields.", len(df_disc), len(fields_to_compare)
+    )
     return df_disc
 
 
-def compute_agreement_statistics(discrepancies: pd.DataFrame, merged: pd.DataFrame) -> dict[str, Any]:
+def compute_agreement_statistics(
+    discrepancies: pd.DataFrame, merged: pd.DataFrame
+) -> dict[str, Any]:
     """Compute inter-rater agreement statistics.
 
     Args:
@@ -157,13 +167,20 @@ def compute_agreement_statistics(discrepancies: pd.DataFrame, merged: pd.DataFra
             "fields_with_most_errors": [],
         }
 
-    total_comparisons = len(merged) * len(discrepancies["field"].unique()) if len(merged) > 0 else 1
+    total_comparisons = (
+        len(merged) * len(discrepancies["field"].unique()) if len(merged) > 0 else 1
+    )
     agreement_pct = max(0, (1 - len(discrepancies) / max(total_comparisons, 1)) * 100)
 
     return {
         "overall_agreement_pct": round(agreement_pct, 2),
-        "n_discrepancies_by_type": discrepancies["discrepancy_type"].value_counts().to_dict(),
-        "fields_with_most_errors": discrepancies["field"].value_counts().head(10).to_dict(),
+        "n_discrepancies_by_type": discrepancies["discrepancy_type"]
+        .value_counts()
+        .to_dict(),
+        "fields_with_most_errors": discrepancies["field"]
+        .value_counts()
+        .head(10)
+        .to_dict(),
     }
 
 
@@ -172,8 +189,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="NANO Study REDCap double-entry validation"
     )
-    parser.add_argument("--entry1", type=str, required=True, help="First entry parquet path")
-    parser.add_argument("--entry2", type=str, required=True, help="Second entry parquet path")
+    parser.add_argument(
+        "--entry1", type=str, required=True, help="First entry parquet path"
+    )
+    parser.add_argument(
+        "--entry2", type=str, required=True, help="Second entry parquet path"
+    )
     parser.add_argument(
         "--tolerance",
         type=float,

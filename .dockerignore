@@ -18,6 +18,7 @@ cloudflared/
 **/__pycache__
 **/*.pyc
 archive/
+Design Ideas/
 data/deidentified/
 data/interim/
 data/processed/
@@ -27,16 +28,21 @@ dist/
 logs/
 models/
 notebooks/
+node_modules/
 raw/
 secure_data/
 temp/
 tmp/
+*.tar.gz
+*.pptx
 *.log
+**/*.js.map
 dashboard/data/*.sqlite3
 dashboard/data/*.sqlite3-*
 dashboard/data/readings_pipeline.lock
 dashboard/data/readings_pipeline_events.jsonl
 web/node_modules/
+web/build-merge/
 web/build/
 web/dist/
 web/.wrangler/

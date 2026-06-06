@@ -41,8 +41,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -102,8 +102,7 @@ def render(origin: str, kind: str | None) -> tuple[str, dict[str, str]]:
     generated_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     pill_label, pill_class, display = _classify(dashboard_url, kind)
     rendered = (
-        text
-        .replace("{{DASHBOARD_URL}}", dashboard_url)
+        text.replace("{{DASHBOARD_URL}}", dashboard_url)
         .replace("{{GENERATED_AT}}", generated_at)
         .replace("{{ORIGIN_DISPLAY}}", display)
         .replace("{{ORIGIN_PILL_LABEL}}", pill_label)
@@ -112,7 +111,8 @@ def render(origin: str, kind: str | None) -> tuple[str, dict[str, str]]:
     manifest = {
         "dashboard_url": dashboard_url,
         "origin_host": display,
-        "tunnel_kind": kind or ("named" if "trycloudflare.com" not in display else "quick"),
+        "tunnel_kind": kind
+        or ("named" if "trycloudflare.com" not in display else "quick"),
         "generated_at": generated_at,
         "wrapper_canonical": _runtime_pages_url(),
     }
@@ -128,15 +128,23 @@ def write(rendered: str, manifest: dict[str, str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--origin", help="Public origin URL of the live dashboard (https://...)")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--origin", help="Public origin URL of the live dashboard (https://...)"
+    )
     p.add_argument(
         "--kind",
         choices=("named", "quick"),
         default=None,
         help="Override the tunnel kind classification.",
     )
-    p.add_argument("--check", action="store_true", help="Validate template only; do not write outputs.")
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Validate template only; do not write outputs.",
+    )
     args = p.parse_args(argv)
 
     if args.check:

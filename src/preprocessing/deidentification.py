@@ -87,7 +87,9 @@ def replace_dates_with_age_offsets(
 
     for col in date_cols:
         if col not in out.columns:
-            logger.debug("replace_dates_with_age_offsets: column '%s' not present.", col)
+            logger.debug(
+                "replace_dates_with_age_offsets: column '%s' not present.", col
+            )
             continue
         event_date = pd.to_datetime(out[col], errors="coerce")
         out[f"{col}_age_days"] = (event_date - dob).dt.days.astype("Int64")

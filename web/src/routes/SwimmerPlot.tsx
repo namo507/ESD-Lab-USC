@@ -14,13 +14,11 @@ const GROUP_COLORS: Record<GroupCode, string> = { VPT: "var(--usc-garnet)", ASIB
 
 export function SwimmerPlot() {
   const enabled = useFeatureFlag("SWIMMER_PLOT");
-  if (!enabled) return null;
-
   const navigate = useNavigate();
   const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
   const showCoverage = useFeatureFlag("DYN_STREAM_COVERAGE");
   const { data } = useCohortSwimmer();
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const [group, setGroup] = useState<GroupFilter>("all");
   const [sort, setSort] = useState<SortKey>("completionPct");
   const [selected, setSelected] = useState<CohortSwimmerRow | null>(null);
@@ -40,6 +38,8 @@ export function SwimmerPlot() {
   const rowH = 24;
   const H = 48 + filtered.length * rowH;
   const sx = (month: number) => 110 + (month / 24) * 600;
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

@@ -15,10 +15,10 @@ from src.imputation.python_imputation import (
     impute_with_mice,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_incomplete_df(
     n_rows: int = 50,
@@ -52,14 +52,15 @@ def _make_mar_df(n: int = 80, seed: int = 3) -> pd.DataFrame:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_iterative_imputer_fills_missing():
     """impute_with_mice must leave no NaN in numeric columns after imputation."""
     df = _make_incomplete_df(missing_frac=0.20)
     assert df.isna().any().any(), "Test setup error: DataFrame should have NaN values."
     result = impute_with_mice(df)
-    assert not result.select_dtypes(include=np.number).isna().any().any(), (
-        "Imputed DataFrame still contains NaN values."
-    )
+    assert (
+        not result.select_dtypes(include=np.number).isna().any().any()
+    ), "Imputed DataFrame still contains NaN values."
 
 
 def test_imputed_values_in_range():
@@ -74,9 +75,9 @@ def test_imputed_values_in_range():
         lo = col_mean - 4 * col_std
         hi = col_mean + 4 * col_std
         out_of_range = ((result[col] < lo) | (result[col] > hi)).sum()
-        assert out_of_range == 0, (
-            f"Column '{col}': {out_of_range} imputed values outside [mean±4SD]"
-        )
+        assert (
+            out_of_range == 0
+        ), f"Column '{col}': {out_of_range} imputed values outside [mean±4SD]"
 
 
 def test_imputed_preserves_non_numeric_columns():

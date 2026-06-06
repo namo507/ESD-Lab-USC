@@ -1,1 +1,1 @@
-# models package
+"""Model training, evaluation, and trajectory modeling utilities."""

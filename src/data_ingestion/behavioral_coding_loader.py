@@ -26,11 +26,11 @@ logger = get_pipeline_logger(__name__)
 # Standard column structure for NANO DataVyu exports
 # DataVyu exports a CSV where each row is a time-coded event
 DATAVYU_COLUMNS = {
-    "onset": "onset",              # onset time in milliseconds
-    "offset": "offset",            # offset time in milliseconds
-    "code1": "look_direction",     # infant look direction (C=caregiver, O=object, A=away, .)
-    "code2": "affect_valence",     # infant affect (P=positive, N=negative, U=uncertain, .)
-    "code3": "caregiver_action",   # caregiver behavior code
+    "onset": "onset",  # onset time in milliseconds
+    "offset": "offset",  # offset time in milliseconds
+    "code1": "look_direction",  # infant look direction (C=caregiver, O=object, A=away, .)
+    "code2": "affect_valence",  # infant affect (P=positive, N=negative, U=uncertain, .)
+    "code3": "caregiver_action",  # caregiver behavior code
 }
 
 # HDA phase labels used in NANO
@@ -130,7 +130,9 @@ def extract_look_bouts(
 
     logger.info(
         "Extracted %d look bouts (code='%s', min_dur=%.0f ms).",
-        len(looks), look_code, min_look_duration_ms,
+        len(looks),
+        look_code,
+        min_look_duration_ms,
     )
     return looks[["onset_ms", "offset_ms", "duration_ms"]].reset_index(drop=True)
 
@@ -195,7 +197,5 @@ def merge_with_ecg_timeline(
         return pd.DataFrame()
 
     merged_df = pd.DataFrame(results)
-    logger.info(
-        "Merged %d behavioral events with ECG timeline.", len(merged_df)
-    )
+    logger.info("Merged %d behavioral events with ECG timeline.", len(merged_df))
     return merged_df

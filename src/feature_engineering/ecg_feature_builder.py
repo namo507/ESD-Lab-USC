@@ -26,7 +26,9 @@ from src.utils.logging_utils import get_pipeline_logger
 logger = get_pipeline_logger(__name__)
 
 
-def compute_percentile_features(hrv_dict_list: list[dict[str, float]]) -> dict[str, float]:
+def compute_percentile_features(
+    hrv_dict_list: list[dict[str, float]],
+) -> dict[str, float]:
     """Compute 1st/50th/99th percentile and IQR of all HRV measures across windows.
 
     Args:
@@ -51,7 +53,14 @@ def compute_percentile_features(hrv_dict_list: list[dict[str, float]]) -> dict[s
             result[f"{key}_p99"] = np.nan
             result[f"{key}_iqr"] = np.nan
         else:
-            p1, p25, p50, p75, p99 = np.percentile(vals, [1, 25, 50, 75, 99])
+            percentiles = np.asarray(
+                np.percentile(vals, [1, 25, 50, 75, 99]), dtype=np.float64
+            )
+            p1 = float(percentiles[0])
+            p25 = float(percentiles[1])
+            p50 = float(percentiles[2])
+            p75 = float(percentiles[3])
+            p99 = float(percentiles[4])
             result[f"{key}_p1"] = float(p1)
             result[f"{key}_p50"] = float(p50)
             result[f"{key}_p99"] = float(p99)
@@ -77,7 +86,13 @@ def compute_temporal_slope(
     y = np.asarray(feature_series, dtype=np.float64)
     valid = ~(np.isnan(x) | np.isnan(y))
     if valid.sum() < 2:
-        return {"slope": np.nan, "intercept": np.nan, "r_value": np.nan, "p_value": np.nan, "stderr": np.nan}
+        return {
+            "slope": np.nan,
+            "intercept": np.nan,
+            "r_value": np.nan,
+            "p_value": np.nan,
+            "stderr": np.nan,
+        }
 
     slope, intercept, r_value, p_value, stderr = stats.linregress(x[valid], y[valid])
     return {
@@ -116,8 +131,16 @@ def compute_cross_modal_correlation(
                 continue
             r, p = stats.pearsonr(combined["x"], combined["y"])
             z = float(np.arctanh(np.clip(r, -0.9999, 0.9999)))
-            rows.append({"hrv_feature": hrv_col, "temp_feature": temp_col,
-                         "pearson_r": r, "fisher_z": z, "p_value": p, "n": n})
+            rows.append(
+                {
+                    "hrv_feature": hrv_col,
+                    "temp_feature": temp_col,
+                    "pearson_r": r,
+                    "fisher_z": z,
+                    "p_value": p,
+                    "n": n,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -159,7 +182,9 @@ def prune_multicollinear_features(
 
     logger.info(
         "prune_multicollinear_features: %d → %d features (threshold=%.2f).",
-        df.shape[1], len(kept), threshold,
+        df.shape[1],
+        len(kept),
+        threshold,
     )
     return feature_df[kept]
 
@@ -192,7 +217,9 @@ def build_ecg_feature_matrix(
     if not files:
         logger.warning(
             "build_ecg_feature_matrix: no files found for %s @ %s in %s.",
-            participant_id, event, ecg_dir,
+            participant_id,
+            event,
+            ecg_dir,
         )
         return pd.Series(dtype=float, name=f"{participant_id}_{event}")
 
@@ -205,6 +232,9 @@ def build_ecg_feature_matrix(
     series = pd.Series(features, name=f"{participant_id}_{event}")
     logger.info(
         "build_ecg_feature_matrix: %d features from %d windows (%s @ %s).",
-        len(series), len(files), participant_id, event,
+        len(series),
+        len(files),
+        participant_id,
+        event,
     )
     return series

@@ -8,9 +8,8 @@ directory so both sets of modules can coexist.
 
 from __future__ import annotations
 
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 _HERE = Path(__file__).resolve()
 _PROJECT_ROOT = _HERE.parent.parent.resolve()
@@ -33,8 +32,12 @@ for entry in sys.path:
 try:
     from .project import Project
 except ImportError:
+
     class Project:  # type: ignore[no-redef]
+        """Fallback placeholder used when the external PyCap package is absent."""
+
         def __init__(self, *args, **kwargs):
+            """Raise a clear error when callers try to use missing PyCap."""
             raise ImportError("PyCap is not installed; redcap.Project is unavailable")
 
 

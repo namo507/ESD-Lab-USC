@@ -12,6 +12,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: true,
+    fileParallelism: false,
+    maxWorkers: 1,
     coverage: {
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],

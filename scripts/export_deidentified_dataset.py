@@ -128,7 +128,9 @@ def export_deidentified(
 
     if input_path is None:
         feature_dir = _resolve_path(
-            cfg.get("processed", {}).get("feature_matrices_dir", "${NANO_DATA_ROOT}/processed/feature_matrices")
+            cfg.get("processed", {}).get(
+                "feature_matrices_dir", "${NANO_DATA_ROOT}/processed/feature_matrices"
+            )
         )
         input_path = find_latest_feature_matrix(feature_dir)
         if input_path is None:
@@ -137,11 +139,16 @@ def export_deidentified(
 
     if output_dir is None:
         output_dir = _resolve_path(
-            cfg.get("deidentified", {}).get("analysis_dataset_dir", "${NANO_DATA_ROOT}/deidentified/analysis_datasets")
+            cfg.get("deidentified", {}).get(
+                "analysis_dataset_dir",
+                "${NANO_DATA_ROOT}/deidentified/analysis_datasets",
+            )
         )
     if audit_log_dir is None:
         audit_log_dir = _resolve_path(
-            cfg.get("deidentified", {}).get("audit_log_dir", "${NANO_DATA_ROOT}/deidentified/audit_logs")
+            cfg.get("deidentified", {}).get(
+                "audit_log_dir", "${NANO_DATA_ROOT}/deidentified/audit_logs"
+            )
         )
 
     df = load_feature_matrix(input_path)
@@ -185,9 +192,15 @@ def export_deidentified(
 
 def main() -> None:
     """Entry point for the deidentified dataset exporter."""
-    parser = argparse.ArgumentParser(description="Export deidentified NANO analysis dataset.")
-    parser.add_argument("--input", type=Path, default=None, help="Path to input feature matrix.")
-    parser.add_argument("--output-dir", type=Path, default=None, help="Output directory.")
+    parser = argparse.ArgumentParser(
+        description="Export deidentified NANO analysis dataset."
+    )
+    parser.add_argument(
+        "--input", type=Path, default=None, help="Path to input feature matrix."
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=None, help="Output directory."
+    )
     parser.add_argument("--dry-run", action="store_true", help="Skip writing files.")
     args = parser.parse_args()
 

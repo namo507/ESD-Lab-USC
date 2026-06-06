@@ -12,7 +12,6 @@ from typing import Any
 
 import requests
 
-
 FALLBACK_MODELS = [
     {
         "repo_id": "bartowski/SmolLM2-360M-Instruct-GGUF",
@@ -74,7 +73,16 @@ def _pick_filename(model: dict[str, Any]) -> str:
     preferred_orders = []
     if params_b <= 0.6:
         preferred_orders = [
-            ("Q2_K_L", "Q2_K", "IQ3_M", "IQ3_XS", "Q3_K_L", "Q3_K_M", "IQ4_XS", "Q4_K_M"),
+            (
+                "Q2_K_L",
+                "Q2_K",
+                "IQ3_M",
+                "IQ3_XS",
+                "Q3_K_L",
+                "Q3_K_M",
+                "IQ4_XS",
+                "Q4_K_M",
+            ),
         ]
     elif params_b <= 1.0:
         preferred_orders = [
@@ -110,7 +118,9 @@ def score(model: dict[str, Any]) -> float:
     recency = max(0.0, 1.0 - days_old / 365.0)
     size_b = _extract_params(model) or 4.0
     size_efficiency = 1.0 / max(0.5, size_b)
-    return 0.40 * min(1.0, downloads / 1_000_000) + 0.20 * recency + 0.40 * size_efficiency
+    return (
+        0.40 * min(1.0, downloads / 1_000_000) + 0.20 * recency + 0.40 * size_efficiency
+    )
 
 
 def _runtime_defaults(params_b: float | None) -> dict[str, Any]:
@@ -167,7 +177,11 @@ def build_result(best: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> None:
     candidates = fetch_candidates()
-    eligible = [candidate for candidate in candidates if (_extract_params(candidate) or 9.0) <= 0.6]
+    eligible = [
+        candidate
+        for candidate in candidates
+        if (_extract_params(candidate) or 9.0) <= 0.6
+    ]
     eligible.sort(key=score, reverse=True)
 
     if eligible:
@@ -184,7 +198,9 @@ def main() -> None:
         }
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    OUTPUT.write_text(
+        json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"[ok] Wrote {OUTPUT}: {result['repo_id']}")
 
 

@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 
 @pytest.fixture

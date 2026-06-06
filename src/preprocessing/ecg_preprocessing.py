@@ -10,9 +10,10 @@ Typical usage::
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from scipy.signal import butter, sosfiltfilt
 
 from src.utils.config_loader import load_config
@@ -61,13 +62,21 @@ def detect_rpeaks(
     """
     try:
         import neurokit2 as nk  # type: ignore[import]
-        _, info = nk.ecg_peaks(signal, sampling_rate=sampling_rate, method="pantompkins1985")
+
+        _, info = nk.ecg_peaks(
+            signal, sampling_rate=sampling_rate, method="pantompkins1985"
+        )
         return info["ECG_R_Peaks"].astype(int)
     except ImportError:
-        logger.warning("neurokit2 not available; falling back to biosppy R-peak detection.")
+        logger.warning(
+            "neurokit2 not available; falling back to biosppy R-peak detection."
+        )
         try:
             from biosppy.signals.ecg import christov_segmenter  # type: ignore[import]
-            rpeaks = christov_segmenter(signal=signal, sampling_rate=sampling_rate)["rpeaks"]
+
+            rpeaks = christov_segmenter(signal=signal, sampling_rate=sampling_rate)[
+                "rpeaks"
+            ]
             return rpeaks.astype(int)
         except ImportError:
             logger.error("Neither neurokit2 nor biosppy available.")
@@ -90,14 +99,16 @@ def remove_ecg_artifacts(
     arr = np.asarray(ibi_series, dtype=np.float64)
     finite_mask = np.isfinite(arr)
     median = np.nanmedian(arr)
-    mad = np.nanmedian(np.abs(arr[finite_mask] - median)) if finite_mask.any() else np.nan
+    mad = (
+        np.nanmedian(np.abs(arr[finite_mask] - median)) if finite_mask.any() else np.nan
+    )
 
     if np.isfinite(mad) and mad > 0:
-        center = median
-        spread = 1.4826 * mad
+        center = float(median)
+        spread = float(1.4826 * mad)
     else:
-        center = np.nanmean(arr)
-        spread = np.nanstd(arr)
+        center = float(np.nanmean(arr))
+        spread = float(np.nanstd(arr))
 
     if not np.isfinite(spread) or spread == 0:
         mask = finite_mask.copy()
@@ -106,7 +117,11 @@ def remove_ecg_artifacts(
 
     n_removed = int((~mask).sum())
     if n_removed > 0:
-        logger.info("remove_ecg_artifacts: removed %d outlier beats (>%.1f SD).", n_removed, threshold_sd)
+        logger.info(
+            "remove_ecg_artifacts: removed %d outlier beats (>%.1f SD).",
+            n_removed,
+            threshold_sd,
+        )
     return arr[mask], mask
 
 
@@ -146,7 +161,9 @@ def reject_windows(
 
     logger.info(
         "reject_windows: %d/%d windows passed (window_size=%d beats).",
-        int(valid.sum()), n_windows, window_size_beats,
+        int(valid.sum()),
+        n_windows,
+        window_size_beats,
     )
     return valid
 
@@ -192,7 +209,11 @@ def preprocess_ecg_pipeline(
             - ``quality_flag``: 1 = artifact-free window, 0 = rejected.
     """
     n_input = len(raw_signal)
-    logger.info("preprocess_ecg_pipeline: input signal length=%d samples at %d Hz.", n_input, sampling_rate)
+    logger.info(
+        "preprocess_ecg_pipeline: input signal length=%d samples at %d Hz.",
+        n_input,
+        sampling_rate,
+    )
 
     filtered = bandpass_filter(raw_signal, sampling_rate=sampling_rate)
     rpeaks = detect_rpeaks(filtered, sampling_rate=sampling_rate)

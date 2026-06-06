@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -73,10 +74,21 @@ def plot_single_roc(
     tpr_upper = np.percentile(tprs_arr, (1 - alpha) * 100, axis=0)
 
     fig, ax = plt.subplots(figsize=(6, 5))
-    ax.plot(fpr_main, tpr_main, lw=2, color="#2E86AB",
-            label=f"{model_name} (AUROC = {auroc_main:.3f})")
-    ax.fill_between(base_fpr, tpr_lower, tpr_upper, alpha=0.2, color="#2E86AB",
-                    label=f"{int(ci*100)}% CI")
+    ax.plot(
+        fpr_main,
+        tpr_main,
+        lw=2,
+        color="#2E86AB",
+        label=f"{model_name} (AUROC = {auroc_main:.3f})",
+    )
+    ax.fill_between(
+        base_fpr,
+        tpr_lower,
+        tpr_upper,
+        alpha=0.2,
+        color="#2E86AB",
+        label=f"{int(ci*100)}% CI",
+    )
     ax.plot([0, 1], [0, 1], "k--", lw=1, label="Chance")
 
     ax.set_xlabel("False Positive Rate", fontsize=11)
@@ -135,6 +147,8 @@ def plot_multi_model_roc(
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(out, dpi=300, bbox_inches="tight")
-        logger.info("plot_multi_model_roc: saved %d models to %s.", len(models_dict), out)
+        logger.info(
+            "plot_multi_model_roc: saved %d models to %s.", len(models_dict), out
+        )
 
     return fig

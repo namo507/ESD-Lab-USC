@@ -29,7 +29,7 @@ logger = get_pipeline_logger(__name__)
 # ─── Constants ───────────────────────────────────────────────────────────────
 
 EXPECTED_SAMPLING_RATE_HZ = 1024  # Actiheart-5 native ECG sampling rate
-MIN_IBI_MS = 300.0   # 200 bpm maximum physiological HR
+MIN_IBI_MS = 300.0  # 200 bpm maximum physiological HR
 MAX_IBI_MS = 2000.0  # 30 bpm minimum physiological HR
 
 
@@ -206,15 +206,15 @@ def validate_ibi_series(ibi_series: pd.Series) -> pd.Series:
         Cleaned Series with invalid values replaced by NaN.
     """
     n_before = ibi_series.notna().sum()
-    valid = ibi_series.where(
-        (ibi_series >= MIN_IBI_MS) & (ibi_series <= MAX_IBI_MS)
-    )
+    valid = ibi_series.where((ibi_series >= MIN_IBI_MS) & (ibi_series <= MAX_IBI_MS))
     n_after = valid.notna().sum()
     n_removed = n_before - n_after
     if n_removed > 0:
         logger.warning(
             "Removed %d physiologically implausible IBI values (outside [%g, %g] ms).",
-            n_removed, MIN_IBI_MS, MAX_IBI_MS,
+            n_removed,
+            MIN_IBI_MS,
+            MAX_IBI_MS,
         )
     return valid
 
@@ -287,7 +287,9 @@ def load_all_ecg_files(
         ecg_dir = Path(config["paths"]["raw"]["ecg_dir"])
 
     files = list(ecg_dir.glob(file_pattern))
-    logger.info("Found %d ECG files in %s matching '%s'.", len(files), ecg_dir, file_pattern)
+    logger.info(
+        "Found %d ECG files in %s matching '%s'.", len(files), ecg_dir, file_pattern
+    )
 
     results: dict[str, pd.DataFrame] = {}
     for f in sorted(files):

@@ -1,1 +1,1 @@
-# feature_engineering package
+"""Feature engineering routines for NANO Study analysis pipelines."""

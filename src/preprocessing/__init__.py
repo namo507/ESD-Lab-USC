@@ -1,1 +1,1 @@
-# preprocessing package
+"""Signal, behavioral, temperature, and de-identification preprocessing tools."""

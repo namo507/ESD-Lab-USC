@@ -10,16 +10,17 @@ type Modality = "all" | ShapValueRow["modality"];
 
 export function ShapExplorer() {
   const enabled = useFeatureFlag("SHAP_BEESWARM");
-  if (!enabled) return null;
-
   const { data } = useShapValues();
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const [modality, setModality] = useState<Modality>("all");
   const [window, setWindow] = useState("all");
   const [highlight, setHighlight] = useState("");
-  const windows = Array.from(new Set(rows.map((row) => row.timeWindow)));
-  const filtered = rows.filter((row) => (modality === "all" || row.modality === modality) && (window === "all" || row.timeWindow === window));
-  const features = Array.from(new Set(filtered.map((row) => row.label))).slice(0, 8);
+  const windows = useMemo(() => Array.from(new Set(rows.map((row) => row.timeWindow))), [rows]);
+  const filtered = useMemo(
+    () => rows.filter((row) => (modality === "all" || row.modality === modality) && (window === "all" || row.timeWindow === window)),
+    [modality, rows, window],
+  );
+  const features = useMemo(() => Array.from(new Set(filtered.map((row) => row.label))).slice(0, 8), [filtered]);
 
   const points = useMemo(() => {
     const sx = d3.scaleLinear().domain([-0.32, 0.32]).range([120, 720]);
@@ -38,6 +39,8 @@ export function ShapExplorer() {
     meanAbs: d3.mean(filtered.filter((row) => row.label === feature), (row) => Math.abs(row.shap)) ?? 0,
   })).sort((a, b) => b.meanAbs - a.meanAbs);
   const barMax = Math.max(...summary.map((row) => row.meanAbs), 0.1);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

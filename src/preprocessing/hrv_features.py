@@ -39,18 +39,30 @@ def compute_time_domain_hrv(ibi_ms: np.ndarray | pd.Series) -> dict[str, float]:
     arr = np.asarray(ibi_ms, dtype=np.float64)
     arr = arr[~np.isnan(arr)]
     if len(arr) < 2:
-        return {"mean_ibi": np.nan, "sdnn": np.nan, "rmssd": np.nan, "cvnn": np.nan, "hti": np.nan}
+        return {
+            "mean_ibi": np.nan,
+            "sdnn": np.nan,
+            "rmssd": np.nan,
+            "cvnn": np.nan,
+            "hti": np.nan,
+        }
 
     mean_ibi = float(np.mean(arr))
     sdnn = float(np.std(arr, ddof=1))
     successive_diffs = np.diff(arr)
-    rmssd = float(np.sqrt(np.mean(successive_diffs ** 2)))
+    rmssd = float(np.sqrt(np.mean(successive_diffs**2)))
     cvnn = sdnn / mean_ibi if mean_ibi != 0 else np.nan
 
     counts, _ = np.histogram(arr, bins=max(10, len(arr) // 10))
     hti = float(len(arr) / counts.max()) if counts.max() > 0 else np.nan
 
-    return {"mean_ibi": mean_ibi, "sdnn": sdnn, "rmssd": rmssd, "cvnn": cvnn, "hti": hti}
+    return {
+        "mean_ibi": mean_ibi,
+        "sdnn": sdnn,
+        "rmssd": rmssd,
+        "cvnn": cvnn,
+        "hti": hti,
+    }
 
 
 def compute_poincare_features(ibi_ms: np.ndarray | pd.Series) -> dict[str, float]:
@@ -100,6 +112,7 @@ def compute_sample_entropy(
 
     try:
         import antropy as ant  # type: ignore[import]
+
         return float(ant.sample_entropy(arr, order=m, metric="chebyshev"))
     except ImportError:
         pass
@@ -108,6 +121,7 @@ def compute_sample_entropy(
     n = len(arr)
 
     def _count_templates(length: int) -> int:
+        """Count matching templates of a given length for sample entropy."""
         count = 0
         for i in range(n - length):
             template = arr[i : i + length]
@@ -161,8 +175,9 @@ def compute_rsa_cwt(
 
     try:
         import pywt  # type: ignore[import]
+
         coeff, _ = pywt.cwt(ibi_resampled, scales, "morl", sampling_period=1.0 / fs)
-        power = np.mean(np.abs(coeff) ** 2)
+        power = float(np.mean(np.abs(coeff) ** 2))
     except ImportError:
         cwt = getattr(signal, "cwt", None)
         morlet2 = getattr(signal, "morlet2", None)
@@ -178,7 +193,7 @@ def compute_rsa_cwt(
             band = (freqs_psd >= resp_band[0]) & (freqs_psd <= resp_band[1])
             if not np.any(band):
                 return np.nan
-            power = float(np.trapezoid(psd[band], freqs_psd[band]))
+            power = float(np.trapz(psd[band], freqs_psd[band]))
 
     return float(power)
 

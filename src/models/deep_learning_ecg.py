@@ -7,16 +7,17 @@ Supports self-supervised masked-IBI pretraining and supervised fine-tuning.
 
 from __future__ import annotations
 
-import math
-import yaml
 import logging
+import math
+import random
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+import yaml  # type: ignore[import-untyped]
+from torch.utils.data import DataLoader, Dataset
 
 try:
     import pandas as pd
@@ -24,9 +25,21 @@ except ImportError as exc:  # pragma: no cover
     raise ImportError("pandas is required for ECGDataset") from exc
 
 logger = logging.getLogger(__name__)
+DEFAULT_SEED = 42
+
+
+def set_reproducible_seed(seed: int = DEFAULT_SEED) -> None:
+    """Seed Python, NumPy, and Torch for deterministic training runs."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 # ── Dataset ───────────────────────────────────────────────────────────────────
+
 
 class ECGDataset(Dataset):
     """Loads IBI windows from parquet files and returns normalised tensors.
@@ -46,10 +59,11 @@ class ECGDataset(Dataset):
         label_col: str = "label",
         normalize: bool = True,
     ) -> None:
-        self.data_dir    = Path(data_dir)
+        """Load parquet windows and validate the required columns."""
+        self.data_dir = Path(data_dir)
         self.window_size = window_size
-        self.label_col   = label_col
-        self.normalize   = normalize
+        self.label_col = label_col
+        self.normalize = normalize
 
         parquet_files = sorted(self.data_dir.glob("*.parquet"))
         if not parquet_files:
@@ -64,9 +78,11 @@ class ECGDataset(Dataset):
             raise ValueError(f"Label column '{self.label_col}' not found.")
 
     def __len__(self) -> int:
+        """Return the number of loaded ECG windows."""
         return len(self.df)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return one normalized ECG tensor and scalar label."""
         row = self.df.iloc[idx]
         ibi = np.asarray(row["ibi"], dtype=np.float32)
 
@@ -74,8 +90,12 @@ class ECGDataset(Dataset):
         if len(ibi) >= self.window_size:
             ibi = ibi[: self.window_size]
         else:
-            ibi = np.pad(ibi, (0, self.window_size - len(ibi)), mode="constant",
-                         constant_values=0.0)
+            ibi = np.pad(
+                ibi,
+                (0, self.window_size - len(ibi)),
+                mode="constant",
+                constant_values=0.0,
+            )
 
         if self.normalize:
             mu, sigma = ibi.mean(), ibi.std()
@@ -88,6 +108,7 @@ class ECGDataset(Dataset):
 
 
 # ── Building blocks ───────────────────────────────────────────────────────────
+
 
 class Conv1dBnRelu(nn.Module):
     """Conv1d → BatchNorm1d → ReLU → MaxPool1d block.
@@ -102,17 +123,24 @@ class Conv1dBnRelu(nn.Module):
 
     def __init__(
         self,
-        in_channels:  int,
+        in_channels: int,
         out_channels: int,
-        kernel_size:  int = 7,
-        pool_size:    int = 2,
-        stride:       int = 1,
+        kernel_size: int = 7,
+        pool_size: int = 2,
+        stride: int = 1,
     ) -> None:
+        """Create the convolution, normalization, activation, and pooling stack."""
         super().__init__()
         padding = kernel_size // 2
         self.block = nn.Sequential(
-            nn.Conv1d(in_channels, out_channels, kernel_size,
-                      stride=stride, padding=padding, bias=False),
+            nn.Conv1d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=False,
+            ),
             nn.BatchNorm1d(out_channels),
             nn.ReLU(inplace=True),
             nn.MaxPool1d(pool_size),
@@ -132,6 +160,7 @@ class Conv1dBnRelu(nn.Module):
 
 # ── Full model ────────────────────────────────────────────────────────────────
 
+
 class ECGCNNLSTMModel(nn.Module):
     """3-block 1D-CNN followed by a bidirectional LSTM and an FC output head.
 
@@ -147,31 +176,32 @@ class ECGCNNLSTMModel(nn.Module):
     def __init__(
         self,
         input_channels: int = 1,
-        num_filters:    int = 64,
-        lstm_hidden:    int = 128,
-        lstm_layers:    int = 2,
-        output_dim:     int = 1,
-        dropout:        float = 0.3,
+        num_filters: int = 64,
+        lstm_hidden: int = 128,
+        lstm_layers: int = 2,
+        output_dim: int = 1,
+        dropout: float = 0.3,
     ) -> None:
+        """Assemble the convolutional encoder, LSTM, dropout, and output layer."""
         super().__init__()
 
         self.conv_blocks = nn.Sequential(
-            Conv1dBnRelu(input_channels, num_filters,      kernel_size=7, pool_size=2),
-            Conv1dBnRelu(num_filters,    num_filters * 2,  kernel_size=5, pool_size=2),
+            Conv1dBnRelu(input_channels, num_filters, kernel_size=7, pool_size=2),
+            Conv1dBnRelu(num_filters, num_filters * 2, kernel_size=5, pool_size=2),
             Conv1dBnRelu(num_filters * 2, num_filters * 4, kernel_size=3, pool_size=2),
         )
         cnn_out_channels = num_filters * 4
 
         self.lstm = nn.LSTM(
-            input_size    = cnn_out_channels,
-            hidden_size   = lstm_hidden,
-            num_layers    = lstm_layers,
-            batch_first   = True,
-            dropout       = dropout if lstm_layers > 1 else 0.0,
-            bidirectional = True,
+            input_size=cnn_out_channels,
+            hidden_size=lstm_hidden,
+            num_layers=lstm_layers,
+            batch_first=True,
+            dropout=dropout if lstm_layers > 1 else 0.0,
+            bidirectional=True,
         )
         self.dropout = nn.Dropout(dropout)
-        self.fc      = nn.Linear(lstm_hidden * 2, output_dim)
+        self.fc = nn.Linear(lstm_hidden * 2, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass.
@@ -182,22 +212,23 @@ class ECGCNNLSTMModel(nn.Module):
         Returns:
             Predictions of shape ``(B, output_dim)``.
         """
-        feat = self.conv_blocks(x)          # (B, C', T')
-        feat = feat.permute(0, 2, 1)        # (B, T', C') for LSTM
-        out, _ = self.lstm(feat)            # (B, T', 2*H)
-        pooled = out.mean(dim=1)            # global average over time
+        feat = self.conv_blocks(x)  # (B, C', T')
+        feat = feat.permute(0, 2, 1)  # (B, T', C') for LSTM
+        out, _ = self.lstm(feat)  # (B, T', 2*H)
+        pooled = out.mean(dim=1)  # global average over time
         return self.fc(self.dropout(pooled))
 
 
 # ── Training utilities ────────────────────────────────────────────────────────
 
+
 def pretrain_self_supervised(
-    model:      ECGCNNLSTMModel,
+    model: ECGCNNLSTMModel,
     dataloader: DataLoader,
-    epochs:     int,
-    device:     torch.device,
+    epochs: int,
+    device: torch.device,
     mask_ratio: float = 0.15,
-    lr:         float = 1e-3,
+    lr: float = 1e-3,
 ) -> list[float]:
     """Masked IBI reconstruction pretraining (self-supervised).
 
@@ -216,7 +247,9 @@ def pretrain_self_supervised(
     Returns:
         List of per-epoch mean reconstruction losses.
     """
-    recon_head = nn.Linear(model.fc.in_features, model.conv_blocks[-1].block[0].out_channels)
+    recon_head = nn.Linear(
+        model.fc.in_features, model.conv_blocks[-1].block[0].out_channels
+    )
     recon_head = recon_head.to(device)
 
     optimizer = torch.optim.Adam(
@@ -255,11 +288,11 @@ def pretrain_self_supervised(
 
 
 def train_epoch(
-    model:      ECGCNNLSTMModel,
+    model: ECGCNNLSTMModel,
     dataloader: DataLoader,
-    optimizer:  torch.optim.Optimizer,
-    criterion:  nn.Module,
-    device:     torch.device,
+    optimizer: torch.optim.Optimizer,
+    criterion: nn.Module,
+    device: torch.device,
 ) -> float:
     """Run one supervised training epoch.
 
@@ -278,7 +311,7 @@ def train_epoch(
     for x, y in dataloader:
         x, y = x.to(device), y.to(device)
         preds = model(x).squeeze(-1)
-        loss  = criterion(preds, y)
+        loss = criterion(preds, y)
         optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
@@ -288,9 +321,9 @@ def train_epoch(
 
 
 def evaluate_model(
-    model:      ECGCNNLSTMModel,
+    model: ECGCNNLSTMModel,
     dataloader: DataLoader,
-    device:     torch.device,
+    device: torch.device,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Evaluate the model on a dataloader.
 
@@ -315,10 +348,11 @@ def evaluate_model(
 
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
+
 def train_ecg_model(
     config_path: str | Path,
-    data_dir:    str | Path,
-    output_dir:  str | Path,
+    data_dir: str | Path,
+    output_dir: str | Path,
 ) -> None:
     """Full ECG model training pipeline driven by a YAML config file.
 
@@ -347,46 +381,71 @@ def train_ecg_model(
         - ``label_col`` (str)
     """
     config_path = Path(config_path)
-    data_dir    = Path(data_dir)
-    output_dir  = Path(output_dir)
+    data_dir = Path(data_dir)
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with config_path.open() as f:
         cfg: dict[str, Any] = yaml.safe_load(f)
 
+    set_reproducible_seed(int(cfg.get("seed", DEFAULT_SEED)))
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Using device: %s", device)
 
-    train_ds = ECGDataset(data_dir / "train", window_size=cfg["window_size"],
-                          label_col=cfg["label_col"])
-    val_ds   = ECGDataset(data_dir / "val",   window_size=cfg["window_size"],
-                          label_col=cfg["label_col"])
+    train_ds = ECGDataset(
+        data_dir / "train", window_size=cfg["window_size"], label_col=cfg["label_col"]
+    )
+    val_ds = ECGDataset(
+        data_dir / "val", window_size=cfg["window_size"], label_col=cfg["label_col"]
+    )
 
-    train_dl = DataLoader(train_ds, batch_size=cfg["batch_size"], shuffle=True,
-                          num_workers=4, pin_memory=True)
-    val_dl   = DataLoader(val_ds,   batch_size=cfg["batch_size"], shuffle=False,
-                          num_workers=4, pin_memory=True)
+    train_dl = DataLoader(
+        train_ds,
+        batch_size=cfg["batch_size"],
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+    )
+    val_dl = DataLoader(
+        val_ds,
+        batch_size=cfg["batch_size"],
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
 
     model = ECGCNNLSTMModel(
-        num_filters  = cfg.get("num_filters", 64),
-        lstm_hidden  = cfg.get("lstm_hidden", 128),
-        lstm_layers  = cfg.get("lstm_layers", 2),
-        output_dim   = cfg.get("output_dim", 1),
-        dropout      = cfg.get("dropout", 0.3),
+        num_filters=cfg.get("num_filters", 64),
+        lstm_hidden=cfg.get("lstm_hidden", 128),
+        lstm_layers=cfg.get("lstm_layers", 2),
+        output_dim=cfg.get("output_dim", 1),
+        dropout=cfg.get("dropout", 0.3),
     ).to(device)
 
     pretrain_epochs = cfg.get("pretrain_epochs", 0)
     if pretrain_epochs > 0 and (data_dir / "pretrain").exists():
-        pre_ds = ECGDataset(data_dir / "pretrain", window_size=cfg["window_size"],
-                            label_col=cfg["label_col"])
-        pre_dl = DataLoader(pre_ds, batch_size=cfg["batch_size"], shuffle=True,
-                            num_workers=4, pin_memory=True)
-        logger.info("Starting self-supervised pretraining for %d epochs", pretrain_epochs)
+        pre_ds = ECGDataset(
+            data_dir / "pretrain",
+            window_size=cfg["window_size"],
+            label_col=cfg["label_col"],
+        )
+        pre_dl = DataLoader(
+            pre_ds,
+            batch_size=cfg["batch_size"],
+            shuffle=True,
+            num_workers=4,
+            pin_memory=True,
+        )
+        logger.info(
+            "Starting self-supervised pretraining for %d epochs", pretrain_epochs
+        )
         pretrain_self_supervised(model, pre_dl, pretrain_epochs, device)
 
     criterion = nn.MSELoss() if cfg.get("output_dim", 1) == 1 else nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.get("lr", 1e-3),
-                                  weight_decay=1e-4)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=cfg.get("lr", 1e-3), weight_decay=1e-4
+    )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5
     )
@@ -400,14 +459,22 @@ def train_ecg_model(
         scheduler.step(val_loss)
         logger.info(
             "Epoch %3d | train_loss=%.4f | val_loss=%.4f",
-            epoch + 1, train_loss, val_loss,
+            epoch + 1,
+            train_loss,
+            val_loss,
         )
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             ckpt = output_dir / "best_ecg_model.pt"
-            torch.save({"epoch": epoch, "model_state": model.state_dict(),
-                        "val_loss": val_loss}, ckpt)
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state": model.state_dict(),
+                    "val_loss": val_loss,
+                },
+                ckpt,
+            )
             logger.info("Checkpoint saved: %s", ckpt)
 
     logger.info("Training complete. Best val loss: %.4f", best_val_loss)

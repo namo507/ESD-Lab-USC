@@ -27,9 +27,16 @@ concurrency:
   group: pages-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
+      CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -86,7 +93,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/pages-wrapper --project-name=esd-lab-namo --branch=main --commit-dirty=true
+          command: >-
+            pages deploy dist/pages-wrapper
+            --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }}
+            --branch=${{ env.CLOUDFLARE_PAGES_BRANCH }}
+            --commit-dirty=true
 
       - name: Smoke test live URL
         run: |

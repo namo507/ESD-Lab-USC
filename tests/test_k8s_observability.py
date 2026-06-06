@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from dashboard.k8s_pipeline.config import PROJECT_ROOT
-from dashboard.k8s_pipeline.config import PipelineConfig
+from dashboard.k8s_pipeline.config import PROJECT_ROOT, PipelineConfig
 from dashboard.k8s_pipeline.freshness import readings_freshness_payload
 from dashboard.k8s_pipeline.ledger import EventLedger
-from dashboard.k8s_pipeline.observability import cluster_topology_payload
-from dashboard.k8s_pipeline.observability import pipeline_status_payload
+from dashboard.k8s_pipeline.observability import (
+    cluster_topology_payload,
+    pipeline_status_payload,
+)
 
 
 def make_config(tmp_path: Path) -> PipelineConfig:

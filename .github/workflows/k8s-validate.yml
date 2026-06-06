@@ -38,3 +38,12 @@ jobs:
 
       - name: Client dry-run parse
         run: kubectl apply --dry-run=client --validate=false -f /tmp/esd-lab-dashboard.yaml
+
+      - name: Schema validate rendered manifests
+        run: |
+          docker run --rm \
+            -v /tmp:/tmp:ro \
+            ghcr.io/yannh/kubeconform:latest \
+            -strict \
+            -ignore-missing-schemas \
+            /tmp/esd-lab-dashboard.yaml

@@ -18,9 +18,9 @@ export function CascadeSimulator() {
 function CascadeSimulatorInner() {
   const { data } = useCascadePaths();
   const [deltas, setDeltas] = useState<Record<string, number>>({});
-  const nodes = data?.nodes ?? [];
-  const paths = data?.paths ?? [];
-  const manipulable = nodes.filter((node) => node.manipulable);
+  const nodes = useMemo(() => data?.nodes ?? [], [data?.nodes]);
+  const paths = useMemo(() => data?.paths ?? [], [data?.paths]);
+  const manipulable = useMemo(() => nodes.filter((node) => node.manipulable), [nodes]);
 
   const projection = useMemo(() => {
     const effects: Record<string, number> = Object.fromEntries(nodes.map((node) => [node.id, deltas[node.id] ?? 0]));

@@ -37,9 +37,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dashboard.assistant.local_chat_assistant import (  # noqa: E402
+    PRESENTATION_MIN_SLIDES,
     AssistantConfig,
     DashboardChatAssistant,
-    PRESENTATION_MIN_SLIDES,
 )
 
 DEFAULT_LLM_CONFIG = PROJECT_ROOT / "config" / "llm_model.json"
@@ -74,7 +74,13 @@ def _candidates_from_config(config_path: Path) -> list[Candidate]:
         filename = entry.get("filename")
         if not filename:
             return
-        out.append(Candidate(label=entry.get("repo_id", filename), model_dir=models_dir, model_file=filename))
+        out.append(
+            Candidate(
+                label=entry.get("repo_id", filename),
+                model_dir=models_dir,
+                model_file=filename,
+            )
+        )
 
     add(cfg)
     for fb in cfg.get("fallbacks", []) or []:
@@ -121,7 +127,12 @@ def _validate_plan(plan: dict) -> tuple[bool, str]:
 
 
 def _run_one(assistant: DashboardChatAssistant, concept: str, audience: str) -> dict:
-    options = {"audience_level": audience, "slide_count": 6, "include_analogy": True, "include_worked_example": True}
+    options = {
+        "audience_level": audience,
+        "slide_count": 6,
+        "include_analogy": True,
+        "include_worked_example": True,
+    }
     start = time.perf_counter()
     try:
         result = assistant.plan_presentation(concept, options=options)
@@ -156,7 +167,9 @@ def _benchmark_candidate(model_path: Path, *, json_mode: bool) -> dict:
         row = _run_one(assistant, concept, audience)
         row["concept"] = concept
         row["expected_grounded"] = expected_grounded
-        row["grounding_ok"] = (row["grounded"] == expected_grounded) or not expected_grounded
+        row["grounding_ok"] = (
+            row["grounded"] == expected_grounded
+        ) or not expected_grounded
         rows.append(row)
         print(
             f"    {concept[:42]:42s}  {row['latency_s']:6.2f}s  "
@@ -181,9 +194,20 @@ def _summarize(rows: list[dict]) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_LLM_CONFIG)
-    parser.add_argument("--model", action="append", default=[], help="Explicit GGUF path(s) to test.")
-    parser.add_argument("--compare-json-mode", action="store_true", help="Run each model with JSON mode on AND off.")
-    parser.add_argument("--out", type=Path, default=None, help="Optional path to write raw JSON results.")
+    parser.add_argument(
+        "--model", action="append", default=[], help="Explicit GGUF path(s) to test."
+    )
+    parser.add_argument(
+        "--compare-json-mode",
+        action="store_true",
+        help="Run each model with JSON mode on AND off.",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Optional path to write raw JSON results.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -226,15 +250,23 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  not ready: {outcome.get('message')}")
                 continue
             summary = _summarize(outcome["rows"])
-            grounding_ok = sum(1 for r in outcome["rows"] if r["grounding_ok"]) / len(outcome["rows"])
+            grounding_ok = sum(1 for r in outcome["rows"] if r["grounding_ok"]) / len(
+                outcome["rows"]
+            )
             print(
                 f"  -> valid_rate={summary['valid_rate']:.0%}  "
                 f"mean={summary['mean_latency_s']}s  p95={summary['p95_latency_s']}s  "
                 f"grounding_ok={grounding_ok:.0%}"
             )
             report["results"].append(
-                {"model": label, "path": str(path), "json_mode": json_mode,
-                 "summary": summary, "grounding_ok": round(grounding_ok, 3), "rows": outcome["rows"]}
+                {
+                    "model": label,
+                    "path": str(path),
+                    "json_mode": json_mode,
+                    "summary": summary,
+                    "grounding_ok": round(grounding_ok, 3),
+                    "rows": outcome["rows"],
+                }
             )
 
     # Recommendation: prefer high valid_rate, then low mean latency.
@@ -248,7 +280,11 @@ def main(argv: list[str] | None = None) -> int:
             f"\nRECOMMENDED: {best['model']} (json_mode={'on' if best['json_mode'] else 'off'}) "
             f"-> valid_rate={best['summary']['valid_rate']:.0%}, mean={best['summary']['mean_latency_s']}s"
         )
-        report["recommended"] = {"model": best["model"], "json_mode": best["json_mode"], "summary": best["summary"]}
+        report["recommended"] = {
+            "model": best["model"],
+            "json_mode": best["json_mode"],
+            "summary": best["summary"],
+        }
 
     if args.out:
         args.out.write_text(json.dumps(report, indent=2), encoding="utf-8")

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, SectionLabel } from "@/components/primitives";
+import { Badge, Button, Card } from "@/components/primitives";
 import { SPATIAL_ASSESSMENTS, type SpatialAssessment } from "@/data/spatialAssessments";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import styles from "./FeatureRoutes.module.css";
@@ -9,8 +9,6 @@ type SortKey = keyof SpatialAssessment;
 
 export function SpatialAssessmentMatrix() {
   const enabled = useFeatureFlag("SPATIAL_ASSESSMENT_MATRIX");
-  if (!enabled) return null;
-
   const [domain, setDomain] = useState<Domain>("all");
   const [sort, setSort] = useState<SortKey>("measure");
   const rows = useMemo(() => {
@@ -30,6 +28,8 @@ export function SpatialAssessmentMatrix() {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

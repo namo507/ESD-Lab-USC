@@ -17,8 +17,6 @@ const VISITS = [
 
 export function HdaPlayer() {
   const enabled = useFeatureFlag("HDA_TIMELINE_PLAYER");
-  if (!enabled) return null;
-
   const navigate = useNavigate();
   const showCoReg = useFeatureFlag("DYN_CO_REGULATION_BRAID");
   const showPhase = useFeatureFlag("DYN_AROUSAL_ATTENTION_PORTRAIT");
@@ -36,8 +34,8 @@ export function HdaPlayer() {
   const numericVisitAge = Number(visitAge);
   const { data: session } = useHdaSession(selectedId, numericVisitAge);
   const { data: compare } = useHdaSession(compareId ? compareTarget : undefined, numericVisitAge);
-  const rows = session?.data ?? [];
-  const compareRows = compare?.data ?? [];
+  const rows = useMemo(() => session?.data ?? [], [session?.data]);
+  const compareRows = useMemo(() => compare?.data ?? [], [compare?.data]);
   const duration = useMemo(() => Math.max(...rows.map((row) => row.t1), 1), [rows]);
 
   useEffect(() => {
@@ -47,6 +45,8 @@ export function HdaPlayer() {
     }, 350);
     return () => window.clearInterval(timer);
   }, [duration, playing, speed]);
+
+  if (!enabled) return null;
 
   function step(delta: number) {
     setCursor((value) => Math.max(0, Math.min(duration, value + delta)));

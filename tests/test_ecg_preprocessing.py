@@ -8,15 +8,15 @@ import pytest
 
 from src.preprocessing.ecg_preprocessing import (
     bandpass_filter,
-    remove_ecg_artifacts,
-    reject_windows,
     preprocess_ecg_pipeline,
+    reject_windows,
+    remove_ecg_artifacts,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_synthetic_signal(n_samples: int = 10240, fs: int = 1024) -> np.ndarray:
     """Return a synthetic ECG-like sine wave signal."""
@@ -40,6 +40,7 @@ def _make_clean_ibi(n: int = 400) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_bandpass_filter_output_shape():
     """Filtered signal must have the same length as the input."""
@@ -103,7 +104,9 @@ def test_reject_windows_pct_threshold():
 def test_reject_windows_clean_passes():
     """A clean IBI window with no NaN should be accepted."""
     ibi = np.full(300, 800.0)
-    valid = reject_windows(ibi, window_size_beats=300, max_missing_pct=0.10, max_contiguous_missing=5)
+    valid = reject_windows(
+        ibi, window_size_beats=300, max_missing_pct=0.10, max_contiguous_missing=5
+    )
     assert valid[0]
 
 

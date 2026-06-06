@@ -6,13 +6,13 @@ import styles from "./FeatureRoutes.module.css";
 
 export function ModelLeaderboard() {
   const enabled = useFeatureFlag("MODEL_LEADERBOARD");
-  if (!enabled) return null;
-
   const { data } = useModelLeaderboard();
   const rows = data?.data ?? [];
   const [modelId, setModelId] = useState("");
   const selected = modelId || rows[0]?.modelId;
   const { data: detail } = useModelLeaderboardDetail(selected);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

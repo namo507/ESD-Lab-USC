@@ -45,7 +45,7 @@ def time_lock_hda_to_behavior(
     beh = behavioral_df.copy()
     window_ms = window_sec * 1000.0
 
-    phase_cols = {p: [] for p in _HDA_PHASES}
+    phase_cols: dict[str, list[float]] = {p: [] for p in _HDA_PHASES}
 
     for onset in beh["onset_ms"]:
         window_data = hda[
@@ -63,7 +63,9 @@ def time_lock_hda_to_behavior(
         beh[f"hda_pct_{p}"] = phase_cols[p]
 
     logger.info(
-        "time_lock_hda_to_behavior: locked %d events (window=%.1fs).", len(beh), window_sec
+        "time_lock_hda_to_behavior: locked %d events (window=%.1fs).",
+        len(beh),
+        window_sec,
     )
     return beh
 
@@ -91,7 +93,11 @@ def compute_phase_frequencies_by_look(
         segment = hda_df[
             (hda_df["timestamp_ms"] >= onset) & (hda_df["timestamp_ms"] <= offset)
         ]
-        row: dict[str, float] = {"onset_ms": onset, "offset_ms": offset, "duration_ms": offset - onset}
+        row: dict[str, float] = {
+            "onset_ms": onset,
+            "offset_ms": offset,
+            "duration_ms": offset - onset,
+        }
         if len(segment) == 0:
             for p in _HDA_PHASES:
                 row[f"hda_pct_{p}"] = np.nan
@@ -102,7 +108,9 @@ def compute_phase_frequencies_by_look(
         rows.append(row)
 
     result = pd.DataFrame(rows)
-    logger.info("compute_phase_frequencies_by_look: processed %d look bouts.", len(result))
+    logger.info(
+        "compute_phase_frequencies_by_look: processed %d look bouts.", len(result)
+    )
     return result
 
 
@@ -148,10 +156,14 @@ def merge_behavioral_physio_timeline(
     if temp_df is not None:
         temp = temp_df.copy()
         temp["timestamp"] = pd.to_datetime(temp["timestamp"])
-        temp["time_sec"] = (temp["timestamp"].astype(np.int64) // 10 ** 9).astype(int)
-        temp_resampled = temp.set_index("time_sec")["cptd"].reindex(timeline.index).ffill()
+        temp["time_sec"] = (temp["timestamp"].astype(np.int64) // 10**9).astype(int)
+        temp_resampled = (
+            temp.set_index("time_sec")["cptd"].reindex(timeline.index).ffill()
+        )
         timeline["cptd"] = temp_resampled
 
     timeline = timeline.reset_index()
-    logger.info("merge_behavioral_physio_timeline: timeline has %d seconds.", len(timeline))
+    logger.info(
+        "merge_behavioral_physio_timeline: timeline has %d seconds.", len(timeline)
+    )
     return timeline

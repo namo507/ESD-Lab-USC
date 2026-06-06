@@ -118,6 +118,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 # Core logic
 # ---------------------------------------------------------------------------
 
+
 def _load_latest_export(cfg: dict[str, Any]) -> pd.DataFrame:
     """Load the most recent REDCap export parquet or CSV.
 
@@ -139,8 +140,11 @@ def _load_latest_export(cfg: dict[str, Any]) -> pd.DataFrame:
         if files:
             path = files[-1]
             logger.info("Loading REDCap export: %s", path)
-            return (pd.read_parquet(path) if path.suffix == ".parquet"
-                    else pd.read_csv(path, dtype=str))
+            return (
+                pd.read_parquet(path)
+                if path.suffix == ".parquet"
+                else pd.read_csv(path, dtype=str)
+            )
 
     logger.warning("No REDCap export found in %s; using empty DataFrame.", export_dir)
     return pd.DataFrame(columns=["record_id", "redcap_event_name", "group_code"])
@@ -164,7 +168,11 @@ def _compute_completeness_by_event(df: pd.DataFrame) -> list[dict]:
         rows.append(
             {
                 "event": event,
-                "n_present": grp["record_id"].nunique() if "record_id" in grp.columns else len(grp),
+                "n_present": (
+                    grp["record_id"].nunique()
+                    if "record_id" in grp.columns
+                    else len(grp)
+                ),
                 "n_expected": n_participants,
                 "pct": round(pct, 1),
             }
@@ -227,8 +235,19 @@ def _compute_imputation_status(df: pd.DataFrame) -> list[dict]:
         if n_missing == 0:
             continue
         pct = n_missing / len(df) * 100
-        status = "High – MNAR risk" if pct > 40 else ("Moderate – MAR candidate" if pct > 10 else "Low – MCAR likely")
-        rows.append({"col": col, "n_missing": n_missing, "pct_missing": round(pct, 1), "status": status})
+        status = (
+            "High – MNAR risk"
+            if pct > 40
+            else ("Moderate – MAR candidate" if pct > 10 else "Low – MCAR likely")
+        )
+        rows.append(
+            {
+                "col": col,
+                "n_missing": n_missing,
+                "pct_missing": round(pct, 1),
+                "status": status,
+            }
+        )
     return rows
 
 
@@ -278,7 +297,9 @@ def generate_report(output_dir: Path, dry_run: bool = False) -> Path:
 
 def main() -> None:
     """Entry point for the data quality report generator."""
-    parser = argparse.ArgumentParser(description="Generate NANO data quality HTML report.")
+    parser = argparse.ArgumentParser(
+        description="Generate NANO data quality HTML report."
+    )
     parser.add_argument(
         "--output",
         default="reports/data_quality",

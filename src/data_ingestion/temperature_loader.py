@@ -194,7 +194,9 @@ def validate_daily_completeness(
             - meets_threshold: Boolean flag
     """
     if "timestamp" not in df.columns:
-        raise ValueError("DataFrame must have 'timestamp' column for daily aggregation.")
+        raise ValueError(
+            "DataFrame must have 'timestamp' column for daily aggregation."
+        )
 
     df = df.copy()
     df["date"] = df["timestamp"].dt.date
@@ -219,7 +221,9 @@ def validate_daily_completeness(
     n_total_days = len(daily_stats)
     logger.info(
         "Daily completeness: %d/%d days meet %.0f%% threshold.",
-        n_valid_days, n_total_days, min_valid_pct,
+        n_valid_days,
+        n_total_days,
+        min_valid_pct,
     )
     return daily_stats
 

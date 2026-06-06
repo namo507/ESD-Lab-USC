@@ -72,7 +72,12 @@ REQUIRED_FIELDS: dict[str, list[str]] = {
     "demographics": ["nano_id", "sex", "ga_weeks", "group_code"],
     "nicu_morbidity": ["nicu_ivh_grade", "nicu_bpd"],
     "ecg_recording_log": ["ecg_recording_date", "ecg_duration_min", "ecg_quality_flag"],
-    "ados2_scores": ["ados2_module", "ados2_sa_raw", "ados2_rrb_raw", "ados2_css_total"],
+    "ados2_scores": [
+        "ados2_module",
+        "ados2_sa_raw",
+        "ados2_rrb_raw",
+        "ados2_css_total",
+    ],
     "bayley4_scores": ["bayley4_cog_composite", "bayley4_lang_composite"],
 }
 
@@ -99,8 +104,14 @@ def check_out_of_range(df: pd.DataFrame) -> pd.DataFrame:
         for idx in df[out_of_range].index:
             flags.append(
                 {
-                    "record_id": df.loc[idx, "record_id"] if "record_id" in df.columns else idx,
-                    "redcap_event_name": df.loc[idx, "redcap_event_name"] if "redcap_event_name" in df.columns else "",
+                    "record_id": (
+                        df.loc[idx, "record_id"] if "record_id" in df.columns else idx
+                    ),
+                    "redcap_event_name": (
+                        df.loc[idx, "redcap_event_name"]
+                        if "redcap_event_name" in df.columns
+                        else ""
+                    ),
                     "field": field,
                     "value": col[idx],
                     "rule": f"out_of_range [{lo}, {hi}]",
@@ -129,12 +140,22 @@ def check_date_logic(df: pd.DataFrame) -> pd.DataFrame:
     if "visit_date" in df.columns and "dob" in df.columns:
         df["_visit_dt"] = pd.to_datetime(df["visit_date"], errors="coerce")
         df["_dob_dt"] = pd.to_datetime(df["dob"], errors="coerce")
-        bad_dates = df[df["_visit_dt"].notna() & df["_dob_dt"].notna() & (df["_visit_dt"] < df["_dob_dt"])]
+        bad_dates = df[
+            df["_visit_dt"].notna()
+            & df["_dob_dt"].notna()
+            & (df["_visit_dt"] < df["_dob_dt"])
+        ]
         for idx in bad_dates.index:
             flags.append(
                 {
-                    "record_id": df.loc[idx, "record_id"] if "record_id" in df.columns else idx,
-                    "redcap_event_name": df.loc[idx, "redcap_event_name"] if "redcap_event_name" in df.columns else "",
+                    "record_id": (
+                        df.loc[idx, "record_id"] if "record_id" in df.columns else idx
+                    ),
+                    "redcap_event_name": (
+                        df.loc[idx, "redcap_event_name"]
+                        if "redcap_event_name" in df.columns
+                        else ""
+                    ),
                     "field": "visit_date",
                     "value": str(df.loc[idx, "visit_date"]),
                     "rule": "visit_date < dob",
@@ -171,7 +192,9 @@ def check_cross_field_logic(df: pd.DataFrame) -> pd.DataFrame:
         for idx in td_preterm.index:
             flags.append(
                 {
-                    "record_id": df.loc[idx, "record_id"] if "record_id" in df.columns else idx,
+                    "record_id": (
+                        df.loc[idx, "record_id"] if "record_id" in df.columns else idx
+                    ),
                     "redcap_event_name": "",
                     "field": "group_code|ga_weeks",
                     "value": f"group=TD but ga={df.loc[idx, 'ga_weeks']}",
@@ -184,13 +207,22 @@ def check_cross_field_logic(df: pd.DataFrame) -> pd.DataFrame:
     if "ecg_transfer_confirmed" in df.columns and "ecg_file_name" in df.columns:
         ecg_no_file = df[
             (df["ecg_transfer_confirmed"].astype(str).isin(["1", "Yes"]))
-            & (df["ecg_file_name"].isna() | (df["ecg_file_name"].astype(str).str.strip() == ""))
+            & (
+                df["ecg_file_name"].isna()
+                | (df["ecg_file_name"].astype(str).str.strip() == "")
+            )
         ]
         for idx in ecg_no_file.index:
             flags.append(
                 {
-                    "record_id": df.loc[idx, "record_id"] if "record_id" in df.columns else idx,
-                    "redcap_event_name": df.loc[idx, "redcap_event_name"] if "redcap_event_name" in df.columns else "",
+                    "record_id": (
+                        df.loc[idx, "record_id"] if "record_id" in df.columns else idx
+                    ),
+                    "redcap_event_name": (
+                        df.loc[idx, "redcap_event_name"]
+                        if "redcap_event_name" in df.columns
+                        else ""
+                    ),
                     "field": "ecg_file_name",
                     "value": "confirmed transfer but no file name",
                     "rule": "ecg_transfer_no_filename",

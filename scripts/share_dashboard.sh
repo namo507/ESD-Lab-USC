@@ -68,14 +68,15 @@ esac
 
 publish_canonical_pages="${AUTO_DEPLOY_CANONICAL_PAGES:-$continuous}"
 
-named_tunnel_token="${CLOUDFLARE_TUNNEL_TOKEN:-}"
+named_tunnel_token="${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}"
 public_hostname="${DASHBOARD_PUBLIC_HOSTNAME:-}"
 share_service="dashboard-share"
 
 case "$mode" in
   named)
     if [[ -z "$named_tunnel_token" ]] || [[ -z "$public_hostname" ]]; then
-      echo "ERROR: --mode named requires both CLOUDFLARE_TUNNEL_TOKEN and DASHBOARD_PUBLIC_HOSTNAME in .env." >&2
+      echo "ERROR: --mode named requires CLOUDFLARE_TUNNEL_TOKEN and DASHBOARD_PUBLIC_HOSTNAME in .env." >&2
+      echo "       The legacy CLOUDFLARED_TUNNEL_TOKEN alias is also accepted for the token." >&2
       echo "Hint: see README.md § Stable named-tunnel sharing." >&2
       exit 78
     fi
@@ -93,7 +94,7 @@ case "$mode" in
     if [[ -n "$named_tunnel_token" && -n "$public_hostname" ]]; then
       use_named="true"
     elif [[ -n "$named_tunnel_token" && -z "$public_hostname" ]]; then
-      echo "WARNING: CLOUDFLARE_TUNNEL_TOKEN is set but DASHBOARD_PUBLIC_HOSTNAME is blank." >&2
+      echo "WARNING: a Cloudflare tunnel token is set but DASHBOARD_PUBLIC_HOSTNAME is blank." >&2
       echo "         Falling back to a quick (random) tunnel because no stable hostname is wired up." >&2
       echo "         Pass --mode named to fail instead, or set DASHBOARD_PUBLIC_HOSTNAME." >&2
       named_tunnel_token=""
@@ -252,6 +253,7 @@ start_cloudflared() {
   local cloudflared_env=(
     env
     -u CLOUDFLARE_TUNNEL_TOKEN
+    -u CLOUDFLARED_TUNNEL_TOKEN
     -u CLOUDFLARE_TUNNEL_ID
     -u CLOUDFLARE_TUNNEL_NAME
     -u TUNNEL_TOKEN

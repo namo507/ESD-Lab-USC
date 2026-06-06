@@ -17,8 +17,9 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-import redcap
 from dotenv import load_dotenv
+
+import redcap
 
 load_dotenv()
 

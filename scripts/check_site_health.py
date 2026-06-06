@@ -38,10 +38,9 @@ import datetime as dt
 import json
 import re
 import sys
-from urllib.parse import urljoin
 import urllib.error
 import urllib.request
-
+from urllib.parse import urljoin
 
 DEFAULT_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_MUST_CONTAIN = "esd-deploy-stamp,NANO"
@@ -92,7 +91,11 @@ def _probe_assistant_status(
     timeout: int,
     require_ready: bool,
 ) -> tuple[str, str | None]:
-    normalized_path = assistant_status_path if assistant_status_path.startswith("/") else f"/{assistant_status_path}"
+    normalized_path = (
+        assistant_status_path
+        if assistant_status_path.startswith("/")
+        else f"/{assistant_status_path}"
+    )
     assistant_url = urljoin(base_url.rstrip("/") + "/", normalized_path)
     try:
         status, raw = _fetch(assistant_url, timeout)
@@ -101,26 +104,36 @@ def _probe_assistant_status(
             f"assistant status probe returned HTTP {e.code} from {assistant_url}: {e.reason}"
         ) from e
     except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise RuntimeError(f"assistant status probe failed for {assistant_url}: {e}") from e
+        raise RuntimeError(
+            f"assistant status probe failed for {assistant_url}: {e}"
+        ) from e
 
     if status != 200:
-        raise RuntimeError(f"assistant status probe expected 200, got {status} from {assistant_url}")
+        raise RuntimeError(
+            f"assistant status probe expected 200, got {status} from {assistant_url}"
+        )
 
     try:
         payload = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"assistant status probe returned invalid JSON from {assistant_url}: {e}") from e
+        raise RuntimeError(
+            f"assistant status probe returned invalid JSON from {assistant_url}: {e}"
+        ) from e
 
     ready = payload.get("ready") is True
     state = payload.get("state") if isinstance(payload.get("state"), str) else None
-    message = payload.get("message") if isinstance(payload.get("message"), str) else None
+    message = (
+        payload.get("message") if isinstance(payload.get("message"), str) else None
+    )
 
     status = payload.get("status") if isinstance(payload.get("status"), str) else None
     if status in {"ready", "unloaded", "error"}:
         state = status
         ready = status == "ready"
         if not message:
-            error = payload.get("error") if isinstance(payload.get("error"), str) else None
+            error = (
+                payload.get("error") if isinstance(payload.get("error"), str) else None
+            )
             message = error
 
     if require_ready and ready is not True:

@@ -14,10 +14,11 @@ module.exports = {
     "plugin:react/jsx-runtime",
   ],
   rules: {
-    "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     "react/prop-types": "off",
-    "react-hooks/exhaustive-deps": "warn",
-    "no-console": ["warn", { allow: ["warn", "error"] }],
+    "react-hooks/exhaustive-deps": "error",
+    "no-console": "off",
   },
   ignorePatterns: ["dist", "node_modules", ".eslintrc.cjs"],
 };

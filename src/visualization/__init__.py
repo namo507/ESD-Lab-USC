@@ -1,1 +1,1 @@
-# visualization package
+"""Reusable visualization helpers for ECG and model outputs."""

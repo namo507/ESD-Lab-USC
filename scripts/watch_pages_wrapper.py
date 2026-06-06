@@ -136,12 +136,17 @@ def _build_wrapper(origin: str, quiet: bool) -> bool:
         "quick" if "trycloudflare.com" in origin else "named",
     ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, capture_output=True, text=True, check=False
+        )
     except OSError as e:
         _log("error", f"build_pages_wrapper.py invocation failed: {e}")
         return False
     if proc.returncode != 0:
-        _log("error", f"build_pages_wrapper.py rc={proc.returncode} :: {proc.stderr.strip()[:200]}")
+        _log(
+            "error",
+            f"build_pages_wrapper.py rc={proc.returncode} :: {proc.stderr.strip()[:200]}",
+        )
         return False
     if not quiet:
         _log("info", "wrapper regenerated · " + proc.stdout.splitlines()[-1].strip())
@@ -172,7 +177,9 @@ def _deploy(quiet: bool) -> Optional[str]:
         "--commit-dirty=true",
     ]
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            cmd, cwd=ROOT, capture_output=True, text=True, check=False
+        )
     except OSError as e:
         _log("error", f"wrangler invocation failed: {e}")
         return None
@@ -182,9 +189,14 @@ def _deploy(quiet: bool) -> Optional[str]:
         _log("error", "wrangler deploy failed: " + " | ".join(err))
         return None
     # Wrangler prints the per-deploy preview URL on the last line; surface it for ops.
-    last_line = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else "(no stdout)"
+    last_line = (
+        (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else "(no stdout)"
+    )
     _log("info", f"deploy ok · {last_line[:140]}")
-    return _extract_preview_url(proc.stdout or "") or f"https://{branch}.{project}.pages.dev/"
+    return (
+        _extract_preview_url(proc.stdout or "")
+        or f"https://{branch}.{project}.pages.dev/"
+    )
 
 
 def _extract_preview_url(stdout: str) -> str:
@@ -198,12 +210,18 @@ def _extract_preview_url(stdout: str) -> str:
 
 def watch_once(quiet: bool = False) -> int:
     if not _load_env_token():
-        _log("error", "CLOUDFLARE_API_TOKEN missing (.env or shell). Pages deploy will fail.")
+        _log(
+            "error",
+            "CLOUDFLARE_API_TOKEN missing (.env or shell). Pages deploy will fail.",
+        )
         return 78
 
     current = _read_current_origin()
     if not current:
-        _log("warn", f"{_origin_record().relative_to(_runtime_dir().parent)} not present; nothing to sync.")
+        _log(
+            "warn",
+            f"{_origin_record().relative_to(_runtime_dir().parent)} not present; nothing to sync.",
+        )
         return 0
 
     deployed = _read_deployed_origin()
@@ -226,9 +244,15 @@ def watch_once(quiet: bool = False) -> int:
 
 
 def watch_forever(interval: float, quiet: bool) -> int:
-    _log("info", f"watching {_origin_record().relative_to(_runtime_dir().parent)} every {interval:g}s")
+    _log(
+        "info",
+        f"watching {_origin_record().relative_to(_runtime_dir().parent)} every {interval:g}s",
+    )
     if not _load_env_token():
-        _log("error", "CLOUDFLARE_API_TOKEN missing — watcher will idle until you set it in .env.")
+        _log(
+            "error",
+            "CLOUDFLARE_API_TOKEN missing — watcher will idle until you set it in .env.",
+        )
     backoff = interval
     last_state = (None, None)  # (origin, mtime)
     while True:
@@ -254,9 +278,16 @@ def watch_forever(interval: float, quiet: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     p.add_argument("--once", action="store_true", help="One sync pass, then exit.")
-    p.add_argument("--interval", type=float, default=5.0, help="Polling interval (seconds; default 5).")
+    p.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        help="Polling interval (seconds; default 5).",
+    )
     p.add_argument("--quiet", action="store_true", help="Only log warnings + errors.")
     args = p.parse_args(argv)
     if args.once:

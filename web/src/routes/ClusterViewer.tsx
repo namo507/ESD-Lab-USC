@@ -23,14 +23,12 @@ function ClusterTooltip({ active, payload }: { active?: boolean; payload?: Array
 
 export function ClusterViewer() {
   const enabled = useFeatureFlag("CLUSTER_VIEWER");
-  if (!enabled) return null;
-
   const navigate = useNavigate();
   const showArchetypes = useFeatureFlag("DYN_TRAJECTORY_ARCHETYPES");
   const { data } = useClusterTsne();
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data?.data]);
   const [timepoint, setTimepoint] = useState(12);
-  const visible = rows.filter((row) => row.timepoint === timepoint);
+  const visible = useMemo(() => rows.filter((row) => row.timepoint === timepoint), [rows, timepoint]);
   const clusters = useMemo(() => {
     const grouped = new Map<string, ClusterTsneRow[]>();
     visible.forEach((row) => grouped.set(row.cluster, [...(grouped.get(row.cluster) ?? []), row]));
@@ -40,6 +38,8 @@ export function ClusterViewer() {
       meanOutcome: items.reduce((sum, row) => sum + row.outcomeScore, 0) / Math.max(1, items.length),
     }));
   }, [visible]);
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.page}>

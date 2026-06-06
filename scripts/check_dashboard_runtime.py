@@ -9,6 +9,7 @@ Checks that:
 4. The Pages wrapper embeds a live dashboard origin when requested.
 5. An optional repair path can refresh the quick tunnel and redeploy Pages.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,7 +21,6 @@ import time
 import urllib.request
 from pathlib import Path
 from typing import Any
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TOUCH_PATH = PROJECT_ROOT / "config" / "study_parameters.yml"
@@ -262,7 +262,9 @@ def run_cycle(args: argparse.Namespace, *, exercise_watcher: bool) -> None:
         )
 
 
-def run_with_optional_repair(args: argparse.Namespace, *, exercise_watcher: bool) -> None:
+def run_with_optional_repair(
+    args: argparse.Namespace, *, exercise_watcher: bool
+) -> None:
     try:
         run_cycle(args, exercise_watcher=exercise_watcher)
         return

@@ -44,3 +44,15 @@ services:
         condition: service_healthy
     command: tunnel --no-autoupdate --url http://dashboard:8080
     restart: unless-stopped
+
+  dashboard-share-named:
+    profiles: ["share"]
+    image: cloudflare/cloudflared:2026.5.2
+    cpus: "0.5"
+    mem_limit: 256m
+    pids_limit: 128
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
+    restart: unless-stopped

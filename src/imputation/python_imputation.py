@@ -50,18 +50,24 @@ def assess_missingness_mechanism(
 
     # Drop columns with all-NaN and non-numeric
     numeric_cols = [
-        c for c in df.select_dtypes(include=np.number).columns
+        c
+        for c in df.select_dtypes(include=np.number).columns
         if c != target_col and df[c].notna().sum() > 10
     ]
     if not numeric_cols:
-        logger.warning("assess_missingness_mechanism: no complete numeric predictors found.")
+        logger.warning(
+            "assess_missingness_mechanism: no complete numeric predictors found."
+        )
         return {}
 
     X = df[numeric_cols].fillna(df[numeric_cols].median())
     y = missing_indicator
 
     if y.sum() == 0 or y.sum() == len(y):
-        logger.info("assess_missingness_mechanism: no missing values in '%s', MCAR assumption holds.", target_col)
+        logger.info(
+            "assess_missingness_mechanism: no missing values in '%s', MCAR assumption holds.",
+            target_col,
+        )
         return {col: 1.0 for col in numeric_cols}
 
     model = LogisticRegression(max_iter=500, solver="lbfgs", random_state=42)
@@ -69,6 +75,7 @@ def assess_missingness_mechanism(
 
     # Approximate Wald p-values: z = coef / SE, SE from diagonal of inv(X^T X) * scale
     from scipy import stats as scipy_stats
+
     n, p = X.shape
     pred_prob = model.predict_proba(X)[:, 1]
     W = np.diag(pred_prob * (1 - pred_prob))
@@ -86,7 +93,8 @@ def assess_missingness_mechanism(
     if sig_predictors:
         logger.info(
             "assess_missingness_mechanism: '%s' MAR suggested by: %s.",
-            target_col, sig_predictors,
+            target_col,
+            sig_predictors,
         )
     else:
         logger.info(
@@ -121,7 +129,9 @@ def impute_with_mice(
     n_missing_before = int(df[numeric_cols].isna().sum().sum())
     logger.info(
         "impute_with_mice: %d missing values across %d numeric columns (max_iter=%d).",
-        n_missing_before, len(numeric_cols), max_iter,
+        n_missing_before,
+        len(numeric_cols),
+        max_iter,
     )
 
     imputer = IterativeImputer(
@@ -178,7 +188,9 @@ def document_imputation_assumptions(
     cols_with_missing = [c for c in numeric_cols if df[c].isna().any()]
 
     if not cols_with_missing:
-        lines.append("No missing values found in numeric columns. No imputation required.")
+        lines.append(
+            "No missing values found in numeric columns. No imputation required."
+        )
     else:
         lines.append(f"Columns with missing values ({len(cols_with_missing)}):")
         lines.append("")

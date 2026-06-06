@@ -178,11 +178,11 @@ export function ParticipantDetail() {
 
 function HdaPreview({ participant }: { participant: ParticipantDetailType }) {
   const enabled = useFeatureFlag("HDA_TIMELINE_PLAYER");
-  if (!enabled) return null;
-
   const visitAge = VISITS.indexOf(participant.visit) <= 0 ? 0 : Number(participant.visit.match(/\d+/)?.[0] ?? 12);
   const { data } = useHdaSession(participant.id, visitAge);
   const rows = data?.data ?? [];
+
+  if (!enabled) return null;
 
   return (
     <div className={styles.hdaPreview}>

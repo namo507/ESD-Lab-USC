@@ -9,13 +9,12 @@ import pandas as pd
 import pytest
 
 from src.preprocessing.hrv_features import (
-    compute_time_domain_hrv,
     compute_poincare_features,
     compute_sample_entropy,
+    compute_time_domain_hrv,
     extract_all_hrv_features,
     identify_hda_phases,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,22 +39,23 @@ def _make_long_ibi(n: int = 300) -> np.ndarray:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_rmssd_known_value():
     """RMSSD on known 5-beat series must match manual calculation within 1%."""
     result = compute_time_domain_hrv(KNOWN_IBI)
     rmssd = result["rmssd"]
-    assert abs(rmssd - KNOWN_RMSSD) / KNOWN_RMSSD < 0.01, (
-        f"Expected RMSSD≈{KNOWN_RMSSD:.4f}, got {rmssd:.4f}"
-    )
+    assert (
+        abs(rmssd - KNOWN_RMSSD) / KNOWN_RMSSD < 0.01
+    ), f"Expected RMSSD≈{KNOWN_RMSSD:.4f}, got {rmssd:.4f}"
 
 
 def test_sdnn_known_value():
     """SDNN on known series must match numpy std(ddof=1) within 1%."""
     result = compute_time_domain_hrv(KNOWN_IBI)
     sdnn = result["sdnn"]
-    assert abs(sdnn - KNOWN_SDNN) / max(KNOWN_SDNN, 1e-9) < 0.01, (
-        f"Expected SDNN≈{KNOWN_SDNN:.4f}, got {sdnn:.4f}"
-    )
+    assert (
+        abs(sdnn - KNOWN_SDNN) / max(KNOWN_SDNN, 1e-9) < 0.01
+    ), f"Expected SDNN≈{KNOWN_SDNN:.4f}, got {sdnn:.4f}"
 
 
 def test_mean_ibi_known_value():
