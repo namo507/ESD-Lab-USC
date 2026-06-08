@@ -13,24 +13,44 @@ You are a senior full-stack engineer, data-visualization architect, and accessib
 
 This is a **React + TypeScript** research dashboard for the Early Social Development (ESD) Lab at the University of South Carolina. The lab runs the **NANO Study** (Neurodevelopment of Autonomic and Neural Organization), a 5-year NIH R01 longitudinal study tracking 260 infants (VPT, ASIB, TD cohorts) across 36 months of corrected gestational age. The dashboard serves two personas: internal researchers/coordinators and external stakeholders (funders, clinical collaborators, families).
 
+Treat the following files as the authoritative live implementation anchors before changing anything:
+
+- `web/src/App.tsx` — route registration and lazy-loading via `react-router-dom`
+- `web/src/components/shell/Sidebar.tsx` — actual shell navigation groups and feature-gated nav items
+- `web/src/components/shell/AppShell.tsx` and `web/src/components/shell/AppShell.module.css` — shell layout, skip-nav behavior, Buddy/chat placement, and overlap constraints
+- `web/src/config/featureFlags.ts` — feature-flag registry; current convention is additive flags default to `false`
+- `web/src/api/client.ts`, `web/src/api/hooks.ts`, `web/src/api/schemas.ts`, `web/src/api/mockServer.ts` — frontend API contract and local mock wiring
+- `dashboard/server/live_dashboard_server.py` — live backend handler for `/api/*` and `/api/v2/*`
+- `dashboard/pipelines/build_dashboard_data.py` and `dashboard/pipelines/generate_synthetic_dashboard_data.py` — production + synthetic payload builders for `dashboard/data/dashboard_data.json`
+- `dashboard/context_skill/references/dashboard_schema.md`, `metrics.md`, `entities.md` — current data contract/reference docs
+- `web/src/components/shell/Buddy.tsx`, `web/src/components/shell/ChatDrawer.tsx`, `dashboard/assistant/local_chat_assistant.py`, and `web/src/lib/phiScrub.ts` — AI buddy assistant surfaces and PHI-safe prompt handling
+
 ### Existing architecture (do not rewrite, extend it)
 
 | Layer | Detail |
 |---|---|
 | Framework | React 18 + TypeScript, Vite build, Cloudflare Pages deploy |
 | State | Zustand (`useUi` store), `@tanstack/react-query` for server state |
-| Routing | React Router v6, all routes lazy-loaded in `web/src/App.tsx` |
-| Styling | CSS Modules per component, design token CSS vars (`--usc-garnet`, `--usc-gold`, etc.) |
-| Primitives | `Card`, `Button`, `SectionLabel`, `Gloss`, `Segmented`, `Tooltip`, `KPI`, `DataTable`, `Badge`, `Sparkline` in `web/src/components/primitives/` |
-| Charts | D3.js for SVG, Nivo (Sankey already bundled), Three.js (in v2 layer) |
-| Maps | React-Leaflet + D3 in `SdohMap.tsx` |
-| API | Mock server + `web/src/api/hooks.ts` + `web/src/api/schemas.ts` |
-| Feature flags | `useFeatureFlag(key)` + `isFeatureFlagEnabled(key)` hooks |
-| Backend data | `dashboard/data/dashboard_data.json` built by Python + R pipelines |
+| Routing | React Router v6, all routes lazy-loaded in `web/src/App.tsx`; current route style there uses absolute `/path` strings under `<AppShell>` |
+| Styling | CSS Modules per component, design token CSS vars in `web/src/styles/tokens.css` and `web/src/styles/global.css` |
+| Primitives | `Card`, `Button`, `SectionLabel`, `Gloss`, `Segmented`, `Tooltip`, `KPI`, `DataTable`, `Badge`, `Sparkline`, `DiffViewer`, `VersionTag` in `web/src/components/primitives/` |
+| Charts | D3.js, Recharts, and `@nivo/sankey` are installed. `@nivo/stream`, `three`, `@react-three/fiber`, `@react-three/drei`, and `@tanstack/react-virtual` are **not** currently installed — treat them as explicit additions or provide fallbacks |
+| Maps | React-Leaflet + D3 in `web/src/routes/SdohMap.tsx` |
+| API | `web/src/api/client.ts` + hooks/schemas + `web/src/api/mockServer.ts`, backed live by `dashboard/server/live_dashboard_server.py` |
+| Feature flags | `useFeatureFlag(key)` + `isFeatureFlagEnabled(key)` hooks; current flags default to `false` |
+| Backend data | `dashboard/data/dashboard_data.json` built by `dashboard/pipelines/build_dashboard_data.py` or `dashboard/pipelines/generate_synthetic_dashboard_data.py` |
 | Schema contract | `dashboard/context_skill/references/dashboard_schema.md` |
 | Metrics | `dashboard/context_skill/references/metrics.md` |
 | Entities | `dashboard/context_skill/references/entities.md` |
-| AI assistant | `Buddy.tsx` in `web/src/components/shell/` (LM Studio, phi scrubber) |
+| AI assistant | `Buddy.tsx` + `ChatDrawer.tsx` in `web/src/components/shell/`, live assistant vocabulary in `dashboard/assistant/local_chat_assistant.py`, browser-side prompt scrubbing in `web/src/lib/phiScrub.ts` |
+
+### Repo-grounded rules for this prompt
+
+1. Every new `/api/v2/*` surface must be wired in **four** places: `web/src/api/schemas.ts`, `web/src/api/hooks.ts`, `web/src/api/mockServer.ts`, and `dashboard/server/live_dashboard_server.py`.
+2. Shell navigation is owned by `web/src/components/shell/Sidebar.tsx`, not `AppShell.tsx`. Additive nav work belongs there.
+3. If a route or chart introduces new discovery copy, prompts, or hover explanations, update `Buddy.tsx`, `ChatDrawer.tsx`, and `local_chat_assistant.py` in the same change set.
+4. New UI must not overlap the current sidebar, top nav, footer, Buddy, chat drawer, or floating assistant FAB.
+5. Dark/light mode parity is mandatory. New gradients, font treatments, text colors, and surfaces must be token-driven and checked under `light`, `dark`, and `system` theme modes.
 
 ### Existing routes already built (do NOT recreate these)
 
@@ -55,7 +75,7 @@ This is a **React + TypeScript** research dashboard for the Early Social Develop
 
 ## 1. ROUTES TO CREATE
 
-Register **all 8** using the identical lazy-loading pattern already used in `web/src/App.tsx`:
+Register **all 8** using the identical lazy-loading pattern already used in `web/src/App.tsx`.
 
 ```tsx
 const CgaMilestoneRiver     = lazy(() => import("@/routes/CgaMilestoneRiver").then(m => ({ default: m.CgaMilestoneRiver })));
@@ -68,31 +88,33 @@ const PublicInsights        = lazy(() => import("@/routes/PublicInsights").then(
 const ExecutiveMode         = lazy(() => import("@/routes/ExecutiveMode").then(m => ({ default: m.ExecutiveMode })));
 ```
 
-Add these `<Route>` entries inside the existing `<Routes>` block under `<AppShell>`:
+Add these `<Route>` entries inside the existing `<Routes>` block under `<AppShell>`, using the same absolute-path style the live app already uses:
 
 ```tsx
-<Route path="cga-river"          element={<CgaMilestoneRiver />} />
-<Route path="county-comparator"  element={<CountyComparator />} />
-<Route path="participant-timeline" element={<ParticipantTimeline />} />
-<Route path="model-terrain"      element={<ModelConfidenceTerrain />} />
-<Route path="attrition-funnel"   element={<AttritionFunnel />} />
-<Route path="guided-explorer"    element={<GuidedExplorer />} />
-<Route path="public-insights"    element={<PublicInsights />} />
-<Route path="executive"          element={<ExecutiveMode />} />
+<Route path="/cga-river"            element={<CgaMilestoneRiver />} />
+<Route path="/county-comparator"    element={<CountyComparator />} />
+<Route path="/participant-timeline" element={<ParticipantTimeline />} />
+<Route path="/model-terrain"        element={<ModelConfidenceTerrain />} />
+<Route path="/attrition-funnel"     element={<AttritionFunnel />} />
+<Route path="/guided-explorer"      element={<GuidedExplorer />} />
+<Route path="/public-insights"      element={<PublicInsights />} />
+<Route path="/executive"            element={<ExecutiveMode />} />
 ```
 
-Add corresponding feature flags to the existing flags config:
+Add corresponding feature flags to `web/src/config/featureFlags.ts`, following the current repo convention of defaulting additive features to `false` until explicitly enabled:
 
 ```ts
-CGA_RIVER: true,
-COUNTY_COMPARATOR: true,
-PARTICIPANT_TIMELINE_V2: true,
-MODEL_CONFIDENCE_TERRAIN: true,
-ATTRITION_FUNNEL_V2: true,
-GUIDED_EXPLORER: true,
-PUBLIC_INSIGHTS: true,
-EXECUTIVE_MODE: true,
+CGA_RIVER: false,
+COUNTY_COMPARATOR: false,
+PARTICIPANT_TIMELINE_V2: false,
+MODEL_CONFIDENCE_TERRAIN: false,
+ATTRITION_FUNNEL_V2: false,
+GUIDED_EXPLORER: false,
+PUBLIC_INSIGHTS: false,
+EXECUTIVE_MODE: false,
 ```
+
+If any of these routes should surface in the shell nav, add them to `web/src/components/shell/Sidebar.tsx` in an additive group such as `Insights & Demos`; do **not** modify `AppShell.tsx` for nav items.
 
 ---
 
@@ -102,7 +124,7 @@ EXECUTIVE_MODE: true,
 A longitudinal stream/ribbon chart where x = month CGA and each flowing ribbon encodes how the **composition** of HDA phases (orienting / sustained / inattention / termination) evolves group-by-group across 0–36 months. Unlike the static TrajectoryChart, the composition morphs as a continuous ribbon rather than a single line, making it easy to see phase transitions at a glance.
 
 ### Data schema
-Add a new key to `dashboard_data.json`:
+Add a new key to `dashboard/data/dashboard_data.json`:
 
 ```json
 "hda_composition": {
@@ -116,25 +138,34 @@ Add a new key to `dashboard_data.json`:
 
 Time points follow the canonical invariant: `[0, 1, 2, 3, 6, 9, 12, 24, 36]`.
 
-Add a backend builder stub `build_hda_stream()` in `dashboard/pipelines/build_dashboard_data.py` with a TODO comment for real data wiring. Add a corresponding mock generator in `generate_synthetic_dashboard_data.py`.
+Add a backend builder stub `build_hda_stream()` in `dashboard/pipelines/build_dashboard_data.py` with a TODO comment for real data wiring. Add a corresponding mock generator in `dashboard/pipelines/generate_synthetic_dashboard_data.py`, and document the new key in `dashboard/context_skill/references/dashboard_schema.md`.
 
 ### Hook to create
-In `web/src/api/hooks.ts`, add:
+In `web/src/api/schemas.ts`, add an explicit `HdaCompositionResponse` schema. In `web/src/api/hooks.ts`, add:
 
 ```ts
 export function useHdaComposition() {
-  return useQuery({ queryKey: ["hda_composition"], queryFn: () => client.get("/hda-composition") });
+  return useQuery({
+    queryKey: ["v2", "hda-composition"],
+    queryFn: () => api.get("/api/v2/hda-composition", S.HdaCompositionResponse),
+    staleTime: 5 * 60_000,
+  });
 }
 ```
+
+Also add matching mock and live backend handlers in `web/src/api/mockServer.ts` and `dashboard/server/live_dashboard_server.py`.
 
 ### Component requirements
 
 Create `web/src/routes/CgaMilestoneRiver.tsx`:
 
 - Feature-flag gate: `useFeatureFlag("CGA_RIVER")` — return null if disabled
-- Use `@nivo/stream` (already bundled) for the stream/ribbon rendering
+- `@nivo/stream` is **not** currently installed in `web/package.json`. Either:
+  - install it explicitly, or
+  - implement the ribbon view as a D3 stacked-area / stream alternative using the existing `d3` bundle
+- The prompt must not claim that `@nivo/stream` is already bundled when it is not.
 - x-axis ticks locked to CGA months `[0, 1, 2, 3, 6, 9, 12, 24, 36]`
-- Color scheme: orienting = `var(--blue)`, sustained = `var(--green)`, inattention = `var(--purple)`, termination = `var(--red)` (matching existing HDA palette in `results.jsx`)
+- Color scheme: orienting = `var(--blue)`, sustained = `var(--green)`, inattention = `var(--purple)`, termination = `var(--red)` (matching the current HDA palette used in `web/src/components/charts/HDABarStack.tsx` and `web/src/routes/Results.tsx`)
 - Controls:
   - `Segmented` for group selection: All / VPT / ASIB / TD
   - `Segmented` for phase filter: All Phases / Sustained Only / Orienting Only
@@ -158,7 +189,7 @@ Create `web/src/routes/CgaMilestoneRiver.module.css` with:
 ## 3. WIDGET B — County Comparator (`CountyComparator.tsx`)
 
 ### What it is
-A side-by-side dual-county comparison view for SDoH context and participant engagement patterns, directly inspired by the CDC Autism Data Visualization Tool's dual area selection. Builds on the existing `SdohMap.tsx` Leaflet + D3 infrastructure rather than recreating it.
+A side-by-side dual-county comparison view for SDoH context and participant engagement patterns, directly inspired by the CDC Autism Data Visualization Tool's dual area selection. It should build on the existing `web/src/routes/SdohMap.tsx` Leaflet + D3 infrastructure rather than recreating it, but note that `SdohMap.tsx` is currently a route component, not an exported reusable subcomponent. Extract a minimal shared county-map piece first instead of importing the whole route directly.
 
 ### URL behavior
 `/county-comparator?left=richland&right=lexington`
@@ -189,7 +220,7 @@ Create `web/src/routes/CountyComparator.tsx`:
 - Loading / no-data graceful fallback
 
 ### Schema addition
-Add to `dashboard_data.json`:
+Add to `dashboard/data/dashboard_data.json`:
 
 ```json
 "county_profiles": [
@@ -206,7 +237,7 @@ Add to `dashboard_data.json`:
 ]
 ```
 
-Add mock generator stub in `generate_synthetic_dashboard_data.py`.
+Add mock generator stub in `dashboard/pipelines/generate_synthetic_dashboard_data.py` and document the key in `dashboard/context_skill/references/dashboard_schema.md`.
 
 ---
 
@@ -221,7 +252,7 @@ Create `web/src/routes/ParticipantTimeline.tsx`:
 
 - Feature-flag gate: `useFeatureFlag("PARTICIPANT_TIMELINE_V2")`
 - X-axis: CGA months `[0, 1, 2, 3, 6, 9, 12, 24, 36]` as fixed snap points; allow zooming between snap points
-- Y-axis: one swimlane row per participant (virtual scroll for large N, use `@tanstack/virtual` if available or standard windowing)
+- Y-axis: one swimlane row per participant (virtual scroll for large N, using standard windowing or an explicit install of `@tanstack/react-virtual` if you choose to add it; the package is not currently installed)
 - Event mark types (shape + color, never color alone):
   - ◆ Diamond = visit completed (green)
   - △ Triangle = QA flag (amber)
@@ -229,7 +260,7 @@ Create `web/src/routes/ParticipantTimeline.tsx`:
   - ✕ Cross = visit failed / withdrawn (red)
   - ○ Circle = REDCap milestone (slate)
 - Hover on any mark: compact `Tooltip` showing event type, date, CGA, and status
-- Click on any mark: opens `StageDrawer`-style side panel (reuse or extend existing `StageDrawer` component from pipeline)
+- Click on any mark: opens a `StageDrawer`-style side panel (reuse or extend the existing `web/src/components/pipeline/StageDrawer.tsx` component rather than inventing a separate drawer pattern)
 - Filters (top bar):
   - group (VPT / ASIB / TD / all)
   - QA status (pass / pending / reject / all)
@@ -248,16 +279,16 @@ Create `web/src/routes/ParticipantTimeline.tsx`:
 ## 5. WIDGET D — Model Confidence Terrain (`ModelConfidenceTerrain.tsx`)
 
 ### What it is
-Extends the existing `ShapExplorer` beeswarm into a 3D terrain / surface map of model confidence. X = feature value, Y = timeWindow (CGA), Z = mean |SHAP| contribution. Reveals the _interaction structure_ of model explanations across developmental time — not just feature ranking.
+Extends the existing `ShapExplorer` beeswarm into a terrain / surface map of model confidence. X = feature value, Y = timeWindow (CGA), Z = mean |SHAP| contribution. Reveals the _interaction structure_ of model explanations across developmental time — not just feature ranking.
 
 ### Component requirements
 
 Create `web/src/routes/ModelConfidenceTerrain.tsx`:
 
 - Feature-flag gate: `useFeatureFlag("MODEL_CONFIDENCE_TERRAIN")`
-- Read from existing `useShapValues()` hook; extend schema with a `timeWindow` dimension if not already present
+- Read from existing `useShapValues()` hook. The current `ShapValueRow` contract in `web/src/api/schemas.ts` already includes `timeWindow`, so do not duplicate that schema work unnecessarily.
 - Render modes (toggle via `Segmented`):
-  - **Terrain** — Three.js `PlaneGeometry` mesh with height-mapped Z values (reuse `three-d.jsx` approach from v2 folder)
+  - **Terrain** — only if you explicitly install `three`, `@react-three/fiber`, and `@react-three/drei`; there is no shipped `three-d.jsx` helper in the live `web/` codebase
   - **Contour** — D3 contour lines drawn on SVG
   - **Heatmap** — standard 2D color grid fallback for performance
 - Controls:
@@ -269,7 +300,7 @@ Create `web/src/routes/ModelConfidenceTerrain.tsx`:
   - "Higher terrain = stronger model influence at this combination of feature value and age"
   - "Use this chart to find where the model listens hardest in developmental time"
   - caution note about SHAP interpretation limits
-- Graceful 2D fallback if WebGL is unavailable (`canvas.getContext('webgl')` check on mount)
+- Graceful 2D fallback if WebGL or the optional 3D stack is unavailable. The prompt should prefer shipping Contour + Heatmap first and only enable Terrain when the 3D dependencies are actually present.
 - No PII exposed; all data is already de-identified SHAP aggregates
 
 ---
@@ -277,10 +308,10 @@ Create `web/src/routes/ModelConfidenceTerrain.tsx`:
 ## 6. WIDGET E — Attrition Funnel (`AttritionFunnel.tsx`)
 
 ### What it is
-A product-analytics-style retention funnel adapted for longitudinal infant research. Each stage = a visit or milestone gate. Shows N, % retained, % dropped, reason-code breakdown, and a trend over calendar time. Makes NIH R01 retention arguments visually immediate.
+A product-analytics-style retention funnel adapted for longitudinal infant research. Each stage = a visit or milestone gate. Shows N, % retained, % dropped, reason-code breakdown, and a trend over calendar time. Makes NIH R01 retention arguments visually immediate. This is additive alongside the existing `/attrition` route and should reuse its data sources where possible rather than recreating them.
 
 ### Data schema
-Add to `dashboard_data.json`:
+Add to `dashboard/data/dashboard_data.json`:
 
 ```json
 "attrition_funnel": {
@@ -310,6 +341,7 @@ Add to `dashboard_data.json`:
 Create `web/src/routes/AttritionFunnel.tsx`:
 
 - Feature-flag gate: `useFeatureFlag("ATTRITION_FUNNEL_V2")`
+- Reuse the existing `useAttritionFunnel()` hook and `/api/v2/attrition-funnel` endpoint when possible; only extend the schema/backend if `reason_codes`, `trend_by_quarter`, or subgroup detail are missing from the current contract
 - Main funnel chart:
   - horizontal bar funnel (wider = more participants)
   - label: stage name, N, % retained, drop-off arrow with % lost
@@ -404,7 +436,7 @@ Create `web/src/routes/GuidedExplorer.tsx`:
 | H4 | Which physiological features drive the model most at 3 months? | `ShapExplorer` | timeWindow=m3 |
 | H5 | How does attrition differ between cohort groups? | `AttritionFunnel` | subgroup=group |
 
-- After chart renders inline, show `Buddy` AI assistant narration bubble below: a 1–2 sentence plain-language interpretation of what the chart shows (stub the content if Buddy is not live)
+- After chart renders inline, show a Buddy/assistant-aligned narration bubble below: a 1–2 sentence plain-language interpretation of what the chart shows (stub the content if Buddy is not live). Also update `web/src/components/shell/Buddy.tsx`, `web/src/components/shell/ChatDrawer.tsx`, and `dashboard/assistant/local_chat_assistant.py` so the new hypothesis cards and destinations are discoverable through the existing assistant surfaces.
 - Include a "Start over" button that resets to card grid
 
 ---
@@ -419,7 +451,7 @@ A simplified, curated view for PIs, NIH program officers, and funders. Activated
 Create `web/src/routes/ExecutiveMode.tsx`:
 
 - Feature-flag gate: `useFeatureFlag("EXECUTIVE_MODE")`
-- Render a simplified AppShell wrapper that shows only: Overview, Results, PublicInsights, AttritionFunnel, Publications
+- Implement as an additive shell variant by extending `web/src/components/shell/AppShell.tsx` and `web/src/components/shell/Sidebar.tsx` or by creating a route-local wrapper that reuses their visual language. Do not fork the entire shell markup if a small variant prop can handle the executive nav.
 - Above the content: a banner: "Executive Summary View — Showing key study metrics only · [Exit]"
 - KPI row at top of every executive-mode page: Enrolled N / Target N / Visit Completion % / AUROC best model
 - "Export Executive Summary" button at top-right:
@@ -437,7 +469,7 @@ Create `web/src/routes/ExecutiveMode.tsx`:
 
 ## 10. ACCESSIBILITY IMPLEMENTATION (apply across ALL new work)
 
-Apply these accessibility fixes to every new component AND retroactively to the following existing components: `StatusDot`, `PipelineDAG`, `TrajectoryChart`, `ShapExplorer`, `SdohMap`, `AppShell`, `Tooltip`, `Button`, `Segmented`.
+Apply these accessibility fixes to every new component AND retroactively to the following existing files/components: `web/src/components/pipeline/StatusDot.tsx`, `web/src/components/pipeline/PipelineDAG.tsx`, `web/src/components/charts/TrajectoryChart.tsx`, `web/src/routes/ShapExplorer.tsx`, `web/src/routes/SdohMap.tsx`, `web/src/components/shell/AppShell.tsx`, `web/src/components/primitives/Tooltip.tsx`, `web/src/components/primitives/Button.tsx`, and `web/src/components/primitives/Segmented.tsx`.
 
 ### 10.1 Status and state indicators — not color alone
 
@@ -507,7 +539,14 @@ Add to every CSS module for interactive elements:
 
 ### 10.5 Skip navigation link
 
-In `web/src/components/shell/AppShell.tsx`, add as the very first child element:
+`AppShell.tsx` already ships a skip-link and `AppShell.module.css` already ships `.skipLink`. Strengthen the existing implementation rather than duplicating a second skip-nav block.
+
+Current target files:
+
+- `web/src/components/shell/AppShell.tsx`
+- `web/src/components/shell/AppShell.module.css`
+
+If you choose to normalize the target to `main-content`, do it like this:
 
 ```tsx
 <a
@@ -535,7 +574,7 @@ In `web/src/components/shell/AppShell.tsx`, add as the very first child element:
 }
 ```
 
-Also add `id="main-content"` to the main content region of AppShell.
+Do not leave both `#main` and `#main-content` paths active accidentally; keep one skip-target only.
 
 ### 10.6 ARIA live regions for real-time data
 
@@ -554,8 +593,8 @@ In `Overview.tsx`, wrap KPI values in live regions:
 
 - Minimum contrast for body text: **4.5:1** (WCAG AA normal text)
 - Minimum contrast for large text / icons: **3:1**
-- Any `fontSize < 12` in a chart that carries meaning must use `C.s600` or darker, not `C.s300/s400`
-- In all new CSS modules, define a `--text-muted` token that is verified ≥ 3:1 against the card background
+- Any `fontSize < 12` in a chart that carries meaning must use actual repo tokens such as `var(--slate-700)`, `var(--fg2)`, or darker — not nonexistent shorthand like `C.s600`
+- In all new CSS modules, either reuse existing muted tokens from `web/src/styles/tokens.css` / `global.css` or define a local `--text-muted` alias that is verified ≥ 3:1 against the card background in both themes
 
 ### 10.8 Chart accessibility summaries
 
@@ -577,6 +616,20 @@ interface ChartProps {
 ## 11. VISUAL + UX STYLE REQUIREMENTS
 
 Maintain the current ESD Lab visual identity (USC garnet, Source Serif 4, JetBrains Mono) while improving clarity and public-health legibility.
+
+Additional shell and theme constraints:
+
+- New routes should visually align with existing route modules such as `FeatureRoutes.module.css`, `Participants.module.css`, `Matlab.module.css`, and `Overview.tsx` rather than inventing a separate layout language.
+- Validate the new UI at the shell's practical widths (`1480`, `1280`, `1100`, `1024`) and on mobile so filters, helper drawers, Buddy, legends, and action bars do not overlap.
+- Any gradient headline, muted text, inverse badge, or glass panel must be token-driven and checked in `light`, `dark`, and `system` modes.
+- Buddy, chat drawer, and the floating assistant FAB already occupy the lower shell edge. Right drawers, helper panels, and executive banners must leave that space usable.
+
+### AI Buddy and shell-sync requirements
+
+- Every new route, helper drawer, hypothesis card, and executive banner that introduces new concepts must add matching `data-insight` copy in `web/src/components/shell/Buddy.tsx`.
+- Update `web/src/components/shell/ChatDrawer.tsx` fast paths and `dashboard/assistant/local_chat_assistant.py` route vocabulary so ESD Buddy can explain, deep-link, and narrate the new surfaces without hallucinating stale route names.
+- Add corresponding mock assistant/context behavior in `web/src/api/mockServer.ts` so local development, preview builds, and public demo flows stay coherent.
+- Preserve visual symmetry with the existing shell: use the same hero / control-row / card rhythm as the current operator routes, and confirm that any new side panels or banners do not push core content into overlap with Buddy or the shell chrome.
 
 ### Design principles
 - CDC-style: comparison-first, confidence-interval-aware, audience-segmented
@@ -601,7 +654,7 @@ Every chart component must render:
 - Page title: Source Serif 4, 32px, weight 600
 - Section heading: Source Serif 4, 24px, weight 600
 - Chart heading: Source Serif 4, 18px, weight 600
-- Body / helper: system-ui or Inter, 13–14px
+- Body / helper: `var(--font-sans)` (currently Source Sans 3), 13–14px
 - Mono labels, axis ticks: JetBrains Mono, 10–11px
 
 ---
@@ -610,10 +663,10 @@ Every chart component must render:
 
 Because this handles pediatric physiological research data:
 
-- All new routes that show participant-level detail MUST check for an `authorized` context or feature flag before rendering raw identifiers
+- The live frontend does not currently ship a generic `authorized` context. Participant-level routes should continue using only de-identified `NANO-####` identifiers by default, and any stronger gate must be added explicitly rather than assumed.
 - Public-facing routes (`PublicInsights`, `ExecutiveMode` in public export mode) must render only **aggregated** data — no participant IDs, no precise addresses, no raw ECG traces
 - Geographic data in `CountyComparator` and `PublicInsights` must use county-level granularity only — no ZIP codes, no census tract IDs that could narrow to < 20 participants
-- Add a `PHI_SCRUB_REQUIRED` comment wherever participant-level data is rendered, pointing to the existing `hipaa_utils.py` scrubber
+- Add a `PHI_SCRUB_REQUIRED` comment wherever participant-level data is rendered, pointing to `src/utils/hipaa_utils.py`. If any assistant prompt or narrative text is seeded from that route, also reference `web/src/lib/phiScrub.ts`.
 - Every new route file should begin with a comment block:
 
 ```tsx
@@ -662,7 +715,7 @@ web/src/
 │   │   ├── EventMark.tsx              ← geometric mark with tooltip
 │   │   └── TimelineAxis.tsx           ← shared CGA x-axis
 │   └── explainability/
-│       ├── TerrainSurface.tsx         ← Three.js terrain render
+│       ├── TerrainSurface.tsx         ← Three.js terrain render (only if the optional 3D stack is explicitly added)
 │       ├── ContourFallback.tsx        ← D3 contour 2D fallback
 │       └── ShapExplainerCard.tsx      ← plain-language card
 
@@ -678,11 +731,12 @@ dashboard/pipelines/
 
 Implement strictly in this sequence to respect data dependencies:
 
-1. **Schema additions** — add the 3 new JSON keys to `generate_synthetic_dashboard_data.py` and update `dashboard_schema.md`
-2. **Hook additions** — add `useHdaComposition`, `useCountyProfiles`, `useAttritionFunnel` to `web/src/api/hooks.ts` and `schemas.ts`
+0. **Dependency decision** — decide early whether to install `@nivo/stream`, `three`, `@react-three/fiber`, `@react-three/drei`, and/or `@tanstack/react-virtual`. If not, commit to D3 / Recharts / standard-windowing fallbacks instead of leaving runtime holes in the prompt.
+1. **Schema additions** — add the 3 new JSON keys to `dashboard/pipelines/generate_synthetic_dashboard_data.py`, update `dashboard/pipelines/build_dashboard_data.py`, and update `dashboard/context_skill/references/dashboard_schema.md`
+2. **API additions** — add matching schemas, hooks, mock responders, and live backend handlers for any new `/api/v2/*` surfaces. Reuse existing hooks such as `useAttritionFunnel()` and `useShapValues()` where possible instead of duplicating them
 3. **Feature flag additions** — register all 8 new flags
 4. **Shared new components** — `CountyCard`, `MirroredBarChart`, `SwimLane`, `EventMark`, `TimelineAxis`, `InsightSection`, `CdcStyleLine`
-5. **Accessibility fixes** — `StatusDot`, `Tooltip`, `AppShell` (skip nav), `Button`, `Segmented` focus states
+5. **Accessibility fixes** — `StatusDot`, `PipelineDAG`, `Tooltip`, existing `AppShell` skip-nav, `Button`, `Segmented`, and any clickable SVG chart nodes
 6. **Routes in priority order:**
    1. `CountyComparator`
    2. `CgaMilestoneRiver`
@@ -692,8 +746,9 @@ Implement strictly in this sequence to respect data dependencies:
    6. `PublicInsights`
    7. `ModelConfidenceTerrain`
    8. `ExecutiveMode`
-7. **Route registration** — add all 8 to `App.tsx`
-8. **Navigation wiring** — add to `AppShell` nav if needed; mark new/beta routes with a `Badge` chip
+7. **Route registration** — add all 8 to `web/src/App.tsx`
+8. **Navigation wiring** — add any shell links in `web/src/components/shell/Sidebar.tsx`, not `AppShell.tsx`; mark new/beta routes with a `Badge` chip if surfaced
+9. **AI assistant sync** — update `Buddy.tsx`, `ChatDrawer.tsx`, `web/src/api/mockServer.ts`, and `dashboard/assistant/local_chat_assistant.py` so the assistant understands the new routes and hypothesis flows
 
 ---
 
@@ -726,22 +781,26 @@ The implementation is complete and correct when:
 - [ ] All 8 routes compile cleanly with zero TypeScript errors
 - [ ] All 8 routes are registered in `App.tsx` and deep-linkable
 - [ ] All new routes are feature-flag gated
+- [ ] All new flags are added to `web/src/config/featureFlags.ts` with repo-consistent defaults (`false`)
 - [ ] New visual language is consistent with existing app tokens and typography
 - [ ] `CountyComparator` URL params sync (`?left=X&right=Y`)
 - [ ] `CgaMilestoneRiver` uses canonical CGA time points `[0,1,2,3,6,9,12,24,36]`
 - [ ] `AttritionFunnel` shows N, %, drop-off, and at least stub reason codes
 - [ ] `ParticipantTimeline` uses shape + color for event marks (not color alone)
-- [ ] `ModelConfidenceTerrain` gracefully degrades to 2D heatmap if WebGL unavailable
+- [ ] `ModelConfidenceTerrain` gracefully degrades to Contour/Heatmap if WebGL or optional 3D dependencies are unavailable
 - [ ] `PublicInsights` has no participant-level data and reads at a non-specialist level
 - [ ] `GuidedExplorer` pre-configures chart state from hypothesis card click
 - [ ] `ExecutiveMode` exports at least a stub PPTX via pptxgen
-- [ ] Skip-nav link added to `AppShell`
+- [ ] The existing skip-nav link in `AppShell` remains singular, keyboard reachable, and targets the correct main content id
 - [ ] `StatusDot` uses shape + color (not color alone)
 - [ ] All new SVG interactive elements are keyboard accessible
 - [ ] Tooltip persistence prop added and used in at least 3 chart components
 - [ ] All new routes have a PHI data-sensitivity comment block
-- [ ] `dashboard_schema.md` updated with the 3 new JSON keys
-- [ ] All new mock data generated in `generate_synthetic_dashboard_data.py`
+- [ ] `dashboard/context_skill/references/dashboard_schema.md` updated with the new JSON keys
+- [ ] All new mock data generated in `dashboard/pipelines/generate_synthetic_dashboard_data.py`
+- [ ] `web/src/api/mockServer.ts` and `dashboard/assistant/local_chat_assistant.py` are updated for the new routes and assistant prompts
+- [ ] New helper drawers, executive banners, and right-side panels do not overlap the existing sidebar, top nav, Buddy, chat drawer, or floating assistant FAB
+- [ ] New surfaces are readable and visually consistent in both light and dark mode
 
 ---
 
