@@ -2,10 +2,16 @@
  * TanStack Query hooks. One hook per endpoint; type-safe via Zod schemas.
  */
 import { useCallback, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import { api } from "./client";
 import * as S from "./schemas";
-import { z } from "zod";
+import { z, type ZodType } from "zod";
 import { fetchAssistantStatus } from "./chatApi";
 import {
   planPresentation,
@@ -20,6 +26,26 @@ const RunList = z.array(S.Run);
 const EpochList = z.array(S.Epoch);
 const RedcapEventList = z.array(S.RedcapEvent);
 const RunCreateResponse = z.object({ runId: z.string() });
+const PublicationTagList = z.array(S.PublicationTagCount);
+const DatasetSnapshotList = z.array(S.DatasetSnapshot);
+const AdminCapabilitiesResponse = S.AdminCapabilities;
+
+function queryString(params: Record<string, unknown> | undefined): string {
+  if (!params) return "";
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "" || value === "All") return;
+    if (Array.isArray(value)) {
+      value.forEach((entry) => {
+        if (entry !== undefined && entry !== null && entry !== "") search.append(key, String(entry));
+      });
+      return;
+    }
+    search.set(key, String(value));
+  });
+  const text = search.toString();
+  return text ? `?${text}` : "";
+}
 
 export function useStudySummary() {
   return useQuery({
@@ -127,6 +153,134 @@ export function useMatlabIntegration() {
     queryKey: ["matlab", "integration"],
     queryFn: () => api.get("/api/matlab/integration", S.MatlabIntegration),
     refetchInterval: 60_000,
+  });
+}
+
+export function useTableQuery<T>(
+  params: S.TableQueryParams,
+  schema: ZodType<T[]>,
+): UseQueryResult<S.PaginatedResponse<T>> {
+  const ResponseSchema = z.object({
+    rows: schema,
+    total: z.number().int(),
+    page: z.number().int(),
+    pageSize: z.number().int(),
+  });
+  return useQuery({
+    queryKey: ["table-query", params],
+    queryFn: () => api.post("/api/table/query", params, ResponseSchema),
+    staleTime: 30_000,
+  });
+}
+
+export function usePublications(
+  params?: S.PublicationQueryParams,
+): UseQueryResult<S.PublicationListResponse> {
+  return useQuery({
+    queryKey: ["publications", params ?? {}],
+    queryFn: () => api.get(`/api/publications${queryString(params)}`, S.PublicationListResponse),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePublication(pmid: string | undefined): UseQueryResult<S.Publication> {
+  return useQuery({
+    enabled: Boolean(pmid),
+    queryKey: ["publication", pmid],
+    queryFn: () => api.get(`/api/publications/${encodeURIComponent(pmid as string)}`, S.Publication),
+  });
+}
+
+export function usePublicationTags(): UseQueryResult<S.PublicationTagCount[]> {
+  return useQuery({
+    queryKey: ["publications", "tags"],
+    queryFn: () => api.get("/api/publications/tags", PublicationTagList),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePublicationSyncStatus(): UseQueryResult<S.SyncStatus> {
+  return useQuery({
+    queryKey: ["publications", "sync", "status"],
+    queryFn: () => api.get("/api/publications/sync/status", S.SyncStatus),
+    refetchInterval: 60_000,
+  });
+}
+
+export function useSyncPublications(): UseMutationResult<S.SyncStatus, unknown, void> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post("/api/publications/sync/trigger", {}, S.SyncStatus),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["publications"] });
+    },
+  });
+}
+
+export function useUpdatePublicationTags(
+  pmid: string | undefined,
+): UseMutationResult<S.Publication, unknown, { tags: string[] }> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => api.patch(`/api/publications/${encodeURIComponent(pmid as string)}/tags`, body, S.Publication),
+    onSuccess: (publication) => {
+      void qc.invalidateQueries({ queryKey: ["publication", pmid] });
+      void qc.invalidateQueries({ queryKey: ["publications"] });
+      qc.setQueryData(["publication", publication.pmid], publication);
+    },
+  });
+}
+
+export function useChangelog(
+  params?: S.ChangelogQueryParams,
+): UseQueryResult<S.PaginatedResponse<S.ChangelogEntry>> {
+  return useQuery({
+    queryKey: ["changelog", params ?? {}],
+    queryFn: () => api.get(`/api/changelog${queryString(params)}`, S.PaginatedResponse(S.ChangelogEntry)),
+    staleTime: 30_000,
+  });
+}
+
+export function useEntityHistory(
+  entityType: string,
+  entityId: string | undefined,
+): UseQueryResult<S.ChangelogEntry[]> {
+  return useQuery({
+    enabled: Boolean(entityId),
+    queryKey: ["changelog", entityType, entityId],
+    queryFn: () => api.get(`/api/changelog/${entityType}/${encodeURIComponent(entityId as string)}`, z.array(S.ChangelogEntry)),
+    staleTime: 30_000,
+  });
+}
+
+export function useSnapshots(): UseQueryResult<S.DatasetSnapshot[]> {
+  return useQuery({
+    queryKey: ["snapshots"],
+    queryFn: () => api.get("/api/snapshots", DatasetSnapshotList),
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateSnapshot(): UseMutationResult<
+  S.DatasetSnapshot,
+  unknown,
+  { tag: string; description: string }
+> {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body) => api.post("/api/snapshots", body, S.DatasetSnapshot),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["snapshots"] });
+      void qc.invalidateQueries({ queryKey: ["changelog"] });
+    },
+  });
+}
+
+export function useAdminCapabilities(): UseQueryResult<S.AdminCapabilities> {
+  return useQuery({
+    queryKey: ["admin", "capabilities"],
+    queryFn: () => api.get("/api/admin/capabilities", AdminCapabilitiesResponse),
+    staleTime: 60_000,
   });
 }
 

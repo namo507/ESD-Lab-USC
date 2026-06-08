@@ -1,0 +1,145 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding: var(--s-32);
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.eyebrow {
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--fg1);
+  font-family: var(--font-serif);
+  font-size: var(--text-h1);
+  font-weight: var(--w-semibold);
+  line-height: var(--lh-heading);
+}
+
+.metaLine,
+.tags,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  flex-wrap: wrap;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-12);
+}
+
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  color: var(--fg2);
+  font-size: var(--text-small);
+}
+
+.label {
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+}
+
+.text {
+  color: var(--fg2);
+  font-size: var(--text-small);
+  line-height: var(--lh-body);
+}
+
+.authors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-8);
+}
+
+.author {
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: var(--s-8);
+}
+
+.codeBlock {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  color: var(--fg2);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  padding: var(--s-12);
+  white-space: pre-wrap;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-8);
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.input {
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  color: var(--fg1);
+  font: inherit;
+  padding: var(--s-8);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: var(--s-8);
+  text-align: left;
+}
+
+.table th {
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: var(--s-16);
+  }
+
+  .grid,
+  .authors,
+  .editGrid {
+    grid-template-columns: 1fr;
+  }
+}

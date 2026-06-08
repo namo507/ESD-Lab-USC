@@ -11,3 +11,8 @@ export { Segmented } from "./Segmented";
 export type { SegmentedOption } from "./Segmented";
 export { Sparkline } from "./Sparkline";
 export { Tooltip } from "./Tooltip";
+export { DataTable } from "./DataTable";
+export type { DataTableProps, DataTableToolbarContext, PaginationBarProps } from "./DataTable";
+export { DiffViewer } from "./DiffViewer";
+export type { DiffViewerProps } from "./DiffViewer";
+export { VersionTag } from "./VersionTag";

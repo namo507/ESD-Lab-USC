@@ -19,6 +19,7 @@ import {
   useCohortSwimmer,
   useEcgQualitySummary,
   useRedcapCompleteness,
+  usePublicationSyncStatus,
 } from "@/api/hooks";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
@@ -52,6 +53,8 @@ export function Overview() {
   const { data: runs = [] } = useRuns(20);
   const { data: participants = [] } = useParticipants();
   const { data: traj } = useTrajectory("rmssd");
+  const { data: pubSyncStatus } = usePublicationSyncStatus();
+  const publicationsEnabled = useFeatureFlag("PUBLICATIONS_FEED");
   const readingsLibrary = useReadingsLibrary();
   const liveReadings = useMemo(
     () => normalizeReadingLibrary(readingsLibrary.data),
@@ -145,6 +148,21 @@ export function Overview() {
       decimals: 1,
     },
   ];
+
+  if (publicationsEnabled) {
+    kpis.push({
+      id: "publications",
+      insightId: "kpi-publications",
+      label: "Publications",
+      value: pubSyncStatus?.total ?? 0,
+      unit: "indexed",
+      sub: `Last sync: ${pubSyncStatus?.last_sync ?? "never"}`,
+      delta: pubSyncStatus?.new_this_week ? `+${pubSyncStatus.new_this_week} this week` : "up to date",
+      deltaKind: "up",
+      spark: [0, 1, 1, 2, 2, pubSyncStatus?.total ?? 2],
+      accent: "sage",
+    });
+  }
 
   return (
     <div className="flex flex-col gap-7 p-9">

@@ -48,6 +48,13 @@ import type {
   CascadePathsResponse,
   EcoValidityResponse,
   StreamCoverageResponse,
+  Publication,
+  PublicationListResponse,
+  PublicationTagCount,
+  SyncStatus,
+  ChangelogEntry,
+  DatasetSnapshot,
+  AdminCapabilities,
 } from "./schemas";
 
 const STUDY: StudySummary = {
@@ -128,6 +135,180 @@ const REDCAP_EVENTS: RedcapEvent[] = [
   { ts: "08:44", form: "consent_v4", n: 1, status: "ok", note: "pushed" },
   { ts: "08:30", form: "medical_history_v1", n: 2, status: "fail", note: "token expired · retry" },
 ];
+
+type MockTableName = "participants" | "runs" | "stages" | "redcap_events";
+type MockRow = Record<string, unknown>;
+
+let PUBLICATIONS: Publication[] = [
+  {
+    pmid: "39000001",
+    title: "Autonomic and attentional pathways in the emergence of autism in infancy",
+    authors: [
+      { last: "Bradshaw", first: "Jessica", initials: "J", affiliation: "University of South Carolina" },
+      { last: "Platt", first: "Emma", initials: "E", affiliation: "University of South Carolina" },
+    ],
+    journal: "Advances in Child Development and Behavior",
+    volume: "68",
+    issue: null,
+    year: 2025,
+    month: 5,
+    pages: "101-142",
+    doi: "10.1016/bs.acdb.2025.01.004",
+    abstract: "Developmental cascade review of autonomic regulation, heart-defined attention, autism, and infancy, with attention to ECG-derived markers and longitudinal interpretation.",
+    pub_type: "Review",
+    mesh_terms: ["Autism Spectrum Disorder", "Infant", "Autonomic Nervous System"],
+    keywords: ["autism", "infant", "heart rate variability", "developmental cascade"],
+    tags: ["autism-asd", "hrv-rsa", "longitudinal", "review"],
+    apa_citation: "Bradshaw, J., & Platt, E. (2025). Autonomic and attentional pathways in the emergence of autism in infancy. Advances in Child Development and Behavior, 68, 101-142. https://doi.org/10.1016/bs.acdb.2025.01.004",
+    citation_count: 2,
+    source: "manual",
+    epub_date: "2025-05-01",
+    updated_at: new Date().toISOString(),
+  },
+  {
+    pmid: "39000002",
+    title: "Heart-defined attention and respiratory sinus arrhythmia in very preterm infants",
+    authors: [
+      { last: "Bradshaw", first: "Jessica", initials: "J", affiliation: "University of South Carolina" },
+      { last: "Gupta", first: "Rahul", initials: "R", affiliation: "ESD Lab, University of South Carolina" },
+    ],
+    journal: "Developmental Psychobiology",
+    volume: "67",
+    issue: "2",
+    year: 2026,
+    month: 2,
+    pages: "44-59",
+    doi: "10.1002/dev.99999",
+    abstract: "Very preterm infants showed longitudinal differences in RSA, RMSSD, and sustained attention windows across de-identified NANO visits.",
+    pub_type: "Journal Article",
+    mesh_terms: ["Infant, Premature", "Heart Rate"],
+    keywords: ["preterm", "rsa", "rmssd", "nicu"],
+    tags: ["preterm", "hrv-rsa", "ecg-cardiac"],
+    apa_citation: "Bradshaw, J., & Gupta, R. (2026). Heart-defined attention and respiratory sinus arrhythmia in very preterm infants. Developmental Psychobiology, 67(2), 44-59. https://doi.org/10.1002/dev.99999",
+    citation_count: 0,
+    source: "manual",
+    epub_date: null,
+    updated_at: new Date().toISOString(),
+  },
+];
+
+let PUBLICATION_SYNC: SyncStatus = {
+  last_sync: new Date().toISOString(),
+  total: PUBLICATIONS.length,
+  inserted: 0,
+  updated: 0,
+  new_this_week: PUBLICATIONS.length,
+  errors: [],
+};
+
+const ADMIN_CAPABILITIES: AdminCapabilities = {
+  canEditPublicationTags: false,
+  canCreateSnapshots: false,
+  canTriggerPublicationSync: true,
+};
+
+const CHANGELOG: ChangelogEntry[] = [
+  {
+    id: "chg_mock_1",
+    entity_type: "participant",
+    entity_id: "NANO-0102",
+    action: "UPDATE",
+    actor: "system",
+    actor_role: "system",
+    changed_fields: { qa: ["pending", "pass"], dob: ["[REDACTED]", "[REDACTED]"] },
+    before: { qa: "pending", dob: "[REDACTED]" },
+    after: { qa: "pass", dob: "[REDACTED]" },
+    session_id: "mock-session-0102",
+    note: "Demo changelog event from de-identified dashboard import.",
+    ts: new Date().toISOString(),
+    version_tag: "pre-manuscript-freeze-2026-06",
+  },
+  {
+    id: "chg_mock_2",
+    entity_type: "publication",
+    entity_id: "39000001",
+    action: "INSERT",
+    actor: "cron",
+    actor_role: "system",
+    changed_fields: null,
+    before: {},
+    after: { title: PUBLICATIONS[0]?.title ?? "" },
+    session_id: "mock-session-pub",
+    note: "Publication indexed.",
+    ts: new Date(Date.now() - 86_400_000).toISOString(),
+    version_tag: null,
+  },
+];
+
+let SNAPSHOTS: DatasetSnapshot[] = [
+  {
+    id: "snap_mock_1",
+    tag: "pre-manuscript-freeze-2026-06",
+    description: "Mock checkpoint for the public dashboard build.",
+    created_by: "system",
+    created_at: new Date().toISOString(),
+    row_counts: { participants: PARTICIPANTS.length, runs: RUNS.length, epochs: 0 },
+    checksum: "f".repeat(64),
+  },
+];
+
+function tableRows(table: MockTableName): MockRow[] {
+  if (table === "participants") return PARTICIPANTS.map((row, idx) => ({ ...row, version_tag: idx < 4 ? "pre-manuscript-freeze-2026-06" : null }));
+  if (table === "runs") return RUNS.map((row, idx) => ({ ...row, version_tag: idx === 0 ? "pre-manuscript-freeze-2026-06" : null }));
+  if (table === "stages") return STAGES.map((row) => ({ ...row, version_tag: row.id === "merge" ? "pre-manuscript-freeze-2026-06" : null }));
+  return REDCAP_EVENTS.map((row) => ({ ...row, version_tag: null }));
+}
+
+function mockTableQuery(body: unknown): { rows: MockRow[]; total: number; page: number; pageSize: number } {
+  const payload = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const table = payload.table as MockTableName;
+  if (!["participants", "runs", "stages", "redcap_events"].includes(table)) {
+    return { rows: [], total: 0, page: 0, pageSize: 25 };
+  }
+  const page = typeof payload.page === "number" ? payload.page : 0;
+  const pageSize = typeof payload.pageSize === "number" ? payload.pageSize : 25;
+  const filters = (payload.filters && typeof payload.filters === "object" ? payload.filters : {}) as Record<string, unknown>;
+  let rows = tableRows(table);
+  Object.entries(filters).forEach(([key, value]) => {
+    const needle = String(value ?? "").toLowerCase();
+    if (!needle) return;
+    rows = rows.filter((row) => String(row[key] ?? "").toLowerCase().includes(needle));
+  });
+  const sortBy = typeof payload.sortBy === "string" ? payload.sortBy : "";
+  const sortDir = payload.sortDir === "asc" ? 1 : -1;
+  if (sortBy) {
+    rows = rows.slice().sort((a, b) => String(a[sortBy] ?? "").localeCompare(String(b[sortBy] ?? "")) * sortDir);
+  }
+  const total = rows.length;
+  return { rows: rows.slice(page * pageSize, page * pageSize + pageSize), total, page, pageSize };
+}
+
+function publicationTagCounts(): PublicationTagCount[] {
+  const counts = new Map<string, number>();
+  PUBLICATIONS.forEach((pub) => pub.tags.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1)));
+  return Array.from(counts, ([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+function mockPublications(searchParams: URLSearchParams): PublicationListResponse {
+  let rows = PUBLICATIONS.slice();
+  const yearMin = Number(searchParams.get("yearMin") || "0");
+  const yearMax = Number(searchParams.get("yearMax") || "9999");
+  const pubType = searchParams.get("pubType");
+  const search = (searchParams.get("search") || "").toLowerCase();
+  const tags = searchParams.getAll("tag");
+  rows = rows.filter((pub) => pub.year >= yearMin && pub.year <= yearMax);
+  if (pubType && pubType !== "All") rows = rows.filter((pub) => pub.pub_type === pubType);
+  if (search) {
+    rows = rows.filter((pub) =>
+      [pub.title, pub.abstract ?? "", pub.authors.map((author) => author.last).join(" ")]
+        .join(" ")
+        .toLowerCase()
+        .includes(search),
+    );
+  }
+  if (tags.length) rows = rows.filter((pub) => pub.tags.some((tag) => tags.includes(tag)));
+  return { publications: rows, total: rows.length, page: 0, pageSize: 50, tag_counts: publicationTagCounts() };
+}
 
 const MATLAB_INTEGRATION: MatlabIntegration = {
   manifest: {
@@ -839,7 +1020,19 @@ function mockAssistantReply(message: string): string {
   }
 
   if (q.includes("new feature") || q.includes("new route") || q.includes("feature surface")) {
-    return "The expanded NANO surfaces include RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Matrix, Attachment Heatmap, and the Dynamics & Dyads layer: co-regulation, phase portrait, CVA theater, HR deceleration, still-face suppression, HDA bypass, passport, archetypes, cascade simulation, eco-validity, and stream coverage.";
+    return "The expanded NANO surfaces include Data Explorer, Publications, Change History, RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Matrix, Attachment Heatmap, and the Dynamics & Dyads layer.";
+  }
+
+  if (q.includes("data explorer") || q.includes("sql") || q.includes("table")) {
+    return "The Data Explorer route exposes four de-identified virtual tables: participants, runs, stages, and REDCap events. It supports sorting, hover column filters, pagination, column visibility, and CSV export of the currently filtered rows only.";
+  }
+
+  if (q.includes("publication") || q.includes("pubmed") || q.includes("citation") || q.includes("bibtex")) {
+    return "The Publications route indexes PubMed/ORCID-style records, applies deterministic topic tags, stores APA citations, and can export the filtered list as BibTeX. Manual sync is available from the route, while tag editing stays behind an admin capability.";
+  }
+
+  if (q.includes("changelog") || q.includes("change history") || q.includes("snapshot")) {
+    return "The Change History route shows de-identified audit events as a timeline with filters, diff viewing, and dataset snapshot checkpoints. PHI fields are redacted before entries reach the frontend.";
   }
 
   if (q.includes("co-regulation") || q.includes("dyad") || q.includes("coregulation")) {
@@ -1155,6 +1348,85 @@ export function installMockServer() {
     if (p === "/api/runs" && method === "GET") return reply(RUNS);
     if (p === "/api/runs" && method === "POST") return reply({ runId: `run_2026_${Math.floor(Math.random() * 999)}_x` }, 201);
     if (p === "/api/participants") return reply(PARTICIPANTS);
+    if (p === "/api/admin/capabilities") return reply(ADMIN_CAPABILITIES);
+    if (p === "/api/table/query" && method === "POST") {
+      const payload = (await new Response(init?.body as BodyInit).json()) as unknown;
+      return reply(mockTableQuery(payload));
+    }
+    if (p === "/api/publications" && method === "GET") return reply(mockPublications(u.searchParams));
+    if (p === "/api/publications/tags" && method === "GET") return reply(publicationTagCounts());
+    if (p === "/api/publications/sync/status" && method === "GET") return reply(PUBLICATION_SYNC);
+    if (p === "/api/publications/sync/trigger" && method === "POST") {
+      PUBLICATION_SYNC = {
+        last_sync: new Date().toISOString(),
+        total: PUBLICATIONS.length,
+        inserted: 0,
+        updated: PUBLICATIONS.length,
+        new_this_week: PUBLICATIONS.length,
+        errors: [],
+      };
+      return reply(PUBLICATION_SYNC);
+    }
+    const publicationTags = p.match(/^\/api\/publications\/([^/]+)\/tags$/);
+    if (publicationTags && method === "PATCH") {
+      const identifier = decodeURIComponent(publicationTags[1] as string);
+      const body = (await new Response(init?.body as BodyInit).json()) as { tags?: string[] };
+      const idx = PUBLICATIONS.findIndex((pub) => pub.pmid === identifier || pub.doi === identifier);
+      if (idx < 0) return reply({ error: "not found" }, 404);
+      const next = { ...PUBLICATIONS[idx]!, tags: body.tags ?? [], updated_at: new Date().toISOString() };
+      PUBLICATIONS = PUBLICATIONS.map((pub, pubIdx) => pubIdx === idx ? next : pub);
+      return reply(next);
+    }
+    const publicationDetail = p.match(/^\/api\/publications\/([^/]+)$/);
+    if (publicationDetail && method === "GET") {
+      const identifier = decodeURIComponent(publicationDetail[1] as string);
+      const pub = PUBLICATIONS.find((row) => row.pmid === identifier || row.doi === identifier);
+      return pub ? reply(pub) : reply({ error: "not found" }, 404);
+    }
+    if (p === "/api/changelog" && method === "GET") {
+      let rows = CHANGELOG.slice();
+      const entityType = u.searchParams.get("entity_type");
+      const action = u.searchParams.get("action");
+      const versionTag = u.searchParams.get("version_tag");
+      const search = (u.searchParams.get("search") || "").toLowerCase();
+      if (entityType) rows = rows.filter((row) => row.entity_type === entityType);
+      if (action) rows = rows.filter((row) => row.action === action);
+      if (versionTag) rows = rows.filter((row) => row.version_tag === versionTag);
+      if (search) rows = rows.filter((row) => (row.note ?? "").toLowerCase().includes(search));
+      return reply({ rows, total: rows.length, page: 0, pageSize: 50 });
+    }
+    const changelogDiff = p.match(/^\/api\/changelog\/diff\/([^/]+)$/);
+    if (changelogDiff && method === "GET") {
+      const entry = CHANGELOG.find((row) => row.id === changelogDiff[1]);
+      return entry ? reply(entry) : reply({ error: "not found" }, 404);
+    }
+    const entityHistory = p.match(/^\/api\/changelog\/([^/]+)\/([^/]+)$/);
+    if (entityHistory && method === "GET") {
+      const entityType = decodeURIComponent(entityHistory[1] as string);
+      const entityId = decodeURIComponent(entityHistory[2] as string);
+      return reply(CHANGELOG.filter((row) => row.entity_type === entityType && row.entity_id === entityId));
+    }
+    if (p === "/api/snapshots" && method === "GET") return reply(SNAPSHOTS);
+    if (p === "/api/snapshots" && method === "POST") {
+      const body = (await new Response(init?.body as BodyInit).json()) as { tag?: string; description?: string };
+      const snapshot: DatasetSnapshot = {
+        id: `snap_${Math.random().toString(36).slice(2, 9)}`,
+        tag: body.tag ?? "snapshot",
+        description: body.description ?? null,
+        created_by: "mock-admin",
+        created_at: new Date().toISOString(),
+        row_counts: { participants: PARTICIPANTS.length, runs: RUNS.length, epochs: 0 },
+        checksum: Math.random().toString(16).slice(2).padEnd(64, "0"),
+      };
+      SNAPSHOTS = [snapshot, ...SNAPSHOTS.filter((row) => row.tag !== snapshot.tag)];
+      return reply(snapshot, 201);
+    }
+    const snapshotExport = p.match(/^\/api\/snapshots\/([^/]+)\/export$/);
+    if (snapshotExport && method === "GET") {
+      const tag = decodeURIComponent(snapshotExport[1] as string);
+      const snapshot = SNAPSHOTS.find((row) => row.tag === tag);
+      return snapshot ? reply({ snapshot, data: { participants: PARTICIPANTS, runs: RUNS, publications: PUBLICATIONS } }) : reply({ error: "not found" }, 404);
+    }
     if (p === "/api/v2/rsa-trajectories") return reply(makeRsaTrajectories(u.searchParams.get("age") ?? "adjusted"));
     if (p === "/api/v2/redcap-completeness") return reply(REDCAP_COMPLETENESS);
     if (p === "/api/v2/cohort-swimmer") return reply(COHORT_SWIMMER);

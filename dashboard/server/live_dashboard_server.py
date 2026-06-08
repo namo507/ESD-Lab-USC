@@ -31,7 +31,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -44,10 +44,12 @@ from dashboard.k8s_pipeline import cluster_topology_payload
 from dashboard.k8s_pipeline import pipeline_status_payload
 from dashboard.k8s_pipeline import readings_freshness_payload
 from dashboard.k8s_pipeline.ledger import read_json as read_optional_json
+from dashboard.server import data_features
 from src.utils.logging_utils import get_pipeline_logger
 
 DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
+AUDIT_LOG_PATH = DATA_DIR / "hipaa_access.log"
 SPA_BUILD_DIR = PROJECT_ROOT / "web" / "build"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
 SPA_ROUTE_PREFIXES = (
@@ -82,6 +84,9 @@ SPA_ROUTE_PREFIXES = (
     "/cascade-sim",
     "/eco-validity",
     "/stream-coverage",
+    "/data-explorer",
+    "/publications",
+    "/changelog",
 )
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
@@ -1773,6 +1778,92 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self._readings_library_payload())
             return
 
+        if request_path == "/api/admin/capabilities":
+            self._send_json(data_features.admin_capabilities())
+            return
+
+        if request_path == "/api/publications/tags":
+            self._send_json(data_features.publication_tags())
+            return
+
+        if request_path == "/api/publications/sync/status":
+            self._send_json(data_features.get_sync_status())
+            return
+
+        if request_path == "/api/publications":
+            query = parse_qs(urlparse(self.path).query)
+            self._send_json(
+                data_features.list_publications(
+                    data_features.parse_query_params(query)
+                )
+            )
+            return
+
+        if request_path.startswith("/api/publications/"):
+            identifier = request_path[len("/api/publications/") :].strip("/")
+            publication = data_features.get_publication(
+                unquote(identifier)
+            )
+            if publication is None:
+                self._send_json(
+                    {"error": "Publication not found"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+            self._send_json(publication)
+            return
+
+        if request_path.startswith("/api/changelog/diff/"):
+            change_id = request_path[len("/api/changelog/diff/") :].strip("/")
+            entry = data_features.changelog_diff(change_id)
+            if entry is None:
+                self._send_json(
+                    {"error": "Change entry not found"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+            self._send_json(entry)
+            return
+
+        if request_path.startswith("/api/changelog/"):
+            parts = request_path[len("/api/changelog/") :].strip("/").split("/")
+            if len(parts) == 2:
+                self._send_json(
+                    data_features.entity_history(
+                        unquote(parts[0]),
+                        unquote(parts[1]),
+                    )
+                )
+                return
+
+        if request_path == "/api/changelog":
+            query = parse_qs(urlparse(self.path).query)
+            self._send_json(
+                data_features.list_changelog(data_features.parse_query_params(query))
+            )
+            return
+
+        if request_path.startswith("/api/snapshots/") and request_path.endswith(
+            "/export"
+        ):
+            tag = request_path[len("/api/snapshots/") : -len("/export")].strip("/")
+            payload = data_features.export_snapshot(
+                unquote(tag),
+                _dashboard_payload(),
+            )
+            if payload is None:
+                self._send_json(
+                    {"error": "Snapshot not found"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+            self._send_json(payload)
+            return
+
+        if request_path == "/api/snapshots":
+            self._send_json(data_features.list_snapshots())
+            return
+
         if request_path.startswith("/api/v2/"):
             self._handle_v2_api(request_path)
             return
@@ -1795,6 +1886,22 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         request_path = urlparse(self.path).path
         if request_path == "/api/assistant/chat":
             self._handle_stream_chat()
+            return
+
+        if request_path == "/api/table/query":
+            self._handle_table_query()
+            return
+
+        if request_path == "/api/publications/sync/trigger":
+            self._send_json(data_features.sync_publications())
+            return
+
+        if request_path == "/api/snapshots":
+            self._handle_create_snapshot()
+            return
+
+        if request_path == "/api/audit":
+            self._handle_audit()
             return
 
         if request_path == "/api/presentation/jobs":
@@ -1831,6 +1938,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 {"error": f"Unexpected chat failure: {exc}"},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
+
+    def do_PATCH(self) -> None:
+        request_path = urlparse(self.path).path
+        if request_path.startswith("/api/publications/") and request_path.endswith(
+            "/tags"
+        ):
+            identifier = request_path[
+                len("/api/publications/") : -len("/tags")
+            ].strip("/")
+            self._handle_update_publication_tags(unquote(identifier))
+            return
+        self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
 
     def translate_path(self, path: str) -> str:
         parsed_path = urlparse(path).path
@@ -1874,7 +1993,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def _send_json(
         self,
-        payload: dict[str, Any],
+        payload: Any,
         *,
         status: int | HTTPStatus = HTTPStatus.OK,
     ) -> None:
@@ -1885,6 +2004,106 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _handle_table_query(self) -> None:
+        try:
+            payload = self._read_json_body()
+            self._send_json(
+                data_features.query_virtual_table(payload, _dashboard_payload())
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("Table query failed")
+            self._send_json(
+                {"error": f"Unexpected table query failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def _handle_create_snapshot(self) -> None:
+        try:
+            payload = self._read_json_body()
+            tag = str(payload.get("tag") or "").strip()
+            description = str(payload.get("description") or "").strip()
+            if not data_features.is_safe_snapshot_tag(tag):
+                self._send_json(
+                    {"error": "Snapshot tag must be a lowercase slug."},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+            self._send_json(
+                data_features.create_snapshot(
+                    tag,
+                    description,
+                    payload=_dashboard_payload(),
+                ),
+                status=HTTPStatus.CREATED,
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("Snapshot creation failed")
+            self._send_json(
+                {"error": f"Unexpected snapshot failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def _handle_update_publication_tags(self, identifier: str) -> None:
+        try:
+            payload = self._read_json_body()
+            raw_tags = payload.get("tags") or []
+            if not isinstance(raw_tags, list):
+                self._send_json(
+                    {"error": "tags must be an array"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+            publication = data_features.update_publication_tags(
+                identifier,
+                [str(tag) for tag in raw_tags],
+            )
+            if publication is None:
+                self._send_json(
+                    {"error": "Publication not found"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+            self._send_json(publication)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("Publication tag update failed")
+            self._send_json(
+                {"error": f"Unexpected tag update failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def _handle_audit(self) -> None:
+        try:
+            payload = self._read_json_body()
+            action = str(payload.get("action") or "")
+            ts = str(payload.get("ts") or datetime.now().isoformat(timespec="seconds"))
+            scope = str(payload.get("scope") or "")
+            detail = payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
+            AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with AUDIT_LOG_PATH.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "ts": ts,
+                            "action": action,
+                            "scope": scope,
+                            "detail": detail,
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+        except Exception as exc:  # pragma: no cover - best effort audit path
+            logger.warning("Audit write failed: %s", exc)
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
 
     def _assistant_status_payload(self) -> dict[str, Any]:
         payload = self.assistant.get_status()

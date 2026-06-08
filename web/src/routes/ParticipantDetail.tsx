@@ -1,19 +1,28 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Gloss, Icon, KPI, SectionLabel, Tooltip } from "@/components/primitives";
 import { HdaTimeline } from "@/components/charts/HdaTimeline";
-import { useHdaSession, useParticipant } from "@/api/hooks";
+import { useEntityHistory, useHdaSession, useParticipant } from "@/api/hooks";
 import { ecgPath } from "@/lib/ecgPath";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
-import type { GroupCode, ParticipantDetail as ParticipantDetailType, VisitId } from "@/api/schemas";
+import type { ChangelogAction, GroupCode, ParticipantDetail as ParticipantDetailType, VisitId } from "@/api/schemas";
 import styles from "./ParticipantDetail.module.css";
 
 const VISITS: VisitId[] = ["nicu_dc", "cga_3mo", "cga_6mo", "cga_9mo", "cga_12mo", "cga_18mo", "cga_24mo"];
 const GROUP_KIND: Record<GroupCode, "vpt" | "asib" | "td"> = { VPT: "vpt", ASIB: "asib", TD: "td" };
+const ACTION_KIND: Record<ChangelogAction, "ok" | "pending" | "fail" | "info" | "neutral"> = {
+  INSERT: "ok",
+  UPDATE: "pending",
+  DELETE: "fail",
+  IMPORT: "info",
+  SYNC: "neutral",
+  QA_OVERRIDE: "pending",
+};
 
 export function ParticipantDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
+  const showChangelog = useFeatureFlag("DATA_CHANGELOG");
   const { data: p, isLoading } = useParticipant(id);
 
   if (isLoading || !p) {
@@ -172,6 +181,8 @@ export function ParticipantDetail() {
           </ul>
         </Card>
       </div>
+
+      {showChangelog && <ParticipantHistory participantId={p.id} />}
     </div>
   );
 }
@@ -192,5 +203,52 @@ function HdaPreview({ participant }: { participant: ParticipantDetailType }) {
       </div>
       <HdaTimeline rows={rows} cursor={120} compact />
     </div>
+  );
+}
+
+function relativeTime(ts: string): string {
+  const delta = Date.now() - new Date(ts).getTime();
+  if (!Number.isFinite(delta)) return ts;
+  const minutes = Math.max(0, Math.round(delta / 60_000));
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+function ParticipantHistory({ participantId }: { participantId: string }) {
+  const history = useEntityHistory("participant", participantId);
+  const rows = history.data ?? [];
+  return (
+    <Card pad={20}>
+      <details open>
+        <summary className={styles.historySummary}>
+          <SectionLabel>Change History</SectionLabel>
+        </summary>
+        <div className={styles.historyWrap}>
+          <table className={styles.historyTable}>
+            <thead>
+              <tr><th>When</th><th>Action</th><th>By</th><th>Fields Changed</th><th>Note</th></tr>
+            </thead>
+            <tbody>
+              {rows.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{relativeTime(entry.ts)}</td>
+                  <td><Badge kind={ACTION_KIND[entry.action]} size="sm">{entry.action}</Badge></td>
+                  <td>{entry.actor_role ? `${entry.actor_role}: ` : ""}{entry.actor}</td>
+                  <td>{Object.keys(entry.changed_fields ?? {}).join(", ") || "—"}</td>
+                  <td>{entry.note ?? "—"}</td>
+                </tr>
+              ))}
+              {!rows.length && (
+                <tr>
+                  <td colSpan={5}>No recorded changes for this participant.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </Card>
   );
 }

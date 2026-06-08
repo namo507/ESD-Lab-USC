@@ -162,3 +162,37 @@
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+
+.historySummary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.historySummary::-webkit-details-marker {
+  display: none;
+}
+
+.historyWrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.historyTable th,
+.historyTable td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.historyTable th {
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+}

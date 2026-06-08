@@ -86,6 +86,28 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "withdrawn",
         "review",
     },
+    "database_features": {
+        "data",
+        "explorer",
+        "sql",
+        "table",
+        "tables",
+        "publication",
+        "publications",
+        "pubmed",
+        "orcid",
+        "crossref",
+        "citation",
+        "citations",
+        "bibtex",
+        "changelog",
+        "change",
+        "history",
+        "snapshot",
+        "snapshots",
+        "version",
+        "diff",
+    },
     "ml_performance": {
         "model",
         "models",
@@ -1426,12 +1448,31 @@ class DashboardChatAssistant:
 
         if question_tokens & {"feature", "features", "route", "routes", "new"}:
             return (
-                "The expanded dashboard surfaces are RSA growth curves, REDCap completeness, HDA timeline/player, "
+                "The expanded dashboard surfaces are Data Explorer, Publications, Change History, RSA growth curves, REDCap completeness, HDA timeline/player, "
                 "thermal heatmap, cohort swimmer plot, attrition and missingness, SDOH map, SHAP explorer, "
                 "Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality Monitor, Spatial Assessment Matrix, "
                 "Attachment Heatmap, and the Dynamics & Dyads layer: Co-Regulation, Phase Portrait, CVA Theater, "
                 "HR Deceleration, Still-Face, HDA Bypass, Passport, Archetypes, Cascade Simulator, Eco-Validity, "
                 "and Stream Coverage. They use de-identified NANO IDs and v2 API contracts."
+            )
+
+        if question_tokens & {"explorer", "sql", "table", "tables"}:
+            return (
+                "The Data Explorer route exposes four de-identified virtual tables: participants, runs, stages, and REDCap events. "
+                "It supports sorting, column filters, pagination, column visibility, and CSV export of the currently filtered rows. "
+                "The participant whitelist excludes DOB, MRN, caregiver IDs, address, and names."
+            )
+
+        if question_tokens & {"publication", "publications", "pubmed", "orcid", "crossref", "citation", "bibtex"}:
+            return (
+                "The Publications route stores normalized PubMed/ORCID-style records in the Python runtime database, enriches DOI records with citation-count metadata when external sync is enabled, "
+                "adds deterministic research tags, formats APA citations, and exports the filtered set as BibTeX."
+            )
+
+        if question_tokens & {"changelog", "snapshot", "snapshots", "version", "diff"}:
+            return (
+                "The Change History route shows a de-identified audit timeline, filters by entity/action/date/actor/version tag, opens diffs, and creates dataset snapshot checkpoints with row counts and checksums. "
+                "PHI fields are redacted before changed fields or snapshots reach the frontend."
             )
 
         if question_tokens & {"coregulation", "co-regulation", "dyad", "dyadic", "synchrony"}:

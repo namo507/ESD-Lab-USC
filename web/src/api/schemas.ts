@@ -211,6 +211,158 @@ export const MatlabIntegration = z.object({
 export type MatlabIntegration = z.infer<typeof MatlabIntegration>;
 
 /* ------------------------------------------------------------------------ */
+/* Data Explorer, Publications, and Dataset Change History                   */
+/* ------------------------------------------------------------------------ */
+
+export const DataExplorerTable = z.enum(["participants", "runs", "stages", "redcap_events"]);
+export type DataExplorerTable = z.infer<typeof DataExplorerTable>;
+
+export const TableQueryParams = z.object({
+  table: DataExplorerTable,
+  page: z.number().int().min(0).default(0),
+  pageSize: z.number().int().min(10).max(100).default(25),
+  sortBy: z.string().optional(),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
+  filters: z.record(z.string()).optional(),
+});
+export type TableQueryParams = z.infer<typeof TableQueryParams>;
+
+export function PaginatedResponse<T extends z.ZodTypeAny>(row: T) {
+  return z.object({
+    rows: z.array(row),
+    total: z.number().int(),
+    page: z.number().int(),
+    pageSize: z.number().int(),
+  });
+}
+export type PaginatedResponse<T> = {
+  rows: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export const PublicationAuthor = z.object({
+  last: z.string(),
+  first: z.string(),
+  initials: z.string(),
+  affiliation: z.string(),
+});
+export type PublicationAuthor = z.infer<typeof PublicationAuthor>;
+
+export const Publication = z.object({
+  pmid: z.string().nullable(),
+  title: z.string(),
+  authors: z.array(PublicationAuthor),
+  journal: z.string(),
+  volume: z.string().nullable(),
+  issue: z.string().nullable(),
+  year: z.number().int(),
+  month: z.number().int().nullable(),
+  pages: z.string().nullable(),
+  doi: z.string().nullable(),
+  abstract: z.string().nullable(),
+  pub_type: z.string(),
+  mesh_terms: z.array(z.string()),
+  keywords: z.array(z.string()),
+  tags: z.array(z.string()),
+  apa_citation: z.string().nullable(),
+  citation_count: z.number().int().nullable(),
+  source: z.enum(["pubmed", "orcid", "manual"]),
+  epub_date: z.string().nullable(),
+  updated_at: z.string(),
+});
+export type Publication = z.infer<typeof Publication>;
+
+export const PublicationTagCount = z.object({
+  tag: z.string(),
+  count: z.number().int(),
+});
+export type PublicationTagCount = z.infer<typeof PublicationTagCount>;
+
+export const PublicationListResponse = z.object({
+  publications: z.array(Publication),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  tag_counts: z.array(PublicationTagCount),
+});
+export type PublicationListResponse = z.infer<typeof PublicationListResponse>;
+
+export const PublicationQueryParams = z.object({
+  yearMin: z.number().int().optional(),
+  yearMax: z.number().int().optional(),
+  tag: z.array(z.string()).optional(),
+  search: z.string().optional(),
+  pubType: z.string().optional(),
+  page: z.number().int().min(0).default(0),
+  pageSize: z.number().int().min(10).max(100).default(25),
+});
+export type PublicationQueryParams = z.infer<typeof PublicationQueryParams>;
+
+export const SyncStatus = z.object({
+  last_sync: z.string().nullable(),
+  total: z.number().int(),
+  inserted: z.number().int(),
+  updated: z.number().int(),
+  new_this_week: z.number().int(),
+  errors: z.array(z.string()),
+});
+export type SyncStatus = z.infer<typeof SyncStatus>;
+
+export const ChangelogAction = z.enum(["INSERT", "UPDATE", "DELETE", "IMPORT", "SYNC", "QA_OVERRIDE"]);
+export type ChangelogAction = z.infer<typeof ChangelogAction>;
+
+export const ChangelogEntry = z.object({
+  id: z.string(),
+  entity_type: z.string(),
+  entity_id: z.string(),
+  action: ChangelogAction,
+  actor: z.string(),
+  actor_role: z.string().nullable(),
+  changed_fields: z.record(z.tuple([z.unknown(), z.unknown()])).nullable(),
+  before: z.record(z.unknown()).nullable().optional(),
+  after: z.record(z.unknown()).nullable().optional(),
+  session_id: z.string().nullable().optional(),
+  note: z.string().nullable(),
+  ts: z.string(),
+  version_tag: z.string().nullable(),
+});
+export type ChangelogEntry = z.infer<typeof ChangelogEntry>;
+
+export const ChangelogQueryParams = z.object({
+  entity_type: z.string().optional(),
+  entity_id: z.string().optional(),
+  actor: z.string().optional(),
+  action: ChangelogAction.optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  version_tag: z.string().optional(),
+  search: z.string().optional(),
+  page: z.number().int().min(0).default(0),
+  pageSize: z.number().int().min(10).max(100).default(25),
+});
+export type ChangelogQueryParams = z.infer<typeof ChangelogQueryParams>;
+
+export const DatasetSnapshot = z.object({
+  id: z.string(),
+  tag: z.string(),
+  description: z.string().nullable(),
+  created_by: z.string(),
+  created_at: z.string(),
+  row_counts: z.record(z.number().int()),
+  checksum: z.string(),
+});
+export type DatasetSnapshot = z.infer<typeof DatasetSnapshot>;
+
+export const AdminCapabilities = z.object({
+  canEditPublicationTags: z.boolean(),
+  canCreateSnapshots: z.boolean(),
+  canTriggerPublicationSync: z.boolean(),
+});
+export type AdminCapabilities = z.infer<typeof AdminCapabilities>;
+
+/* ------------------------------------------------------------------------ */
 /* Feature expansion API v2 contracts                                        */
 /* ------------------------------------------------------------------------ */
 

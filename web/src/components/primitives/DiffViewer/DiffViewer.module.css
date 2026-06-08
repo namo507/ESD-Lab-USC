@@ -1,0 +1,68 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+}
+
+.toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-8);
+  color: var(--fg2);
+  font-size: var(--text-small);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.table th {
+  padding: var(--s-8);
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.table td {
+  padding: var(--s-8);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.field {
+  color: var(--fg1);
+  font-family: var(--font-mono);
+}
+
+.before,
+.after {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.before {
+  background: var(--red-tint);
+  color: var(--on-fail);
+  text-decoration: line-through;
+}
+
+.after {
+  background: var(--green-tint);
+  color: var(--on-ok);
+}
+
+.highlight .field {
+  background: var(--usc-gold-tint);
+}
+
+.delta {
+  color: var(--slate-500);
+  font-size: var(--text-micro);
+}

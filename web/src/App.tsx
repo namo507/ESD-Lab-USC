@@ -13,6 +13,10 @@ const Results = lazy(() => import("@/routes/Results").then((m) => ({ default: m.
 const Runs = lazy(() => import("@/routes/Runs").then((m) => ({ default: m.Runs })));
 const Redcap = lazy(() => import("@/routes/Redcap").then((m) => ({ default: m.Redcap })));
 const Matlab = lazy(() => import("@/routes/Matlab").then((m) => ({ default: m.Matlab })));
+const DataExplorer = lazy(() => import("@/routes/DataExplorer").then((m) => ({ default: m.DataExplorer })));
+const Publications = lazy(() => import("@/routes/Publications").then((m) => ({ default: m.Publications })));
+const PublicationDetail = lazy(() => import("@/routes/PublicationDetail").then((m) => ({ default: m.PublicationDetail })));
+const Changelog = lazy(() => import("@/routes/Changelog").then((m) => ({ default: m.Changelog })));
 const PresentationMaker = lazy(() =>
   import("@/routes/PresentationMaker").then((m) => ({ default: m.PresentationMaker })),
 );
@@ -108,6 +112,10 @@ export default function App() {
             <Route path="/runs" element={<Runs />} />
             <Route path="/redcap" element={<Redcap />} />
             <Route path="/matlab" element={<Matlab />} />
+            <Route path="/data-explorer" element={<DataExplorer />} />
+            <Route path="/publications" element={<Publications />} />
+            <Route path="/publications/:pmid" element={<PublicationDetail />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route path="/presentation-maker" element={<PresentationMaker />} />
             <Route path="/hda-player" element={<HdaPlayer />} />
             <Route path="/thermal-heatmap" element={<ThermalHeatmap />} />

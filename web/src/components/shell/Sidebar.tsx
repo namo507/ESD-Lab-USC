@@ -45,6 +45,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/runs", label: "Clinical Pipeline", icon: "git-branch" },
       { to: "/redcap", label: "REDCap Sync", icon: "refresh-cw" },
       { to: "/matlab", label: "MATLAB Bridge", icon: "function-square" },
+      { to: "/data-explorer", label: "Data Explorer", icon: "table", flag: "SQL_TABLE_EXPLORER" },
       { to: "/results", label: "Results & Trajectories", icon: "line-chart" },
       { to: "/hda-player", label: "HDA Timeline", icon: "audio-lines", flag: "HDA_TIMELINE_PLAYER" },
       { to: "/thermal-heatmap", label: "Thermal Heatmap", icon: "thermometer-sun", flag: "THERMAL_HEATMAP" },
@@ -56,6 +57,13 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/cluster-viewer", label: "Outcome Clusters", icon: "git-fork", flag: "CLUSTER_VIEWER" },
       { to: "/model-leaderboard", label: "Model Leaderboard", icon: "list-checks", flag: "MODEL_LEADERBOARD" },
       { to: "/cascade-dag", label: "Cascade DAG", icon: "network", flag: "CASCADE_DAG" },
+    ],
+  },
+  {
+    id: "science",
+    title: "Science",
+    items: [
+      { to: "/publications", label: "Publications", icon: "book-open", flag: "PUBLICATIONS_FEED" },
     ],
   },
   {
@@ -82,6 +90,13 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/presentation-maker", label: "Presentation Maker", icon: "presentation" },
       { to: "/spatial-assessments", label: "Spatial Matrix", icon: "grid-3x3", flag: "SPATIAL_ASSESSMENT_MATRIX" },
       { to: "/attachment-heatmap", label: "Attachment Heatmap", icon: "table-2", flag: "ATTACHMENT_HEATMAP" },
+    ],
+  },
+  {
+    id: "admin",
+    title: "Admin",
+    items: [
+      { to: "/changelog", label: "Change History", icon: "clock", flag: "DATA_CHANGELOG" },
     ],
   },
 ];

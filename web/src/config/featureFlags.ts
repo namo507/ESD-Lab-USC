@@ -24,6 +24,9 @@ export const FEATURE_FLAGS = {
   DYN_CASCADE_SIMULATOR: false,
   DYN_ECOVALIDITY_EQUITY: false,
   DYN_STREAM_COVERAGE: false,
+  SQL_TABLE_EXPLORER: false,
+  PUBLICATIONS_FEED: false,
+  DATA_CHANGELOG: false,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
