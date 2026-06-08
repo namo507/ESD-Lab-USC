@@ -2,9 +2,9 @@
 ## Copilot / AI Coding Agent Instruction Set (Production-Grade)
 
 > **Repository:** `namo507/ESD-Lab-USC`
-> **Frontend stack:** React 18 + TypeScript + Vite + TanStack Query + Zod + Tailwind CSS
-> **Backend:** Cloudflare Workers + Pages (edge-native, serverless)
-> **Database target:** Cloudflare D1 (SQLite semantics, edge-distributed)
+> **Frontend stack:** React 18 + TypeScript + Vite + React Router + TanStack Query + Zod + Tailwind CSS
+> **Backend:** Current live runtime is the Python `/api` server in `dashboard/server/live_dashboard_server.py`, fronted by the Cloudflare Pages SPA wrapper
+> **Database target:** New infrastructure if adopted. The repo does **not** currently ship a tracked D1 binding, `workers/` runtime, or `wrangler.toml`; treat D1/Workers as explicit additions, not existing baseline infrastructure
 > **Deployed at:** `esd-lab-namo.pages.dev` (Cloudflare Pages)
 > **Constraint:** All participant data is HIPAA-regulated. No PHI (DOB, MRN, name) ever leaves the server unmasked. Every new API endpoint must use parameterized prepared statements only — zero raw string concatenation in SQL.
 
@@ -12,7 +12,43 @@
 
 ## CONTEXT FOR THE CODING AGENT
 
-You are implementing three major, interconnected features for the **NANO Study Dashboard** at the ESD Lab, University of South Carolina. The study tracks 260 very preterm (VPT) infants across cohorts (VPT, ASIB, TD) from NICU through age 3, collecting ECG, temperature, behavioral coding, and REDCap assessment data. The frontend is a React 18 + TypeScript SPA (`web/src/`) with TanStack Router for routing, TanStack Query for server state, Zod for schema validation, and the project's own `@/components/primitives` design system (Badge, Button, Card, Gloss, Icon, Segmented, Tooltip, KPI, SectionLabel). Feature flags live in `web/src/config/featureFlags.ts`; add a new flag for each feature and gate it. All new routes are lazy-loaded via `React.lazy()` in `web/src/App.tsx`. The API client (`web/src/api/client.ts`) uses a thin fetch wrapper — all new endpoints go through it. Schemas are validated with Zod in `web/src/api/schemas.ts`. Backend Workers live in `dashboard/server/` or a new `workers/` directory.
+You are implementing three major, interconnected features for the **NANO Study Dashboard** at the ESD Lab, University of South Carolina. The study tracks 260 very preterm (VPT) infants across cohorts (VPT, ASIB, TD) from NICU through age 3, collecting ECG, temperature, behavioral coding, and REDCap assessment data.
+
+Use these repo anchors as the authoritative implementation surfaces:
+
+- `web/src/App.tsx`: route registration via `react-router-dom` + `React.lazy()` + `Suspense`
+- `web/src/components/shell/Sidebar.tsx`: sidebar groups and feature-gated nav items
+- `web/src/components/shell/AppShell.tsx`: shell layout constraints, Buddy/chat placement, footer, and main-column width
+- `web/src/config/featureFlags.ts`: feature-flag registry
+- `web/src/api/client.ts`: fetch wrapper; if new verbs like `PUT` or `DELETE` are needed, extend this file first
+- `web/src/api/schemas.ts`: Zod contracts
+- `web/src/api/hooks.ts`: TanStack Query hooks
+- `web/src/api/mockServer.ts`: dev/mock API responses and assistant passthrough behavior
+- `web/src/components/shell/Buddy.tsx` and `web/src/components/shell/ChatDrawer.tsx`: AI buddy hover copy, seeded prompts, and assistant discovery
+- `dashboard/assistant/local_chat_assistant.py`: live assistant vocabulary and route inventory
+- `web/src/store/ui.ts`, `web/src/styles/tokens.css`, and `web/src/styles/global.css`: session-storage policy, theme state, warm/garnet tokens, gradients, and dark/light mode behavior
+- `dashboard/server/live_dashboard_server.py`: current live backend entry for `/api/*`
+
+The active frontend is the React SPA under `web/`, and routing is handled by `react-router-dom`, not TanStack Router. All new frontend API surfaces must be wired in **four** places: `web/src/api/schemas.ts`, `web/src/api/hooks.ts`, `web/src/api/mockServer.ts`, and the live backend in `dashboard/server/live_dashboard_server.py`.
+
+The current repo does **not** contain:
+
+- a tracked `workers/` runtime
+- a tracked `wrangler.toml`
+- a D1 binding
+- `@tanstack/react-table` in `web/package.json`
+- a shipped `isAdmin` / JWT auth context in the frontend
+- a shared `ErrorBoundary` / `ErrorPage` component pair
+
+If this work truly requires those pieces, add them as explicit new infrastructure. Do not write the prompt as if they already exist.
+
+### Repo-grounded implementation rules
+
+1. Default backend additions to `dashboard/server/live_dashboard_server.py` and extracted helpers under `dashboard/server/`. Only introduce `workers/` if the repo is deliberately being extended to a Worker runtime.
+2. Any client-side state that could become participant-adjacent must follow the existing HIPAA storage policy in `web/src/store/ui.ts`: use `sessionStorage`, not `localStorage`, unless the value is theme-only.
+3. Any new audit action names must first be added to `web/src/lib/audit.ts` and the server-side `/api/audit` consumer. The current enum does **not** accept the custom action strings proposed later in this file.
+4. New routes are not complete until Buddy/chat, mock server behavior, and dark/light token parity are updated alongside the route itself.
+5. No new panel, sticky rail, or floating control may overlap the existing sidebar, top nav, Buddy, chat drawer, or assistant FAB.
 
 ---
 
@@ -39,7 +75,13 @@ This is the primary SQL-style interactive data explorer. It must expose **four v
 ### 1.3 Core Table Component
 **Create:** `web/src/components/primitives/DataTable/DataTable.tsx`
 
-This is a fully generic, reusable headless table component wrapping `@tanstack/react-table` (already in package.json — do NOT add `material-react-table`; stay within the existing Tailwind design system). Build it from scratch using `useReactTable` with the following plugins:
+This is a fully generic, reusable headless table component wrapping `@tanstack/react-table`. That package is **not** currently present in `web/package.json`, so install it deliberately first:
+
+```bash
+cd web && npm install @tanstack/react-table
+```
+
+Do **not** add `material-react-table`; stay inside the existing primitives + warm-token design system. Build from scratch using `useReactTable` with the following plugins:
 
 - `getCoreRowModel`
 - `getSortedRowModel`
@@ -52,7 +94,7 @@ interface DataTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData>[];
   pageSize?: number; // default 25
-  storageKey?: string; // for localStorage persistence
+  storageKey?: string; // for sessionStorage persistence
   isLoading?: boolean;
   globalFilterPlaceholder?: string;
 }
@@ -82,18 +124,20 @@ interface PaginationBarProps {
 }
 ```
 
-Render: `[← Prev] [1] [2] ... [n] [Next →]` with an ellipsis collapse when pageCount > 7. Show `"Showing 26–50 of 231 rows"` on the right. Page-size selector is a native `<select>` using CSS token `--color-surface-2` background. All buttons use the existing `Button` primitive with `variant="ghost"` and `size="sm"`.
+Render: `[← Prev] [1] [2] ... [n] [Next →]` with an ellipsis collapse when pageCount > 7. Show `"Showing 26–50 of 231 rows"` on the right. Page-size selector is a native `<select>` styled with the repo's actual token names from `web/src/styles/tokens.css` and `web/src/styles/global.css` such as `var(--bg-surface)`, `var(--border)`, and `var(--fg1)`. All buttons use the existing `Button` primitive with `variant="ghost"` and `size="sm"`.
 
-### 1.5 Sticky State (localStorage Persistence)
+### 1.5 Sticky State (sessionStorage Persistence)
 **Create:** `web/src/hooks/useStickyTableState.ts`
 
 ```ts
-// Persists columnVisibility, columnOrder, sorting, and pageSize to localStorage.
+// Persists columnVisibility, columnOrder, sorting, and pageSize to sessionStorage.
 // Uses lazy initializer pattern — reads storage only on first mount.
 // Key format: `esd-table-${storageKey}` to namespace per table.
 // Safe for SSR: checks typeof window !== 'undefined' before any storage access.
 export function useStickyTableState(storageKey: string, defaults: StickyTableState): [StickyTableState, (next: StickyTableState) => void]
 ```
+
+This must follow the same HIPAA-aware storage rule used in `web/src/store/ui.ts`: do **not** use `localStorage` for participant-adjacent UI state.
 
 The `StickyTableState` interface:
 ```ts
@@ -113,7 +157,7 @@ Add an **"Export · CSV"** `<Button variant="secondary" icon="download">` that:
 1. Takes the *currently filtered* rows (not full dataset).
 2. Serializes them to CSV using a pure utility `web/src/lib/exportCsv.ts` — no external library.
 3. Triggers a browser download with filename pattern `nano-{tableName}-{ISO_date}.csv`.
-4. Calls `logAudit({ action: 'data.export', scope: '/data-explorer/' + tableName })` before download.
+4. Calls `logAudit({ action: 'export.csv', scope: '/data-explorer/' + tableName })` before download, or extends `web/src/lib/audit.ts` first if a different action name is required.
 
 ### 1.8 Zod Schema Addition
 In `web/src/api/schemas.ts`, add a new schema for the query builder payload used by the server-side filtered endpoint:
@@ -137,15 +181,19 @@ export function useTableQuery<T>(params: TableQueryParams, schema: ZodType<T[]>)
 ```
 This calls `POST /api/table/query` with the `TableQueryParams` body.
 
-### 1.10 Cloudflare Worker Endpoint
-**Create:** `workers/table-query.ts` (or add to `dashboard/server/live_dashboard_server.py` if Python FastAPI is the backend pattern — match the existing backend pattern in the repo).
+### 1.10 Backend Query Endpoint
+**Default implementation target:** `dashboard/server/live_dashboard_server.py`
+
+If the repo is explicitly extended to a Worker/D1 runtime later, the same logic may be mirrored into `workers/table-query.ts`. Do **not** assume a Worker runtime already exists.
 
 The handler must:
 1. Parse and validate the incoming `TableQueryParams` (mirror the Zod schema in TS, or use Pydantic if Python).
-2. Build a parameterized D1 query dynamically — **only** using the `?` placeholder syntax, never string interpolation for user-supplied values.
+2. Build a parameterized query dynamically — **only** using placeholders / bound parameters, never string interpolation for user-supplied values.
 3. Apply `LIMIT` and `OFFSET` for pagination.
 4. Apply `ORDER BY` only against a **whitelist** of allowed column names (hard-coded per table — prevents injection via sort field).
 5. Return `{ rows, total, page, pageSize }`.
+
+Because the current repo does not yet ship a dedicated SQL/D1 layer for these tables, the prompt should explicitly say whether `/api/table/query` is backed by a new database abstraction or by the existing in-memory / aggregate data sources exposed from `live_dashboard_server.py`.
 
 ### 1.11 Route Registration
 In `web/src/App.tsx`:
@@ -155,18 +203,18 @@ const DataExplorer = lazy(() => import('@/routes/DataExplorer').then(m => ({ def
 <Route path="/data-explorer" element={<DataExplorer />} />
 ```
 
-In the Sidebar navigation (find `Sidebar.tsx` in `web/src/components/shell/`), add a nav item `{ path: '/data-explorer', label: 'Data Explorer', icon: 'table' }` under the "Data" section group, gated by `useFeatureFlag('SQL_TABLE_EXPLORER')`.
+In the Sidebar navigation (`web/src/components/shell/Sidebar.tsx`), add a nav item `{ to: '/data-explorer', label: 'Data Explorer', icon: 'table', flag: 'SQL_TABLE_EXPLORER' }` under the existing `Data Infrastructure` group (`id: "data"`). Match the current `NavItem` shape in that file, which uses `to`, not `path`.
 
 ### 1.12 Module CSS
-**Create:** `web/src/routes/DataExplorer.module.css` with these class definitions using the project's CSS token variables from `tokens.css`:
+**Create:** `web/src/routes/DataExplorer.module.css` with class definitions aligned to the repo's actual token names and layout rhythm from `Participants.module.css`, `FeatureRoutes.module.css`, `tokens.css`, and `global.css`:
 - `.page` — standard page layout matching `Participants.module.css`
-- `.toolbar` — flex row, space-between, align-center, gap var(--space-3)
-- `.tableWrap` — overflow-x auto, border-radius var(--radius-2), border 1px solid var(--color-border)
-- `.th` — monospace font-family, font-size 0.75rem, color var(--color-text-2), padding var(--space-2) var(--space-3), border-bottom 1px solid var(--color-border), white-space nowrap, cursor pointer, user-select none
-- `.td` — font-size 0.875rem, padding var(--space-2) var(--space-3), border-bottom 1px solid var(--color-border-subtle)
-- `.trHover:hover` — background var(--color-surface-hover)
+- `.toolbar` — flex row, space-between, align-center, gap `var(--s-12)` or `var(--s-16)`
+- `.tableWrap` — overflow-x auto, border-radius `var(--r-2)`, border `1px solid var(--border)`
+- `.th` — monospace font-family, font-size `var(--text-micro)`, color `var(--slate-500)`, padding `var(--s-8) var(--s-12)`, border-bottom `1px solid var(--border-strong)`, white-space nowrap, cursor pointer, user-select none
+- `.td` — font-size `var(--text-small)`, padding `var(--s-8) var(--s-12)`, border-bottom `1px solid var(--slate-100)`
+- `.trHover:hover` — background `var(--bg-hover)`
 - `.numericCell` — text-align right, font-variant-numeric tabular-nums
-- `.nullCell` — color var(--color-text-3), font-style italic
+- `.nullCell` — color `var(--slate-500)`, font-style italic
 
 ---
 
@@ -177,10 +225,13 @@ In the Sidebar navigation (find `Sidebar.tsx` in `web/src/components/shell/`), a
 PUBLICATIONS_FEED: false,
 ```
 
-### 2.2 Backend ETL Worker (Scheduled Cron)
-**Create:** `workers/publications-sync/index.ts`
+### 2.2 Backend ETL Job (default Python runtime; optional Worker extraction)
 
-This is a **Cloudflare Worker with a Cron Trigger** that runs every Sunday at 02:00 UTC. It is a fully automated ETL pipeline:
+**Default implementation target:** `dashboard/server/live_dashboard_server.py` plus extracted helpers under `dashboard/server/` or `scripts/`.
+
+If the repo is later extended to a real Cloudflare Worker + D1 runtime, mirror the same ETL logic into `workers/publications-sync/index.ts` and a single root-level `wrangler.toml`. Do **not** assume that Worker runtime or config already exists in this branch.
+
+This sync should run on a schedule equivalent to every Sunday at 02:00 UTC. In the current repo, that can be a cron-driven Python job, CI task, or wrapper-triggered backend task; if a Worker runtime is added later, it can become a Cron Trigger there.
 
 #### Phase A — Extract (NCBI E-utilities)
 
@@ -198,7 +249,7 @@ const esearchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?d
 const efetchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${pmids.join(',')}&rettype=abstract&retmode=xml`;
 ```
 
-Add a 400ms delay between esearch and efetch to respect NCBI rate limits (3 req/sec without API key; register a free NCBI API key and store it in `wrangler.toml` as `NCBI_API_KEY` secret — then rate limit is 10 req/sec).
+Add a 400ms delay between esearch and efetch to respect NCBI rate limits (3 req/sec without API key; if the repo later adopts Worker secrets or CI-managed secrets, store an `NCBI_API_KEY` there and document the source of truth explicitly).
 
 #### Phase B — Extract (ORCID Public API — secondary source)
 
@@ -224,7 +275,7 @@ Store `citation_count` and `pub_type` from this response.
 
 #### Phase D — Transform (XML Parsing + Metadata Normalization)
 
-Parse the PubMed XML response using a minimal hand-rolled XML extractor (no external XML parser — use regex on the known PubMed DTD structure or the DOMParser API available in the Workers runtime):
+Parse the PubMed XML response using a minimal, deterministic parser. If this runs in Python, use the standard library XML tools already available there; if this is later mirrored in a Worker, use `DOMParser` or an equally minimal parser available in that runtime. Do not write the prompt as if the Worker runtime is already in place.
 
 Extract these fields per article:
 ```ts
@@ -279,9 +330,14 @@ function formatAPA(record: PubMedRecord): string {
 }
 ```
 
-#### Phase E — Load (D1 Idempotent Upsert)
+#### Phase E — Load (database layer; D1 optional)
 
-First, ensure the D1 database has this `publications` table (add migration to `migrations/` directory):
+First, make the data store choice explicit. The current repo does not yet expose a tracked D1 binding or migration system, so the prompt must say one of the following:
+
+1. implement this against the current Python runtime using SQLite / equivalent server-side storage and a new top-level `migrations/` directory, or
+2. introduce D1 as new Cloudflare infrastructure, with its bindings and config added explicitly before application work starts.
+
+If the database layer is added, this `publications` table belongs in a new top-level `migrations/` directory:
 
 ```sql
 -- migrations/0003_publications.sql
@@ -340,7 +396,7 @@ ON CONFLICT(pmid) DO UPDATE SET
 ```
 
 ### 2.3 New API Endpoints
-**Create** in the Worker router or Python FastAPI backend:
+**Create** in `dashboard/server/live_dashboard_server.py` by default, or mirror into a Worker router only if the repo is explicitly moved to that runtime. Do not assume FastAPI-specific decorators; match the current backend handler style used in `live_dashboard_server.py`.
 
 ```
 GET  /api/publications              → list, supports ?year=&tag=&search=&page=&pageSize=
@@ -466,14 +522,14 @@ export function exportBibtexFile(publications: Publication[], filename: string):
 ```
 
 ### 2.5 Manual Tagging Override UI
-Inside `PublicationDetail.tsx`, add an "Edit Tags" mode gated by an `isAdmin` check (derive from the existing JWT/auth context). In edit mode:
+Inside `PublicationDetail.tsx`, add an `Edit Tags` mode gated by an explicit backend-verified admin capability. The current repo does **not** ship an existing `isAdmin` hook or JWT auth context in the frontend, so this prompt must not pretend one already exists. In edit mode:
 - Render all TAG_RULES as a checkbox grid
 - Allow free-text custom tag input (comma-separated)
 - Save button calls `PATCH /api/publications/:pmid/tags` with `{ tags: string[] }`
 - Tags marked with a `·` prefix in the auto-tag badge to distinguish auto vs. manually added tags
 
 ### 2.6 Sync Status Card on Overview
-In `web/src/routes/Overview.tsx`, add inside the KPI row (below existing MetricCards, gated by `PUBLICATIONS_FEED` flag):
+In `web/src/routes/Overview.tsx`, append a new entry to the existing `kpis` array so it renders through the current `MetricCard` flow from `@/components/warm`, gated by `PUBLICATIONS_FEED`:
 ```tsx
 <MetricCard
   label="Publications"
@@ -497,7 +553,7 @@ const PublicationDetail = lazy(() => import('@/routes/PublicationDetail').then(m
 <Route path="/publications/:pmid" element={<PublicationDetail />} />
 ```
 
-In Sidebar: add `{ path: '/publications', label: 'Publications', icon: 'book-open' }` under a new "Science" section group, gated by `PUBLICATIONS_FEED`.
+In `web/src/components/shell/Sidebar.tsx`, use the current `NavItem` shape: `{ to: '/publications', label: 'Publications', icon: 'book-open', flag: 'PUBLICATIONS_FEED' }`. Add a new `science` group to `NAV_GROUPS`; do not use `path`.
 
 ---
 
@@ -508,8 +564,8 @@ In Sidebar: add `{ path: '/publications', label: 'Publications', icon: 'book-ope
 DATA_CHANGELOG: false,
 ```
 
-### 3.2 D1 Schema: Audit Log Table
-**Add to migrations:**
+### 3.2 Database Schema: Audit Log Table
+**Add to a new top-level `migrations/` directory if the repo adopts a real database-backed changelog.** If the implementation stays inside the current Python runtime, the same schema can be applied against SQLite-compatible storage there; if D1 is introduced later, reuse the same SQL with D1-compatible initialization.
 
 ```sql
 -- migrations/0004_audit_changelog.sql
@@ -547,8 +603,10 @@ CREATE TABLE IF NOT EXISTS dataset_snapshots (
 );
 ```
 
-### 3.3 Audit Middleware (Backend)
-**Create:** `workers/audit-middleware.ts` (or equivalent Python decorator if FastAPI)
+### 3.3 Audit Middleware / Audit Helper (Backend)
+**Default implementation target:** helper logic in `dashboard/server/live_dashboard_server.py` or an extracted `dashboard/server/` helper module.
+
+The current backend is not organized as FastAPI, so do not write this as a framework-specific decorator requirement. Match the existing request-handler style in `live_dashboard_server.py`. If a Worker runtime is added later, the same logic can be mirrored into `workers/audit-middleware.ts`.
 
 Every `POST`, `PATCH`, `DELETE`, and `PUT` request to the API must pass through this middleware before and after the DB mutation:
 
@@ -567,7 +625,7 @@ async function withAudit<T>(
 }
 ```
 
-The Cron Worker (publications sync) must also call this middleware with `actor = 'cron'`, `actor_role = 'system'`, `action = 'SYNC'`.
+The scheduled publications sync must also pass through this logic with `actor = 'cron'`, `actor_role = 'system'`, `action = 'SYNC'`.
 
 ### 3.4 New API Endpoints for Changelog
 ```
@@ -737,7 +795,7 @@ const Changelog = lazy(() => import('@/routes/Changelog').then(m => ({ default: 
 <Route path="/changelog" element={<Changelog />} />
 ```
 
-In Sidebar: add `{ path: '/changelog', label: 'Change History', icon: 'clock' }` under "Admin" section group, gated by `DATA_CHANGELOG`.
+In `web/src/components/shell/Sidebar.tsx`, use the current nav shape `{ to: '/changelog', label: 'Change History', icon: 'clock', flag: 'DATA_CHANGELOG' }` and append a new `admin` group to `NAV_GROUPS` rather than referencing a group that does not yet exist.
 
 ---
 
@@ -746,30 +804,39 @@ In Sidebar: add `{ path: '/changelog', label: 'Change History', icon: 'clock' }`
 ### Audit Logging
 Every user-initiated action across all three features must call the existing `logAudit` utility from `@/lib/audit`:
 ```ts
-logAudit({ action: 'data.export', scope: '/data-explorer/participants' })
-logAudit({ action: 'publications.sync.trigger', scope: '/publications' })
-logAudit({ action: 'snapshot.create', scope: '/changelog', meta: { tag } })
+logAudit({ action: 'export.csv', scope: '/data-explorer/participants' })
+logAudit({ action: 'run.trigger', scope: '/publications/sync' })
+logAudit({ action: 'route.navigate', scope: '/changelog', detail: { tag } })
 ```
+
+If you want richer audit verbs such as `data.export`, `publications.sync.trigger`, `snapshot.create`, or `page.view`, extend `web/src/lib/audit.ts` and the backend audit schema first. The current client enum does not accept those strings.
 
 ### HIPAA Guards
 - The `DataExplorer` table for `participants` must **never** expose columns: `dob`, `mrn`, `caregiver_id`, `address`, `name`. These are PHI. The API whitelist must hard-code the allowed columns.
 - The `Changelog` diff viewer must redact any PHI field values with `[REDACTED]` before sending to the frontend. The backend must maintain a `PHI_FIELDS` constant and strip these from `changed_fields_json` before API response.
-- All three routes must log to `logAudit` on mount with action `'page.view'` for the IRB activity log.
+- Any persistent table or filter state that could become participant-adjacent must use `sessionStorage`, not `localStorage`, matching `web/src/store/ui.ts`.
+- Route navigation is already logged centrally via `route.navigate` from `web/src/components/shell/AppShell.tsx`. Reuse that pattern or extend the audit enum explicitly before introducing a separate `page.view` action.
 
 ### Loading & Error States
-All three routes must handle loading states using the existing `<PageFallback>` pattern and error boundaries. Wrap with:
-```tsx
-<Suspense fallback={<PageFallback />}>
-  <ErrorBoundary fallback={<ErrorPage />}>
-    {/* route content */}
-  </ErrorBoundary>
-</Suspense>
-```
+All three routes must handle loading, empty, and error states using the patterns that actually exist in this repo:
+
+- `web/src/App.tsx` already provides route-level `Suspense` with `PageFallback`
+- individual routes typically render inline loading / empty states rather than a shared `ErrorBoundary` component
+
+Do **not** reference nonexistent shared components like `ErrorBoundary` or `ErrorPage` unless the prompt also creates them explicitly.
 
 ### Mobile Responsiveness
 - `DataExplorer`: on viewport < 768px, collapse the column visibility panel, show only first 5 columns by default, pagination bar collapses to `[← Prev] Page X of Y [Next →]` format.
 - `Publications`: stack left filter panel above cards on mobile.
 - `Changelog`: collapse to single-column timeline on mobile; hide filter sidebar behind a "Filters ▾" drawer button.
+
+### AI Buddy, Layout, and Theme Sync
+- Update `web/src/components/shell/Buddy.tsx` with new `data-insight` copy for Data Explorer, Publications, Publication Detail, and Change History surfaces.
+- Update `web/src/components/shell/ChatDrawer.tsx` with seeded prompts and fast paths for table exploration, publication sync, citation export, and dataset snapshots.
+- Update `dashboard/assistant/local_chat_assistant.py` and `web/src/api/mockServer.ts` so the live and mock assistants know these route names, metrics, and export capabilities.
+- Validate every new route against `web/src/components/shell/AppShell.tsx` so nothing overlaps the sidebar, top nav, footer, Buddy, chat drawer, or assistant FAB.
+- Keep typography, gradients, muted text, pills, table chrome, and focus states token-driven via `web/src/styles/tokens.css` and `web/src/styles/global.css`, and verify readability under `light`, `dark`, and `system` theme modes from `web/src/store/ui.ts`.
+- Follow the repo's existing responsive breakpoints and CSS-module patterns (`Participants.module.css`, `FeatureRoutes.module.css`, route-local modules). Collapse layouts before legends, filters, or inline controls start overlapping.
 
 ### TypeScript Strictness
 - `"strict": true` is already set in `tsconfig.json`. No `any` types. Use `unknown` + type guards where necessary.
@@ -777,16 +844,28 @@ All three routes must handle loading states using the existing `<PageFallback>` 
 - All new component props must use explicit interfaces (not inline type literals).
 
 ### Testing
-Add test files:
-- `tests/test_data_explorer.py` — tests for the Worker `/api/table/query` endpoint: pagination math, sort whitelist rejection, PHI column exclusion
-- `tests/test_publications_sync.py` — tests for ETL pipeline: XML parsing, tag assignment, idempotent upsert, ORCID merge
-- `tests/test_changelog.py` — tests for audit middleware: diff computation, PHI field redaction, snapshot checksum
+The repo already uses **two** test surfaces:
+
+- root `tests/` for Python/backend behavior
+- `web/src/test/` for Vitest + Testing Library frontend coverage
+
+Add both backend and frontend coverage:
+
+- `tests/test_data_explorer.py` — backend `/api/table/query` behavior: pagination math, sort whitelist rejection, PHI column exclusion
+- `tests/test_publications_sync.py` — backend sync / ETL behavior: XML parsing, tag assignment, idempotent upsert, ORCID merge
+- `tests/test_changelog.py` — backend audit behavior: diff computation, PHI field redaction, snapshot checksum
+- `web/src/test/dataExplorer.test.tsx` — route + table interactions, empty/error states, mobile pagination collapse
+- `web/src/test/publications.test.tsx` and `web/src/test/publicationDetail.test.tsx` — filters, expand/collapse, copy/export actions, tag UI gating
+- `web/src/test/changelog.test.tsx` — filters, timeline rendering, diff expansion, snapshot modal flow
+- extend `web/src/test/mockServer.test.ts`, `web/src/test/sidebarNav.test.tsx`, and Buddy/chat tests as needed for the new routes
 
 ---
 
 ## FILE CREATION CHECKLIST
 
 ### New Files to Create
+
+Required frontend files:
 ```
 web/src/routes/DataExplorer.tsx
 web/src/routes/DataExplorer.module.css
@@ -806,14 +885,28 @@ web/src/components/primitives/VersionTag.tsx
 web/src/hooks/useStickyTableState.ts
 web/src/lib/exportCsv.ts
 web/src/lib/exportBibtex.ts
-workers/publications-sync/index.ts
-workers/publications-sync/wrangler.toml
-workers/table-query.ts
-migrations/0003_publications.sql
-migrations/0004_audit_changelog.sql
 tests/test_data_explorer.py
 tests/test_publications_sync.py
 tests/test_changelog.py
+web/src/test/dataExplorer.test.tsx
+web/src/test/publications.test.tsx
+web/src/test/publicationDetail.test.tsx
+web/src/test/changelog.test.tsx
+```
+
+Backend / infra files depending on the chosen runtime:
+
+```text
+Default current-runtime path:
+  modify `dashboard/server/live_dashboard_server.py`
+  optionally add extracted helpers under `dashboard/server/`
+  add top-level `migrations/0003_publications.sql`
+  add top-level `migrations/0004_audit_changelog.sql`
+
+Optional future Cloudflare/D1 extraction:
+  workers/publications-sync/index.ts
+  workers/table-query.ts
+  wrangler.toml
 ```
 
 ### Files to Modify
@@ -821,23 +914,28 @@ tests/test_changelog.py
 web/src/App.tsx                        — add 4 new lazy routes
 web/src/api/schemas.ts                 — add Publication, ChangelogEntry, DatasetSnapshot, TableQueryParams
 web/src/api/hooks.ts                   — add usePublications, useChangelog, useTableQuery, useSnapshots, etc.
+web/src/api/mockServer.ts              — add mock responses for new `/api/*` routes and buddy-aware copy
 web/src/config/featureFlags.ts         — add SQL_TABLE_EXPLORER, PUBLICATIONS_FEED, DATA_CHANGELOG
 web/src/components/shell/Sidebar.tsx   — add 3 new nav items in appropriate groups
+web/src/components/shell/Buddy.tsx     — add insight copy for new surfaces
+web/src/components/shell/ChatDrawer.tsx — add prompts / fast paths for new features
+web/src/lib/audit.ts                   — extend audit enum if new action names are required
 web/src/routes/Overview.tsx            — add Publications sync MetricCard
 web/src/routes/ParticipantDetail.tsx   — add Change History panel
-workers/wrangler.toml                  — add D1 bindings, NCBI_API_KEY secret, Cron trigger
+dashboard/assistant/local_chat_assistant.py — teach the assistant the new routes and exports
+dashboard/server/live_dashboard_server.py   — add the live backend endpoints unless a new runtime is introduced
 ```
 
 ---
 
 ## IMPLEMENTATION ORDER (Suggested Sprint Sequence)
 
-1. **Sprint 1** — Migrations + D1 schema (`0003`, `0004`) → enables both Feature 2 and 3 backend work in parallel
-2. **Sprint 2** — Feature 1 (DataExplorer): `DataTable` component + `PaginationBar` + `useStickyTableState` + `DataExplorer.tsx` route + Worker endpoint
-3. **Sprint 3** — Feature 2 (Publications): ETL Worker + D1 upsert + API endpoints + `Publications.tsx` + `PublicationDetail.tsx`
-4. **Sprint 4** — Feature 3 (Changelog): Audit middleware + `Changelog.tsx` + `DiffViewer` component + entity history panels on `ParticipantDetail` + `PublicationDetail`
-5. **Sprint 5** — Cross-cutting: HIPAA guards review, tests, mobile responsiveness, feature flag activation in staging, audit log review
+1. **Sprint 1** — Decide the backend path first: current Python runtime only, or explicit new Worker/D1 infrastructure. If D1 is adopted, add that infra before application work.
+2. **Sprint 2** — Feature 1 (DataExplorer): install `@tanstack/react-table`, build `DataTable` + `PaginationBar` + `useStickyTableState`, add route, schemas/hooks/mock server, then backend query endpoint.
+3. **Sprint 3** — Feature 2 (Publications): build sync job + storage schema + API endpoints + `Publications.tsx` + `PublicationDetail.tsx`.
+4. **Sprint 4** — Feature 3 (Changelog): audit helper + storage schema + `Changelog.tsx` + `DiffViewer` + entity history panels.
+5. **Sprint 5** — Cross-cutting: Buddy/assistant sync, HIPAA review, audit enum review, mobile responsiveness, dark/light parity, and frontend/backend tests.
 
 ---
 
-*This prompt was generated from analysis of the `namo507/ESD-Lab-USC` repository (React 18 + TypeScript + Vite + Cloudflare Pages architecture) and the ESD Lab Feature Enhancement research document. All implementation details are specific to the existing codebase patterns, component library, and HIPAA constraints of the NANO Study.*
+*This prompt was refined against the current `namo507/ESD-Lab-USC` repository state: the live React SPA under `web/`, routing in `web/src/App.tsx` via `react-router-dom`, nav in `web/src/components/shell/Sidebar.tsx`, mock API support in `web/src/api/mockServer.ts`, live backend entry in `dashboard/server/live_dashboard_server.py`, AI buddy surfaces in `Buddy.tsx` / `ChatDrawer.tsx`, and the warm-token light/dark theme system in `tokens.css` and `global.css`. Any D1/Worker infrastructure described above should be treated as new work, not as a pre-existing repo capability.*
