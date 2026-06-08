@@ -5,14 +5,29 @@ import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip as LeafletToolt
 import type { FeatureCollection } from "geojson";
 import { Card, SectionLabel } from "@/components/primitives";
 import { useSdohMap } from "@/api/hooks";
+import type { SdohMapRow } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import styles from "./FeatureRoutes.module.css";
 
-export function SdohMap() {
-  const enabled = useFeatureFlag("SDOH_MAP");
-  const { data } = useSdohMap();
-  const rows = data?.data ?? [];
+interface CountyMapProps {
+  rows: SdohMapRow[];
+  selectedCounty?: string;
+  onCountySelect?: (county: SdohMapRow) => void;
+  ariaLabel?: string;
+}
+
+function countyKey(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+export function CountyMap({
+  rows,
+  selectedCounty,
+  onCountySelect,
+  ariaLabel = "South Carolina county SDOH map",
+}: CountyMapProps) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
+  const activeKey = countyKey(selectedCounty);
 
   useEffect(() => {
     fetch("/sc-counties.geojson")
@@ -20,6 +35,63 @@ export function SdohMap() {
       .then((payload: FeatureCollection) => setGeo(payload))
       .catch(() => setGeo(null));
   }, []);
+
+  return (
+    <div className={styles.mapShell} role="img" aria-label={ariaLabel}>
+      <MapContainer center={[33.9, -81.1]} zoom={6.4} scrollWheelZoom={false}>
+        <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {geo && (
+          <GeoJSON
+            key={activeKey || "all"}
+            data={geo}
+            style={(feature) => {
+              const props = feature?.properties as { name?: string; fips?: string } | undefined;
+              const selected = activeKey && (countyKey(props?.name) === activeKey || countyKey(props?.fips) === activeKey);
+              return {
+                color: selected ? "var(--usc-garnet)" : "var(--border-strong)",
+                weight: selected ? 3 : 1.2,
+                fillColor: selected ? "var(--usc-garnet)" : "var(--usc-gold)",
+                fillOpacity: selected ? 0.34 : 0.18,
+              };
+            }}
+            onEachFeature={(feature, layer) => {
+              const props = feature.properties as { name?: string; fips?: string };
+              const county = rows.find((row) => row.fips === props.fips || countyKey(row.county) === countyKey(props.name));
+              if (!county || !onCountySelect) return;
+              layer.on({ click: () => onCountySelect(county) });
+            }}
+          />
+        )}
+        {rows.map((row) => {
+          const selected = countyKey(row.county) === activeKey || countyKey(row.fips) === activeKey;
+          return (
+            <CircleMarker
+              key={row.fips}
+              center={[row.lat, row.lng]}
+              radius={Math.max(7, Math.sqrt(row.participants) * 1.6)}
+              pathOptions={{
+                color: selected ? "var(--usc-garnet)" : "var(--blue)",
+                fillColor: selected ? "var(--usc-garnet)" : "var(--blue)",
+                fillOpacity: selected ? 0.78 : 0.56,
+                weight: selected ? 2 : 1,
+              }}
+              eventHandlers={onCountySelect ? { click: () => onCountySelect(row) } : undefined}
+            >
+              <LeafletTooltip>
+                {row.county}: n={row.participants}, completion {row.meanCompletion.toFixed(1)}%
+              </LeafletTooltip>
+            </CircleMarker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
+}
+
+export function SdohMap() {
+  const enabled = useFeatureFlag("SDOH_MAP");
+  const { data } = useSdohMap();
+  const rows = data?.data ?? [];
 
   const sx = d3.scaleLinear().domain([0.2, 0.6]).range([48, 700]);
   const sy = d3.scaleLinear().domain([60, 90]).range([210, 20]);
@@ -38,29 +110,7 @@ export function SdohMap() {
 
       <div className={styles.split}>
         <Card pad={0}>
-          <div className={styles.mapShell} role="img" aria-label="South Carolina county SDOH map">
-            <MapContainer center={[33.9, -81.1]} zoom={6.4} scrollWheelZoom={false}>
-              <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {geo && (
-                <GeoJSON
-                  data={geo}
-                  style={() => ({ color: "var(--usc-garnet)", weight: 2, fillColor: "var(--usc-gold)", fillOpacity: 0.24 })}
-                />
-              )}
-              {rows.map((row) => (
-                <CircleMarker
-                  key={row.fips}
-                  center={[row.lat, row.lng]}
-                  radius={Math.max(7, Math.sqrt(row.participants) * 1.6)}
-                  pathOptions={{ color: "var(--usc-garnet)", fillColor: "var(--usc-garnet)", fillOpacity: 0.62, weight: 1 }}
-                >
-                  <LeafletTooltip>
-                    {row.county}: n={row.participants}, completion {row.meanCompletion.toFixed(1)}%
-                  </LeafletTooltip>
-                </CircleMarker>
-              ))}
-            </MapContainer>
-          </div>
+          <CountyMap rows={rows} />
         </Card>
 
         <Card pad={20}>

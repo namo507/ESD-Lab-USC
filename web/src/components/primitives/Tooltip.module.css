@@ -24,5 +24,9 @@
   white-space: normal;
 }
 
+.persistent {
+  pointer-events: auto;
+}
+
 .top    { bottom: calc(100% + 6px); }
 .bottom { top: calc(100% + 6px); }

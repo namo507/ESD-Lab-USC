@@ -81,6 +81,16 @@ export function ShapExplorer() {
                 fill={highlight === point.participantId ? "var(--usc-gold)" : point.shap >= 0 ? "var(--usc-garnet)" : "var(--blue)"}
                 opacity={highlight && highlight !== point.participantId ? 0.28 : 0.72}
                 onClick={() => setHighlight((value) => value === point.participantId ? "" : point.participantId)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setHighlight((value) => value === point.participantId ? "" : point.participantId);
+                  }
+                }}
+                tabIndex={0}
+                role="button"
+                aria-label={`${point.label}: ${point.participantId}, SHAP ${point.shap.toFixed(3)}`}
+                aria-pressed={highlight === point.participantId}
                 style={{ cursor: "pointer" }}
               />
             ))}

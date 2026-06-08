@@ -1,16 +1,41 @@
-.skip { position: absolute; top: 0; left: 0; }
-.skipLink {
+.skipNav {
   position: absolute;
-  left: -1000px;
-  top: 0;
+  top: -100%;
+  left: 8px;
+  z-index: 9999;
   background: var(--usc-garnet);
   color: var(--fg-on-brand);
-  padding: 8px 12px;
-  border-radius: var(--r-2);
+  padding: 8px 16px;
+  border-radius: 0 0 4px 4px;
   font-size: var(--text-small);
+  font-weight: var(--w-semibold);
+  text-decoration: none;
 }
-.skipLink:focus {
-  left: 8px;
-  top: 8px;
-  z-index: 100;
+.skipNav:focus {
+  top: 0;
+}
+
+.executiveBanner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 14px 24px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--usc-gold);
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--usc-gold) 14%, var(--bg-surface));
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.executiveBanner a {
+  color: var(--usc-garnet);
+  font-weight: var(--w-bold);
+  text-decoration: none;
+}
+
+.executiveBanner a:focus-visible {
+  outline: 2px solid var(--usc-garnet);
+  outline-offset: 2px;
 }

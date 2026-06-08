@@ -72,6 +72,11 @@ export function AppShell() {
   const qaPending = stages?.find((s) => s.id === "qa")?.inflight ?? 0;
   const enrolled = study?.enrolled ?? 0;
   const showHipaaBanner = import.meta.env.PROD ? true : showHipaa;
+  const searchParams = new URLSearchParams(location.search);
+  const executiveMode = searchParams.get("mode") === "executive";
+  const exitExecutiveSearch = new URLSearchParams(location.search);
+  exitExecutiveSearch.delete("mode");
+  const exitExecutiveHref = `${location.pathname}${exitExecutiveSearch.toString() ? `?${exitExecutiveSearch.toString()}` : ""}`;
 
   const safeStudy = study ?? {
     enrolled: 0,
@@ -83,7 +88,8 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen flex" style={{ minWidth: 1024, background: "var(--warm-bg)" }}>
-      <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} />
+      <a href="#main-content" className={styles.skipNav}>Skip to main content</a>
+      <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} executiveMode={executiveMode} />
 
       <div className="flex-1 min-w-0 flex flex-col">
         <TopNav
@@ -94,8 +100,14 @@ export function AppShell() {
           idleMinutes={idleMinutes}
         />
         {showHipaaBanner && <HipaaBanner onDismiss={import.meta.env.PROD ? undefined : () => setHipaa(false)} idleMinutes={idleMinutes} />}
+        {executiveMode && (
+          <div className={styles.executiveBanner}>
+            <span><strong>Executive Summary View</strong> - Showing key study metrics only</span>
+            <a href={exitExecutiveHref}>Exit</a>
+          </div>
+        )}
 
-        <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main" style={{ maxWidth: 1480 }}>
+        <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main-content" style={{ maxWidth: 1480 }}>
           <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
           <footer className="app-footer">
             <span>Early Social Development Lab · Dr. Bradshaw · UofSC</span>
@@ -105,9 +117,6 @@ export function AppShell() {
 
         <Buddy />
         <ChatDrawer />
-      </div>
-      <div className={styles.skip}>
-        <a href="#main" className={styles.skipLink}>Skip to main content</a>
       </div>
     </div>
   );

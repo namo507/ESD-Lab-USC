@@ -456,6 +456,20 @@ export type CohortSwimmerRow = z.infer<typeof CohortSwimmerRow>;
 export const CohortSwimmerResponse = ApiListResponse(CohortSwimmerRow);
 export type CohortSwimmerResponse = z.infer<typeof CohortSwimmerResponse>;
 
+export const HdaCompositionPoint = z.object({
+  month: z.number(),
+  orienting: z.number(),
+  sustained: z.number(),
+  inattention: z.number(),
+  termination: z.number(),
+});
+export type HdaCompositionPoint = z.infer<typeof HdaCompositionPoint>;
+export const HdaCompositionResponse = z.object({
+  byGroup: z.record(GroupCode, z.array(HdaCompositionPoint)),
+  meta: ApiListMeta,
+});
+export type HdaCompositionResponse = z.infer<typeof HdaCompositionResponse>;
+
 export const AttritionFunnelRow = z.object({
   from: z.string(),
   to: z.string(),
@@ -463,7 +477,33 @@ export const AttritionFunnelRow = z.object({
   group: GroupCode,
 });
 export type AttritionFunnelRow = z.infer<typeof AttritionFunnelRow>;
-export const AttritionFunnelResponse = ApiListResponse(AttritionFunnelRow);
+
+export const AttritionFunnelStage = z.object({
+  id: z.string(),
+  label: z.string(),
+  n: z.number().int(),
+  retainedPct: z.number(),
+});
+export type AttritionFunnelStage = z.infer<typeof AttritionFunnelStage>;
+export const AttritionReasonCode = z.object({
+  stageId: z.string(),
+  reason: z.string(),
+  n: z.number().int(),
+  pct: z.number(),
+});
+export type AttritionReasonCode = z.infer<typeof AttritionReasonCode>;
+export const AttritionTrendPoint = z.object({
+  quarter: z.string(),
+  stageId: z.string(),
+  n: z.number().int(),
+  retainedPct: z.number().optional(),
+});
+export type AttritionTrendPoint = z.infer<typeof AttritionTrendPoint>;
+export const AttritionFunnelResponse = ApiListResponse(AttritionFunnelRow).extend({
+  stages: z.array(AttritionFunnelStage).default([]),
+  reasonCodes: z.array(AttritionReasonCode).default([]),
+  trendByQuarter: z.array(AttritionTrendPoint).default([]),
+});
 export type AttritionFunnelResponse = z.infer<typeof AttritionFunnelResponse>;
 
 export const SdohMapRow = z.object({
@@ -480,6 +520,19 @@ export const SdohMapRow = z.object({
 export type SdohMapRow = z.infer<typeof SdohMapRow>;
 export const SdohMapResponse = ApiListResponse(SdohMapRow);
 export type SdohMapResponse = z.infer<typeof SdohMapResponse>;
+
+export const CountyProfileRow = z.object({
+  county: z.string(),
+  fips: z.string(),
+  enrolled: z.number().int(),
+  completionRate: z.number(),
+  sdohScore: z.number(),
+  medianIncomeBracket: z.enum(["low", "medium", "high"]),
+  cptdGapMean: z.number().nullable(),
+});
+export type CountyProfileRow = z.infer<typeof CountyProfileRow>;
+export const CountyProfileResponse = ApiListResponse(CountyProfileRow);
+export type CountyProfileResponse = z.infer<typeof CountyProfileResponse>;
 
 export const ShapValueRow = z.object({
   participantId: z.string(),

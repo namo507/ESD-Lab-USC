@@ -1,0 +1,32 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 16px;
+}
+.controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.select {
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  color: var(--ink);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--slate-500); font-size: 13px; }
+.toggle input { accent-color: var(--usc-garnet); }
+.select:focus-visible,
+.toggle input:focus-visible,
+.details:focus-visible {
+  outline: 2px solid var(--usc-garnet);
+  outline-offset: 2px;
+}
+.bars { display: grid; gap: 12px; }
+.barRow { display: grid; grid-template-columns: 170px 1fr auto; gap: 10px; align-items: center; }
+.barTrack { height: 14px; border-radius: 999px; background: var(--bg-subtle); border: 1px solid var(--border); overflow: hidden; }
+.bar { height: 100%; border-radius: 999px; }
+.about { border: 1px solid var(--border); border-radius: var(--r-2); background: var(--bg-surface); padding: 16px 18px; }
+.about summary { cursor: pointer; font-weight: var(--w-bold); color: var(--ink); }
+.about p { color: var(--slate-500); line-height: 1.6; }

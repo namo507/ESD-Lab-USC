@@ -331,12 +331,30 @@ export function useCohortSwimmer() {
   });
 }
 
+export function useHdaComposition() {
+  return useQuery({
+    queryKey: ["v2", "hda-composition"],
+    queryFn: () => api.get("/api/v2/hda-composition", S.HdaCompositionResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
 export function useAttritionFunnel() {
   return useQuery({
     queryKey: ["v2", "attrition-funnel"],
     queryFn: () => api.get("/api/v2/attrition-funnel", S.AttritionFunnelResponse),
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
+  });
+}
+
+export function useCountyProfiles() {
+  return useQuery({
+    queryKey: ["v2", "county-profiles"],
+    queryFn: () => api.get("/api/v2/county-profiles", S.CountyProfileResponse),
+    staleTime: 10 * 60_000,
+    gcTime: 60 * 60_000,
   });
 }
 

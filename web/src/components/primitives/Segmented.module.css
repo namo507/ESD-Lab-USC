@@ -19,6 +19,10 @@
 }
 .btn:last-child { border-right: none; }
 .btn:hover { background: var(--bg-hover); }
+.btn:focus-visible {
+  outline: 2px solid var(--usc-garnet);
+  outline-offset: -2px;
+}
 .active { background: var(--bg-inverse); color: var(--fg-on-brand); }
 
 .s-sm .btn { font-size: 11px; padding: 4px 10px; }

@@ -8,6 +8,7 @@ interface SidebarProps {
   study: StudySummary;
   qaPending: number;
   enrolled: number;
+  executiveMode?: boolean;
 }
 
 interface NavItem {
@@ -67,6 +68,20 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     ],
   },
   {
+    id: "insights",
+    title: "Insights & Demos",
+    items: [
+      { to: "/guided-explorer", label: "Guided Explorer", icon: "compass", flag: "GUIDED_EXPLORER" },
+      { to: "/public-insights", label: "Public Insights", icon: "bar-chart-3", flag: "PUBLIC_INSIGHTS" },
+      { to: "/cga-river", label: "CGA River", icon: "waves", flag: "CGA_RIVER" },
+      { to: "/county-comparator", label: "County Compare", icon: "map", flag: "COUNTY_COMPARATOR" },
+      { to: "/participant-timeline", label: "Participant Timeline", icon: "calendar-range", flag: "PARTICIPANT_TIMELINE_V2" },
+      { to: "/model-terrain", label: "Model Terrain", icon: "mountain", flag: "MODEL_CONFIDENCE_TERRAIN" },
+      { to: "/attrition-funnel", label: "Attrition Funnel", icon: "filter", flag: "ATTRITION_FUNNEL_V2" },
+      { to: "/executive", label: "Executive Mode", icon: "presentation", flag: "EXECUTIVE_MODE" },
+    ],
+  },
+  {
     id: "dyn",
     title: "Dynamics & Dyads",
     items: [
@@ -101,7 +116,23 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
   },
 ];
 
-export function Sidebar({ study, qaPending, enrolled }: SidebarProps) {
+const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
+  {
+    id: "executive",
+    title: "Executive View",
+    items: [
+      { to: "/executive", label: "Executive", icon: "presentation", flag: "EXECUTIVE_MODE" },
+      { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+      { to: "/public-insights", label: "Public Insights", icon: "bar-chart-3", flag: "PUBLIC_INSIGHTS" },
+      { to: "/results", label: "Results", icon: "line-chart" },
+      { to: "/attrition-funnel", label: "Retention", icon: "git-merge", flag: "ATTRITION_FUNNEL_V2" },
+      { to: "/model-leaderboard", label: "Model Leaderboard", icon: "list-checks", flag: "MODEL_LEADERBOARD" },
+    ],
+  },
+];
+
+export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: SidebarProps) {
+  const groups = executiveMode ? EXECUTIVE_NAV_GROUPS : NAV_GROUPS;
   return (
     <aside
       className="w-60 flex-shrink-0 bg-white border-r border-[color:var(--warm-border)] py-5 px-3.5 flex flex-col gap-6 sticky top-0 self-start h-screen overflow-y-auto"
@@ -130,7 +161,7 @@ export function Sidebar({ study, qaPending, enrolled }: SidebarProps) {
         </div>
       </div>
 
-      {NAV_GROUPS.map((g) => (
+      {groups.map((g) => (
         <div key={g.id}>
           <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--warm-fg4)]">
             {g.title}

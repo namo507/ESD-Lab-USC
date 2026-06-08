@@ -124,6 +124,30 @@ function assistantStatus(reason = "upstream-unavailable") {
 
 function assistantReply(message) {
   const text = String(message || "").toLowerCase();
+  if (text.includes("cga") || text.includes("milestone river") || (text.includes("hda") && text.includes("river"))) {
+    return "The CGA Milestone River shows aggregate HDA phase composition across corrected-age milestones for VPT, ASIB, and TD groups. It uses normalized orienting, sustained, inattention, and termination shares from the /api/v2/hda-composition contract.";
+  }
+  if (text.includes("county") || text.includes("sdoh") || text.includes("comparator")) {
+    return "The County Comparator pairs two county-level aggregate profiles with the SDOH map, mirrored access bars, and completion context. It avoids participant identity and never exposes addresses, ZIP codes, or tract-level location.";
+  }
+  if (text.includes("participant timeline") || text.includes("passport timeline") || text.includes("swimlane")) {
+    return "The Participant Passport Timeline arranges de-identified NANO IDs into swim lanes across visit, REDCap, ECG, QA, and pipeline events. Detail drawers are designed for scrubbed event metadata only.";
+  }
+  if (text.includes("model terrain") || text.includes("confidence terrain") || text.includes("contour")) {
+    return "The Model Confidence Terrain turns aggregate SHAP and confidence summaries into contour-style explanation views, with heatmap and 3D controls ready for richer model payloads.";
+  }
+  if (text.includes("attrition funnel") || text.includes("retention") || text.includes("nih")) {
+    return "The Attrition Funnel v2 summarizes consent-to-analysis retention stages, dropout reason codes, quarter trends, subgroup filters, and a copy-ready NIH report note.";
+  }
+  if (text.includes("guided") || text.includes("hypothesis")) {
+    return "The Guided Explorer offers five hypothesis cards that open preconfigured dashboard views for CGA-HDA change, county access context, adherence timelines, model confidence, and attrition pressure.";
+  }
+  if (text.includes("public insights") || text.includes("stakeholder")) {
+    return "Public Insights is an aggregate stakeholder story surface with CDC-style charts for study reach, enrollment trajectory, county context, HDA patterns, and retention. It does not show participant-level rows.";
+  }
+  if (text.includes("executive")) {
+    return "Executive Mode is a compact stakeholder dashboard with enrollment, completion, model, SDOH, and retention KPIs plus a PPTX export path.";
+  }
   if (text.includes("co-reg") || text.includes("coreg") || text.includes("dyad")) {
     return "The Dynamics & Dyads build adds co-regulation braids, lag surfaces, and dyad-level summaries behind the DYN feature flags. Use the Co-regulation route to compare infant arousal with caregiver speech and attention alignment.";
   }

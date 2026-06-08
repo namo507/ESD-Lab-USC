@@ -62,9 +62,13 @@ export function PipelineDAG({ stages, selected, onSelect }: PipelineDAGProps) {
               className={styles.node}
               tabIndex={0}
               role="button"
-              aria-label={`${n.label} stage, ${n.inflight} in flight`}
+              aria-label={`${n.label}: ${n.inflight} in flight, ${n.done} done, ${n.fail} failed`}
+              aria-pressed={isSel}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") onSelect(n.id);
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(n.id);
+                }
               }}
             >
               <circle

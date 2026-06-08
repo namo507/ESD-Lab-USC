@@ -69,6 +69,61 @@ def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
     )
 
 
+def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+
+    dashboard_payload = {
+        "meta": {
+            "data_source": "repo_demo_inputs",
+            "study": {"name": "NANO Study"},
+        },
+        "hda_composition": {
+            "by_group": {
+                "VPT": [
+                    {
+                        "month": 0,
+                        "orienting": 0.34,
+                        "sustained": 0.27,
+                        "inattention": 0.21,
+                        "termination": 0.18,
+                    }
+                ],
+                "ASIB": [],
+                "TD": [],
+            }
+        },
+        "attrition_funnel": {
+            "stages": [{"label": "Analysis-ready", "retainedPct": 81.4}]
+        },
+        "county_profiles": [
+            {
+                "county": "Richland County",
+                "fips": "45079",
+                "participants": 42,
+                "sdohScore": 58,
+            }
+        ],
+    }
+    (data_dir / "dashboard_data.json").write_text(json.dumps(dashboard_payload))
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("Explain the CGA milestone river")
+    response = assistant._maybe_short_circuit_response(
+        "Explain the CGA milestone river",
+        context,
+    )
+
+    assert response is not None
+    assert "CGA Milestone River" in response
+    assert "hda_composition" in response
+
+
 def test_status_reports_missing_model_when_dependencies_are_available(
     tmp_path, monkeypatch
 ):

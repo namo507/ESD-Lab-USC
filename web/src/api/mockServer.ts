@@ -26,9 +26,11 @@ import type {
   RsaTrajectoryResponse,
   RedcapCompletenessResponse,
   HdaSessionResponse,
+  HdaCompositionResponse,
   ThermalHeatmapResponse,
   CohortSwimmerResponse,
   AttritionFunnelResponse,
+  CountyProfileResponse,
   SdohMapResponse,
   ShapValuesResponse,
   ClusterTsneResponse,
@@ -482,15 +484,86 @@ const COHORT_SWIMMER: CohortSwimmerResponse = v2Envelope(
   STUDY.enrolled,
 );
 
-const ATTRITION_FUNNEL: AttritionFunnelResponse = v2Envelope(
-  (["VPT", "ASIB", "TD"] as const).flatMap((group) => [
-    { from: "enrolled", to: "nicu_dc", value: STUDY.groups[group].count, group },
-    { from: "nicu_dc", to: "cga_6mo", value: Math.round(STUDY.groups[group].count * 0.84), group },
-    { from: "cga_6mo", to: "cga_12mo", value: Math.round(STUDY.groups[group].count * 0.62), group },
-    { from: "cga_12mo", to: "cga_24mo", value: Math.round(STUDY.groups[group].count * 0.28), group },
-  ]),
-  STUDY.enrolled,
+const CGA_MONTHS = [0, 1, 2, 3, 6, 9, 12, 24, 36];
+
+function normalizeComposition(values: [number, number, number, number]) {
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const normalized = values.map((value) => Number((value / total).toFixed(3)));
+  const drift = Number((1 - normalized.reduce((sum, value) => sum + value, 0)).toFixed(3));
+  normalized[1] = Number((normalized[1]! + drift).toFixed(3));
+  return {
+    orienting: normalized[0]!,
+    sustained: normalized[1]!,
+    inattention: normalized[2]!,
+    termination: normalized[3]!,
+  };
+}
+
+const HDA_COMPOSITION: HdaCompositionResponse = {
+  byGroup: {
+    VPT: CGA_MONTHS.map((month, idx) => normalizeComposition([
+      0.25 - idx * 0.006,
+      0.34 + idx * 0.025,
+      0.29 - idx * 0.012,
+      0.12 - idx * 0.006,
+    ])).map((row, idx) => ({ month: CGA_MONTHS[idx]!, ...row })),
+    ASIB: CGA_MONTHS.map((month, idx) => normalizeComposition([
+      0.27 - idx * 0.005,
+      0.31 + idx * 0.015,
+      0.28 - idx * 0.006,
+      0.14 - idx * 0.004,
+    ])).map((row, idx) => ({ month: CGA_MONTHS[idx]!, ...row })),
+    TD: CGA_MONTHS.map((month, idx) => normalizeComposition([
+      0.24 - idx * 0.007,
+      0.39 + idx * 0.03,
+      0.23 - idx * 0.015,
+      0.14 - idx * 0.008,
+    ])).map((row, idx) => ({ month: CGA_MONTHS[idx]!, ...row })),
+  },
+  meta: { generatedAt: V2_GENERATED_AT, participantCount: STUDY.enrolled, source: "mock" },
+};
+
+const ATTRITION_STAGES: AttritionFunnelResponse["stages"] = [
+  { id: "screened", label: "Screened", n: 380, retainedPct: 100 },
+  { id: "consented", label: "Consented", n: 302, retainedPct: 79.5 },
+  { id: "enrolled", label: "Enrolled", n: 260, retainedPct: 68.4 },
+  { id: "v1", label: "Visit 1 Complete", n: 248, retainedPct: 65.3 },
+  { id: "v2", label: "Visit 2 Complete", n: 231, retainedPct: 60.8 },
+  { id: "v3", label: "Visit 3 Complete", n: 210, retainedPct: 55.3 },
+  { id: "v36mo", label: "36-Month Complete", n: 172, retainedPct: 45.3 },
+];
+const ATTRITION_REASON_CODES: AttritionFunnelResponse["reasonCodes"] = [
+  { stageId: "consented", reason: "declined consent", n: 42, pct: 54 },
+  { stageId: "consented", reason: "eligibility", n: 36, pct: 46 },
+  { stageId: "v2", reason: "missed visit window", n: 15, pct: 48 },
+  { stageId: "v2", reason: "unable to contact", n: 10, pct: 32 },
+  { stageId: "v2", reason: "moved out of catchment", n: 6, pct: 20 },
+  { stageId: "v36mo", reason: "study fatigue", n: 23, pct: 41 },
+  { stageId: "v36mo", reason: "scheduling conflict", n: 19, pct: 34 },
+  { stageId: "v36mo", reason: "withdrawn", n: 14, pct: 25 },
+];
+const ATTRITION_TREND: AttritionFunnelResponse["trendByQuarter"] = ["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"].flatMap((quarter, qi) =>
+  ATTRITION_STAGES.map((stage, si) => ({
+    quarter,
+    stageId: stage.id,
+    n: Math.max(0, Math.round(stage.n * (0.36 + qi * 0.085) - si * 3)),
+    retainedPct: Number(Math.min(100, stage.retainedPct * (0.72 + qi * 0.04)).toFixed(1)),
+  })),
 );
+const ATTRITION_FUNNEL: AttritionFunnelResponse = {
+  ...v2Envelope(
+    (["VPT", "ASIB", "TD"] as const).flatMap((group) => [
+      { from: "enrolled", to: "nicu_dc", value: STUDY.groups[group].count, group },
+      { from: "nicu_dc", to: "cga_6mo", value: Math.round(STUDY.groups[group].count * 0.84), group },
+      { from: "cga_6mo", to: "cga_12mo", value: Math.round(STUDY.groups[group].count * 0.62), group },
+      { from: "cga_12mo", to: "cga_24mo", value: Math.round(STUDY.groups[group].count * 0.28), group },
+    ]),
+    STUDY.enrolled,
+  ),
+  stages: ATTRITION_STAGES,
+  reasonCodes: ATTRITION_REASON_CODES,
+  trendByQuarter: ATTRITION_TREND,
+};
 
 const SDOH_MAP: SdohMapResponse = v2Envelope(
   [
@@ -509,6 +582,19 @@ const SDOH_MAP: SdohMapResponse = v2Envelope(
     broadbandPct: Number(broadbandPct),
     foodAccessPct: Number(100 - Number(deprivationIndex) * 45),
     meanCompletion: Number(meanCompletion),
+  })),
+  STUDY.enrolled,
+);
+
+const COUNTY_PROFILES: CountyProfileResponse = v2Envelope(
+  SDOH_MAP.data.map((row) => ({
+    county: row.county,
+    fips: row.fips,
+    enrolled: row.participants,
+    completionRate: Number((row.meanCompletion / 100).toFixed(3)),
+    sdohScore: row.deprivationIndex,
+    medianIncomeBracket: row.deprivationIndex > 0.48 ? "low" : row.deprivationIndex > 0.34 ? "medium" : "high",
+    cptdGapMean: Number((1.5 + row.deprivationIndex * 1.4).toFixed(2)),
   })),
   STUDY.enrolled,
 );
@@ -1019,8 +1105,40 @@ function mockAssistantReply(message: string): string {
     return "The dashboard prototype reports a held-out AUROC near 0.899 for the risk model. The feature mix combines HRV, HDA composition, demographics, and recording quality, with HDA-derived features carrying much of the signal.";
   }
 
+  if (q.includes("cga river") || q.includes("milestone river") || q.includes("hda composition")) {
+    return "The CGA Milestone River is a D3 stacked-area view of HDA phase composition across canonical corrected-age months. Use the group and phase controls to compare VPT, ASIB, TD, or sustained/orienting-only trajectories.";
+  }
+
+  if (q.includes("county comparator") || q.includes("county compare") || q.includes("sdoh score")) {
+    return "The County Comparator uses county-level aggregate profiles only: FIPS, enrolled count, completion rate, SDoH score, income proxy, and CPTd gap mean. The left/right URL params make comparisons shareable without exposing precise locations.";
+  }
+
+  if (q.includes("passport timeline") || q.includes("participant timeline") || q.includes("swimlane")) {
+    return "The Participant Passport Timeline combines de-identified participant swimlanes with shape-coded marks: diamonds for completed visits, triangles for QA flags, squares for pipeline runs, crosses for failed/withdrawn visits, and circles for REDCap milestones.";
+  }
+
+  if (q.includes("model terrain") || q.includes("confidence terrain") || q.includes("contour")) {
+    return "Model Confidence Terrain reads the existing SHAP values and ships Contour plus Heatmap fallbacks. Terrain mode is intentionally disabled unless the Three.js stack is installed. Higher intensity means stronger model influence, not causality.";
+  }
+
+  if (q.includes("guided explorer") || q.includes("hypothesis card")) {
+    return "Guided Explorer offers five hypothesis-first cards: RSA growth, ASIB sustained attention, county SDoH and completion, 3-month model drivers, and cohort attrition. Each card renders a small preview and links to a configured route.";
+  }
+
+  if (q.includes("public insights") || q.includes("cdc-style") || q.includes("public-facing")) {
+    return "Public Insights is aggregate-only. It presents five CDC-style sections: heart rhythm trajectories, county geography, study group breakdown, first sustained-attention milestones, and two-group comparison with plain-language copy.";
+  }
+
+  if (q.includes("executive mode") || q.includes("executive summary")) {
+    return "Executive Mode simplifies the nav to key study surfaces, shows enrolled N, target N, visit completion, and best AUROC, and can export a stub five-slide PPTX summary for PI or funder review.";
+  }
+
+  if (q.includes("attrition funnel") || q.includes("retention funnel") || q.includes("nih report")) {
+    return "Attrition Funnel v2 shows each retention stage with N, percent retained, drop-off from the prior stage, reason-code detail, and quarter trends. The Copy for NIH Report button writes a concise aggregate summary.";
+  }
+
   if (q.includes("new feature") || q.includes("new route") || q.includes("feature surface")) {
-    return "The expanded NANO surfaces include Data Explorer, Publications, Change History, RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Matrix, Attachment Heatmap, and the Dynamics & Dyads layer.";
+    return "The expanded NANO surfaces include Data Explorer, Publications, Change History, RSA growth curves, REDCap completeness, HDA timeline/player, thermal heatmap, swimmer plot, attrition, SDOH map, SHAP Explorer, Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality, Spatial Matrix, Attachment Heatmap, Dynamics & Dyads, CGA River, County Comparator, Participant Timeline, Model Terrain, Guided Explorer, Public Insights, Attrition Funnel v2, and Executive Mode.";
   }
 
   if (q.includes("data explorer") || q.includes("sql") || q.includes("table")) {
@@ -1430,7 +1548,9 @@ export function installMockServer() {
     if (p === "/api/v2/rsa-trajectories") return reply(makeRsaTrajectories(u.searchParams.get("age") ?? "adjusted"));
     if (p === "/api/v2/redcap-completeness") return reply(REDCAP_COMPLETENESS);
     if (p === "/api/v2/cohort-swimmer") return reply(COHORT_SWIMMER);
+    if (p === "/api/v2/hda-composition") return reply(HDA_COMPOSITION);
     if (p === "/api/v2/attrition-funnel") return reply(ATTRITION_FUNNEL);
+    if (p === "/api/v2/county-profiles") return reply(COUNTY_PROFILES);
     if (p === "/api/v2/sdoh-map") return reply(SDOH_MAP);
     if (p === "/api/v2/shap-values") return reply(SHAP_VALUES);
     if (p === "/api/v2/cluster-tsne") return reply(CLUSTER_TSNE);

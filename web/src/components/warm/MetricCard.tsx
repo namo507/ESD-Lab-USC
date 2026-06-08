@@ -83,7 +83,11 @@ export function MetricCard({
         </div>
 
         <div className="mt-3.5 flex items-baseline gap-2">
-          <span className="font-serif text-[38px] font-semibold leading-none -tracking-[0.02em] text-[color:var(--warm-fg1)]">
+          <span
+            className="font-serif text-[38px] font-semibold leading-none -tracking-[0.02em] text-[color:var(--warm-fg1)]"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <Counter
               to={value}
               decimals={decimals}

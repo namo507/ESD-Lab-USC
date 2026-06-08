@@ -11,6 +11,10 @@
   transition: background-color var(--dur-fast) var(--ease-standard),
               border-color var(--dur-fast) var(--ease-standard);
 }
+.btn:focus-visible {
+  outline: 2px solid var(--usc-garnet);
+  outline-offset: 2px;
+}
 .disabled { opacity: 0.4; cursor: not-allowed; }
 
 .s-sm { padding: 5px 10px; font-size: 12px; }

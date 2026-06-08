@@ -20,6 +20,26 @@ def test_synthetic_payload_contains_organization_site_block():
     json.loads(json.dumps(payload, allow_nan=False))
 
 
+def test_synthetic_payload_contains_next_wave_aggregate_blocks():
+    payload = generate_synthetic_dashboard_data.build_payload()
+
+    assert payload["hda_composition"]["by_group"]["VPT"]
+    assert {
+        "orienting",
+        "sustained",
+        "inattention",
+        "termination",
+    }.issubset(payload["hda_composition"]["by_group"]["VPT"][0])
+    assert payload["attrition_funnel"]["stages"]
+    assert payload["attrition_funnel"]["reason_codes"]
+    assert payload["attrition_funnel"]["trend_by_quarter"]
+    assert payload["county_profiles"]
+    assert {"county", "fips", "enrolled", "sdoh_score"}.issubset(
+        payload["county_profiles"][0]
+    )
+    json.loads(json.dumps(payload, allow_nan=False))
+
+
 def test_org_site_live_payload_tolerates_missing_optional_page(monkeypatch):
     def fake_fetch_page(key: str, url: str, timeout: int = 12):
         if key == "partners":
@@ -77,4 +97,7 @@ def test_production_payload_includes_organization_site_block(tmp_path):
     assert any(
         item["kind"] == "story" for item in payload["organization_site"]["impact_feed"]
     )
+    assert payload["hda_composition"]["by_group"]
+    assert payload["attrition_funnel"]["stages"]
+    assert payload["county_profiles"]
     json.loads(json.dumps(payload, allow_nan=False))

@@ -8,10 +8,11 @@ interface TooltipProps {
   gloss?: string;
   side?: "top" | "bottom";
   maxWidth?: number;
+  persistent?: boolean;
   children: ReactNode;
 }
 
-export function Tooltip({ text, gloss, side = "top", maxWidth = 280, children }: TooltipProps) {
+export function Tooltip({ text, gloss, side = "top", maxWidth = 280, persistent = false, children }: TooltipProps) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const ref = useRef<HTMLSpanElement | null>(null);
@@ -26,15 +27,25 @@ export function Tooltip({ text, gloss, side = "top", maxWidth = 280, children }:
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !persistent) return;
+    function onPointerDown(e: PointerEvent) {
+      if (ref.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [open, persistent]);
+
   if (!body) return <>{children}</>;
   return (
     <span
       ref={ref}
       className={styles.wrap}
       onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseLeave={() => !persistent && setOpen(false)}
       onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onBlur={() => !persistent && setOpen(false)}
       aria-describedby={open ? id : undefined}
     >
       {children}
@@ -42,7 +53,7 @@ export function Tooltip({ text, gloss, side = "top", maxWidth = 280, children }:
         <span
           id={id}
           role="tooltip"
-          className={`${styles.body} ${side === "bottom" ? styles.bottom : styles.top}`}
+          className={`${styles.body} ${persistent ? styles.persistent : ""} ${side === "bottom" ? styles.bottom : styles.top}`}
           style={{ maxWidth }}
         >
           {body}

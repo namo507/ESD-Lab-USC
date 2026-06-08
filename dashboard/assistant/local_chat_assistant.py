@@ -37,6 +37,9 @@ SUMMARY_KEYS = (
     "data_quality",
     "ml_performance",
     "trajectories",
+    "hda_composition",
+    "attrition_funnel",
+    "county_profiles",
     "redcap_audit",
     "matlab_integration",
     "cohort_table",
@@ -128,6 +131,10 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "random",
         "forest",
         "confusion",
+        "terrain",
+        "contour",
+        "confidence",
+        "gradient",
     },
     "trajectories": {
         "trajectory",
@@ -142,6 +149,52 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "age",
         "adjusted",
         "chronological",
+        "cga",
+        "river",
+        "milestone",
+        "milestones",
+    },
+    "hda_composition": {
+        "hda",
+        "cga",
+        "river",
+        "milestone",
+        "milestones",
+        "composition",
+        "phase",
+        "phases",
+        "orienting",
+        "regulation",
+        "termination",
+        "recovery",
+    },
+    "attrition_funnel": {
+        "attrition",
+        "retention",
+        "funnel",
+        "dropout",
+        "dropouts",
+        "reason",
+        "reasons",
+        "nih",
+        "report",
+        "retained",
+        "consented",
+        "enrolled",
+    },
+    "county_profiles": {
+        "county",
+        "counties",
+        "comparator",
+        "compare",
+        "profile",
+        "profiles",
+        "sdoh",
+        "adi",
+        "rurality",
+        "transportation",
+        "broadband",
+        "completion",
     },
     "matlab_integration": {
         "matlab",
@@ -158,9 +211,15 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
     "cohort_table": {
         "swimmer",
         "attrition",
+        "retention",
+        "funnel",
+        "passport",
+        "timeline",
+        "swimlane",
         "dropout",
         "cohort",
         "participant",
+        "participants",
         "completion",
         "missingness",
         "redcap",
@@ -204,6 +263,12 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "mission",
         "team",
         "public",
+        "insight",
+        "insights",
+        "executive",
+        "summary",
+        "stakeholder",
+        "stakeholders",
     },
     "cluster": {
         "cluster",
@@ -1223,6 +1288,17 @@ class DashboardChatAssistant:
         data_quality = payload.get("data_quality", {})
         matlab = payload.get("matlab_integration", {})
         cohort = payload.get("cohort_table") or []
+        hda_composition = payload.get("hda_composition") or {}
+        hda_by_group = (
+            hda_composition.get("by_group") if isinstance(hda_composition, dict) else {}
+        )
+        attrition_funnel = payload.get("attrition_funnel") or {}
+        attrition_stages = (
+            attrition_funnel.get("stages")
+            if isinstance(attrition_funnel, dict)
+            else []
+        )
+        county_profiles = payload.get("county_profiles") or []
         best_index, best_model = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
         )
@@ -1269,6 +1345,34 @@ class DashboardChatAssistant:
             "matlab_files": matlab.get("files") or [],
             "data_quality": data_quality,
             "cohort_rows": len(cohort) if isinstance(cohort, list) else 0,
+            "hda_groups": (
+                sorted(str(group) for group in hda_by_group.keys())
+                if isinstance(hda_by_group, dict)
+                else []
+            ),
+            "hda_month_count": (
+                max(
+                    (
+                        len(points)
+                        for points in hda_by_group.values()
+                        if isinstance(points, list)
+                    ),
+                    default=0,
+                )
+                if isinstance(hda_by_group, dict)
+                else 0
+            ),
+            "attrition_stage_count": (
+                len(attrition_stages) if isinstance(attrition_stages, list) else 0
+            ),
+            "attrition_last_stage": (
+                attrition_stages[-1]
+                if isinstance(attrition_stages, list) and attrition_stages
+                else None
+            ),
+            "county_profile_count": (
+                len(county_profiles) if isinstance(county_profiles, list) else 0
+            ),
             "best_model": (
                 {
                     "index": best_index,
@@ -1446,10 +1550,83 @@ class DashboardChatAssistant:
             if isinstance(current, (int, float)) and isinstance(target, (int, float)):
                 return f"Current enrollment is {int(current)} of {int(target)} participants."
 
+        if question_tokens & {"cga", "river", "milestone", "milestones"}:
+            groups = facts.get("hda_groups") or []
+            month_count = facts.get("hda_month_count") or 0
+            return (
+                "The CGA Milestone River summarizes HDA phase composition over corrected gestational age months. "
+                "It uses the aggregate hda_composition payload, normalized phase shares, and VPT/ASIB/TD grouping. "
+                f"Current indexed groups are {', '.join(groups) if groups else 'not listed'} across {month_count or 'the configured'} month points."
+            )
+
+        if question_tokens & {"county", "counties", "comparator"}:
+            profile_count = facts.get("county_profile_count")
+            return (
+                "The County Comparator pairs two county-level profiles with the SDOH map, mirrored access bars, and recruitment/completion context. "
+                "It stays aggregate-only: county FIPS/name, rurality, ADI, broadband, transportation, and participant counts are shown without participant identity. "
+                f"The current payload includes {profile_count if profile_count is not None else 'an unknown number of'} county profiles."
+            )
+
+        if question_tokens & {"passport", "timeline", "swimlane", "swimlanes"}:
+            cohort_rows = facts.get("cohort_rows")
+            return (
+                "The Participant Passport Timeline shows de-identified NANO IDs as swim lanes across visit, CGA, HDA, REDCap, and ECG events. "
+                "The route filters by group, event type, and age window, then opens a scrubbed detail drawer for selected events. "
+                f"The current cohort context has {cohort_rows if cohort_rows is not None else 'no counted'} rows."
+            )
+
+        if question_tokens & {"terrain", "contour"} or (
+            question_tokens & {"model", "confidence"} and question_tokens & {"terrain", "map", "surface"}
+        ):
+            best = facts.get("best_model") or {}
+            return (
+                "The Model Confidence Terrain turns SHAP/model-confidence summaries into contour-style explanatory surfaces, with heatmap and 3D terrain controls reserved for richer model payloads. "
+                "Each view keeps a local explainer card so users can read what the shape means before interpreting it. "
+                f"The current best indexed model is {best.get('name') or 'not identified'}."
+            )
+
+        if question_tokens & {"guided", "hypothesis", "hypotheses"}:
+            return (
+                "The Guided Explorer offers five hypothesis cards that open preconfigured visualizations: CGA-HDA convergence, county access context, timeline adherence, model confidence, and attrition pressure. "
+                "The assistant narration is tied to each card so future route updates can reuse the same feature vocabulary."
+            )
+
+        if question_tokens & {"public", "insight", "insights"}:
+            return (
+                "The Public Insights route is an aggregate, CDC-style story surface for stakeholders. "
+                "It combines study reach, enrollment trajectory, county context, HDA development patterns, and retention trends while avoiding participant-level rows."
+            )
+
+        if question_tokens & {"executive", "stakeholder", "stakeholders"}:
+            last_stage = facts.get("attrition_last_stage") or {}
+            retained = (
+                last_stage.get("retainedPct")
+                if isinstance(last_stage, dict)
+                else None
+            )
+            return (
+                "Executive Mode provides a compact stakeholder dashboard with enrollment, completion, model, SDOH, and retention KPIs plus a PPTX export. "
+                f"Current retention is {retained if retained is not None else 'not listed'}% at the final indexed funnel stage."
+            )
+
+        if question_tokens & {"attrition", "retention", "funnel"}:
+            stage_count = facts.get("attrition_stage_count")
+            last_stage = facts.get("attrition_last_stage") or {}
+            retained = (
+                last_stage.get("retainedPct")
+                if isinstance(last_stage, dict)
+                else None
+            )
+            return (
+                "The Attrition Funnel v2 shows consent-to-analysis retention stages, coded dropout reasons, quarter trends, subgroup filters, and a copy-ready NIH report summary. "
+                f"The current funnel has {stage_count or 'the configured'} stages and final retained percentage {retained if retained is not None else 'not available'}."
+            )
+
         if question_tokens & {"feature", "features", "route", "routes", "new"}:
             return (
                 "The expanded dashboard surfaces are Data Explorer, Publications, Change History, RSA growth curves, REDCap completeness, HDA timeline/player, "
                 "thermal heatmap, cohort swimmer plot, attrition and missingness, SDOH map, SHAP explorer, "
+                "CGA Milestone River, County Comparator, Participant Passport Timeline, Model Confidence Terrain, Attrition Funnel v2, Guided Explorer, Public Insights, Executive Mode, "
                 "Outcome Clusters, Model Leaderboard, Cascade DAG, ECG Quality Monitor, Spatial Assessment Matrix, "
                 "Attachment Heatmap, and the Dynamics & Dyads layer: Co-Regulation, Phase Portrait, CVA Theater, "
                 "HR Deceleration, Still-Face, HDA Bypass, Passport, Archetypes, Cascade Simulator, Eco-Validity, "

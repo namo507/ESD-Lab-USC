@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-06-08T17:09:20",
+    "generated_at": "2026-06-08T22:41:13",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2236,7 +2236,7 @@
   ],
   "organization_site": {
     "meta": {
-      "generated_at": "2026-06-08T17:09:20",
+      "generated_at": "2026-06-08T22:41:13",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -3200,7 +3200,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-06-08T17:09:21",
+      "generated_at": "2026-06-08T22:41:13",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -3231,7 +3231,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-06-08T16:44:21",
+        "last_run": "2026-06-08T22:16:13",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -3239,7 +3239,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-06-08T16:44:21",
+        "last_run": "2026-06-08T22:16:13",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -3247,7 +3247,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-06-08T16:59:21",
+        "last_run": "2026-06-08T22:31:13",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -3255,7 +3255,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-06-08T16:49:21",
+        "last_run": "2026-06-08T22:21:13",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -3263,11 +3263,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00",
-        "22:00",
         "23:00",
         "00:00",
         "01:00",
@@ -3286,7 +3281,12 @@
         "14:00",
         "15:00",
         "16:00",
-        "17:00"
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
       ],
       "rows": [
         526,
@@ -3341,5 +3341,673 @@
         "summary": "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference."
       }
     ]
-  }
+  },
+  "hda_composition": {
+    "by_group": {
+      "VPT": [
+        {
+          "month": 0,
+          "orienting": 0.25,
+          "sustained": 0.34,
+          "inattention": 0.29,
+          "termination": 0.12
+        },
+        {
+          "month": 1,
+          "orienting": 0.244,
+          "sustained": 0.364,
+          "inattention": 0.278,
+          "termination": 0.114
+        },
+        {
+          "month": 2,
+          "orienting": 0.238,
+          "sustained": 0.389,
+          "inattention": 0.265,
+          "termination": 0.108
+        },
+        {
+          "month": 3,
+          "orienting": 0.231,
+          "sustained": 0.414,
+          "inattention": 0.253,
+          "termination": 0.102
+        },
+        {
+          "month": 6,
+          "orienting": 0.225,
+          "sustained": 0.438,
+          "inattention": 0.241,
+          "termination": 0.096
+        },
+        {
+          "month": 9,
+          "orienting": 0.219,
+          "sustained": 0.462,
+          "inattention": 0.229,
+          "termination": 0.09
+        },
+        {
+          "month": 12,
+          "orienting": 0.213,
+          "sustained": 0.487,
+          "inattention": 0.217,
+          "termination": 0.083
+        },
+        {
+          "month": 24,
+          "orienting": 0.207,
+          "sustained": 0.511,
+          "inattention": 0.205,
+          "termination": 0.077
+        },
+        {
+          "month": 36,
+          "orienting": 0.2,
+          "sustained": 0.537,
+          "inattention": 0.192,
+          "termination": 0.071
+        }
+      ],
+      "ASIB": [
+        {
+          "month": 0,
+          "orienting": 0.27,
+          "sustained": 0.31,
+          "inattention": 0.28,
+          "termination": 0.14
+        },
+        {
+          "month": 1,
+          "orienting": 0.265,
+          "sustained": 0.325,
+          "inattention": 0.274,
+          "termination": 0.136
+        },
+        {
+          "month": 2,
+          "orienting": 0.26,
+          "sustained": 0.34,
+          "inattention": 0.268,
+          "termination": 0.132
+        },
+        {
+          "month": 3,
+          "orienting": 0.255,
+          "sustained": 0.355,
+          "inattention": 0.262,
+          "termination": 0.128
+        },
+        {
+          "month": 6,
+          "orienting": 0.25,
+          "sustained": 0.37,
+          "inattention": 0.256,
+          "termination": 0.124
+        },
+        {
+          "month": 9,
+          "orienting": 0.245,
+          "sustained": 0.385,
+          "inattention": 0.25,
+          "termination": 0.12
+        },
+        {
+          "month": 12,
+          "orienting": 0.24,
+          "sustained": 0.4,
+          "inattention": 0.244,
+          "termination": 0.116
+        },
+        {
+          "month": 24,
+          "orienting": 0.235,
+          "sustained": 0.415,
+          "inattention": 0.238,
+          "termination": 0.112
+        },
+        {
+          "month": 36,
+          "orienting": 0.23,
+          "sustained": 0.43,
+          "inattention": 0.232,
+          "termination": 0.108
+        }
+      ],
+      "TD": [
+        {
+          "month": 0,
+          "orienting": 0.24,
+          "sustained": 0.39,
+          "inattention": 0.23,
+          "termination": 0.14
+        },
+        {
+          "month": 1,
+          "orienting": 0.233,
+          "sustained": 0.42,
+          "inattention": 0.215,
+          "termination": 0.132
+        },
+        {
+          "month": 2,
+          "orienting": 0.226,
+          "sustained": 0.45,
+          "inattention": 0.2,
+          "termination": 0.124
+        },
+        {
+          "month": 3,
+          "orienting": 0.219,
+          "sustained": 0.48,
+          "inattention": 0.185,
+          "termination": 0.116
+        },
+        {
+          "month": 6,
+          "orienting": 0.212,
+          "sustained": 0.51,
+          "inattention": 0.17,
+          "termination": 0.108
+        },
+        {
+          "month": 9,
+          "orienting": 0.205,
+          "sustained": 0.54,
+          "inattention": 0.155,
+          "termination": 0.1
+        },
+        {
+          "month": 12,
+          "orienting": 0.198,
+          "sustained": 0.57,
+          "inattention": 0.14,
+          "termination": 0.092
+        },
+        {
+          "month": 24,
+          "orienting": 0.191,
+          "sustained": 0.6,
+          "inattention": 0.125,
+          "termination": 0.084
+        },
+        {
+          "month": 36,
+          "orienting": 0.184,
+          "sustained": 0.63,
+          "inattention": 0.11,
+          "termination": 0.076
+        }
+      ]
+    }
+  },
+  "attrition_funnel": {
+    "stages": [
+      {
+        "id": "screened",
+        "label": "Screened",
+        "n": 330,
+        "retained_pct": 100.0
+      },
+      {
+        "id": "consented",
+        "label": "Consented",
+        "n": 252,
+        "retained_pct": 76.4
+      },
+      {
+        "id": "enrolled",
+        "label": "Enrolled",
+        "n": 210,
+        "retained_pct": 63.6
+      },
+      {
+        "id": "v1",
+        "label": "Visit 1 Complete",
+        "n": 200,
+        "retained_pct": 60.6
+      },
+      {
+        "id": "v2",
+        "label": "Visit 2 Complete",
+        "n": 187,
+        "retained_pct": 56.7
+      },
+      {
+        "id": "v3",
+        "label": "Visit 3 Complete",
+        "n": 170,
+        "retained_pct": 51.5
+      },
+      {
+        "id": "v36mo",
+        "label": "36-Month Complete",
+        "n": 139,
+        "retained_pct": 42.1
+      }
+    ],
+    "reason_codes": [
+      {
+        "stage_id": "consented",
+        "reason": "declined_consent",
+        "n": 42,
+        "pct": 54
+      },
+      {
+        "stage_id": "consented",
+        "reason": "eligibility",
+        "n": 36,
+        "pct": 46
+      },
+      {
+        "stage_id": "v2",
+        "reason": "missed_visit_window",
+        "n": 15,
+        "pct": 48
+      },
+      {
+        "stage_id": "v2",
+        "reason": "unable_to_contact",
+        "n": 10,
+        "pct": 32
+      },
+      {
+        "stage_id": "v36mo",
+        "reason": "study_fatigue",
+        "n": 23,
+        "pct": 41
+      },
+      {
+        "stage_id": "v36mo",
+        "reason": "scheduling_conflict",
+        "n": 19,
+        "pct": 34
+      }
+    ],
+    "trend_by_quarter": [
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "screened",
+        "n": 119,
+        "retained_pct": 72.0
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "consented",
+        "n": 88,
+        "retained_pct": 55.0
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "enrolled",
+        "n": 70,
+        "retained_pct": 45.8
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "v1",
+        "n": 63,
+        "retained_pct": 43.6
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "v2",
+        "n": 55,
+        "retained_pct": 40.8
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "v3",
+        "n": 46,
+        "retained_pct": 37.1
+      },
+      {
+        "quarter": "2024-Q1",
+        "stage_id": "v36mo",
+        "n": 32,
+        "retained_pct": 30.3
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "screened",
+        "n": 147,
+        "retained_pct": 76.0
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "consented",
+        "n": 109,
+        "retained_pct": 58.1
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "enrolled",
+        "n": 87,
+        "retained_pct": 48.3
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "v1",
+        "n": 80,
+        "retained_pct": 46.1
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "v2",
+        "n": 71,
+        "retained_pct": 43.1
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "v3",
+        "n": 61,
+        "retained_pct": 39.1
+      },
+      {
+        "quarter": "2024-Q2",
+        "stage_id": "v36mo",
+        "n": 44,
+        "retained_pct": 32.0
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "screened",
+        "n": 175,
+        "retained_pct": 80.0
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "consented",
+        "n": 131,
+        "retained_pct": 61.1
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "enrolled",
+        "n": 105,
+        "retained_pct": 50.9
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "v1",
+        "n": 97,
+        "retained_pct": 48.5
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "v2",
+        "n": 87,
+        "retained_pct": 45.4
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "v3",
+        "n": 75,
+        "retained_pct": 41.2
+      },
+      {
+        "quarter": "2024-Q3",
+        "stage_id": "v36mo",
+        "n": 56,
+        "retained_pct": 33.7
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "screened",
+        "n": 203,
+        "retained_pct": 84.0
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "consented",
+        "n": 152,
+        "retained_pct": 64.2
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "enrolled",
+        "n": 123,
+        "retained_pct": 53.4
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "v1",
+        "n": 114,
+        "retained_pct": 50.9
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "v2",
+        "n": 103,
+        "retained_pct": 47.6
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "v3",
+        "n": 90,
+        "retained_pct": 43.3
+      },
+      {
+        "quarter": "2024-Q4",
+        "stage_id": "v36mo",
+        "n": 67,
+        "retained_pct": 35.4
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "screened",
+        "n": 231,
+        "retained_pct": 88.0
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "consented",
+        "n": 173,
+        "retained_pct": 67.2
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "enrolled",
+        "n": 141,
+        "retained_pct": 56.0
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "v1",
+        "n": 131,
+        "retained_pct": 53.3
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "v2",
+        "n": 119,
+        "retained_pct": 49.9
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "v3",
+        "n": 104,
+        "retained_pct": 45.3
+      },
+      {
+        "quarter": "2025-Q1",
+        "stage_id": "v36mo",
+        "n": 79,
+        "retained_pct": 37.0
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "screened",
+        "n": 259,
+        "retained_pct": 92.0
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "consented",
+        "n": 195,
+        "retained_pct": 70.3
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "enrolled",
+        "n": 159,
+        "retained_pct": 58.5
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "v1",
+        "n": 148,
+        "retained_pct": 55.8
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "v2",
+        "n": 135,
+        "retained_pct": 52.2
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "v3",
+        "n": 118,
+        "retained_pct": 47.4
+      },
+      {
+        "quarter": "2025-Q2",
+        "stage_id": "v36mo",
+        "n": 91,
+        "retained_pct": 38.7
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "screened",
+        "n": 287,
+        "retained_pct": 96.0
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "consented",
+        "n": 216,
+        "retained_pct": 73.3
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "enrolled",
+        "n": 177,
+        "retained_pct": 61.1
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "v1",
+        "n": 165,
+        "retained_pct": 58.2
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "v2",
+        "n": 151,
+        "retained_pct": 54.4
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "v3",
+        "n": 133,
+        "retained_pct": 49.4
+      },
+      {
+        "quarter": "2025-Q3",
+        "stage_id": "v36mo",
+        "n": 103,
+        "retained_pct": 40.4
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "screened",
+        "n": 315,
+        "retained_pct": 100
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "consented",
+        "n": 238,
+        "retained_pct": 76.4
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "enrolled",
+        "n": 195,
+        "retained_pct": 63.6
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "v1",
+        "n": 182,
+        "retained_pct": 60.6
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "v2",
+        "n": 167,
+        "retained_pct": 56.7
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "v3",
+        "n": 147,
+        "retained_pct": 51.5
+      },
+      {
+        "quarter": "2025-Q4",
+        "stage_id": "v36mo",
+        "n": 115,
+        "retained_pct": 42.1
+      }
+    ]
+  },
+  "county_profiles": [
+    {
+      "county": "Richland",
+      "fips": "45079",
+      "enrolled": 42,
+      "completion_rate": 0.81,
+      "sdoh_score": 0.44,
+      "median_income_bracket": "medium",
+      "cptd_gap_mean": 2.1
+    },
+    {
+      "county": "Lexington",
+      "fips": "45063",
+      "enrolled": 24,
+      "completion_rate": 0.78,
+      "sdoh_score": 0.31,
+      "median_income_bracket": "high",
+      "cptd_gap_mean": 1.8
+    },
+    {
+      "county": "Greenville",
+      "fips": "45045",
+      "enrolled": 18,
+      "completion_rate": 0.75,
+      "sdoh_score": 0.37,
+      "median_income_bracket": "medium",
+      "cptd_gap_mean": 1.9
+    },
+    {
+      "county": "Charleston",
+      "fips": "45019",
+      "enrolled": 16,
+      "completion_rate": 0.82,
+      "sdoh_score": 0.28,
+      "median_income_bracket": "high",
+      "cptd_gap_mean": 1.7
+    },
+    {
+      "county": "Florence",
+      "fips": "45041",
+      "enrolled": 12,
+      "completion_rate": 0.69,
+      "sdoh_score": 0.52,
+      "median_income_bracket": "low",
+      "cptd_gap_mean": 2.4
+    }
+  ]
 }

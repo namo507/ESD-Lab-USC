@@ -121,6 +121,18 @@ export const INSIGHTS: Record<string, InsightData> = {
   "dyn-stream-min": { term: "Minimum coverage", body: "Minimum coverage is the lowest valid-signal percentage across synchronized session streams." },
   "dyn-stream-gaps": { term: "Dropouts", body: "Dropouts count gaps in stream validity and point operators toward signal-level QA follow-up." },
   "dyn-stream-offset": { term: "Sync offset", body: "Sync offset estimates timing misalignment between streams such as ECG, markers, audio, and video." },
+  "cga-river-helper": { term: "CGA River", body: "The CGA Milestone River shows HDA phase composition across corrected-age months. It is group-level only and uses canonical NANO milestones from 0 to 36 months." },
+  "county-card": { term: "County profile", body: "County cards summarize county-level enrollment, completion, SDoH score, income proxy, and CPTd context without exposing addresses, ZIP codes, or participant-level locations." },
+  "county-context": { term: "County context", body: "This paragraph turns the two selected county profiles into plain-language planning context. It should be read as aggregate outreach context, not an individual-family interpretation." },
+  "attrition-stage": { term: "Retention stage", body: "Each funnel stage shows N, retained percent, and drop-off from the prior stage. Clicking a stage opens reason-code detail for grant and operations reporting." },
+  "participant-timeline-detail": { term: "Timeline detail", body: "The Participant Passport Timeline uses de-identified NANO IDs and shape-coded marks for visits, QA flags, pipeline runs, failures, and REDCap milestones." },
+  "model-terrain-explainer": { term: "Model terrain", body: "The model terrain view summarizes SHAP influence across feature value and developmental time. Higher color intensity means stronger model influence, not causality." },
+  "guided-h1": { term: "Guided question H1", body: "This hypothesis card opens an RSA growth comparison between TD and VPT infants with confidence-interval context." },
+  "guided-h2": { term: "Guided question H2", body: "This hypothesis card preconfigures the CGA River around ASIB sustained-attention composition at 6 months." },
+  "guided-h3": { term: "Guided question H3", body: "This hypothesis card pairs higher and lower SDoH-burden counties so completion context is visible at county granularity." },
+  "guided-h4": { term: "Guided question H4", body: "This hypothesis card routes to model-attribution surfaces focused on physiological features and developmental timing." },
+  "guided-h5": { term: "Guided question H5", body: "This hypothesis card starts from retention differences across cohort groups and opens the attrition funnel." },
+  "guided-narration": { term: "Guided narration", body: "The narration bubble gives a Buddy-aligned plain-language readout for the selected hypothesis before opening the full route." },
 };
 
 export function lookupInsight(id: string | null | undefined): InsightData | null {

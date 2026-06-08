@@ -12,7 +12,7 @@
 .svg { width: 100%; display: block; position: relative; }
 
 .node { cursor: pointer; }
-.node:focus-visible { outline: 2px solid var(--usc-gold); outline-offset: 2px; }
+.node:focus-visible { outline: 2px solid var(--usc-garnet); outline-offset: 2px; }
 
 .tput {
   font-size: 10px;

@@ -124,7 +124,7 @@ dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	bash scripts/share_dashboard.sh
 
 pages-build:  ## Build the canonical Cloudflare Pages dashboard SPA artifact locally
-	VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true npm --prefix web run build
+	VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true VITE_FEATURE_CGA_RIVER=true VITE_FEATURE_COUNTY_COMPARATOR=true VITE_FEATURE_PARTICIPANT_TIMELINE_V2=true VITE_FEATURE_MODEL_CONFIDENCE_TERRAIN=true VITE_FEATURE_ATTRITION_FUNNEL_V2=true VITE_FEATURE_GUIDED_EXPLORER=true VITE_FEATURE_PUBLIC_INSIGHTS=true VITE_FEATURE_EXECUTIVE_MODE=true npm --prefix web run build
 	$(PYTHON) scripts/build_pages_site.py
 
 pages-deploy: pages-build  ## Build + deploy the canonical Cloudflare Pages dashboard SPA

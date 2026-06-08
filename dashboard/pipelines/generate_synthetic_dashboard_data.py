@@ -358,6 +358,95 @@ def generate_matlab_integration() -> dict:
     }
 
 
+def _normalize_hda(values: list[float]) -> dict:
+    total = sum(values) or 1.0
+    normalized = [round(v / total, 3) for v in values]
+    normalized[1] = round(normalized[1] + (1.0 - sum(normalized)), 3)
+    return {
+        "orienting": normalized[0],
+        "sustained": normalized[1],
+        "inattention": normalized[2],
+        "termination": normalized[3],
+    }
+
+
+def generate_hda_composition() -> dict:
+    """Synthetic HDA phase composition by group across canonical CGA months."""
+    months = [e[1] for e in EVENTS]
+    specs = {
+        "VPT": ([0.25, 0.34, 0.29, 0.12], [-0.006, 0.025, -0.012, -0.006]),
+        "ASIB": ([0.27, 0.31, 0.28, 0.14], [-0.005, 0.015, -0.006, -0.004]),
+        "TD": ([0.24, 0.39, 0.23, 0.14], [-0.007, 0.03, -0.015, -0.008]),
+    }
+    return {
+        "by_group": {
+            group: [
+                {
+                    "month": month,
+                    **_normalize_hda([base[i] + slope[i] * idx for i in range(4)]),
+                }
+                for idx, month in enumerate(months)
+            ]
+            for group, (base, slope) in specs.items()
+        }
+    }
+
+
+def generate_attrition_funnel() -> dict:
+    """Synthetic retention funnel with reason codes and quarter trend detail."""
+    stages = [
+        {"id": "screened", "label": "Screened", "n": 380, "retained_pct": 100},
+        {"id": "consented", "label": "Consented", "n": 302, "retained_pct": 79.5},
+        {"id": "enrolled", "label": "Enrolled", "n": 260, "retained_pct": 68.4},
+        {"id": "v1", "label": "Visit 1 Complete", "n": 248, "retained_pct": 65.3},
+        {"id": "v2", "label": "Visit 2 Complete", "n": 231, "retained_pct": 60.8},
+        {"id": "v3", "label": "Visit 3 Complete", "n": 210, "retained_pct": 55.3},
+        {"id": "v36mo", "label": "36-Month Complete", "n": 172, "retained_pct": 45.3},
+    ]
+    reason_codes = [
+        {"stage_id": "consented", "reason": "declined_consent", "n": 42, "pct": 54},
+        {"stage_id": "consented", "reason": "eligibility", "n": 36, "pct": 46},
+        {"stage_id": "v2", "reason": "missed_visit_window", "n": 15, "pct": 48},
+        {"stage_id": "v2", "reason": "unable_to_contact", "n": 10, "pct": 32},
+        {"stage_id": "v36mo", "reason": "study_fatigue", "n": 23, "pct": 41},
+        {"stage_id": "v36mo", "reason": "scheduling_conflict", "n": 19, "pct": 34},
+    ]
+    trend_by_quarter = [
+        {
+            "quarter": quarter,
+            "stage_id": stage["id"],
+            "n": max(0, round(stage["n"] * (0.36 + qi * 0.085) - si * 3)),
+            "retained_pct": round(min(100, stage["retained_pct"] * (0.72 + qi * 0.04)), 1),
+        }
+        for qi, quarter in enumerate(["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
+        for si, stage in enumerate(stages)
+    ]
+    return {"stages": stages, "reason_codes": reason_codes, "trend_by_quarter": trend_by_quarter}
+
+
+def generate_county_profiles() -> list[dict]:
+    """County-level aggregate profiles; no address, ZIP, or tract detail."""
+    rows = [
+        ("Richland", "45079", 42, 0.81, 0.44, "medium", 2.1),
+        ("Lexington", "45063", 24, 0.78, 0.31, "high", 1.8),
+        ("Greenville", "45045", 18, 0.75, 0.37, "medium", 1.9),
+        ("Charleston", "45019", 16, 0.82, 0.28, "high", 1.7),
+        ("Florence", "45041", 12, 0.69, 0.52, "low", 2.4),
+    ]
+    return [
+        {
+            "county": county,
+            "fips": fips,
+            "enrolled": enrolled,
+            "completion_rate": completion,
+            "sdoh_score": sdoh,
+            "median_income_bracket": income,
+            "cptd_gap_mean": cptd,
+        }
+        for county, fips, enrolled, completion, sdoh, income, cptd in rows
+    ]
+
+
 def build_payload() -> dict:
     """Assemble the full dashboard JSON payload."""
     from dashboard.pipelines import build_org_site_data
@@ -390,6 +479,9 @@ def build_payload() -> dict:
         "organization_site": build_org_site_data.build_payload(allow_network=False),
         "geo": generate_geo_data(enrollment_data=enrollment),
         "matlab_integration": generate_matlab_integration(),
+        "hda_composition": generate_hda_composition(),
+        "attrition_funnel": generate_attrition_funnel(),
+        "county_profiles": generate_county_profiles(),
     }
 
 

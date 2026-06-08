@@ -84,6 +84,14 @@ SPA_ROUTE_PREFIXES = (
     "/cascade-sim",
     "/eco-validity",
     "/stream-coverage",
+    "/cga-river",
+    "/county-comparator",
+    "/participant-timeline",
+    "/model-terrain",
+    "/attrition-funnel",
+    "/guided-explorer",
+    "/public-insights",
+    "/executive",
     "/data-explorer",
     "/publications",
     "/changelog",
@@ -497,13 +505,72 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
     return _api_list(rows, payload)
 
 
+def _normalize_composition(values: list[float]) -> dict[str, float]:
+    total = sum(values) or 1.0
+    normalized = [round(value / total, 3) for value in values]
+    drift = round(1.0 - sum(normalized), 3)
+    normalized[1] = round(normalized[1] + drift, 3)
+    return {
+        "orienting": normalized[0],
+        "sustained": normalized[1],
+        "inattention": normalized[2],
+        "termination": normalized[3],
+    }
+
+
+def _v2_hda_composition() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    block = payload.get("hda_composition") or {}
+    by_group = block.get("by_group") if isinstance(block, dict) else None
+    if isinstance(by_group, dict) and by_group:
+        return {
+            "byGroup": {
+                _normalize_group(group): [
+                    {
+                        "month": float(point.get("month", idx)),
+                        "orienting": float(point.get("orienting", 0)),
+                        "sustained": float(point.get("sustained", 0)),
+                        "inattention": float(point.get("inattention", 0)),
+                        "termination": float(point.get("termination", 0)),
+                    }
+                    for idx, point in enumerate(points)
+                    if isinstance(point, dict)
+                ]
+                for group, points in by_group.items()
+                if isinstance(points, list)
+            },
+            "meta": _api_list([], payload)["meta"],
+        }
+
+    months = [0, 1, 2, 3, 6, 9, 12, 24, 36]
+    specs = {
+        "VPT": ([0.25, 0.34, 0.29, 0.12], [-0.006, 0.025, -0.012, -0.006]),
+        "ASIB": ([0.27, 0.31, 0.28, 0.14], [-0.005, 0.015, -0.006, -0.004]),
+        "TD": ([0.24, 0.39, 0.23, 0.14], [-0.007, 0.03, -0.015, -0.008]),
+    }
+    return {
+        "byGroup": {
+            group: [
+                {
+                    "month": month,
+                    **_normalize_composition([base[i] + slope[i] * idx for i in range(4)]),
+                }
+                for idx, month in enumerate(months)
+            ]
+            for group, (base, slope) in specs.items()
+        },
+        "meta": _api_list([], payload)["meta"],
+    }
+
+
 def _v2_attrition_funnel() -> dict[str, Any]:
     payload = _dashboard_payload()
+    attrition_block = payload.get("attrition_funnel")
     enrollment = payload.get("enrollment", {}).get("by_group", {})
     rows = []
-    for raw_group, block in enrollment.items():
+    for raw_group, group_block in enrollment.items():
         group = _normalize_group(raw_group)
-        count = int(block.get("current") or 0)
+        count = int(group_block.get("current") or 0)
         rows.extend(
             [
                 {"from": "enrolled", "to": "nicu_dc", "value": count, "group": group},
@@ -512,7 +579,70 @@ def _v2_attrition_funnel() -> dict[str, Any]:
                 {"from": "cga_12mo", "to": "cga_24mo", "value": round(count * 0.28), "group": group},
             ]
         )
-    return _api_list(rows, payload)
+    default_stages = [
+        {"id": "screened", "label": "Screened", "n": 380, "retainedPct": 100},
+        {"id": "consented", "label": "Consented", "n": 302, "retainedPct": 79.5},
+        {"id": "enrolled", "label": "Enrolled", "n": 260, "retainedPct": 68.4},
+        {"id": "v1", "label": "Visit 1 Complete", "n": 248, "retainedPct": 65.3},
+        {"id": "v2", "label": "Visit 2 Complete", "n": 231, "retainedPct": 60.8},
+        {"id": "v3", "label": "Visit 3 Complete", "n": 210, "retainedPct": 55.3},
+        {"id": "v36mo", "label": "36-Month Complete", "n": 172, "retainedPct": 45.3},
+    ]
+    default_reasons = [
+        {"stageId": "consented", "reason": "declined consent", "n": 42, "pct": 54},
+        {"stageId": "consented", "reason": "eligibility", "n": 36, "pct": 46},
+        {"stageId": "v2", "reason": "missed visit window", "n": 15, "pct": 48},
+        {"stageId": "v2", "reason": "unable to contact", "n": 10, "pct": 32},
+        {"stageId": "v36mo", "reason": "study fatigue", "n": 23, "pct": 41},
+        {"stageId": "v36mo", "reason": "scheduling conflict", "n": 19, "pct": 34},
+    ]
+    trend = [
+        {
+            "quarter": quarter,
+            "stageId": stage["id"],
+            "n": max(0, round(stage["n"] * (0.36 + qi * 0.085) - si * 3)),
+            "retainedPct": round(min(100, stage["retainedPct"] * (0.72 + qi * 0.04)), 1),
+        }
+        for qi, quarter in enumerate(["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
+        for si, stage in enumerate(default_stages)
+    ]
+    envelope = _api_list(rows, payload)
+    if isinstance(attrition_block, dict):
+        stages = [
+            {
+                "id": str(stage.get("id") or ""),
+                "label": str(stage.get("label") or stage.get("id") or ""),
+                "n": int(stage.get("n") or 0),
+                "retainedPct": float(stage.get("retained_pct", stage.get("retainedPct", 0)) or 0),
+            }
+            for stage in attrition_block.get("stages", [])
+            if isinstance(stage, dict)
+        ] or default_stages
+        reasons = [
+            {
+                "stageId": str(reason.get("stage_id", reason.get("stageId", ""))),
+                "reason": str(reason.get("reason") or ""),
+                "n": int(reason.get("n") or 0),
+                "pct": float(reason.get("pct") or 0),
+            }
+            for reason in attrition_block.get("reason_codes", attrition_block.get("reasonCodes", []))
+            if isinstance(reason, dict)
+        ] or default_reasons
+        trends = [
+            {
+                "quarter": str(point.get("quarter") or ""),
+                "stageId": str(point.get("stage_id", point.get("stageId", ""))),
+                "n": int(point.get("n") or 0),
+                "retainedPct": float(point.get("retained_pct", point.get("retainedPct", 0)) or 0),
+            }
+            for point in attrition_block.get("trend_by_quarter", attrition_block.get("trendByQuarter", []))
+            if isinstance(point, dict)
+        ] or trend
+    else:
+        stages = default_stages
+        reasons = default_reasons
+        trends = trend
+    return {**envelope, "stages": stages, "reasonCodes": reasons, "trendByQuarter": trends}
 
 
 def _v2_sdoh_map() -> dict[str, Any]:
@@ -539,6 +669,41 @@ def _v2_sdoh_map() -> dict[str, Any]:
             for county, fips, lat, lng, participants, deprivation, broadband, completion in rows
         ]
     )
+
+
+def _v2_county_profiles() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    existing = payload.get("county_profiles")
+    if isinstance(existing, list) and existing:
+        rows = [
+            {
+                "county": str(row.get("county") or ""),
+                "fips": str(row.get("fips") or ""),
+                "enrolled": int(row.get("enrolled") or 0),
+                "completionRate": float(row.get("completion_rate", row.get("completionRate", 0)) or 0),
+                "sdohScore": float(row.get("sdoh_score", row.get("sdohScore", 0)) or 0),
+                "medianIncomeBracket": str(row.get("median_income_bracket", row.get("medianIncomeBracket", "medium"))),
+                "cptdGapMean": row.get("cptd_gap_mean", row.get("cptdGapMean")),
+            }
+            for row in existing
+            if isinstance(row, dict)
+        ]
+        return _api_list(rows, payload)
+
+    sdoh = _v2_sdoh_map()["data"]
+    rows = [
+        {
+            "county": row["county"],
+            "fips": row["fips"],
+            "enrolled": row["participants"],
+            "completionRate": round(row["meanCompletion"] / 100, 3),
+            "sdohScore": row["deprivationIndex"],
+            "medianIncomeBracket": "low" if row["deprivationIndex"] > 0.48 else "medium" if row["deprivationIndex"] > 0.34 else "high",
+            "cptdGapMean": round(1.5 + row["deprivationIndex"] * 1.4, 2),
+        }
+        for row in sdoh
+    ]
+    return _api_list(rows, payload)
 
 
 def _v2_shap_values() -> dict[str, Any]:
@@ -2188,8 +2353,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             if request_path == "/api/v2/cohort-swimmer":
                 self._send_json(_v2_cohort_swimmer())
                 return
+            if request_path == "/api/v2/hda-composition":
+                self._send_json(_v2_hda_composition())
+                return
             if request_path == "/api/v2/attrition-funnel":
                 self._send_json(_v2_attrition_funnel())
+                return
+            if request_path == "/api/v2/county-profiles":
+                self._send_json(_v2_county_profiles())
                 return
             if request_path == "/api/v2/sdoh-map":
                 self._send_json(_v2_sdoh_map())

@@ -83,6 +83,7 @@ export function TrajectoryChart({ trajectory, metric }: Props) {
             key={grp}
             text={`${grp} · n=${pts[0]?.n ?? 0} at start, n=${pts[pts.length - 1]?.n ?? 0} at end. Group mean increases with maturation.`}
             maxWidth={300}
+            persistent
           >
             <span className={styles.legendItem}>
               <span className={styles.legendStripe} style={{ background: GROUP_COLOR[grp] }} />

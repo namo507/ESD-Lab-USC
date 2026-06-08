@@ -8,12 +8,33 @@ const COLOR: Record<string, string> = {
   idle:    "var(--slate-300)",
 };
 
+const MARK: Record<string, string> = {
+  running: "●",
+  queued: "◌",
+  done: "✓",
+  fail: "✗",
+  idle: "○",
+};
+
+const LABEL: Record<string, string> = {
+  running: "Running",
+  queued: "Queued",
+  done: "Done",
+  fail: "Failed",
+  idle: "Idle",
+};
+
 export function StatusDot({ kind, size = 8 }: { kind: string; size?: number }) {
+  const label = LABEL[kind] ?? kind;
   return (
     <span
       className={`${styles.dot} ${kind === "running" ? "pulse-dot" : ""}`}
-      style={{ width: size, height: size, background: COLOR[kind] ?? "var(--slate-400)" }}
-      aria-hidden
-    />
+      style={{ color: COLOR[kind] ?? "var(--slate-400)", fontSize: Math.max(size + 4, 12) }}
+      aria-label={label}
+      role="img"
+      title={label}
+    >
+      {MARK[kind] ?? "•"}
+    </span>
   );
 }

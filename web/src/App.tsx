@@ -45,6 +45,14 @@ const Archetypes = lazy(() => import("@/routes/Archetypes").then((m) => ({ defau
 const CascadeSimulator = lazy(() => import("@/routes/CascadeSimulator").then((m) => ({ default: m.CascadeSimulator })));
 const EcoValidity = lazy(() => import("@/routes/EcoValidity").then((m) => ({ default: m.EcoValidity })));
 const StreamCoverage = lazy(() => import("@/routes/StreamCoverage").then((m) => ({ default: m.StreamCoverage })));
+const CgaMilestoneRiver = lazy(() => import("@/routes/CgaMilestoneRiver").then((m) => ({ default: m.CgaMilestoneRiver })));
+const CountyComparator = lazy(() => import("@/routes/CountyComparator").then((m) => ({ default: m.CountyComparator })));
+const ParticipantTimeline = lazy(() => import("@/routes/ParticipantTimeline").then((m) => ({ default: m.ParticipantTimeline })));
+const ModelConfidenceTerrain = lazy(() => import("@/routes/ModelConfidenceTerrain").then((m) => ({ default: m.ModelConfidenceTerrain })));
+const AttritionFunnel = lazy(() => import("@/routes/AttritionFunnel").then((m) => ({ default: m.AttritionFunnel })));
+const GuidedExplorer = lazy(() => import("@/routes/GuidedExplorer").then((m) => ({ default: m.GuidedExplorer })));
+const PublicInsights = lazy(() => import("@/routes/PublicInsights").then((m) => ({ default: m.PublicInsights })));
+const ExecutiveMode = lazy(() => import("@/routes/ExecutiveMode").then((m) => ({ default: m.ExecutiveMode })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +148,14 @@ export default function App() {
             <Route path="/cascade-sim" element={<CascadeSimulator />} />
             <Route path="/eco-validity" element={<EcoValidity />} />
             <Route path="/stream-coverage" element={<StreamCoverage />} />
+            <Route path="/cga-river" element={<CgaMilestoneRiver />} />
+            <Route path="/county-comparator" element={<CountyComparator />} />
+            <Route path="/participant-timeline" element={<ParticipantTimeline />} />
+            <Route path="/model-terrain" element={<ModelConfidenceTerrain />} />
+            <Route path="/attrition-funnel" element={<AttritionFunnel />} />
+            <Route path="/guided-explorer" element={<GuidedExplorer />} />
+            <Route path="/public-insights" element={<PublicInsights />} />
+            <Route path="/executive" element={<ExecutiveMode />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

@@ -18,6 +18,9 @@ populates it in the production pipeline.
 | `ml_performance.confusion` | ML confusion summary | `_metrics.json → confusion` | same | yes |
 | `trajectories.by_group.<g>.mean[bm]` | Trajectories line chart (mean) | `build_trajectories()` → `mean(feature)` by `month × group` | `build_trajectories` | yes |
 | `trajectories.by_group.<g>.ci[bm]` | Trajectories shaded band | `mean ± 1.96 · SE` | same | yes |
+| `hda_composition.by_group.<g>[]` | CGA Milestone River | `build_hda_stream()` TODO over accepted HDA epochs | — | yes |
+| `attrition_funnel.stages[] / reason_codes[] / trend_by_quarter[]` | Attrition Funnel v2 | `build_attrition_funnel()` TODO over REDCap retention + reason fields | — | yes |
+| `county_profiles[]` | County Comparator + Public Insights | `build_county_profiles()` TODO over county-level aggregate FIPS profiles | — | yes |
 | `redcap_audit.summary` | Quality KPIs + audit chips | `build_redcap_audit()` | `build_redcap_audit` | yes |
 | `redcap_audit.queries_by_event[]` | Quality *Queries* bar chart | same | same | yes |
 | `redcap_audit.recent_activity[]` | Quality audit table | `redcap_audit.py` activity log | — (R leaves empty) | yes |
@@ -29,10 +32,12 @@ populates it in the production pipeline.
 
 1. `enrollment.months` has length **30** (most recent 30 calendar months).
 2. `trajectories.months` = `[0, 1, 2, 3, 6, 9, 12, 24, 36]`.
-3. Every `by_group` dict has keys `ASIB`, `PT`, `TD` (in that order).
-4. `ml_performance.models[].roc.fpr/tpr` are length 50.
-5. All percentages are already rounded to one decimal.
-6. `research_questions.questions[]` uses the controlled vocabulary of 8
+3. `hda_composition.by_group.<g>[].month` uses `[0, 1, 2, 3, 6, 9, 12, 24, 36]`.
+4. Every `by_group` dict has keys `ASIB`, `PT`, `TD` (in that order), with frontend API normalizing `PT` to `VPT`.
+5. `ml_performance.models[].roc.fpr/tpr` are length 50.
+6. All percentages are already rounded to one decimal.
+7. `county_profiles[]` is county-level only; no ZIP, census tract, address, or raw participant location data.
+8. `research_questions.questions[]` uses the controlled vocabulary of 8
    categories and 8 type-tags declared in
    `dashboard/research_questions/research_questions.md`. The UI's
    Category × Type-tag heatmap iterates over `meta.categories` × `meta.type_tags`.
