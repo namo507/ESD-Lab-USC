@@ -5,8 +5,8 @@
   "context_length": 2048,
   "min_memory_gib": 0.3,
   "max_tokens": 192,
-  "score": 0.8781,
-  "selected_at": "2026-06-06T01:57:11.566603+00:00",
+  "score": 0.8798,
+  "selected_at": "2026-06-08T03:23:49.661604+00:00",
   "source": "hf-api",
   "fallbacks": [
     {
