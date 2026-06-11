@@ -14,7 +14,7 @@ DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke logs-prune
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -64,6 +64,9 @@ check-env:  ## Verify .env is configured and secure drive is mounted
 	@$(PYTHON) -c "from src.utils.config_loader import load_config; load_config()" || \
 		(echo "ERROR: Config validation failed. Check .env and config/paths.yml" && exit 1)
 	@echo "✓ Environment configured correctly."
+
+compose-validate:  ## Validate Compose files without requiring Docker
+	$(PYTHON) scripts/check_compose_config.py
 
 redcap-sync:  ## Pull latest REDCap records, run QC, send summary email
 	@echo "Running REDCap daily sync..."

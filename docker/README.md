@@ -15,3 +15,13 @@ docker compose -f docker/compose.dev.yml up --build dashboard
 ```
 
 The Makefile wraps this path through the `COMPOSE` variable.
+
+When Docker is not installed, use the repository preflight:
+
+```bash
+make compose-validate
+```
+
+That command parses the Compose files, validates required services, checks
+relative paths, and catches stale spaced readings mounts. It is a local
+fallback only; CI still runs the real Docker Compose build and smoke test.

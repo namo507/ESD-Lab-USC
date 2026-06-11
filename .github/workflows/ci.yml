@@ -31,6 +31,9 @@ jobs:
           pytest tests/ -v --tb=short \
             --ignore=tests/test_imputation.py
 
+      - name: Validate Compose config
+        run: python scripts/check_compose_config.py
+
       - name: Check formatting (black)
         run: black --check src/ tests/ scripts/ redcap/
 
