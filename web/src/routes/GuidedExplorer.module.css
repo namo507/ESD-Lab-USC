@@ -1,4 +1,141 @@
 .page { display: flex; flex-direction: column; gap: 16px; }
+.progressWrap {
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-card);
+  background: var(--warm-card);
+  padding: 12px 14px;
+}
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--warm-fg3);
+  font-size: var(--text-small);
+  margin-bottom: 8px;
+}
+.progressTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--warm-border);
+  overflow: hidden;
+}
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--usc-garnet);
+}
+.stepCard {
+  min-height: 420px;
+}
+.stepGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: center;
+}
+.stepTitle {
+  color: var(--warm-fg1);
+  font-family: var(--font-serif);
+  font-size: var(--text-h2);
+  line-height: 1.1;
+  margin: 8px 0 12px;
+  max-width: var(--measure);
+}
+.bodyText {
+  color: var(--warm-fg2);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  max-width: var(--measure);
+}
+.cohorts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.numberGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.numberTile {
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 14px;
+  text-align: center;
+}
+.number { color: var(--usc-garnet); font-family: var(--font-mono); font-size: 28px; font-weight: var(--w-bold); }
+.numberLabel { color: var(--warm-fg3); font-size: var(--text-small); margin-top: 4px; }
+.phaseTrace {
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-card);
+  background: var(--bg-surface);
+  padding: 20px;
+  overflow-x: auto;
+}
+.phaseBands { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.phaseBand {
+  border: 0;
+  border-radius: var(--r-2);
+  color: var(--fg-on-brand);
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  font-weight: var(--w-bold);
+  min-height: 44px;
+  padding: 8px;
+}
+.tick { fill: var(--warm-fg3); font-family: var(--font-mono); font-size: 10px; }
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0;
+}
+.pipelineNode {
+  position: relative;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  color: var(--warm-fg1);
+  padding: 16px 12px;
+  text-align: center;
+  font-weight: var(--w-semibold);
+}
+.pipelineEdge {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  width: 14px;
+  border-top: 2px solid var(--usc-garnet);
+}
+.participantRows { display: grid; gap: 8px; }
+.participantRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  color: var(--warm-fg2);
+  padding: 10px 12px;
+}
+.epochGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 72px);
+  gap: 10px;
+  margin: 18px 0;
+}
+.navRow { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.linkGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.linkCard {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--warm-card);
+  color: var(--warm-fg2);
+  padding: 16px;
+  text-decoration: none;
+  transition: background var(--dur-base) var(--ease-standard);
+}
+.linkCard:hover { background: var(--warm-pill); }
+.linkCard strong { color: var(--warm-fg1); font-family: var(--font-serif); font-size: var(--text-h3); }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .hypothesis {
   border: 1px solid var(--border);
@@ -55,8 +192,13 @@
 @media (max-width: 1100px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .inline { grid-template-columns: 1fr; }
+  .stepGrid, .linkGrid { grid-template-columns: 1fr; }
+  .numberGrid, .phaseBands, .pipeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; }
+  .numberGrid, .phaseBands, .pipeline, .participantRow { grid-template-columns: 1fr; }
+  .epochGrid { grid-template-columns: repeat(2, 72px); }
+  .progressMeta { flex-direction: column; }
 }

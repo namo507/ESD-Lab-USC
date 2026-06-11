@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useMemo, useState, type ReactNode } from "react";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { Badge, Button, Card, Gloss, Icon, Segmented, Tooltip } from "@/components/primitives";
 import { useParticipants } from "@/api/hooks";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -21,9 +21,11 @@ interface ShellCtx {
 
 export function Participants() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const showPassport = useFeatureFlag("DYN_INFANT_PASSPORT");
   const { query } = useOutletContext<ShellCtx>();
   const { data: rows = [] } = useParticipants();
+  const studyParam = searchParams.get("study");
 
   const [groupF, setGroupF] = useState<GroupF>("all");
   const [qaF, setQaF] = useState<QaF>("all");
@@ -43,6 +45,8 @@ export function Participants() {
       );
     }
     if (groupF !== "all") r = r.filter((p) => p.group === groupF);
+    if (studyParam === "home") r = r.filter((p) => p.site === "USC Lab");
+    if (studyParam === "fiscal") r = r.filter((p) => p.group === "ASIB");
     if (qaF !== "all") r = r.filter((p) => p.qa === qaF);
     if (visitF !== "all") r = r.filter((p) => p.visit === visitF);
 
@@ -56,7 +60,7 @@ export function Participants() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, query, groupF, qaF, visitF, sort]);
+  }, [rows, query, groupF, studyParam, qaF, visitF, sort]);
 
   const counts = {
     VPT: rows.filter((p) => p.group === "VPT").length,
@@ -68,7 +72,7 @@ export function Participants() {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
   }
 
-  const headers: Array<{ key: SortKey; label: React.ReactNode }> = [
+  const headers: Array<{ key: SortKey; label: ReactNode }> = [
     { key: "id", label: "Participant" },
     { key: "group", label: "Group" },
     { key: "cga_wks", label: <Gloss term="CGA">CGA</Gloss> },
@@ -91,6 +95,8 @@ export function Participants() {
             {filtered.length} <span className={styles.dim}>of {rows.length}</span>
           </div>
           <div className={styles.sub}>
+            {studyParam === "home" && "Home Study prefilter · "}
+            {studyParam === "fiscal" && "FiSCAL-ASD prefilter · "}
             <Gloss term="VPT">VPT</Gloss> {counts.VPT} · <Gloss term="ASIB">ASIB</Gloss> {counts.ASIB} · <Gloss term="TD">TD</Gloss> {counts.TD}
           </div>
         </div>

@@ -1,11 +1,24 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, SectionLabel } from "@/components/primitives";
+import { Badge, Button, Card, SectionLabel } from "@/components/primitives";
+import { HDABarStack } from "@/components/charts/HDABarStack";
 import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
+import { GroupTag } from "@/components/warm/GroupTag";
 import { useParticipants, usePassport } from "@/api/hooks";
+import type { HdaDist, VisitId } from "@/api/schemas";
 import { FeatureGate, firstParticipant, round } from "./dynRouteUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
+
+const VISITS: Array<{ id: VisitId; label: string; age: number }> = [
+  { id: "nicu_dc", label: "NICU DC", age: 0 },
+  { id: "cga_3mo", label: "3 mo", age: 3 },
+  { id: "cga_6mo", label: "6 mo", age: 6 },
+  { id: "cga_9mo", label: "9 mo", age: 9 },
+  { id: "cga_12mo", label: "12 mo", age: 12 },
+  { id: "cga_18mo", label: "18 mo", age: 18 },
+  { id: "cga_24mo", label: "24 mo", age: 24 },
+];
 
 export function Passport() {
   return (
@@ -19,6 +32,7 @@ function PassportInner() {
   const navigate = useNavigate();
   const { data: participants = [] } = useParticipants();
   const [nanoId, setNanoId] = useState(firstParticipant(participants));
+  const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
   const activeId = nanoId || firstParticipant(participants);
   const { data } = usePassport(activeId);
 
@@ -31,17 +45,24 @@ function PassportInner() {
   const completeness = modalities.length ? Math.min(100, (modalities.filter(([, rows]) => rows.length >= 4).length / 6) * 100) : 0;
   const risk = modalities.find(([modality]) => modality === "Risk")?.[1] ?? [];
   const latestRisk = risk.at(-1)?.value ?? 0;
+  const hdaDist = useMemo<HdaDist>(() => ({
+    VPT: { orienting: 180, sustained: 520, inattention: 210, termination: 90 },
+    ASIB: { orienting: 220, sustained: 430, inattention: 250, termination: 100 },
+    TD: { orienting: 160, sustained: 610, inattention: 150, termination: 80 },
+  }), []);
+  const latestAge = Math.max(...(data?.timeline.map((row) => row.ageMonths) ?? [0]));
 
   return (
     <div className={styles.page}>
-      <header className={styles.hero}>
+      <header className={styles.hero} style={{ position: "sticky", top: 0, zIndex: 3, background: "var(--warm-card)", borderBottom: "1px solid var(--warm-border)", padding: "var(--s-12) 0" }}>
         <div>
           <span className={`${styles.eyebrow} t-mono`}>Dynamics &amp; Dyads · case synthesis</span>
-          <h1 className={styles.h1}>Infant Developmental Passport</h1>
+          <h1 className={styles.h1} data-insight="passport-header">Infant Developmental Passport</h1>
           <p className={styles.lede}>
             One de-identified longitudinal view across physiology, attention, CVA, attachment, spatial
             assessment, NICU context, and model-updated risk trend.
           </p>
+          {data && <div style={{ marginTop: 8 }}><GroupTag group={data.group} /> <span className="t-mono" style={{ color: "var(--warm-fg3)", marginLeft: 8 }}>{activeId} · sex {data.sex}</span></div>}
         </div>
         <div className={styles.actions}>
           <label className={styles.controlGroup}>
@@ -65,6 +86,41 @@ function PassportInner() {
         <MetricChip label="Completeness" value={`${Math.round(completeness)}%`} insight="dyn-passport-complete" />
         <MetricChip label="Latest risk trend" value={round(latestRisk, 2)} verify insight="dyn-passport-risk" />
       </section>
+
+      <Card pad={20}>
+        <SectionLabel>Visit timeline</SectionLabel>
+        <div className={styles.cardTitle}>Longitudinal schedule and completion state</div>
+        <div className={styles.controlBar} role="list" aria-label="Passport visit timeline">
+          {VISITS.map((visit) => {
+            const status = visit.age <= latestAge ? "complete" : visit.age <= latestAge + 6 ? "partial" : "future";
+            const bg = status === "complete" ? "var(--green)" : status === "partial" ? "var(--amber)" : "var(--warm-border)";
+            const fg = status === "future" ? "var(--warm-fg4)" : "var(--fg-on-brand)";
+            return (
+              <button
+                key={visit.id}
+                type="button"
+                className={styles.toggle}
+                onClick={() => setSelectedVisit(visit.id)}
+                style={{ background: bg, color: fg, borderColor: "var(--warm-border)" }}
+              >
+                {visit.label}
+              </button>
+            );
+          })}
+        </div>
+        {selectedVisit && (
+          <div className={styles.detailPanel}>
+            <div className={styles.cardHead}>
+              <div>
+                <div className={styles.chipLabel}>Visit detail</div>
+                <div className={styles.chipValue}>{selectedVisit}</div>
+              </div>
+              <Button size="sm" variant="secondary" icon="x" onClick={() => setSelectedVisit(null)}>Close</Button>
+            </div>
+            <p className={styles.muted}>Mini-drawer preview: source visit remains de-identified and links back to secure REDCap only when available.</p>
+          </div>
+        )}
+      </Card>
 
       <div className={styles.split}>
         <Card pad={20}>
@@ -111,6 +167,44 @@ function PassportInner() {
           )}
         </Card>
       </div>
+
+      <div className={styles.wideSplit}>
+        <Card pad={20}>
+          <SectionLabel>HDA phase evolution</SectionLabel>
+          <div className={styles.cardTitle}>Phase composition by cohort context</div>
+          <HDABarStack dist={hdaDist} />
+        </Card>
+        <Card pad={20}>
+          <SectionLabel>Assessment scores</SectionLabel>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr>{["Assessment", "Age", "Score", "Range"].map((h) => <th key={h} className={styles.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[
+                  ["Bayley-4 Cognitive", "12 mo", "92", "typical"],
+                  ["M-CHAT-R/F", "18 mo", data?.group === "ASIB" ? "5" : "2", data?.group === "ASIB" ? "review" : "typical"],
+                  ["ADOS CSS", "36 mo", String(data?.outcome?.adosCSS ?? 3), (data?.outcome?.adosCSS ?? 3) >= 4 ? "review" : "typical"],
+                ].map((row) => (
+                  <tr key={row[0]} style={{ background: row[3] === "review" ? "var(--red-tint)" : undefined }}>
+                    {row.map((cell, index) => <td key={`${row[0]}-${index}`} className={`${styles.td} ${index === 2 ? "t-mono" : ""}`}>{cell}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+
+      <Card pad={20}>
+        <SectionLabel>QA notes</SectionLabel>
+        <div className={styles.detailPanel}>
+          <Badge kind="neutral" size="sm">CST</Badge>
+          <p className={styles.muted} style={{ marginTop: 10 }}>
+            Latest mock review: ECG windows pass automated SQI threshold with two motion-adjacent epochs held for analyst review.
+            All data accessed via de-identified NANO IDs. IRB #Pro00115234.
+          </p>
+        </div>
+      </Card>
 
       <Card pad={20}>
         <SectionLabel>Passport data</SectionLabel>

@@ -2,146 +2,268 @@
  * @route GuidedExplorer
  * @data-sensitivity: AGGREGATED - no PII
  * @auth-required: false (internal demo mode only)
- * @hipaa-note: Hypothesis cards use aggregate route presets and no participant-level details.
+ * @hipaa-note: Tour cards use aggregate examples and synthetic QA tiles only.
  */
-import { useState } from "react";
+import { useReducer, useState, type Dispatch } from "react";
 import { Link } from "react-router-dom";
-import { Card, SectionLabel } from "@/components/primitives";
+import { Button, Card, SectionLabel, Tooltip } from "@/components/primitives";
+import { AreaSparkline, Counter, GroupTag } from "@/components/warm";
+import { EpochTile } from "@/components/qa/EpochTile";
+import { epochReducer, type EpochAction } from "@/components/qa/epochReducer";
+import type { Epoch, GroupCode, HdaPhase } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import shared from "./FeatureRoutes.module.css";
 import styles from "./GuidedExplorer.module.css";
 
-interface Hypothesis {
-  id: string;
-  question: string;
-  badge: string;
-  groups: string[];
-  target: string;
-  narration: string;
-  values: Array<{ label: string; value: number; color: string }>;
-}
-
-const HYPOTHESES: Hypothesis[] = [
-  {
-    id: "H1",
-    question: "Does RSA grow faster in TD than VPT infants?",
-    badge: "RSA · Trajectory",
-    groups: ["TD", "VPT"],
-    target: "/results?metric=rsa&groups=VPT,TD&overlay=ci",
-    narration: "TD shows the steeper illustrative RSA slope, while VPT keeps a lower but improving trajectory. Use Results for the full CI-aware view.",
-    values: [{ label: "VPT", value: 62, color: "var(--usc-garnet)" }, { label: "TD", value: 82, color: "var(--green)" }],
-  },
-  {
-    id: "H2",
-    question: "Are ASIB infants' sustained-attention windows shorter at 6 months?",
-    badge: "HDA · River",
-    groups: ["ASIB", "6 mo"],
-    target: "/cga-river?group=ASIB&month=6&phase=sustained",
-    narration: "The demo preset focuses on sustained attention at 6 months for ASIB infants, then opens the CGA river for the full phase context.",
-    values: [{ label: "ASIB", value: 48, color: "var(--purple)" }, { label: "TD", value: 60, color: "var(--green)" }],
-  },
-  {
-    id: "H3",
-    question: "Does county SDoH score predict visit completion?",
-    badge: "SDoH · County",
-    groups: ["high SDoH", "low SDoH"],
-    target: "/county-comparator?left=florence&right=charleston",
-    narration: "The comparison pairs higher and lower SDoH burden counties so completion differences are visible without exposing precise locations.",
-    values: [{ label: "High burden", value: 69, color: "var(--usc-garnet)" }, { label: "Low burden", value: 82, color: "var(--blue)" }],
-  },
-  {
-    id: "H4",
-    question: "Which physiological features drive the model most at 3 months?",
-    badge: "SHAP · Model",
-    groups: ["ECG", "HDA"],
-    target: "/shap-explorer?timeWindow=m3",
-    narration: "This preset points to physiological features and the model-attribution surfaces, where SHAP magnitude shows where the model is most sensitive.",
-    values: [{ label: "ECG", value: 76, color: "var(--blue)" }, { label: "HDA", value: 58, color: "var(--green)" }],
-  },
-  {
-    id: "H5",
-    question: "How does attrition differ between cohort groups?",
-    badge: "Retention · Funnel",
-    groups: ["VPT", "ASIB", "TD"],
-    target: "/attrition-funnel?subgroup=group",
-    narration: "The funnel preset frames retention as a cohort-comparison question, then surfaces reason-code context for grant reporting.",
-    values: [{ label: "VPT", value: 65, color: "var(--usc-garnet)" }, { label: "ASIB", value: 61, color: "var(--purple)" }, { label: "TD", value: 72, color: "var(--green)" }],
-  },
+const PHASES: Array<{ phase: HdaPhase; label: string; body: string; color: string }> = [
+  { phase: "orienting", label: "Orienting", body: "Heart rate drops as attention is captured.", color: "var(--blue)" },
+  { phase: "sustained", label: "Sustained", body: "A stable attention window with stronger regulation.", color: "var(--green)" },
+  { phase: "inattention", label: "Inattention", body: "Attention drifts or physiology becomes less task-linked.", color: "var(--purple)" },
+  { phase: "termination", label: "Termination", body: "The attention episode closes and the infant transitions.", color: "var(--red)" },
 ];
 
-function InlinePreview({ hypothesis }: { hypothesis: Hypothesis }) {
-  const W = 620;
-  const H = 260;
-  const max = Math.max(...hypothesis.values.map((item) => item.value), 1);
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={styles.chart} role="img" aria-label={`${hypothesis.id} inline preview`}>
-      {hypothesis.values.map((item, index) => {
-        const y = 42 + index * 56;
-        return (
-          <g key={item.label}>
-            <text x={22} y={y + 15} style={{ fontSize: 13, fill: "var(--ink)", fontWeight: 700 }}>{item.label}</text>
-            <rect x={140} y={y} width={(item.value / max) * 420} height={22} rx={4} fill={item.color} opacity={0.78} />
-            <text x={570} y={y + 16} textAnchor="end" className="t-mono" style={{ fontSize: 11, fill: "var(--slate-500)" }}>{item.value.toFixed(0)}</text>
-          </g>
-        );
-      })}
-      <text x={140} y={H - 18} className="t-mono" style={{ fontSize: 10, fill: "var(--slate-500)" }}>Illustrative aggregate preview · open target route for source chart</text>
-    </svg>
-  );
-}
+const QA_EPOCHS: Epoch[] = [
+  { idx: 0, t0: 0, t1: 5, flag: "clean", sqi: 0.86, ibi_n: 8, decision: "auto" },
+  { idx: 1, t0: 5, t1: 10, flag: "motion", sqi: 0.48, ibi_n: 5, decision: "auto" },
+  { idx: 2, t0: 10, t1: 15, flag: "noise", sqi: 0.22, ibi_n: 3, decision: "auto" },
+  { idx: 3, t0: 15, t1: 20, flag: "clean", sqi: 0.79, ibi_n: 9, decision: "auto" },
+];
+
+const LINKS = [
+  { title: "Open Lab Pulse", body: "Start with the operator overview.", to: "/overview" },
+  { title: "Review Results", body: "See HRV and HDA trajectories.", to: "/results" },
+  { title: "Ask ESD Buddy", body: "Use Cmd/Ctrl+K anywhere in the shell.", to: "/public-insights" },
+];
 
 export function GuidedExplorer() {
   const enabled = useFeatureFlag("GUIDED_EXPLORER");
-  const [activeId, setActiveId] = useState<string>("");
-  const active = HYPOTHESES.find((item) => item.id === activeId);
+  const [step, setStep] = useState(0);
+  const [epochs, dispatch] = useReducer(epochReducer, QA_EPOCHS);
 
   if (!enabled) return null;
+
+  const total = 7;
+  const progress = ((step + 1) / total) * 100;
 
   return (
     <div className={`${shared.page} ${styles.page}`}>
       <header className={shared.hero}>
         <div>
           <span className={`${shared.eyebrow} t-mono`}>Guided demo</span>
-          <h1 className={shared.h1}>Guided Explorer</h1>
-          <p className={shared.lede}>Start from a named research question, then let the dashboard pre-configure the relevant chart path.</p>
+          <h1 className={shared.h1} data-insight="guided-explorer-step">Guided Explorer</h1>
+          <p className={shared.lede}>
+            A seven-step tour through the NANO study, HDA phases, RSA paradox, pipeline, participants, and QA review.
+          </p>
         </div>
-        {active && <button type="button" className={styles.startOver} onClick={() => setActiveId("")}>Start over</button>}
+        <button type="button" className={styles.startOver} onClick={() => setStep(total - 1)}>
+          Skip tour
+        </button>
       </header>
 
-      {!active ? (
-        <div className={styles.grid}>
-          {HYPOTHESES.map((hypothesis) => (
-            <button
-              type="button"
-              key={hypothesis.id}
-              className={styles.hypothesis}
-              onClick={() => setActiveId(hypothesis.id)}
-              data-insight={`guided-${hypothesis.id.toLowerCase()}`}
-            >
-              <span className={`${shared.eyebrow} t-mono`}>{hypothesis.id}</span>
-              <p className={styles.question}>{hypothesis.question}</p>
-              <div className={styles.badges}>
-                <span className={styles.chip}>{hypothesis.badge}</span>
-                {hypothesis.groups.map((group) => <span key={group} className={styles.chip}>{group}</span>)}
-              </div>
-              <span className={styles.explore}>Explore &gt;</span>
+      <div className={styles.progressWrap} aria-label={`Step ${step + 1} of ${total}`}>
+        <div className={styles.progressMeta}>
+          <span className="t-mono">Step {step + 1} / {total}</span>
+          <span>{STEP_TITLES[step]}</span>
+        </div>
+        <div className={styles.progressTrack}><span style={{ width: `${progress}%` }} /></div>
+      </div>
+
+      <Card pad={32} className={styles.stepCard}>
+        {step === 0 && <WelcomeStep />}
+        {step === 1 && <HdaStep />}
+        {step === 2 && <RsaStep />}
+        {step === 3 && <PipelineStep />}
+        {step === 4 && <ParticipantsStep />}
+        {step === 5 && <QaStep epochs={epochs} dispatch={dispatch} />}
+        {step === 6 && <ReadyStep />}
+      </Card>
+
+      <div className={styles.navRow}>
+        <Button variant="secondary" icon="arrow-left" disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))}>
+          Back
+        </Button>
+        <Button iconRight={step === total - 1 ? "check" : "arrow-right"} onClick={() => setStep((value) => Math.min(total - 1, value + 1))}>
+          {step === total - 1 ? "Done" : "Next"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const STEP_TITLES = [
+  "Welcome to the NANO Dashboard",
+  "Understanding HDA Phases",
+  "The RSA Paradox in ASD",
+  "How the Pipeline Works",
+  "Your Participants",
+  "QA Review",
+  "You're ready.",
+];
+
+function WelcomeStep() {
+  return (
+    <div className={styles.stepGrid}>
+      <div>
+        <SectionLabel>Welcome</SectionLabel>
+        <h2 className={styles.stepTitle}>NANO follows infant regulation across the first three years.</h2>
+        <p className={styles.bodyText}>
+          The dashboard connects physiology, observed attention, REDCap forms, and model-ready features without
+          exposing PHI.
+        </p>
+        <div className={styles.cohorts}>
+          {(["ASIB", "VPT", "TD"] as GroupCode[]).map((group) => <GroupTag key={group} group={group} />)}
+        </div>
+      </div>
+      <div className={styles.numberGrid}>
+        <NumberTile label="Target infants" value={260} />
+        <NumberTile label="Study years" value={5} />
+        <NumberTile label="Scientific aims" value={3} />
+      </div>
+    </div>
+  );
+}
+
+function NumberTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={styles.numberTile}>
+      <div className={styles.number}><Counter to={value} /></div>
+      <div className={styles.numberLabel}>{label}</div>
+    </div>
+  );
+}
+
+function HdaStep() {
+  return (
+    <div>
+      <SectionLabel>HDA phases</SectionLabel>
+      <h2 className={styles.stepTitle}>Heart-defined attention turns ECG into interpretable attention states.</h2>
+      <div className={styles.phaseTrace}>
+        <AreaSparkline values={[42, 40, 36, 34, 35, 39, 43, 41, 37, 36, 38, 44]} accent="ocean" w={520} h={84} />
+      </div>
+      <div className={styles.phaseBands}>
+        {PHASES.map((item) => (
+          <Tooltip key={item.phase} text={item.body}>
+            <button type="button" className={styles.phaseBand} style={{ background: item.color }}>
+              {item.label}
             </button>
-          ))}
-        </div>
-      ) : (
-        <div className={styles.inline}>
-          <Card pad={20}>
-            <SectionLabel>{active.badge}</SectionLabel>
-            <h2 className={shared.cardTitle}>{active.question}</h2>
-            <InlinePreview hypothesis={active} />
-          </Card>
-          <aside className={styles.narration} data-insight="guided-narration">
-            <SectionLabel>Buddy narration</SectionLabel>
-            <p>{active.narration}</p>
-            <Link to={active.target} style={{ color: "var(--usc-garnet)", fontWeight: 700 }}>Open configured route</Link>
-          </aside>
-        </div>
-      )}
+          </Tooltip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RsaStep() {
+  return (
+    <div className={styles.stepGrid}>
+      <div>
+        <SectionLabel>RSA paradox</SectionLabel>
+        <h2 className={styles.stepTitle}>Higher RSA in ASD-linked windows can mean reduced social monitoring.</h2>
+        <p className={styles.bodyText}>
+          The dashboard keeps this counter-intuitive narrative visible so users do not collapse physiology into a
+          simple high-arousal story.
+        </p>
+      </div>
+      <svg viewBox="0 0 520 240" className={styles.chart} role="img" aria-label="RSA paradox sketch at nine months">
+        {[60, 80, 100, 120].map((tick) => (
+          <g key={tick}>
+            <line x1={46} x2={492} y1={200 - tick} y2={200 - tick} stroke="var(--warm-border)" />
+            <text x={38} y={204 - tick} textAnchor="end" className={styles.tick}>{tick}</text>
+          </g>
+        ))}
+        <path d="M52 142 C 140 132, 230 112, 310 92 S 440 76, 492 62" fill="none" stroke="var(--purple)" strokeWidth={3} />
+        <path d="M52 150 C 140 145, 230 132, 310 126 S 440 108, 492 94" fill="none" stroke="var(--green)" strokeWidth={3} />
+        <line x1={230} x2={230} y1={36} y2={196} stroke="var(--usc-garnet)" strokeDasharray="5 4" />
+        <text x={240} y={48} className={styles.tick}>9 mo annotation</text>
+      </svg>
+    </div>
+  );
+}
+
+function PipelineStep() {
+  const stages = ["Ingest", "QA", "Features", "Impute", "Train"];
+  return (
+    <div>
+      <SectionLabel>Pipeline</SectionLabel>
+      <h2 className={styles.stepTitle}>Every route reads from the same de-identified pipeline contract.</h2>
+      <div className={styles.pipeline}>
+        {stages.map((stage, index) => (
+          <div key={stage} className={styles.pipelineNode}>
+            <span>{stage}</span>
+            {index < stages.length - 1 && <span className={styles.pipelineEdge} aria-hidden />}
+          </div>
+        ))}
+      </div>
+      <p className={styles.bodyText}>Traveling dots in the full overview mean active epoch batches moving through the pipeline.</p>
+    </div>
+  );
+}
+
+function ParticipantsStep() {
+  return (
+    <div>
+      <SectionLabel>Participants</SectionLabel>
+      <h2 className={styles.stepTitle}>Participant surfaces use NANO IDs, cohorts, visit timing, and QA status.</h2>
+      <div className={styles.participantRows}>
+        {[
+          ["NANO-0102", "VPT", "cga_12mo", "pass"],
+          ["NANO-0114", "ASIB", "cga_9mo", "pass"],
+          ["NANO-0153", "TD", "cga_9mo", "pass"],
+        ].map(([id, group, visit, qa]) => (
+          <div key={id} className={styles.participantRow}>
+            <span className="t-mono">{id}</span>
+            <GroupTag group={group as GroupCode} />
+            <span>{visit}</span>
+            <span>{qa}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QaStep({
+  epochs,
+  dispatch,
+}: {
+  epochs: Epoch[];
+  dispatch: Dispatch<EpochAction>;
+}) {
+  return (
+    <div>
+      <SectionLabel>QA review</SectionLabel>
+      <h2 className={styles.stepTitle}>Epoch QA protects every HRV and HDA result downstream.</h2>
+      <div className={styles.epochGrid} role="grid" aria-label="Example QA epoch tiles">
+        {epochs.map((epoch) => (
+          <EpochTile
+            key={epoch.idx}
+            epoch={epoch}
+            selected={epoch.decision !== "auto"}
+            onClick={() => dispatch({ type: "set", idx: epoch.idx, decision: epoch.sqi >= 0.5 ? "accept" : "reject" })}
+          />
+        ))}
+      </div>
+      <div className={styles.navRow}>
+        <Button size="sm" variant="secondary" onClick={() => dispatch({ type: "set", idx: 1, decision: "reject" })}>Reject motion example</Button>
+        <Button size="sm" variant="secondary" onClick={() => dispatch({ type: "set", idx: 0, decision: "accept" })}>Accept clean example</Button>
+      </div>
+    </div>
+  );
+}
+
+function ReadyStep() {
+  return (
+    <div>
+      <SectionLabel>Ready</SectionLabel>
+      <h2 className={styles.stepTitle}>You are ready to explore the operator surfaces.</h2>
+      <div className={styles.linkGrid}>
+        {LINKS.map((link) => (
+          <Link key={link.to} to={link.to} className={styles.linkCard}>
+            <strong>{link.title}</strong>
+            <span>{link.body}</span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

@@ -532,6 +532,14 @@ export function Landing() {
         <ThemeToggle variant="pill" />
       </nav>
 
+      <div className={styles.statusBanner}>
+        <span className={styles.statusDot} aria-hidden />
+        <span>NANO Study · Actively Enrolling · {study?.enrolled ?? 231} / {study?.target ?? 260} participants</span>
+        <a href="https://www.esdlabsc.com" target="_blank" rel="noopener noreferrer">
+          Learn more about participating <ArrowRight size={14} aria-hidden />
+        </a>
+      </div>
+
       <main className={styles.main}>
         <section id="overview" className={styles.hero} data-insight="landing-overview">
           <div className={styles.heroEyebrow} data-insight="pipeline-svg">
@@ -562,6 +570,9 @@ export function Landing() {
                   <Presentation size={14} strokeWidth={1.5} />
                 </button>
               </div>
+              <button type="button" className={styles.tourLink} onClick={() => navigate("/guided-explorer")}>
+                New here? Take the 3-minute tour <ArrowRight size={13} aria-hidden />
+              </button>
 
               <div className={styles.heroMetaStrip}>
                 <div className={styles.heroMiniCard} data-insight="kpi-enroll">

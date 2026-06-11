@@ -21,7 +21,8 @@ type Scale = "sequential" | "diverging";
 export function ModelConfidenceTerrain() {
   const enabled = useFeatureFlag("MODEL_CONFIDENCE_TERRAIN");
   const query = useShapValues();
-  const rows = query.data?.data ?? [];
+  const rowsSource = query.data?.data;
+  const rows = useMemo(() => rowsSource ?? [], [rowsSource]);
   const [mode, setMode] = useState<Mode>("contour");
   const [modality, setModality] = useState<Modality>("all");
   const [timeWindow, setTimeWindow] = useState("all");

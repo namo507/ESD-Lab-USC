@@ -1,8 +1,8 @@
 import { NavLink } from "react-router-dom";
-import { Icon } from "@/components/primitives";
+import { Badge, Icon } from "@/components/primitives";
 import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
-import type { FeatureFlag } from "@/config/featureFlags";
+import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
 
 interface SidebarProps {
   study: StudySummary;
@@ -34,9 +34,9 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "studies",
     title: "Active Studies",
     items: [
-      { to: "/overview", label: "NANO Study", icon: "activity" },
-      { to: "/participants", label: "Home Study", icon: "home" },
-      { to: "/participants", label: "FiSCAL-ASD", icon: "baby" },
+      { to: "/overview", label: "NANO Study (VPT)", icon: "activity" },
+      { to: "/participants?study=home", label: "Home Study", icon: "home" },
+      { to: "/participants?study=fiscal", label: "FiSCAL-ASD", icon: "baby" },
     ],
   },
   {
@@ -86,6 +86,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     title: "Dynamics & Dyads",
     items: [
       { to: "/dyad-coregulation", label: "Co-Regulation", icon: "git-merge", flag: "DYN_CO_REGULATION_BRAID" },
+      { to: "/multimodal", label: "Multimodal Sync", icon: "audio-lines", flag: "MULTIMODAL_SYNCHRONY" },
       { to: "/phase-portrait", label: "Phase Portrait", icon: "git-commit", flag: "DYN_AROUSAL_ATTENTION_PORTRAIT" },
       { to: "/cva-theater", label: "CVA Theater", icon: "eye", flag: "DYN_CVA_GAZE_THEATER" },
       { to: "/hr-deceleration", label: "HR Deceleration", icon: "activity", flag: "DYN_HR_DECELERATION_PROFILES" },
@@ -133,6 +134,13 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
 
 export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: SidebarProps) {
   const groups = executiveMode ? EXECUTIVE_NAV_GROUPS : NAV_GROUPS;
+  const isNew = (flag?: FeatureFlag) => {
+    if (!flag) return false;
+    const releaseDate = FEATURE_FLAG_RELEASE_DATES[flag];
+    if (!releaseDate) return false;
+    return Date.now() < new Date(releaseDate).getTime() + 14 * 24 * 60 * 60 * 1000;
+  };
+
   return (
     <aside
       className="w-60 flex-shrink-0 bg-white border-r border-[color:var(--warm-border)] py-5 px-3.5 flex flex-col gap-6 sticky top-0 self-start h-screen overflow-y-auto"
@@ -171,7 +179,7 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
               const badge =
                 it.label === "Window QA" && qaPending > 0
                   ? qaPending
-                  : it.label === "NANO Study"
+                  : it.label === "NANO Study (VPT)"
                     ? enrolled
                     : undefined;
               return (
@@ -197,11 +205,14 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
                       )}
                       <Icon name={it.icon} size={16} stroke={1.5} color={isActive ? "var(--usc-garnet)" : "var(--warm-fg2)"} />
                       <span className="flex-1">{it.label}</span>
+                      {isNew(it.flag) && (
+                        <Badge kind="neutral" size="sm">NEW</Badge>
+                      )}
                       {badge !== undefined && (
                         <span
                           className={`text-[10px] font-mono px-1.5 py-px rounded-full ${
                             isActive ? "bg-garnet text-white" : "bg-[color:var(--slate-100)] text-[color:var(--warm-fg3)]"
-                          }`}
+                          } ${it.label === "Window QA" && qaPending > 0 ? "badge-pending" : ""}`}
                         >
                           {badge}
                         </span>
@@ -215,7 +226,16 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
         </div>
       ))}
 
-      <div className="mt-auto p-3 bg-[color:var(--warm-pill)] rounded-xl text-[11px] text-[color:var(--warm-fg3)] leading-relaxed">
+      <details className="mt-auto p-3 bg-[color:var(--warm-pill)] rounded-lg border border-[color:var(--warm-border)] text-[10px] text-[color:var(--warm-fg4)] font-mono leading-relaxed">
+        <summary className="cursor-pointer text-[color:var(--warm-fg3)]">Keyboard shortcuts</summary>
+        <div className="pt-2 grid gap-1">
+          <span>Cmd/Ctrl + K · ESD Buddy</span>
+          <span>Arrow keys · scrub timelines</span>
+          <span>Space · play/pause players</span>
+        </div>
+      </details>
+
+      <div className="p-3 bg-[color:var(--warm-pill)] rounded-xl text-[11px] text-[color:var(--warm-fg3)] leading-relaxed">
         <div className="font-serif text-[13px] text-[color:var(--warm-fg2)] font-semibold mb-1">
           Dr. Bradshaw&apos;s lab
         </div>

@@ -442,6 +442,16 @@ export function useDyadCoregulation(nanoId: string | undefined, visitAge: number
   });
 }
 
+export function useMultimodalSession(nanoId: string | undefined, visitAge: number | string | undefined) {
+  return useQuery({
+    enabled: Boolean(nanoId) && visitAge !== undefined,
+    queryKey: ["v2", "multimodal", nanoId, visitAge],
+    queryFn: () => api.get(`/api/v2/multimodal/${nanoId}/${visitAge}`, S.MultimodalSessionResponse),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
 export function usePhasePortrait(nanoId: string | undefined, visitAge: number | string | undefined) {
   return useQuery({
     enabled: Boolean(nanoId) && visitAge !== undefined,

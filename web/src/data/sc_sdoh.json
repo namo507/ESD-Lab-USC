@@ -1,0 +1,7 @@
+[
+  { "county": "Richland", "fips": "45079", "priorityIndex": 0.72, "ruralityPct": 14, "transportBurdenPct": 22 },
+  { "county": "Lexington", "fips": "45063", "priorityIndex": 0.38, "ruralityPct": 19, "transportBurdenPct": 15 },
+  { "county": "Greenville", "fips": "45045", "priorityIndex": 0.44, "ruralityPct": 12, "transportBurdenPct": 17 },
+  { "county": "Charleston", "fips": "45019", "priorityIndex": 0.29, "ruralityPct": 9, "transportBurdenPct": 13 },
+  { "county": "Florence", "fips": "45041", "priorityIndex": 0.81, "ruralityPct": 28, "transportBurdenPct": 31 }
+]

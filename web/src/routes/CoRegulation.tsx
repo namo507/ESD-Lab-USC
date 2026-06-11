@@ -28,6 +28,8 @@ function CoRegulationInner() {
   const [nanoId, setNanoId] = useState(firstParticipant(participants));
   const [visitAge, setVisitAge] = useState("12");
   const [signal, setSignal] = useState<Signal>("rsa");
+  const [cohort, setCohort] = useState<"session" | "context">("session");
+  const [threshold, setThreshold] = useState(0.42);
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null);
 
   const activeId = nanoId || firstParticipant(participants);
@@ -117,8 +119,30 @@ function CoRegulationInner() {
               onChange={setSignal}
             />
           </div>
+          <div className={styles.controlBar}>
+            <Segmented<"session" | "context">
+              size="sm"
+              ariaLabel="Cohort context"
+              options={[{ value: "session", label: "Session" }, { value: "context", label: "Cohort" }]}
+              value={cohort}
+              onChange={setCohort}
+            />
+            <label className={styles.controlGroup}>
+              <span className={styles.controlLabel}>Overlap threshold</span>
+              <input
+                className={styles.range}
+                type="range"
+                min={0.15}
+                max={0.85}
+                step={0.01}
+                value={threshold}
+                onChange={(event) => setThreshold(Number(event.target.value))}
+              />
+              <span className="t-mono">{threshold.toFixed(2)}</span>
+            </label>
+          </div>
           {analysis && data ? (
-            <BraidChart caregiver={analysis.caregiver} infant={analysis.infant} events={data.events} fs={data.fs} selectedEvent={selectedEvent} />
+            <BraidChart caregiver={analysis.caregiver} infant={analysis.infant} events={data.events} fs={data.fs} selectedEvent={selectedEvent} threshold={threshold} />
           ) : (
             <div className={styles.empty}>Loading dyadic stream...</div>
           )}
@@ -133,7 +157,7 @@ function CoRegulationInner() {
 
         <Card pad={20}>
           <SectionLabel>Group context</SectionLabel>
-          <div className={styles.cardTitle}>Synchrony and lead-lag distributions</div>
+          <div className={styles.cardTitle}>{cohort === "context" ? "Synchrony and lead-lag distributions" : "Current session against cohort context"}</div>
           <div className={styles.chartBox} role="img" aria-label="Group context bar chart for synchrony index and lead lag">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={data?.groupContext ?? []} margin={{ top: 12, right: 12, bottom: 12, left: 0 }}>
@@ -177,12 +201,14 @@ function BraidChart({
   events,
   fs,
   selectedEvent,
+  threshold,
 }: {
   caregiver: number[];
   infant: number[];
   events: Array<{ onset: number; type: string }>;
   fs: number;
   selectedEvent: number | null;
+  threshold: number;
 }) {
   const w = 760;
   const h = 300;
@@ -220,6 +246,22 @@ function BraidChart({
           />
         );
       })}
+      {Array.from({ length: Math.floor(n / 8) }, (_, i) => i * 8).map((idx) => {
+        const caregiverValue = caregiver[idx] ?? 0;
+        const infantValue = infant[idx] ?? 0;
+        if (Math.abs(caregiverValue - infantValue) > threshold) return null;
+        return (
+          <rect
+            key={`overlap-${idx}`}
+            x={sx(idx) - 3}
+            y={sy(caregiverValue, "top")}
+            width={6}
+            height={Math.max(10, sy(infantValue, "bottom") - sy(caregiverValue, "top"))}
+            fill="var(--usc-gold)"
+            opacity={0.42}
+          />
+        );
+      })}
       <path d={path(caregiver, "top")} fill="none" stroke="var(--usc-garnet)" strokeWidth={3} strokeLinecap="round" />
       <path d={path(infant, "bottom")} fill="none" stroke="var(--blue)" strokeWidth={3} strokeLinecap="round" />
       {events.map((event, index) => {
@@ -232,6 +274,14 @@ function BraidChart({
           </g>
         );
       })}
+      <g aria-label="Event strips">
+        <line x1={pad.left} x2={w - pad.right} y1={252} y2={252} stroke="var(--warm-border)" strokeWidth={8} strokeLinecap="round" />
+        {events.map((event) => {
+          const x = sx(Math.min(n - 1, Math.round(event.onset * fs)));
+          const color = event.type === "still_face" ? "var(--red)" : event.type === "reunion" ? "var(--ocean)" : "var(--sand)";
+          return <line key={`strip-${event.type}-${event.onset}`} x1={x} x2={x} y1={246} y2={258} stroke={color} strokeWidth={4} strokeLinecap="round" />;
+        })}
+      </g>
       <text x={pad.left} y={68} className={styles.tinyLabel}>Caregiver</text>
       <text x={pad.left} y={217} className={styles.tinyLabel}>Infant</text>
       <text x={w - pad.right} y={284} textAnchor="end" className={styles.tinyLabel}>{Math.round(n / fs)} s</text>

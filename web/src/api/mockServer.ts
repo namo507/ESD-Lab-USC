@@ -40,6 +40,7 @@ import type {
   EcgQualityResponse,
   EcgQualitySummaryResponse,
   DyadCoregulationResponse,
+  MultimodalSessionResponse,
   PhasePortraitResponse,
   CvaResponse,
   HrDecelerationResponse,
@@ -761,6 +762,60 @@ function makeDyadCoregulation(_nanoId: string, visitAgeRaw: string): DyadCoregul
   };
 }
 
+function makeMultimodalSession(_nanoId: string, visitAgeRaw: string): MultimodalSessionResponse {
+  const visitAge = visitAgeFromPath(visitAgeRaw);
+  const duration = 210;
+  const ecgT: number[] = [];
+  const ecgMv: number[] = [];
+  const rPeaks: number[] = [];
+  let nextPeak = 0.74;
+
+  for (let i = 0; i <= duration * 4; i += 1) {
+    const t = Number((i / 4).toFixed(2));
+    if (t >= nextPeak) {
+      rPeaks.push(Number(nextPeak.toFixed(2)));
+      nextPeak += 0.72 + Math.sin(t / 13) * 0.05;
+    }
+    const recentPeaks = rPeaks.slice(-2);
+    const peakDistance = recentPeaks.length ? Math.min(...recentPeaks.map((peak) => Math.abs(t - peak))) : 2;
+    const qrs = peakDistance < 0.08 ? 1.05 * Math.exp(-Math.pow(peakDistance / 0.035, 2)) : 0;
+    ecgT.push(t);
+    ecgMv.push(Number((Math.sin(t * 8.5) * 0.08 + Math.sin(t * 1.7) * 0.04 + qrs - 0.18).toFixed(3)));
+  }
+
+  const rsaT = Array.from({ length: duration + 1 }, (_, i) => i);
+  const rsaPower = rsaT.map((t) => {
+    const socialBoost = t > 52 && t < 82 ? 48 : t > 128 && t < 164 ? 64 : 0;
+    return Number((52 + visitAge * 1.7 + Math.sin(t / 10) * 18 + Math.cos(t / 23) * 9 + socialBoost).toFixed(2));
+  });
+
+  return {
+    ecg: { t: ecgT, mv: ecgMv, rPeaks },
+    rsa: { t: rsaT, hfPower: rsaPower },
+    hda: {
+      epochs: [
+        { start: 0, end: 24, phase: "orienting" },
+        { start: 24, end: 86, phase: "sustained" },
+        { start: 86, end: 112, phase: "inattention" },
+        { start: 112, end: 170, phase: "sustained" },
+        { start: 170, end: 194, phase: "termination" },
+        { start: 194, end: 210, phase: "orienting" },
+      ],
+    },
+    gaze: {
+      events: [
+        { t: 8, target: "object", duration: 16 },
+        { t: 30, target: "caregiver-face", duration: 18 },
+        { t: 54, target: "caregiver-face", duration: 24 },
+        { t: 84, target: "object", duration: 28 },
+        { t: 122, target: "caregiver-face", duration: 14 },
+        { t: 142, target: "caregiver-face", duration: 24 },
+        { t: 174, target: "object", duration: 22 },
+      ],
+    },
+  };
+}
+
 function makePhasePortrait(_nanoId: string, visitAgeRaw: string): PhasePortraitResponse {
   const visitAge = visitAgeFromPath(visitAgeRaw);
   const length = 240;
@@ -919,27 +974,39 @@ function makeArchetypes(measure = "rsa"): ArchetypesResponse {
 
 const CASCADE_PATHS: CascadePathsResponse = {
   nodes: [
-    { id: "rsa_suppression_3m", label: "RSA suppression 3 mo", domain: "physiology", manipulable: true },
-    { id: "sustained_dwell_6m", label: "Sustained dwell 6 mo", domain: "attention", manipulable: true },
-    { id: "caregiver_coreg", label: "Caregiver co-regulation", domain: "family", manipulable: true },
-    { id: "social_attention_12m", label: "Social attention 12 mo", domain: "behavior" },
-    { id: "communication_24m", label: "Communication 24 mo", domain: "behavior" },
-    { id: "outcome_36m", label: "36 mo outcome projection", domain: "outcome" },
+    { id: "rsa_9mo", label: "RSA at 9 Months CGA", group: "physiology", domain: "physiology", manipulable: true },
+    { id: "rsa_12mo", label: "RSA at 12 Months CGA", group: "physiology", domain: "physiology", manipulable: true },
+    { id: "rmssd_3mo", label: "RMSSD at 3 Months CGA", group: "physiology", domain: "physiology", manipulable: true },
+    { id: "hda_sustained_6mo", label: "% Sustained Attention at 6mo", group: "attention", domain: "attention", manipulable: true },
+    { id: "hda_orienting_9mo", label: "% Orienting at 9mo", group: "attention", domain: "attention", manipulable: true },
+    { id: "motor_sitting_6mo", label: "Arms-Free Sitting by 6mo", group: "motor", domain: "motor", manipulable: true },
+    { id: "gaze_caregiver_9mo", label: "% Gaze to Caregiver at 9mo", group: "social", domain: "social", manipulable: true },
+    { id: "language_csbs_12mo", label: "CSBS Score at 12 Months", group: "language", domain: "language", manipulable: true },
+    { id: "outcome_36m", label: "ASD Symptom Score at 36 Months", group: "outcome", domain: "outcome", manipulable: false },
   ],
   paths: [
-    { from: "rsa_suppression_3m", to: "sustained_dwell_6m", beta: 0.34, se: 0.07 },
-    { from: "caregiver_coreg", to: "sustained_dwell_6m", beta: 0.28, se: 0.08 },
-    { from: "sustained_dwell_6m", to: "social_attention_12m", beta: 0.42, se: 0.09 },
-    { from: "social_attention_12m", to: "communication_24m", beta: 0.38, se: 0.08 },
-    { from: "communication_24m", to: "outcome_36m", beta: -0.46, se: 0.1 },
-    { from: "rsa_suppression_3m", to: "outcome_36m", beta: -0.12, se: 0.06 },
+    { from: "rmssd_3mo", to: "hda_sustained_6mo", beta: 0.31, se: 0.07, delta_beta: 0.08 },
+    { from: "rsa_9mo", to: "gaze_caregiver_9mo", beta: 0.29, se: 0.08, delta_beta: 0.18 },
+    { from: "hda_sustained_6mo", to: "language_csbs_12mo", beta: -0.24, se: 0.09, delta_beta: -0.17 },
+    { from: "hda_orienting_9mo", to: "language_csbs_12mo", beta: -0.18, se: 0.07, delta_beta: -0.04 },
+    { from: "motor_sitting_6mo", to: "language_csbs_12mo", beta: -0.16, se: 0.06, delta_beta: -0.05 },
+    { from: "gaze_caregiver_9mo", to: "outcome_36m", beta: -0.28, se: 0.1, delta_beta: -0.22 },
+    { from: "language_csbs_12mo", to: "outcome_36m", beta: -0.46, se: 0.1, delta_beta: -0.19 },
+    { from: "rsa_12mo", to: "outcome_36m", beta: 0.21, se: 0.08, delta_beta: 0.16 },
   ],
   baseline: [
-    { nodeId: "rsa_suppression_3m", value: 0 },
-    { nodeId: "sustained_dwell_6m", value: 0 },
-    { nodeId: "caregiver_coreg", value: 0 },
+    { nodeId: "rsa_9mo", value: 0 },
+    { nodeId: "rsa_12mo", value: 0 },
+    { nodeId: "rmssd_3mo", value: 0 },
+    { nodeId: "hda_sustained_6mo", value: 0 },
     { nodeId: "outcome_36m", value: 0 },
   ],
+  cohort_diffs: {
+    "rsa_9mo:gaze_caregiver_9mo": { delta_beta: 0.18 },
+    "hda_sustained_6mo:language_csbs_12mo": { delta_beta: -0.17 },
+    "gaze_caregiver_9mo:outcome_36m": { delta_beta: -0.22 },
+    "language_csbs_12mo:outcome_36m": { delta_beta: -0.19 },
+  },
   fit: { rmsea: 0.047, cfi: 0.94 },
 };
 
@@ -1130,7 +1197,11 @@ function mockAssistantReply(message: string): string {
   }
 
   if (q.includes("executive mode") || q.includes("executive summary")) {
-    return "Executive Mode simplifies the nav to key study surfaces, shows enrolled N, target N, visit completion, and best AUROC, and can export a stub five-slide PPTX summary for PI or funder review.";
+    return "Executive Mode simplifies the nav to key study surfaces, shows enrolled N, target N, visit completion, and best AUROC. The PPTX export now pulls enrollment stages from attrition, RSA summaries from the trajectory hook, and top model rows from the leaderboard hook.";
+  }
+
+  if (q.includes("executive pptx") || q.includes("pptx export")) {
+    return "The Executive PPTX has five slides: title, enrollment stages from useAttritionFunnel, a 3-by-3 RSA summary from useRsaTrajectories, top model performance from useModelLeaderboard, and a retention summary. It is aggregate-only and browser-generated.";
   }
 
   if (q.includes("attrition funnel") || q.includes("retention funnel") || q.includes("nih report")) {
@@ -1155,6 +1226,10 @@ function mockAssistantReply(message: string): string {
 
   if (q.includes("co-regulation") || q.includes("dyad") || q.includes("coregulation")) {
     return "The Co-Regulation page pairs caregiver and infant Actiheart-derived streams. The headline metrics summarize synchrony, signed lead-lag, coupling stability, and event-linked recovery while the heatmap shows where coupling is strongest across time and lag.";
+  }
+
+  if (q.includes("multimodal") || q.includes("synchrony window") || q.includes("gold synchrony")) {
+    return "The Multimodal Synchrony Visualizer stacks raw ECG, rolling RSA, HDA phase bands, and gaze events on one x-axis. Gold windows appear when RSA exceeds 80 ms squared, HDA is sustained, and gaze is on the caregiver face at the same time.";
   }
 
   if (q.includes("phase portrait") || q.includes("arousal") || q.includes("attention portrait")) {
@@ -1562,6 +1637,9 @@ export function installMockServer() {
     if (p === "/api/v2/archetypes") return reply(makeArchetypes(u.searchParams.get("measure") ?? "rsa"));
     if (p === "/api/v2/cascade-paths") return reply(CASCADE_PATHS);
     if (p === "/api/v2/eco-validity") return reply(ECO_VALIDITY);
+
+    const multimodal = p.match(/^\/api\/v2\/multimodal\/([A-Z0-9-]+)\/([^/]+)$/);
+    if (multimodal) return reply(makeMultimodalSession(multimodal[1] as string, multimodal[2] as string));
 
     const hdaSession = p.match(/^\/api\/v2\/hda-session\/([A-Z0-9-]+)\/([^/]+)$/);
     if (hdaSession) return reply(makeHdaSession(hdaSession[1] as string, hdaSession[2] as string));

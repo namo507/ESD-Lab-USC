@@ -10,6 +10,7 @@ interface TopNavProps {
   syncing: boolean;
   onForceSync: () => void;
   idleMinutes: number;
+  lastSyncAt: string | null;
 }
 
 /**
@@ -17,7 +18,7 @@ interface TopNavProps {
  * Force-sync button is the operator's manual trigger for the data layer
  * (TanStack Query invalidations + visible DAG pulse acceleration).
  */
-export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: TopNavProps) {
+export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, lastSyncAt }: TopNavProps) {
   const navigate = useNavigate();
   const [now, setNow] = useState(new Date());
   const setChatOpen = useUi((state) => state.setChatOpen);
@@ -31,6 +32,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
 
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  const syncLabel = lastSyncAt ? formatRelativeTime(lastSyncAt, now) : "not synced";
 
   function openChatWithQuery(nextQuery: string) {
     const trimmed = nextQuery.trim();
@@ -119,6 +121,20 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes }: T
         />
         {syncing ? "syncing…" : "Force Sync"}
       </button>
+      <span className="text-[10px] font-mono text-[color:var(--warm-fg4)]">
+        {syncLabel}
+      </span>
     </header>
   );
+}
+
+function formatRelativeTime(value: string, now: Date): string {
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts)) return "sync time n/a";
+  const seconds = Math.max(0, Math.round((now.getTime() - ts) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h ago`;
 }

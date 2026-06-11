@@ -5,13 +5,15 @@
  * @hipaa-note: Public-facing route renders aggregate cohorts, county-level context, and model summaries only. No PHI present.
  */
 import { useMemo, useState } from "react";
-import { Card, Gloss } from "@/components/primitives";
+import { Share } from "lucide-react";
+import { Button, Card, Gloss } from "@/components/primitives";
+import { HDABarStack } from "@/components/charts/HDABarStack";
 import { InsightSection } from "@/components/insights/InsightSection";
 import { CdcStyleLine, type CdcLineSeries } from "@/components/insights/CdcStyleLine";
 import { CumulativeCurve } from "@/components/insights/CumulativeCurve";
 import { DualGroupComparator } from "@/components/insights/DualGroupComparator";
 import { useHdaComposition, useRsaTrajectories, useSdohMap, useStudySummary, useTrajectory } from "@/api/hooks";
-import type { GroupCode, RsaTrajectoryResponse, Trajectory } from "@/api/schemas";
+import type { GroupCode, HdaDist, RsaTrajectoryResponse, Trajectory } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { CountyMap } from "./SdohMap";
 import shared from "./FeatureRoutes.module.css";
@@ -58,6 +60,7 @@ export function PublicInsights() {
   const [mapMetric, setMapMetric] = useState("participants");
   const [leftGroup, setLeftGroup] = useState<GroupCode>("VPT");
   const [rightGroup, setRightGroup] = useState<GroupCode>("TD");
+  const [shareState, setShareState] = useState<"idle" | "copied">("idle");
   const study = useStudySummary();
   const rsa = useRsaTrajectories();
   const rmssd = useTrajectory("rmssd");
@@ -77,6 +80,20 @@ export function PublicInsights() {
     })),
   })), [hda.data?.byGroup]);
 
+  const hdaDist = useMemo<HdaDist | null>(() => {
+    if (!hda.data?.byGroup) return null;
+    return (["VPT", "ASIB", "TD"] as GroupCode[]).reduce((acc, group) => {
+      const latest = hda.data.byGroup[group]?.at(-1);
+      acc[group] = {
+        orienting: Math.round((latest?.orienting ?? 0) * 1000),
+        sustained: Math.round((latest?.sustained ?? 0) * 1000),
+        inattention: Math.round((latest?.inattention ?? 0) * 1000),
+        termination: Math.round((latest?.termination ?? 0) * 1000),
+      };
+      return acc;
+    }, {} as HdaDist);
+  }, [hda.data?.byGroup]);
+
   const groupBars = (["VPT", "ASIB", "TD"] as GroupCode[]).flatMap((group) => {
     const count = counts?.[group].count ?? (group === "VPT" ? 184 : group === "ASIB" ? 26 : 21);
     return [
@@ -94,6 +111,12 @@ export function PublicInsights() {
 
   if (!enabled) return null;
 
+  async function sharePage() {
+    await navigator.clipboard?.writeText(window.location.href);
+    setShareState("copied");
+    window.setTimeout(() => setShareState("idle"), 1800);
+  }
+
   return (
     <div className={`${shared.page} ${styles.page}`}>
       <header className={shared.hero}>
@@ -102,7 +125,20 @@ export function PublicInsights() {
           <h1 className={shared.h1}>Public Insights</h1>
           <p className={shared.lede}>Plain-language NANO study trends using aggregate data only. No participant-level data, exact addresses, or raw ECG traces are shown.</p>
         </div>
+        <div className={styles.heroActions}>
+          <Button variant="secondary" icon="external-link" onClick={() => window.open("https://www.esdlabsc.com", "_blank", "noopener,noreferrer")}>
+            Join the Study
+          </Button>
+          <Button variant="secondary" onClick={() => void sharePage()}>
+            <Share size={14} aria-hidden />
+            Share
+          </Button>
+        </div>
       </header>
+      {shareState === "copied" && <div className={styles.toast}>Link copied to clipboard</div>}
+      <div className={styles.irbBadge} data-insight="public-insights-irb">
+        IRB Protocol #Pro00115234 | HIPAA Compliant
+      </div>
 
       <InsightSection
         label="Section 1"
@@ -110,6 +146,20 @@ export function PublicInsights() {
         description="Heart rhythm regulation is summarized across corrected-age months by cohort group."
         learnMoreTo="/results"
       >
+        <Card
+          pad={16}
+          className={styles.callout}
+          style={{ borderLeftColor: metric === "RSA" ? "var(--usc-garnet)" : "var(--ocean)" }}
+        >
+          <div className={styles.calloutTitle}>
+            {metric === "RSA" ? "RSA paradox context" : "Vagal-tone trajectory context"}
+            <a href="/publications/PMC13109926" className={styles.pmid}>PMID PMC13109926</a>
+          </div>
+          <p>
+            Infants later showing ASD traits may show elevated RSA across 9-24 months. The public chart frames that
+            pattern as a social-monitoring hypothesis, not a stress-reactivity shortcut.
+          </p>
+        </Card>
         <div className={styles.controls}>
           <select className={styles.select} value={metric} onChange={(event) => setMetric(event.target.value as Metric)} aria-label="Heart rhythm metric">
             {(["RMSSD", "RSA", "SDNN"] as Metric[]).map((item) => <option key={item} value={item}>{item}</option>)}
@@ -122,6 +172,25 @@ export function PublicInsights() {
           showCi={showCi}
           summary={`${metric} trajectory by group with optional confidence intervals`}
         />
+      </InsightSection>
+
+      <InsightSection
+        label="Section 1b"
+        title="How attention phases compose a visit"
+        description="HDA phase composition summarizes orienting, sustained attention, inattention, and termination across aggregate cohorts."
+        learnMoreTo="/hda-player"
+      >
+        <Card pad={16} className={styles.callout} style={{ borderLeftColor: "var(--usc-garnet)" }}>
+          <div className={styles.calloutTitle}>
+            Sustained attention as the bridge
+            <a href="/results" className={styles.pmid}>HDA composition</a>
+          </div>
+          <p>
+            The stacked phase view makes the autonomic-attention story concrete: maturation should shift more time
+            toward sustained attention while preserving enough orienting flexibility.
+          </p>
+        </Card>
+        {hdaDist ? <HDABarStack dist={hdaDist} /> : <div className={styles.about}>Loading HDA composition...</div>}
       </InsightSection>
 
       <InsightSection
@@ -186,9 +255,25 @@ export function PublicInsights() {
       </InsightSection>
 
       <details className={styles.about}>
-        <summary>About this data</summary>
+        <summary>What does the NANO Study do?</summary>
         <p>
-          The NANO Study follows infants across corrected-age milestones to understand how autonomic regulation, attention, family context, and later outcomes develop together. Public views use cohort and county aggregates only.
+          The NANO Study follows infants across corrected-age milestones to understand how heart rhythms,
+          attention, family context, and later outcomes develop together. Public views use cohort and county
+          aggregates only.
+        </p>
+      </details>
+      <details className={styles.about}>
+        <summary>What can families expect?</summary>
+        <p>
+          Families complete visits at several developmental time points. The dashboard links to the ESD Lab site for
+          current family-facing study information and recruitment details.
+        </p>
+      </details>
+      <details className={styles.about}>
+        <summary>Why only aggregate data?</summary>
+        <p>
+          The public dashboard is designed for grant demos and community transparency. It never shows participant
+          names, precise addresses, raw recordings, or clinical identifiers.
         </p>
       </details>
     </div>

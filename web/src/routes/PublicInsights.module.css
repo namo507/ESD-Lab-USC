@@ -4,6 +4,60 @@
   gap: 16px;
   font-size: 16px;
 }
+.heroActions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.callout {
+  border-left: 4px solid var(--usc-garnet);
+  background: var(--warm-card);
+  color: var(--warm-fg2);
+  margin-bottom: 12px;
+}
+.callout p {
+  margin: 8px 0 0;
+  color: var(--warm-fg2);
+  line-height: 1.55;
+}
+.calloutTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--warm-fg1);
+  font-family: var(--font-serif);
+  font-weight: var(--w-semibold);
+}
+.pmid {
+  flex-shrink: 0;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  color: var(--fg-link);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  padding: 2px 6px;
+  text-decoration: none;
+}
+.irbBadge {
+  align-self: flex-start;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  color: var(--warm-fg4);
+  background: var(--warm-card);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  padding: 5px 8px;
+}
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--warm-card);
+  color: var(--warm-fg1);
+  box-shadow: var(--shadow-floating);
+  padding: 10px 12px;
+  font-size: var(--text-small);
+}
 .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 .select {
   height: 34px;
@@ -30,3 +84,9 @@
 .about { border: 1px solid var(--border); border-radius: var(--r-2); background: var(--bg-surface); padding: 16px 18px; }
 .about summary { cursor: pointer; font-weight: var(--w-bold); color: var(--ink); }
 .about p { color: var(--slate-500); line-height: 1.6; }
+
+@media (max-width: 720px) {
+  .heroActions { justify-content: flex-start; }
+  .barRow { grid-template-columns: 1fr; }
+  .calloutTitle { align-items: flex-start; flex-direction: column; }
+}

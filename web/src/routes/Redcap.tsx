@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
 import { useRedcapCompleteness, useRedcapEvents } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
+import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import type { RedcapCompletenessRow } from "@/api/schemas";
 import styles from "./Redcap.module.css";
 
 const REDCAP_FAST_PATHS: FastPathPrompt[] = [
@@ -163,6 +166,7 @@ export function Redcap() {
 function RedcapCompletenessScorecard() {
   const enabled = useFeatureFlag("REDCAP_COMPLETENESS");
   const { data } = useRedcapCompleteness();
+  const [selected, setSelected] = useState<RedcapCompletenessRow | null>(null);
   if (!enabled) return null;
 
   const deadline = import.meta.env.VITE_NDA_DEADLINE ?? "2026-08-01";
@@ -176,6 +180,10 @@ function RedcapCompletenessScorecard() {
     const avg = instRows.reduce((sum, row) => sum + row.completenessPct, 0) / Math.max(1, instRows.length);
     return { instrument, avg };
   });
+  const completeCells = required.filter((row) => row.status === "complete").length;
+  const watchCells = required.filter((row) => row.status === "watch").length;
+  const missingCells = required.filter((row) => row.status === "missing").length;
+  const avgCompleteness = required.reduce((sum, row) => sum + row.completenessPct, 0) / Math.max(1, required.length);
 
   return (
     <Card pad={0}>
@@ -186,6 +194,20 @@ function RedcapCompletenessScorecard() {
       )}
       <div className={styles.listHead}>
         <SectionLabel>Completeness scorecard · NDA-required forms</SectionLabel>
+        <Button
+          size="sm"
+          variant="secondary"
+          icon="download"
+          onClick={() => exportCsvFile(required as unknown as Array<Record<string, unknown>>, "redcap-completeness.csv")}
+        >
+          Export CSV
+        </Button>
+      </div>
+      <div className={styles.matrixKpis}>
+        <KPI label="Average complete" value={`${avgCompleteness.toFixed(1)}%`} sub="NDA forms" insightId="redcap-completeness-matrix" />
+        <KPI label="Complete cells" value={completeCells} sub="ready" deltaKind="up" />
+        <KPI label="Partial cells" value={watchCells} sub="review" deltaKind="flat" />
+        <KPI label="Missing cells" value={missingCells} sub="before NDA" deltaKind="down" />
       </div>
       <div className={styles.scoreBars}>
         {byInstrument.map((item) => (
@@ -212,9 +234,14 @@ function RedcapCompletenessScorecard() {
                   const cell = required.find((row) => row.nanoId === nanoId && row.instrument === instrument);
                   return (
                     <td key={instrument} className={`${styles.td} t-mono`}>
-                      <span className={cell?.status === "complete" ? styles.cellOk : cell?.status === "watch" ? styles.cellWarn : styles.cellFail}>
+                      <button
+                        type="button"
+                        className={cell?.status === "complete" ? styles.cellOk : cell?.status === "watch" ? styles.cellWarn : cell ? styles.cellFail : styles.cellUnscheduled}
+                        onClick={() => cell && setSelected(cell)}
+                        aria-label={cell ? `${cell.nanoId} ${cell.instrument} ${cell.status}` : `${nanoId} ${instrument} unscheduled`}
+                      >
                         {cell ? `${cell.completenessPct.toFixed(0)}%` : "—"}
-                      </span>
+                      </button>
                     </td>
                   );
                 })}
@@ -223,6 +250,31 @@ function RedcapCompletenessScorecard() {
           </tbody>
         </table>
       </div>
+      <div className={styles.hipaaReminder}>
+        IRB #Pro00115234 · Completeness review uses de-identified NANO IDs only. Open REDCap from the secure study network for source records.
+      </div>
+      {selected && (
+        <aside className={styles.matrixDrawer} aria-label="REDCap cell detail">
+          <div className={styles.drawerHead}>
+            <SectionLabel>Cell detail</SectionLabel>
+            <button type="button" className={styles.drawerClose} onClick={() => setSelected(null)} aria-label="Close detail">x</button>
+          </div>
+          <div className={styles.drawerBody}>
+            <div><strong>{selected.nanoId}</strong></div>
+            <div className="t-mono">{selected.instrument}</div>
+            <Badge kind={selected.status === "complete" ? "ok" : selected.status === "watch" ? "warn" : "fail"} size="sm">
+              {selected.status === "watch" ? "partial" : selected.status}
+            </Badge>
+            <p>
+              {selected.requiredMissing} of {selected.requiredTotal} required fields missing.
+              {selected.dueDate ? ` NDA due ${selected.dueDate}.` : " Not NDA-required."}
+            </p>
+            <Button size="sm" icon="external-link" onClick={() => window.open("https://redcap.healthsciencessc.org", "_blank", "noopener,noreferrer")}>
+              Open in REDCap
+            </Button>
+          </div>
+        </aside>
+      )}
     </Card>
   );
 }

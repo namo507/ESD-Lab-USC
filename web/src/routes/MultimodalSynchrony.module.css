@@ -1,0 +1,160 @@
+.page { display: flex; flex-direction: column; gap: 16px; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.eyebrow { font-size: var(--text-micro); color: var(--warm-fg4); letter-spacing: 0.08em; text-transform: uppercase; }
+.h1 {
+  font-family: var(--font-serif);
+  font-size: var(--text-h1);
+  font-weight: var(--w-semibold);
+  line-height: 1.05;
+  color: var(--warm-fg1);
+  margin: 4px 0 0;
+}
+.lede {
+  color: var(--warm-fg2);
+  font-family: var(--font-serif);
+  font-size: var(--text-body);
+  margin: 6px 0 0;
+  max-width: 760px;
+}
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.controlGroup { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controlLabel {
+  font-size: var(--text-micro);
+  color: var(--warm-fg4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--w-bold);
+}
+.select {
+  height: 32px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--warm-card);
+  color: var(--warm-fg1);
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--text-small);
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.metric {
+  border: 1px solid var(--warm-border);
+  background: var(--warm-card);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+}
+.metricLabel {
+  color: var(--warm-fg4);
+  font-size: var(--text-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--w-bold);
+}
+.metricValue {
+  color: var(--warm-fg1);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: var(--w-semibold);
+  margin-top: 4px;
+}
+.tracksCard {
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-card);
+  background: var(--warm-card);
+  overflow: hidden;
+}
+.tracksHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--warm-border);
+}
+.tracksTitle {
+  font-family: var(--font-serif);
+  color: var(--warm-fg1);
+  font-size: var(--text-h3);
+  margin: 0;
+}
+.tracksHint { color: var(--warm-fg3); font-size: var(--text-small); }
+.scroller {
+  overflow-x: auto;
+  background: var(--bg-surface);
+  outline: none;
+}
+.scroller:focus-visible { box-shadow: inset 0 0 0 2px var(--usc-garnet); }
+.trackSvg {
+  display: block;
+  width: max(100%, 1240px);
+  height: auto;
+  min-width: 980px;
+}
+.axisLabel,
+.trackLabel,
+.tickLabel {
+  font-family: var(--font-mono);
+  fill: var(--warm-fg3);
+}
+.axisLabel { font-size: 11px; }
+.trackLabel { font-size: 12px; font-weight: var(--w-bold); fill: var(--warm-fg2); }
+.tickLabel { font-size: 10px; }
+.phaseText { font-family: var(--font-mono); font-size: 10px; fill: var(--fg-on-brand); font-weight: var(--w-bold); }
+.scrubber {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-top: 1px solid var(--warm-border);
+}
+.range {
+  width: 100%;
+  accent-color: var(--usc-garnet);
+}
+.timeCode {
+  color: var(--warm-fg2);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  min-width: 64px;
+}
+.windowList {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.windowItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 8px 10px;
+  color: var(--warm-fg2);
+  font-size: var(--text-small);
+}
+.notice {
+  border: 1px solid var(--usc-gold);
+  background: color-mix(in srgb, var(--usc-gold) 14%, var(--warm-card));
+  color: var(--warm-fg1);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .hero { align-items: flex-start; flex-direction: column; }
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .summary { grid-template-columns: 1fr; }
+  .scrubber { grid-template-columns: 1fr; }
+}

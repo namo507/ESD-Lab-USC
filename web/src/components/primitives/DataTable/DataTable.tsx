@@ -152,7 +152,7 @@ export function DataTable<TData extends object>({
 
   const filteredRows = useMemo(
     () => table.getFilteredRowModel().rows.map((row) => row.original),
-    [table, data, sorting, columnFilters, globalFilter],
+    [table],
   );
 
   return (

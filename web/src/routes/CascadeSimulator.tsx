@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Button, Card, SectionLabel } from "@/components/primitives";
+import { Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useCascadePaths } from "@/api/hooks";
+import { exportCsvFile } from "@/lib/exportCsv";
 import { FeatureGate, round } from "./dynRouteUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
+
+type GroupOverlay = "td" | "asib";
 
 export function CascadeSimulator() {
   return (
@@ -18,8 +21,13 @@ export function CascadeSimulator() {
 function CascadeSimulatorInner() {
   const { data } = useCascadePaths();
   const [deltas, setDeltas] = useState<Record<string, number>>({});
+  const [groupOverlay, setGroupOverlay] = useState<GroupOverlay>("td");
   const nodes = useMemo(() => data?.nodes ?? [], [data?.nodes]);
-  const paths = useMemo(() => data?.paths ?? [], [data?.paths]);
+  const paths = useMemo(() => (data?.paths ?? []).map((path) => (
+    groupOverlay === "asib"
+      ? { ...path, beta: Number((path.beta + (path.delta_beta ?? 0)).toFixed(3)) }
+      : path
+  )), [data?.paths, groupOverlay]);
   const manipulable = useMemo(() => nodes.filter((node) => node.manipulable), [nodes]);
 
   const projection = useMemo(() => {
@@ -52,6 +60,20 @@ function CascadeSimulatorInner() {
     if (node) setDeltas({ [node.id]: 1 });
   }
 
+  function exportCoefficients() {
+    exportCsvFile(
+      paths.map((path) => ({
+        from: path.from,
+        to: path.to,
+        beta: path.beta,
+        se: path.se,
+        delta_beta: path.delta_beta ?? 0,
+        overlay: groupOverlay === "asib" ? "ASIB overlay" : "TD baseline",
+      })),
+      "cascade-path-coefficients.csv",
+    );
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.hero}>
@@ -69,6 +91,12 @@ function CascadeSimulatorInner() {
           </Button>
           <Button variant="secondary" icon="presentation" onClick={() => { window.location.href = "/presentation-maker?seed=cascade-sim"; }}>
             Export seed
+          </Button>
+          <Button variant="secondary" icon="download" onClick={exportCoefficients}>
+            CSV
+          </Button>
+          <Button variant="secondary" icon="rotate-ccw" onClick={() => setDeltas({})}>
+            Reset all
           </Button>
           <Button icon="wand-sparkles" onClick={chooseHighestLeverage}>Find highest leverage</Button>
         </div>
@@ -89,7 +117,16 @@ function CascadeSimulatorInner() {
       <div className={styles.split}>
         <Card pad={20}>
           <SectionLabel>Manipulable early nodes</SectionLabel>
-          <div className={styles.cardTitle}>Drag sliders to propagate standardized effects</div>
+          <div className={styles.cardHead}>
+            <div className={styles.cardTitle}>Drag sliders to propagate standardized effects</div>
+            <Segmented<GroupOverlay>
+              size="sm"
+              ariaLabel="Group overlay"
+              options={[{ value: "td", label: "TD baseline" }, { value: "asib", label: "ASIB overlay" }]}
+              value={groupOverlay}
+              onChange={setGroupOverlay}
+            />
+          </div>
           <div className={styles.page} style={{ gap: 14 }}>
             {manipulable.map((node) => (
               <label key={node.id} className={styles.detailPanel}>
@@ -125,13 +162,23 @@ function CascadeSimulatorInner() {
       </div>
 
       <Card pad={20}>
+        <SectionLabel>Group overlay path map</SectionLabel>
+        <div className={styles.cardTitle}>ASIB-highlighted edges glow when |delta beta| exceeds 0.15</div>
+        <CascadePathMap paths={data?.paths ?? []} active={groupOverlay === "asib"} />
+        <div className={styles.notice} style={{ marginTop: 12 }}>
+          Interpretation: the ASIB overlay emphasizes paths where the fitted coefficient differs materially from
+          the TD baseline. Slider projections remain standardized planning scenarios, not infant-level predictions.
+        </div>
+      </Card>
+
+      <Card pad={20}>
         <SectionLabel>Leverage tornado</SectionLabel>
         <div className={styles.chartBox} role="img" aria-label="Per-node leverage tornado chart">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={projection.leverage} layout="vertical" margin={{ top: 12, right: 18, bottom: 12, left: 150 }}>
-              <CartesianGrid stroke="var(--slate-100)" />
-              <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--slate-500)" />
-              <YAxis dataKey="node" type="category" tick={{ fontSize: 11 }} stroke="var(--slate-500)" />
+              <CartesianGrid stroke="var(--warm-border)" strokeOpacity={0.6} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "var(--warm-fg3)" }} stroke="var(--warm-border)" />
+              <YAxis dataKey="node" type="category" tick={{ fontSize: 11, fill: "var(--warm-fg3)" }} stroke="var(--warm-border)" />
               <Tooltip />
               <Bar dataKey="value" fill="var(--usc-garnet)" radius={[0, 3, 3, 0]} />
             </BarChart>
@@ -139,11 +186,53 @@ function CascadeSimulatorInner() {
         </div>
         <RouteDataTable
           caption="Cascade path coefficients."
-          columns={["From", "To", "Beta", "SE"]}
-          rows={paths.map((path) => [path.from, path.to, path.beta.toFixed(2), path.se.toFixed(2)])}
+          columns={["From", "To", "Beta", "SE", "Delta beta"]}
+          rows={paths.map((path) => [path.from, path.to, path.beta.toFixed(2), path.se.toFixed(2), (path.delta_beta ?? 0).toFixed(2)])}
         />
       </Card>
     </div>
+  );
+}
+
+function CascadePathMap({
+  paths,
+  active,
+}: {
+  paths: Array<{ from: string; to: string; beta: number; delta_beta?: number }>;
+  active: boolean;
+}) {
+  const w = 760;
+  const rowH = 34;
+  const h = Math.max(120, 36 + paths.length * rowH);
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className={styles.svg} role="img" aria-label="Cascade path overlay map">
+      <rect x={0} y={0} width={w} height={h} rx={8} fill="var(--bg-surface)" stroke="var(--warm-border)" />
+      {paths.map((path, index) => {
+        const y = 32 + index * rowH;
+        const changed = Math.abs(path.delta_beta ?? 0) > 0.15;
+        const stroke = active && changed ? "var(--red)" : "var(--warm-border)";
+        return (
+          <g key={`${path.from}-${path.to}`}>
+            <text x={24} y={y + 4} className={styles.tinyLabel}>{path.from}</text>
+            <line
+              x1={238}
+              x2={522}
+              y1={y}
+              y2={y}
+              stroke={stroke}
+              strokeWidth={active && changed ? 4 : 2}
+              opacity={active && changed ? 0.95 : 0.72}
+              strokeLinecap="round"
+            />
+            <polygon points={`522,${y} 512,${y - 5} 512,${y + 5}`} fill={stroke} opacity={active && changed ? 0.95 : 0.72} />
+            <text x={540} y={y + 4} className={styles.tinyLabel}>{path.to}</text>
+            <text x={704} y={y + 4} textAnchor="end" className={styles.tinyLabel}>
+              beta {path.beta.toFixed(2)} · delta {(path.delta_beta ?? 0).toFixed(2)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 

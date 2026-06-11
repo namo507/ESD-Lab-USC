@@ -74,6 +74,7 @@ SPA_ROUTE_PREFIXES = (
     "/spatial-assessments",
     "/attachment-heatmap",
     "/dyad-coregulation",
+    "/multimodal",
     "/phase-portrait",
     "/cva-theater",
     "/hr-deceleration",
@@ -894,6 +895,56 @@ def _v2_dyad_coregulation(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     }
 
 
+def _v2_multimodal(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
+    del nano_id
+    visit_age = _visit_age(visit_age_raw)
+    duration = 210
+    ecg_t: list[float] = []
+    ecg_mv: list[float] = []
+    r_peaks: list[float] = []
+    next_peak = 0.74
+    for idx in range(duration * 4 + 1):
+        t = round(idx / 4, 2)
+        if t >= next_peak:
+            r_peaks.append(round(next_peak, 2))
+            next_peak += 0.72 + math.sin(t / 13) * 0.05
+        recent = r_peaks[-2:]
+        peak_distance = min([abs(t - peak) for peak in recent], default=2)
+        qrs = 1.05 * math.exp(-((peak_distance / 0.035) ** 2)) if peak_distance < 0.08 else 0
+        ecg_t.append(t)
+        ecg_mv.append(round(math.sin(t * 8.5) * 0.08 + math.sin(t * 1.7) * 0.04 + qrs - 0.18, 3))
+    rsa_t = list(range(duration + 1))
+    rsa_power = []
+    for t in rsa_t:
+        social_boost = 48 if 52 < t < 82 else 64 if 128 < t < 164 else 0
+        rsa_power.append(round(52 + visit_age * 1.7 + math.sin(t / 10) * 18 + math.cos(t / 23) * 9 + social_boost, 2))
+    return {
+        "ecg": {"t": ecg_t, "mv": ecg_mv, "rPeaks": r_peaks},
+        "rsa": {"t": rsa_t, "hfPower": rsa_power},
+        "hda": {
+            "epochs": [
+                {"start": 0, "end": 24, "phase": "orienting"},
+                {"start": 24, "end": 86, "phase": "sustained"},
+                {"start": 86, "end": 112, "phase": "inattention"},
+                {"start": 112, "end": 170, "phase": "sustained"},
+                {"start": 170, "end": 194, "phase": "termination"},
+                {"start": 194, "end": 210, "phase": "orienting"},
+            ]
+        },
+        "gaze": {
+            "events": [
+                {"t": 8, "target": "object", "duration": 16},
+                {"t": 30, "target": "caregiver-face", "duration": 18},
+                {"t": 54, "target": "caregiver-face", "duration": 24},
+                {"t": 84, "target": "object", "duration": 28},
+                {"t": 122, "target": "caregiver-face", "duration": 14},
+                {"t": 142, "target": "caregiver-face", "duration": 24},
+                {"t": 174, "target": "object", "duration": 22},
+            ]
+        },
+    }
+
+
 def _v2_phase_portrait(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     del nano_id
     visit_age = _visit_age(visit_age_raw)
@@ -1127,27 +1178,39 @@ def _v2_archetypes(measure: str) -> dict[str, Any]:
 def _v2_cascade_paths() -> dict[str, Any]:
     return {
         "nodes": [
-            {"id": "rsa_suppression_3m", "label": "RSA suppression 3 mo", "domain": "physiology", "manipulable": True},
-            {"id": "sustained_dwell_6m", "label": "Sustained dwell 6 mo", "domain": "attention", "manipulable": True},
-            {"id": "caregiver_coreg", "label": "Caregiver co-regulation", "domain": "family", "manipulable": True},
-            {"id": "social_attention_12m", "label": "Social attention 12 mo", "domain": "behavior"},
-            {"id": "communication_24m", "label": "Communication 24 mo", "domain": "behavior"},
-            {"id": "outcome_36m", "label": "36 mo outcome projection", "domain": "outcome"},
+            {"id": "rsa_9mo", "label": "RSA at 9 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
+            {"id": "rsa_12mo", "label": "RSA at 12 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
+            {"id": "rmssd_3mo", "label": "RMSSD at 3 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
+            {"id": "hda_sustained_6mo", "label": "% Sustained Attention at 6mo", "domain": "attention", "group": "attention", "manipulable": True},
+            {"id": "hda_orienting_9mo", "label": "% Orienting at 9mo", "domain": "attention", "group": "attention", "manipulable": True},
+            {"id": "motor_sitting_6mo", "label": "Arms-Free Sitting by 6mo", "domain": "motor", "group": "motor", "manipulable": True},
+            {"id": "gaze_caregiver_9mo", "label": "% Gaze to Caregiver at 9mo", "domain": "social", "group": "social", "manipulable": True},
+            {"id": "language_csbs_12mo", "label": "CSBS Score at 12 Months", "domain": "language", "group": "language", "manipulable": True},
+            {"id": "outcome_36m", "label": "ASD Symptom Score at 36 Months", "domain": "outcome", "group": "outcome", "manipulable": False},
         ],
         "paths": [
-            {"from": "rsa_suppression_3m", "to": "sustained_dwell_6m", "beta": 0.34, "se": 0.07},
-            {"from": "caregiver_coreg", "to": "sustained_dwell_6m", "beta": 0.28, "se": 0.08},
-            {"from": "sustained_dwell_6m", "to": "social_attention_12m", "beta": 0.42, "se": 0.09},
-            {"from": "social_attention_12m", "to": "communication_24m", "beta": 0.38, "se": 0.08},
-            {"from": "communication_24m", "to": "outcome_36m", "beta": -0.46, "se": 0.1},
-            {"from": "rsa_suppression_3m", "to": "outcome_36m", "beta": -0.12, "se": 0.06},
+            {"from": "rmssd_3mo", "to": "hda_sustained_6mo", "beta": 0.31, "se": 0.07, "delta_beta": 0.08},
+            {"from": "rsa_9mo", "to": "gaze_caregiver_9mo", "beta": 0.29, "se": 0.08, "delta_beta": 0.18},
+            {"from": "hda_sustained_6mo", "to": "language_csbs_12mo", "beta": -0.24, "se": 0.09, "delta_beta": -0.17},
+            {"from": "hda_orienting_9mo", "to": "language_csbs_12mo", "beta": -0.18, "se": 0.07, "delta_beta": -0.04},
+            {"from": "motor_sitting_6mo", "to": "language_csbs_12mo", "beta": -0.16, "se": 0.06, "delta_beta": -0.05},
+            {"from": "gaze_caregiver_9mo", "to": "outcome_36m", "beta": -0.28, "se": 0.1, "delta_beta": -0.22},
+            {"from": "language_csbs_12mo", "to": "outcome_36m", "beta": -0.46, "se": 0.1, "delta_beta": -0.19},
+            {"from": "rsa_12mo", "to": "outcome_36m", "beta": 0.21, "se": 0.08, "delta_beta": 0.16},
         ],
         "baseline": [
-            {"nodeId": "rsa_suppression_3m", "value": 0},
-            {"nodeId": "sustained_dwell_6m", "value": 0},
-            {"nodeId": "caregiver_coreg", "value": 0},
+            {"nodeId": "rsa_9mo", "value": 0},
+            {"nodeId": "rsa_12mo", "value": 0},
+            {"nodeId": "rmssd_3mo", "value": 0},
+            {"nodeId": "hda_sustained_6mo", "value": 0},
             {"nodeId": "outcome_36m", "value": 0},
         ],
+        "cohort_diffs": {
+            "rsa_9mo:gaze_caregiver_9mo": {"delta_beta": 0.18},
+            "hda_sustained_6mo:language_csbs_12mo": {"delta_beta": -0.17},
+            "gaze_caregiver_9mo:outcome_36m": {"delta_beta": -0.22},
+            "language_csbs_12mo:outcome_36m": {"delta_beta": -0.19},
+        },
         "fit": {"rmsea": 0.047, "cfi": 0.94},
     }
 
@@ -2402,6 +2465,11 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             if request_path == "/api/v2/eco-validity":
                 self._send_json(_v2_eco_validity())
                 return
+            if request_path.startswith("/api/v2/multimodal/"):
+                parts = request_path[len("/api/v2/multimodal/") :].strip("/").split("/")
+                if len(parts) == 2:
+                    self._send_json(_v2_multimodal(parts[0], parts[1]))
+                    return
             if request_path.startswith("/api/v2/dyad/coregulation/"):
                 parts = request_path[len("/api/v2/dyad/coregulation/") :].strip("/").split("/")
                 if len(parts) == 2:

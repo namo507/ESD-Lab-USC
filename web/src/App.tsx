@@ -35,6 +35,9 @@ const SpatialAssessmentMatrix = lazy(() =>
 );
 const AttachmentHeatmap = lazy(() => import("@/routes/AttachmentHeatmap").then((m) => ({ default: m.AttachmentHeatmap })));
 const CoRegulation = lazy(() => import("@/routes/CoRegulation").then((m) => ({ default: m.CoRegulation })));
+const MultimodalSynchrony = lazy(() =>
+  import("@/routes/MultimodalSynchrony").then((m) => ({ default: m.MultimodalSynchrony })),
+);
 const PhasePortrait = lazy(() => import("@/routes/PhasePortrait").then((m) => ({ default: m.PhasePortrait })));
 const CvaTheater = lazy(() => import("@/routes/CvaTheater").then((m) => ({ default: m.CvaTheater })));
 const HrDeceleration = lazy(() => import("@/routes/HrDeceleration").then((m) => ({ default: m.HrDeceleration })));
@@ -138,6 +141,7 @@ export default function App() {
             <Route path="/spatial-assessments" element={<SpatialAssessmentMatrix />} />
             <Route path="/attachment-heatmap" element={<AttachmentHeatmap />} />
             <Route path="/dyad-coregulation" element={<CoRegulation />} />
+            <Route path="/multimodal" element={<MultimodalSynchrony />} />
             <Route path="/phase-portrait" element={<PhasePortrait />} />
             <Route path="/cva-theater" element={<CvaTheater />} />
             <Route path="/hr-deceleration" element={<HrDeceleration />} />

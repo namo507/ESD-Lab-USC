@@ -179,6 +179,53 @@
   padding: 30px clamp(24px, 3vw, 32px) 140px;
 }
 
+.statusBanner {
+  width: min(1480px, calc(100% - 64px));
+  margin: 10px auto 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--warm-pill);
+  color: var(--warm-fg2);
+  padding: var(--s-8) var(--s-24);
+  font-size: var(--text-small);
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+
+.statusBanner a {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fg-link);
+  text-decoration: none;
+  font-weight: var(--w-semibold);
+}
+
+.tourLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--usc-garnet);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: var(--w-semibold);
+  padding: 0;
+}
+
 .hero {
   padding-top: 20px;
 }

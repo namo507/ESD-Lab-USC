@@ -41,6 +41,14 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  if (import.meta.env.VITE_USE_MOCKS === "true") {
+    return (
+      <div style={{ padding: "var(--s-16)", color: "var(--warm-fg3)", fontSize: "var(--text-small)" }}>
+        AI assistant requires a running local backend. Run <code>bash scripts/share_dashboard.sh</code> to enable.
+      </div>
+    );
+  }
+
   async function runPrompt(raw: string) {
     if (!raw.trim()) return;
     const controller = new AbortController();

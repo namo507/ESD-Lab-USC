@@ -779,7 +779,8 @@ export const CascadePathsResponse = z.object({
   nodes: z.array(z.object({
     id: z.string(),
     label: z.string(),
-    domain: z.string(),
+    domain: z.string().optional(),
+    group: z.string().optional(),
     manipulable: z.boolean().optional(),
   })),
   paths: z.array(z.object({
@@ -787,7 +788,12 @@ export const CascadePathsResponse = z.object({
     to: z.string(),
     beta: z.number(),
     se: z.number(),
+    delta_beta: z.number().optional(),
   })),
+  cohort_diffs: z.record(z.object({
+    beta: z.number().optional(),
+    delta_beta: z.number().optional(),
+  })).optional(),
   baseline: z.array(z.object({
     nodeId: z.string(),
     value: z.number(),
@@ -798,6 +804,33 @@ export const CascadePathsResponse = z.object({
   }).optional(),
 });
 export type CascadePathsResponse = z.infer<typeof CascadePathsResponse>;
+
+export const MultimodalSessionResponse = z.object({
+  ecg: z.object({
+    t: z.array(z.number()),
+    mv: z.array(z.number()),
+    rPeaks: z.array(z.number()),
+  }),
+  rsa: z.object({
+    t: z.array(z.number()),
+    hfPower: z.array(z.number()),
+  }),
+  hda: z.object({
+    epochs: z.array(z.object({
+      start: z.number(),
+      end: z.number(),
+      phase: HdaPhase,
+    })),
+  }),
+  gaze: z.object({
+    events: z.array(z.object({
+      t: z.number(),
+      target: z.string(),
+      duration: z.number(),
+    })),
+  }),
+});
+export type MultimodalSessionResponse = z.infer<typeof MultimodalSessionResponse>;
 
 export const EcoValidityResponse = z.object({
   arms: z.array(z.enum(["lab", "home"])),

@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dashboard Master feature release: Multimodal Synchrony Visualizer, redesigned Guided Explorer, REDCap completeness drawer, Public Insights sharing/IRB context, Infant Passport visit detail, SDOH priority overlay, and Cascade Simulator overlays.
+- AI Buddy and Ask AI fast paths for the new dashboard routes, Executive PPTX export, multimodal synchrony windows, and REDCap/public-insights guidance.
+- Explicit Pages build flags for the newly released dashboard surfaces so future website builds keep the assistant, metrics, and visualizations in sync.
 - Initial repository scaffold for NANO Study (NIH R01 longitudinal infant study)
 - Complete directory structure: config, data, redcap, src, notebooks, scripts, tests, docs, reports
 - HIPAA-compliant `.gitignore` excluding all raw data and PHI file types

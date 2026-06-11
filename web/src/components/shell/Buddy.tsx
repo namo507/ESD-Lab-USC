@@ -51,6 +51,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "redcap-records": { term: "Records", body: "This count reflects records pulled from or pushed back to REDCap in the last 24 hours through the secure study integration." },
   "redcap-warnings": { term: "Warnings", body: "Warnings indicate records that need human review, usually because a field is missing or a value failed validation but the sync could still continue." },
   "redcap-failures": { term: "Failures", body: "Failures are sync jobs that could not complete, often because authentication expired or a required form payload was malformed." },
+  "redcap-completeness-matrix": { term: "Completeness matrix", body: "The REDCap matrix scores de-identified NANO IDs against NDA-required instruments, then opens a source-detail drawer without exposing PHI." },
   "matlab-bridge": { term: "MATLAB bridge", body: "This route tracks the de-identified Parquet handoff from secure MATLAB processing into the Python dashboard stack so dense physiology can be merged without exposing raw signals in the web layer." },
   "matlab-files": { term: "Parquet files", body: "These files are the handoff contract from MATLAB into the dashboard. Each one represents a derived feature stream that can be joined downstream without shipping raw ECG outside the secure compute path." },
   "matlab-rows": { term: "Rows merged", body: "Rows merged estimates how much MATLAB-derived physiology is already landing in the shared analysis dataset. A sudden drop usually means the export step stalled or the secure mount went missing." },
@@ -83,6 +84,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "dyn-coreg-lag": { term: "Lead-lag", body: "Signed lead-lag is the lag where coupling peaks. Positive values are shown as caregiver-leading-infant regulation; negative values suggest infant-leading dynamics." },
   "dyn-coreg-stability": { term: "Coupling stability", body: "Coupling stability tracks how much the peak lag jitters across the session. Larger variance means the dyadic timing relationship is less stable." },
   "dyn-coreg-recovery": { term: "Recovery concordance", body: "Recovery concordance summarizes how closely caregiver physiology tracks infant return toward baseline after an arousal spike." },
+  "multimodal-sync": { term: "Multimodal Synchrony", body: "Gold windows mark the overlap of elevated rolling RSA, sustained HDA, and caregiver-face gaze. Treat them as review candidates, not diagnostic labels." },
   "dyn-phase-occupancy": { term: "Adaptive occupancy", body: "Adaptive occupancy is the share of samples inside the moderate-arousal, engaged-attention region of the phase portrait." },
   "dyn-phase-recovery": { term: "Recovery time", body: "Mean recovery time measures how long the trajectory takes to re-enter the adaptive region after escaping it." },
   "dyn-phase-entropy": { term: "Trajectory entropy", body: "Entropy summarizes how dispersed or predictable the arousal-attention orbit is across state space." },
@@ -108,6 +110,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "dyn-passport-ga": { term: "Gestational age", body: "Gestational age is shown as de-identified study context, especially useful for VPT longitudinal interpretation." },
   "dyn-passport-complete": { term: "Completeness", body: "Cascade completeness estimates how much expected longitudinal modality data is present for the participant." },
   "dyn-passport-risk": { term: "Risk trend", body: "Risk trend is a model-updated dashboard value and should be described as a model summary, not an individual clinical prediction." },
+  "passport-header": { term: "Infant Passport", body: "The Passport shows one de-identified participant's longitudinal record - visit timeline, HRV, HDA, assessments, and QA notes - without any PHI." },
   "dyn-archetype-card": { term: "Trajectory archetype", body: "Archetype cards show longitudinal shape clusters. They answer developmental-shape questions that cross-sectional clusters cannot." },
   "dyn-arch-count": { term: "Archetype count", body: "The atlas groups whole trajectories into subtype shapes rather than clustering a single feature vector." },
   "dyn-arch-members": { term: "Members", body: "Members are de-identified participants assigned to a trajectory archetype with posterior probability." },
@@ -133,6 +136,8 @@ export const INSIGHTS: Record<string, InsightData> = {
   "guided-h4": { term: "Guided question H4", body: "This hypothesis card routes to model-attribution surfaces focused on physiological features and developmental timing." },
   "guided-h5": { term: "Guided question H5", body: "This hypothesis card starts from retention differences across cohort groups and opens the attrition funnel." },
   "guided-narration": { term: "Guided narration", body: "The narration bubble gives a Buddy-aligned plain-language readout for the selected hypothesis before opening the full route." },
+  "guided-explorer-step": { term: "Guided Explorer", body: "The 7-step tour walks new users through HDA phases, the RSA paradox, and the pipeline before they access operator surfaces." },
+  "public-insights-irb": { term: "IRB badge", body: "The IRB badge confirms Protocol #Pro00115234. Only aggregate, de-identified data appears on this page." },
 };
 
 export function lookupInsight(id: string | null | undefined): InsightData | null {

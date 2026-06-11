@@ -24,6 +24,7 @@ interface UiState {
   selectedStageId: string;
   qaSelectedEpoch: number;
   theme: ThemeMode;
+  lastSyncAt: string | null;
   setPipelineView: (v: PipelineView) => void;
   setDensity: (d: Density) => void;
   setHipaa: (v: boolean) => void;
@@ -35,6 +36,7 @@ interface UiState {
   setQaEpoch: (idx: number) => void;
   setTheme: (t: ThemeMode) => void;
   cycleTheme: () => void;
+  setLastSyncAt: (ts: string) => void;
 }
 
 export const useUi = create<UiState>()(
@@ -48,6 +50,7 @@ export const useUi = create<UiState>()(
       selectedStageId: "hrv",
       qaSelectedEpoch: 0,
       theme: "system",
+      lastSyncAt: null,
       setPipelineView: (v) => set({ pipelineView: v }),
       setDensity: (d) => set({ density: d }),
       setHipaa: (v) => set({ showHipaa: v }),
@@ -62,6 +65,7 @@ export const useUi = create<UiState>()(
       setStage: (id: string) => set({ selectedStageId: id }),
       setQaEpoch: (idx: number) => set({ qaSelectedEpoch: idx }),
       setTheme: (t) => set({ theme: t }),
+      setLastSyncAt: (ts) => set({ lastSyncAt: ts }),
       cycleTheme: () =>
         set((s) => ({
           theme: s.theme === "light" ? "dark" : s.theme === "dark" ? "system" : "light",
@@ -74,6 +78,7 @@ export const useUi = create<UiState>()(
         pipelineView: s.pipelineView,
         density: s.density,
         showHipaa: s.showHipaa,
+        lastSyncAt: s.lastSyncAt,
       }),
     },
   ),

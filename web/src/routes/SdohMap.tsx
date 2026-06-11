@@ -3,17 +3,30 @@ import * as d3 from "d3";
 import "leaflet/dist/leaflet.css";
 import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip as LeafletTooltip } from "react-leaflet";
 import type { FeatureCollection } from "geojson";
-import { Card, SectionLabel } from "@/components/primitives";
+import { Button, Card, SectionLabel } from "@/components/primitives";
 import { useSdohMap } from "@/api/hooks";
 import type { SdohMapRow } from "@/api/schemas";
+import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import sdohLookup from "@/data/sc_sdoh.json";
 import styles from "./FeatureRoutes.module.css";
+
+type SdohMetric = "deprivationIndex" | "broadbandPct" | "foodAccessPct" | "priorityIndex";
+
+interface StaticSdohRow {
+  county: string;
+  fips: string;
+  priorityIndex: number;
+  ruralityPct: number;
+  transportBurdenPct: number;
+}
 
 interface CountyMapProps {
   rows: SdohMapRow[];
   selectedCounty?: string;
   onCountySelect?: (county: SdohMapRow) => void;
   ariaLabel?: string;
+  metric?: SdohMetric;
 }
 
 function countyKey(value: string | undefined): string {
@@ -25,6 +38,7 @@ export function CountyMap({
   selectedCounty,
   onCountySelect,
   ariaLabel = "South Carolina county SDOH map",
+  metric = "deprivationIndex",
 }: CountyMapProps) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
   const activeKey = countyKey(selectedCounty);
@@ -47,11 +61,13 @@ export function CountyMap({
             style={(feature) => {
               const props = feature?.properties as { name?: string; fips?: string } | undefined;
               const selected = activeKey && (countyKey(props?.name) === activeKey || countyKey(props?.fips) === activeKey);
+              const county = rows.find((row) => row.fips === props?.fips || countyKey(row.county) === countyKey(props?.name));
+              const priority = staticForCounty(county)?.priorityIndex ?? 0;
               return {
-                color: selected ? "var(--usc-garnet)" : "var(--border-strong)",
-                weight: selected ? 3 : 1.2,
-                fillColor: selected ? "var(--usc-garnet)" : "var(--usc-gold)",
-                fillOpacity: selected ? 0.34 : 0.18,
+                color: selected ? "var(--usc-garnet)" : priority > 0.7 ? "var(--red)" : "var(--warm-border)",
+                weight: selected || priority > 0.7 ? 3 : 1.2,
+                fillColor: county ? metricColor(metric, county) : "var(--warm-border)",
+                fillOpacity: county ? 0.26 + metricValue(metric, county) * 0.42 : 0.12,
               };
             }}
             onEachFeature={(feature, layer) => {
@@ -78,7 +94,7 @@ export function CountyMap({
               eventHandlers={onCountySelect ? { click: () => onCountySelect(row) } : undefined}
             >
               <LeafletTooltip>
-                {row.county}: n={row.participants}, completion {row.meanCompletion.toFixed(1)}%
+                {row.county}: n={row.participants}, completion {row.meanCompletion.toFixed(1)}%, priority {(staticForCounty(row)?.priorityIndex ?? 0).toFixed(2)}
               </LeafletTooltip>
             </CircleMarker>
           );
@@ -91,12 +107,16 @@ export function CountyMap({
 export function SdohMap() {
   const enabled = useFeatureFlag("SDOH_MAP");
   const { data } = useSdohMap();
+  const [metric, setMetric] = useState<SdohMetric>("deprivationIndex");
+  const [selectedCounty, setSelectedCounty] = useState<string | undefined>();
   const rows = data?.data ?? [];
 
   const sx = d3.scaleLinear().domain([0.2, 0.6]).range([48, 700]);
   const sy = d3.scaleLinear().domain([60, 90]).range([210, 20]);
 
   if (!enabled) return null;
+
+  const exportRows = rows.map((row) => ({ ...row, ...(staticForCounty(row) ?? {}) }));
 
   return (
     <div className={styles.page}>
@@ -106,11 +126,25 @@ export function SdohMap() {
           <h1 className={styles.h1}>SDOH Geographic Map</h1>
           <p className={styles.lede}>County-level social context and completion patterns for de-identified NANO recruitment areas.</p>
         </div>
+        <div className={styles.actions}>
+          <select className={styles.select} value={metric} onChange={(event) => setMetric(event.target.value as SdohMetric)} aria-label="SDOH overlay metric">
+            <option value="deprivationIndex">Deprivation</option>
+            <option value="broadbandPct">Broadband</option>
+            <option value="foodAccessPct">Food access</option>
+            <option value="priorityIndex">Recruitment priority</option>
+          </select>
+          <Button variant="secondary" icon="download" onClick={() => exportCsvFile(exportRows, "sdoh-recruitment-priority.csv")}>CSV</Button>
+        </div>
       </header>
 
       <div className={styles.split}>
         <Card pad={0}>
-          <CountyMap rows={rows} />
+          <CountyMap rows={rows} metric={metric} selectedCounty={selectedCounty} onCountySelect={(row) => setSelectedCounty(row.county)} />
+          <div className={styles.legend} style={{ padding: 14, background: "var(--warm-card)", borderTop: "1px solid var(--warm-border)" }}>
+            <span className={styles.legendItem}><span className={styles.swatch} style={{ background: "var(--usc-garnet)" }} /> Higher selected metric</span>
+            <span className={styles.legendItem}><span className={styles.swatch} style={{ background: "var(--red)" }} /> High priority border</span>
+            <span className={styles.legendItem}>County fills are aggregate only.</span>
+          </div>
         </Card>
 
         <Card pad={20}>
@@ -135,4 +169,24 @@ export function SdohMap() {
       </div>
     </div>
   );
+}
+
+function staticForCounty(row: SdohMapRow | undefined): StaticSdohRow | undefined {
+  if (!row) return undefined;
+  return (sdohLookup as StaticSdohRow[]).find((item) => item.fips === row.fips || countyKey(item.county) === countyKey(row.county));
+}
+
+function metricValue(metric: SdohMetric, row: SdohMapRow): number {
+  if (metric === "priorityIndex") return staticForCounty(row)?.priorityIndex ?? 0;
+  if (metric === "broadbandPct") return Math.max(0, Math.min(1, row.broadbandPct / 100));
+  if (metric === "foodAccessPct") return Math.max(0, Math.min(1, row.foodAccessPct / 100));
+  return Math.max(0, Math.min(1, row.deprivationIndex));
+}
+
+function metricColor(metric: SdohMetric, row: SdohMapRow): string {
+  const value = metricValue(metric, row);
+  if (metric === "broadbandPct" || metric === "foodAccessPct") {
+    return value > 0.82 ? "var(--green)" : value > 0.72 ? "var(--ocean)" : "var(--usc-gold)";
+  }
+  return value > 0.7 ? "var(--red)" : value > 0.45 ? "var(--usc-garnet)" : "var(--usc-gold)";
 }

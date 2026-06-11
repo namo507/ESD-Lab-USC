@@ -27,7 +27,7 @@ export function AttritionFunnel() {
   const query = useAttritionFunnel();
   const stages = query.data?.stages ?? [];
   const reasons = query.data?.reasonCodes ?? [];
-  const trend = query.data?.trendByQuarter ?? [];
+  const trendSource = query.data?.trendByQuarter;
   const [group, setGroup] = useState("all");
   const [sex, setSex] = useState("all");
   const [ga, setGa] = useState("all");
@@ -38,9 +38,10 @@ export function AttritionFunnel() {
   const maxN = Math.max(...stages.map((stage) => stage.n), 1);
 
   const trendSeries = useMemo(() => {
+    const trend = trendSource ?? [];
     const quarters = Array.from(new Set(trend.map((point) => point.quarter)));
     return { quarters, rows: trend.filter((point) => ["enrolled", "v2", "v36mo"].includes(point.stageId)) };
-  }, [trend]);
+  }, [trendSource]);
 
   const W = 760;
   const H = 260;

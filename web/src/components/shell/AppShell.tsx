@@ -24,6 +24,8 @@ export function AppShell() {
   const toggleChat = useUi((s) => s.toggleChat);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const density = useUi((s) => s.density);
+  const lastSyncAt = useUi((s) => s.lastSyncAt);
+  const setLastSyncAt = useUi((s) => s.setLastSyncAt);
 
   const { data: study } = useStudySummary();
   const { data: stages } = useStages();
@@ -32,11 +34,13 @@ export function AppShell() {
   const [query, setQuery] = useState("");
   const [syncTick, setSyncTick] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const qc = useQueryClient();
 
   useEffect(() => {
     void logAudit({ action: "route.navigate", scope: location.pathname });
+    setSidebarOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -66,7 +70,10 @@ export function AppShell() {
     setSyncTick((t) => t + 1);
     void qc.invalidateQueries();
     void logAudit({ action: "run.trigger", scope: "/forceSync" });
-    setTimeout(() => setSyncing(false), 1800);
+    setTimeout(() => {
+      setLastSyncAt(new Date().toISOString());
+      setSyncing(false);
+    }, 1800);
   }
 
   const qaPending = stages?.find((s) => s.id === "qa")?.inflight ?? 0;
@@ -87,9 +94,15 @@ export function AppShell() {
   void runs;
 
   return (
-    <div className="min-h-screen flex" style={{ minWidth: 1024, background: "var(--warm-bg)" }}>
+    <div className={styles.shell}>
       <a href="#main-content" className={styles.skipNav}>Skip to main content</a>
-      <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} executiveMode={executiveMode} />
+      <button type="button" className={styles.mobileMenuButton} onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
+        Menu
+      </button>
+      {sidebarOpen && <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} aria-hidden />}
+      <div className={`${styles.sidebarLayer} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
+        <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} executiveMode={executiveMode} />
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
         <TopNav
@@ -98,6 +111,7 @@ export function AppShell() {
           syncing={syncing}
           onForceSync={forceSync}
           idleMinutes={idleMinutes}
+          lastSyncAt={lastSyncAt}
         />
         {showHipaaBanner && <HipaaBanner onDismiss={import.meta.env.PROD ? undefined : () => setHipaa(false)} idleMinutes={idleMinutes} />}
         {executiveMode && (
