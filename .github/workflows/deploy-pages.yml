@@ -13,8 +13,6 @@ on:
       - "web/tsconfig.json"
       - "web/tailwind.config.ts"
       - "web/postcss.config.js"
-      - "web/pages-overlay.css"
-      - "web/pages-overlay.js"
       - "dashboard/assistant/local_chat_assistant.py"
       - "dashboard/context_skill/references/dashboard_schema.md"
       - "dashboard/data/dashboard_data.json"

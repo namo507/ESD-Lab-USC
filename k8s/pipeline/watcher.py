@@ -51,7 +51,7 @@ def _start_local_worker(config: PipelineConfig, batch: EventBatch) -> int:
     command = [
         sys.executable,
         "-m",
-        "dashboard.k8s_pipeline.worker",
+        "k8s.pipeline.worker",
         "--trigger-source",
         batch.trigger_source,
     ]

@@ -17,7 +17,7 @@ from dashboard.server.live_dashboard_server import is_runtime_healthy, snapshot_
 
 def test_build_payload_indexes_readings(tmp_path):
     """Reading index should count files and expose repo-relative links."""
-    readings_dir = tmp_path / "ESD Lab readings"
+    readings_dir = tmp_path / "esd-lab-readings"
     readings_dir.mkdir()
     (
         readings_dir
@@ -29,7 +29,7 @@ def test_build_payload_indexes_readings(tmp_path):
 
     assert payload["summary"]["total_readings"] == 2
     assert any(
-        item["relative_href"].startswith("../ESD%20Lab%20readings/")
+        item["relative_href"].startswith("../esd-lab-readings/")
         for item in payload["readings"]
     )
     assert {item["category"] for item in payload["readings"]}
@@ -37,7 +37,7 @@ def test_build_payload_indexes_readings(tmp_path):
 
 def test_build_payload_extracts_grant_material_category(tmp_path):
     """Grant-like filenames should be categorized separately from articles."""
-    readings_dir = tmp_path / "ESD Lab readings"
+    readings_dir = tmp_path / "esd-lab-readings"
     readings_dir.mkdir()
     (readings_dir / "SpecificAims_BradshawR01_A1.pdf").write_text("pdf")
 
@@ -91,7 +91,7 @@ def test_extract_authors_from_excerpt_skips_affiliations():
 
 def test_main_writes_json_output(tmp_path):
     """CLI entry point should emit a JSON payload to the requested path."""
-    readings_dir = tmp_path / "ESD Lab readings"
+    readings_dir = tmp_path / "esd-lab-readings"
     readings_dir.mkdir()
     (
         readings_dir / "Childhood-essentialism_2025_Advances-in-Child-Development.pdf"

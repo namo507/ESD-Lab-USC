@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from dashboard.k8s_pipeline.config import PROJECT_ROOT, PipelineConfig
-from dashboard.k8s_pipeline.freshness import readings_freshness_payload
-from dashboard.k8s_pipeline.ledger import EventLedger
-from dashboard.k8s_pipeline.observability import (
+from k8s.pipeline.config import PROJECT_ROOT, PipelineConfig
+from k8s.pipeline.freshness import readings_freshness_payload
+from k8s.pipeline.ledger import EventLedger
+from k8s.pipeline.observability import (
     cluster_topology_payload,
     pipeline_status_payload,
 )
@@ -17,7 +17,7 @@ def make_config(tmp_path: Path) -> PipelineConfig:
     return PipelineConfig(
         project_root=PROJECT_ROOT,
         data_dir=data_dir,
-        readings_watch_path=tmp_path / "ESD Lab readings",
+        readings_watch_path=tmp_path / "esd-lab-readings",
         readings_data_path=data_dir / "readings_data.json",
         lab_readings_path=tmp_path / "web" / "lab-readings.json",
         status_path=data_dir / "readings_pipeline_status.json",

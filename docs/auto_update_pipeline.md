@@ -14,7 +14,7 @@ indifferent to which one was used:
 | `dashboard/pipelines/build_dashboard_data.py`             | Python | Nightly cron on the analysis server. |
 | `dashboard/pipelines/build_dashboard_data.R`              | R      | Ad-hoc rebuilds from R (analysts working in RStudio). |
 | `dashboard/pipelines/build_org_site_data.py`              | Python | Refresh the ESD Lab public-site metadata block and impact feed. |
-| `dashboard/pipelines/build_readings_index.py`             | Python | Re-index the `ESD Lab readings/` library. |
+| `dashboard/pipelines/build_readings_index.py`             | Python | Re-index the `esd-lab-readings/` library. |
 
 The first three write `dashboard/data/dashboard_data.json`. The readings
 pipeline writes `dashboard/data/readings_data.json`. The local runtime and
@@ -37,7 +37,7 @@ The cron line lives in `scripts/crontab.nano` (checked in). Update
 that file to change the schedule; the deploy script applies it.
 
 The readings index is not tied to the REDCap cron. In live mode, the
-dashboard runtime watches `ESD Lab readings/` and regenerates the index
+dashboard runtime watches `esd-lab-readings/` and regenerates the index
 whenever a new file lands in that folder.
 
 Kubernetes mode adds an event-driven path for the same readings outputs. A
@@ -50,14 +50,14 @@ a fallback for missed filesystem events. See
 ## 3. Live Docker mode
 
 ```bash
-docker compose up --build dashboard
+docker compose -f docker/compose.dev.yml up --build dashboard
 ```
 
 What that does:
 
 1. Serves the repository root at `http://localhost:8080/`.
 2. Serves the canonical SPA at `/` and `/overview`.
-3. Polls dashboard inputs and `ESD Lab readings/` every 20 seconds.
+3. Polls dashboard inputs and `esd-lab-readings/` every 20 seconds.
 4. Rebuilds `dashboard_data.json`, `readings_data.json`, and `runtime_status.json` when an input changes.
 
 To verify the running container is healthy and the watcher is still triggering rebuilds:
@@ -168,7 +168,7 @@ or run the Docker service for automatic refreshes.
 | Feature matrix | `${NANO_DATA_ROOT}/processed/feature_matrix.parquet` | Yes (prod) | Pipeline errors; use `--fallback-synthetic` |
 | Data dictionary | `data/data_dictionary/NANO_master_data_dictionary.csv` | Recommended | PHI scrub is skipped (unsafe) |
 | Model metrics  | `${NANO_DATA_ROOT}/models/_metrics.json`             | Optional | `ml_performance` is empty; the ML tab says "no model run yet" |
-| ESD Lab readings | `ESD Lab readings/` | Optional | Reading library renders empty state |
+| esd-lab-readings | `esd-lab-readings/` | Optional | Reading library renders empty state |
 | ESD Lab public site | `https://www.esdlabsc.com/` | Optional | `organization_site` falls back to the bundled snapshot |
 
 ## 6. Outputs

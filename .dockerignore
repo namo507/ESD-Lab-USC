@@ -18,7 +18,7 @@ cloudflared/
 **/__pycache__
 **/*.pyc
 archive/
-Design Ideas/
+design-ideas/
 data/deidentified/
 data/interim/
 data/processed/
@@ -46,4 +46,7 @@ web/build-merge/
 web/build/
 web/dist/
 web/.wrangler/
+web/dashboard-source.html
+web/pages-overlay.css
+web/pages-overlay.js
 .wrangler/

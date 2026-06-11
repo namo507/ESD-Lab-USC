@@ -4,7 +4,7 @@ import { Button, Card, SectionLabel } from "@/components/primitives";
 import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useParticipants, useStillFace } from "@/api/hooks";
-import { FeatureGate, firstParticipant, ParticipantVisitControls, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, ParticipantVisitControls, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 export function StillFace() {

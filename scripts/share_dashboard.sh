@@ -43,6 +43,7 @@ TUNNEL_PID_FILE="$STATE_DIR/cloudflared.pid"
 TUNNEL_LOG_FILE="$STATE_DIR/cloudflared.log"
 ORIGIN_RECORD="$STATE_DIR/last_origin.txt"
 CLOUDFLARED_VERSION="${CLOUDFLARED_VERSION:-2026.5.2}"
+COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/docker/compose.dev.yml}"
 
 PAGES_RUNTIME_PROJECT="${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo}}"
 PAGES_RUNTIME_BRANCH="${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share}"
@@ -494,10 +495,10 @@ print_host_tunnel_result() {
 
 share_with_docker() {
   echo "Starting dashboard and share tunnel with Docker Compose..."
-  docker compose up -d dashboard >/dev/null
-  docker compose --profile share rm -sf dashboard-share dashboard-share-named >/dev/null 2>&1 || true
+  docker compose -f "$COMPOSE_FILE" up -d dashboard >/dev/null
+  docker compose -f "$COMPOSE_FILE" --profile share rm -sf dashboard-share dashboard-share-named >/dev/null 2>&1 || true
   rm -f "$ORIGIN_RECORD"
-  docker compose --profile share up -d --force-recreate "$share_service" >/dev/null
+  docker compose -f "$COMPOSE_FILE" --profile share up -d --force-recreate "$share_service" >/dev/null
 
   if [[ "$use_named" == "true" ]]; then
     echo "Waiting for named Cloudflare tunnel to register..."
@@ -510,7 +511,7 @@ share_with_docker() {
 
   while (( SECONDS < deadline )); do
     local recent_logs url registered
-    recent_logs="$({ docker compose logs --since=2m "$share_service" 2>/dev/null || true; })"
+    recent_logs="$({ docker compose -f "$COMPOSE_FILE" logs --since=2m "$share_service" 2>/dev/null || true; })"
     url="$(printf '%s\n' "$recent_logs" | grep -Eo 'https://[-a-zA-Z0-9]+\.trycloudflare\.com' | tail -n 1 || true)"
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
@@ -538,7 +539,7 @@ share_with_docker() {
   fi
 
   echo "Timed out waiting for the tunnel URL." >&2
-  docker compose logs --tail=80 "$share_service" 2>&1 | redact_sensitive_output >&2 || true
+  docker compose -f "$COMPOSE_FILE" logs --tail=80 "$share_service" 2>&1 | redact_sensitive_output >&2 || true
   return 1
 }
 

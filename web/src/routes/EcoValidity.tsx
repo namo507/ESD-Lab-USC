@@ -4,7 +4,7 @@ import { Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useEcoValidity } from "@/api/hooks";
-import { FeatureGate, round } from "./dynRouteUtils";
+import { FeatureGate, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type Group = "behavior" | "quality" | "representation" | "all";

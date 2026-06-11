@@ -104,7 +104,7 @@ const SECTION_TITLES = {
   ],
   readings: [
     "Reading Library",
-    "Automatically indexed lab PDFs and materials from the ESD Lab readings folder",
+    "Automatically indexed lab PDFs and materials from the esd-lab-readings folder",
   ],
 };
 
@@ -135,7 +135,7 @@ const PIPELINE_EXPLAINERS = {
   ml: '<b>ML and deep models</b><br>Random Forest, XGBoost, SVM, CNN-LSTM, and Transformer pipelines run with cross-validation and SHAP summaries.',
   mixed: '<b>Mixed-effects and LGCM</b><br>Group slopes and intercepts are estimated for each biomarker and surfaced in the trajectory section of the dashboard.',
   manuscripts: '<b>Manuscripts and reports</b><br>LaTeX, RMarkdown, and results templates live in <span class="code">reports/</span> for downstream reporting.',
-  dashboard: '<b>This dashboard</b><br>Consumes <span class="code">dashboard/data/dashboard_data.json</span> and the readings index generated from <span class="code">ESD Lab readings/</span>.',
+  dashboard: '<b>This dashboard</b><br>Consumes <span class="code">dashboard/data/dashboard_data.json</span> and the readings index generated from <span class="code">esd-lab-readings/</span>.',
   deident: '<b>De-identified export</b><br>Date-shifted, PHI-stripped data products for sharing and compliance workflows.',
 };
 
@@ -4805,7 +4805,7 @@ function renderReadingSpotlight({ allReadings, featured, filteredItems, searchTe
   const link = document.getElementById("reading-featured-link");
   link.href = spotlight ? spotlight.relative_href : "../ESD%20Lab%20readings/";
   link.textContent = spotlight ? (searchTerm ? "Open top match" : "Open featured reading") : "Browse reading folder";
-  setText("reading-featured-path", spotlight ? spotlight.relative_path : "ESD Lab readings/");
+  setText("reading-featured-path", spotlight ? spotlight.relative_path : "esd-lab-readings/");
 }
 
 function chooseSpotlightReading({ allReadings, featured, filteredItems, searchTerm }) {
@@ -4825,7 +4825,7 @@ function chooseTopReadingCategory(categories) {
 }
 
 function getReadingExcerpt(item) {
-  const raw = String(item.excerpt || `Indexed ${item.extension.toUpperCase()} material from the ESD Lab readings folder.`);
+  const raw = String(item.excerpt || `Indexed ${item.extension.toUpperCase()} material from the esd-lab-readings folder.`);
   const cleaned = raw
     .replace(/^CHAPTER\s+(?:[IVXLC]+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|[0-9]+)\s+/i, "")
     .trim();
@@ -5627,7 +5627,7 @@ const BUDDY_INSIGHTS = {
   "roc":              { term: "ROC Curve",      body: "Discrimination performance of the gradient-boosted classifier across all decision thresholds." },
   "shap":             { term: "SHAP",           body: "Shapley values showing which features drive the classifier's predictions most strongly." },
   "confmat":          { term: "Confusion Matrix", body: "True/false positive and negative counts at the chosen operating threshold of 0.42." },
-  "reading-library":  { term: "Reading Library", body: "Automatically indexed PDFs and materials from the ESD Lab readings folder." },
+  "reading-library":  { term: "Reading Library", body: "Automatically indexed PDFs and materials from the esd-lab-readings folder." },
   "insights-feed":    { term: "Agentic QA",     body: "An LLM watches REDCap forms, SQI flags, and pipeline output to surface issues as they happen." },
   "flow-list":        { term: "Participant Flow", body: "Recent visit activity across all study sites showing participant movement and status." },
 };

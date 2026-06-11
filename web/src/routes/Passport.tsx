@@ -7,7 +7,7 @@ import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { GroupTag } from "@/components/warm/GroupTag";
 import { useParticipants, usePassport } from "@/api/hooks";
 import type { HdaDist, VisitId } from "@/api/schemas";
-import { FeatureGate, firstParticipant, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 const VISITS: Array<{ id: VisitId; label: string; age: number }> = [

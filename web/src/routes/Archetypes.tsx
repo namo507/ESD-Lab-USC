@@ -6,7 +6,7 @@ import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useArchetypes } from "@/api/hooks";
 import type { GroupCode } from "@/api/schemas";
-import { FeatureGate, GROUP_COLORS, round } from "./dynRouteUtils";
+import { FeatureGate, GROUP_COLORS, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type Measure = "rsa" | "attention" | "social";

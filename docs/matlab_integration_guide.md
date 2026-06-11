@@ -15,7 +15,7 @@
 | ML / DL | Python (scikit-learn, XGBoost, PyTorch) | `src/models/ml_pipeline.py`, `src/models/deep_learning_ecg.py` |
 | Data ingestion | Python (pandas, REDCap API) | `src/data_ingestion/` |
 | Visualization | Python + R (matplotlib, seaborn, plotly, ggplot2) | `src/visualization/` |
-| Dashboard / Web | Node.js (Vite), Docker, Cloudflare | `web/`, `docker-compose.yml` |
+| Dashboard / Web | Node.js (Vite), Docker, Cloudflare | `web/`, `docker/compose.dev.yml` |
 | CI/CD | GitHub Actions | `.github/workflows/ci.yml` |
 | Dev environment | VS Code Dev Container (Python 3.11 + R) | `.devcontainer/` |
 

@@ -1,6 +1,6 @@
 # Full Sweep Patch Log - 2026-06-06
 
-Scope: follow-up fixes from `AUDIT_REPORT.md` and the requested comprehensive
+Scope: follow-up fixes from `reports/audits/AUDIT_REPORT.md` and the requested comprehensive
 health sweep for the NANO Study dashboard, backend, Cloudflare Pages wrapper,
 and repository hygiene.
 
@@ -62,7 +62,7 @@ and repository hygiene.
 - PASS: `radon cc -s -a` was run for the two dashboard monoliths and the
   hotspots are logged in `TECH_DEBT.md`.
 
-- PASS: `.dockerignore` includes PHI/data, credentials, archive, Design Ideas,
+- PASS: `.dockerignore` includes PHI/data, credentials, archive, design-ideas,
   build output, node_modules, source map, and Python cache patterns.
 - PASS: `docker/dashboard/Dockerfile` has a `HEALTHCHECK` and env coverage is
   documented in `.env.example`.

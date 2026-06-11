@@ -3,11 +3,10 @@ Continuously build and optionally deploy the canonical Cloudflare Pages site.
 
 What this watcher does
 ----------------------
-1. Polls the canonical static-site inputs:
-   - `web/dashboard-source.html`
-   - `web/pages-overlay.css`
-   - `web/pages-overlay.js`
+1. Polls the canonical Pages packaging inputs:
+   - `web/build/**`
    - `web/lab-readings.json`
+   - `dashboard/public/pages_wrapper/manifest.json`
 2. When any of those files change, reruns `scripts/build_pages_site.py`.
 3. By default, redeploys `dist/pages-wrapper` to the main Pages branch so
    `https://esd-lab-namo.pages.dev/` tracks the current local shell edits.
@@ -38,11 +37,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_ARTIFACT = ROOT / "dist" / "pages-wrapper" / "index.html"
-WATCH_FILES = [
-    ROOT / "web" / "dashboard-source.html",
-    ROOT / "web" / "pages-overlay.css",
-    ROOT / "web" / "pages-overlay.js",
+WATCH_PATHS = [
+    ROOT / "web" / "build",
     ROOT / "web" / "lab-readings.json",
+    ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json",
     ROOT / "scripts" / "build_pages_site.py",
 ]
 
@@ -74,12 +72,19 @@ def _load_env_token() -> bool:
 
 def _signature() -> tuple[tuple[str, int | None, int | None], ...]:
     sig: list[tuple[str, int | None, int | None]] = []
-    for path in WATCH_FILES:
-        if path.exists():
+    for path in WATCH_PATHS:
+        if not path.exists():
+            sig.append((str(path.relative_to(ROOT)), None, None))
+            continue
+        if path.is_file():
             stat = path.stat()
             sig.append((str(path.relative_to(ROOT)), stat.st_mtime_ns, stat.st_size))
-        else:
-            sig.append((str(path.relative_to(ROOT)), None, None))
+            continue
+        for child in sorted(path.rglob("*")):
+            if not child.is_file():
+                continue
+            stat = child.stat()
+            sig.append((str(child.relative_to(ROOT)), stat.st_mtime_ns, stat.st_size))
     return tuple(sig)
 
 

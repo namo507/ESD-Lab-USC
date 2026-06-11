@@ -33,7 +33,7 @@ data:
               imagePullPolicy: {{ .Values.image.pullPolicy }}
               securityContext:
 {{ toYaml .Values.securityContext | indent 16 }}
-              command: ["python", "-m", "dashboard.k8s_pipeline.worker"]
+              command: ["python", "-m", "k8s.pipeline.worker"]
               envFrom:
                 - configMapRef:
                     name: {{ include "esd-lab-dashboard.fullname" . }}-config
@@ -46,7 +46,7 @@ data:
 {{ toYaml .Values.worker.resources | indent 16 }}
               volumeMounts:
                 - name: readings
-                  mountPath: "/app/ESD Lab readings"
+                  mountPath: "/app/esd-lab-readings"
                 - name: dashboard-data
                   mountPath: "/app/dashboard/data"
           volumes:

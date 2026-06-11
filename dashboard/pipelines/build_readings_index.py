@@ -1,6 +1,6 @@
 """Build metadata for the ESD Lab reading library.
 
-Scans the committed ``ESD Lab readings`` directory, extracts stable file
+Scans the committed ``esd-lab-readings`` directory, extracts stable file
 metadata, enriches PDF records with lightweight document metadata when
 available, and emits ``dashboard/data/readings_data.json`` for the live
 dashboard.
@@ -32,7 +32,7 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_READINGS_DIR = PROJECT_ROOT / "ESD Lab readings"
+DEFAULT_READINGS_DIR = PROJECT_ROOT / "esd-lab-readings"
 DEFAULT_OUTPUT = PROJECT_ROOT / "dashboard" / "data" / "readings_data.json"
 DEFAULT_CACHE: Optional[Path] = None
 INDEX_VERSION = 4
@@ -613,7 +613,7 @@ def build_payload(readings_dir: Path = DEFAULT_READINGS_DIR, cache_path: Optiona
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Build ESD Lab readings metadata for the dashboard.")
+    parser = argparse.ArgumentParser(description="Build esd-lab-readings metadata for the dashboard.")
     parser.add_argument(
         "--readings-dir",
         type=Path,

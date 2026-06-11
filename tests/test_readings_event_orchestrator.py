@@ -4,10 +4,10 @@ import json
 import time
 from pathlib import Path
 
-from dashboard.k8s_pipeline.config import PROJECT_ROOT, PipelineConfig
-from dashboard.k8s_pipeline.lease import FileLease
-from dashboard.k8s_pipeline.ledger import EventDeduper
-from dashboard.k8s_pipeline.worker import run_pipeline
+from k8s.pipeline.config import PROJECT_ROOT, PipelineConfig
+from k8s.pipeline.lease import FileLease
+from k8s.pipeline.ledger import EventDeduper
+from k8s.pipeline.worker import run_pipeline
 
 
 def make_config(tmp_path: Path, readings_dir: Path) -> PipelineConfig:
@@ -58,7 +58,7 @@ def test_event_deduper_collapses_duplicate_events(tmp_path):
 
 
 def test_file_lease_allows_one_owner_and_expires(tmp_path):
-    lease = FileLease(tmp_path / "pipeline.lock", ttl_seconds=0.2)
+    lease = FileLease(tmp_path / "pipeline.lock", ttl_seconds=10)
 
     assert lease.acquire("owner-a")
     assert not lease.acquire("owner-b")
@@ -66,12 +66,14 @@ def test_file_lease_allows_one_owner_and_expires(tmp_path):
     assert lease.release("owner-a") is True
 
     assert lease.acquire("owner-a")
-    time.sleep(0.25)
+    payload = lease.read()
+    payload["expires_at_ts"] = time.time() - 1
+    lease.path.write_text(json.dumps(payload), encoding="utf-8")
     assert lease.acquire("owner-b")
 
 
 def test_worker_rebuilds_readings_and_lab_payloads(tmp_path):
-    readings_dir = tmp_path / "ESD Lab readings"
+    readings_dir = tmp_path / "esd-lab-readings"
     readings_dir.mkdir()
     (readings_dir / "Autonomic-pathways_2025.pdf").write_text("placeholder")
     config = make_config(tmp_path, readings_dir)

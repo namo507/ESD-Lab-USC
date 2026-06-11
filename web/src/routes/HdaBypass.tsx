@@ -6,7 +6,7 @@ import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useHdaTransitions } from "@/api/hooks";
 import type { GroupCode } from "@/api/schemas";
-import { FeatureGate, GROUP_COLORS, round } from "./dynRouteUtils";
+import { FeatureGate, GROUP_COLORS, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type AgeBin = "3mo" | "6mo" | "9mo" | "12mo";

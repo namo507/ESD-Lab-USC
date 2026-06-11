@@ -38,12 +38,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from dashboard.pipelines import build_dashboard_data, build_readings_index
 from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
-from dashboard.k8s_pipeline import PipelineConfig
-from dashboard.k8s_pipeline import assistant_freshness_payload
-from dashboard.k8s_pipeline import cluster_topology_payload
-from dashboard.k8s_pipeline import pipeline_status_payload
-from dashboard.k8s_pipeline import readings_freshness_payload
-from dashboard.k8s_pipeline.ledger import read_json as read_optional_json
+from k8s.pipeline import PipelineConfig
+from k8s.pipeline import assistant_freshness_payload
+from k8s.pipeline import cluster_topology_payload
+from k8s.pipeline import pipeline_status_payload
+from k8s.pipeline import readings_freshness_payload
+from k8s.pipeline.ledger import read_json as read_optional_json
 from dashboard.server import data_features
 from src.utils.logging_utils import get_pipeline_logger
 
@@ -2711,7 +2711,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--readings-dir",
         type=Path,
-        default=PROJECT_ROOT / "ESD Lab readings",
+        default=PROJECT_ROOT / "esd-lab-readings",
         help="Directory containing PDFs and supporting reading materials.",
     )
     parser.add_argument(

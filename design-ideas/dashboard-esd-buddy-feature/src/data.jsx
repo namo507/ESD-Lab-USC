@@ -1,5 +1,5 @@
 // Mock data for the NANO Dashboard prototype.
-// Uses exact study vocabulary from the ESD Lab readings & repo:
+// Uses exact study vocabulary from the esd-lab-readings & repo:
 //   VPT (very preterm), ASIB (autism sibling), PT (preterm control), TD (typically developing),
 //   CGA (corrected gestational age), PMA, HRV, RMSSD, IBI, HDA (Heart-rate Defined phases),
 //   epochs/windows, NICU, Actiheart-5.

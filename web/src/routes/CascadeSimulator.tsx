@@ -5,7 +5,7 @@ import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { useCascadePaths } from "@/api/hooks";
 import { exportCsvFile } from "@/lib/exportCsv";
-import { FeatureGate, round } from "./dynRouteUtils";
+import { FeatureGate, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type GroupOverlay = "td" | "asib";

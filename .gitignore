@@ -149,6 +149,9 @@ web/node_modules/
 web/build/
 web/dist/
 web/build-merge/
+web/dashboard-source.html
+web/pages-overlay.css
+web/pages-overlay.js
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -178,4 +181,4 @@ models/local_llms/
 models/_metrics.json
 
 # ─── Generated design exports ───────────────────────────────
-Design Ideas/**/*.html
+design-ideas/**/*.html

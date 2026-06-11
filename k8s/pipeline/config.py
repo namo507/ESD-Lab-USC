@@ -91,7 +91,7 @@ class PipelineConfig:
         data_dir = resolve_path(os.getenv("DASHBOARD_DATA_DIR"), DATA_DIR)
         readings_watch_path = resolve_path(
             os.getenv("READINGS_WATCH_PATH"),
-            PROJECT_ROOT / "ESD Lab readings",
+            PROJECT_ROOT / "esd-lab-readings",
         )
         return cls(
             project_root=PROJECT_ROOT,

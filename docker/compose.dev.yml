@@ -2,7 +2,7 @@ services:
   dashboard:
     init: true
     build:
-      context: .
+      context: ..
       dockerfile: docker/dashboard/Dockerfile
     ports:
       - "${DASHBOARD_HOST_PORT:-8080}:8080"
@@ -12,7 +12,7 @@ services:
     mem_limit: 2g
     pids_limit: 512
     volumes:
-      - .:/app
+      - ../:/app
     healthcheck:
       test:
         - CMD

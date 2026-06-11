@@ -18,7 +18,7 @@ grounded dashboard QA usable on CPU over the earlier 0.5B default.
   - `GET /api/assistant/freshness`
 - A collapsed chat widget inside the dashboard UI
 - A model preparation script: `scripts/prepare_dashboard_assistant.py`
-- Optional assistant dependencies in `dashboard/requirements-assistant.txt`
+- Dashboard/assistant runtime dependencies in `dashboard/requirements.txt`
 
 ## Default Local Model
 
@@ -34,10 +34,10 @@ changing the assistant environment variables.
 ## Local Setup
 
 1. Install the standard repository dependencies.
-2. Install the assistant extras:
+2. Install the dashboard/assistant runtime dependencies:
 
 ```bash
-pip install -r dashboard/requirements-assistant.txt
+pip install -r dashboard/requirements.txt
 ```
 
 3. Copy `.env.example` to `.env` if needed, then confirm the assistant values:

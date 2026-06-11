@@ -6,7 +6,7 @@ import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { phaseBin2D } from "@/lib/signal";
 import { useParticipants, usePhasePortrait } from "@/api/hooks";
 import type { PhasePortraitResponse } from "@/api/schemas";
-import { FeatureGate, firstParticipant, GROUP_COLORS, ParticipantVisitControls, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, GROUP_COLORS, ParticipantVisitControls, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 export function PhasePortrait() {

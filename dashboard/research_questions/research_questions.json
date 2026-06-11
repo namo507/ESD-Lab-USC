@@ -824,10 +824,10 @@
       "status": "in_progress",
       "priority": "high",
       "question": "What is the containerization story (docker compose) such that a collaborator can reproduce a figure from the paper in <30 minutes?",
-      "summary": "`docker compose up --build dashboard` runs the live runtime with pinned versions; a synthetic replay path reproduces every figure without PHI access.",
+      "summary": "`docker compose -f docker/compose.dev.yml up --build dashboard` runs the live runtime with pinned versions; a synthetic replay path reproduces every figure without PHI access.",
       "implementation": "Pin Python 3.11, R 4.3, Chart.js 4.5.1. Provide `make replay-figure FIG=<id>` target.",
       "assets": [
-        "docker-compose.yml",
+        "docker/compose.dev.yml",
         "Makefile"
       ],
       "widgets": [

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+COMPOSE_FILE = PROJECT_ROOT / "docker" / "compose.dev.yml"
 
 
 def run_command(
@@ -96,7 +97,7 @@ def is_running_state(value: str) -> bool:
 def check_compose_services(
     compose_cmd: list[str], project_name: str | None, services: list[str]
 ) -> list[dict[str, Any]]:
-    command = [*compose_cmd]
+    command = [*compose_cmd, "-f", str(COMPOSE_FILE)]
     if project_name:
         command.extend(["-p", project_name])
     command.extend(["ps", "--format", "json"])
@@ -108,7 +109,9 @@ def check_compose_services(
 
     rows = parse_compose_ps_json(result.stdout)
     if not rows:
-        raise RuntimeError("No Compose services were found. Is docker-compose.yml up?")
+        raise RuntimeError(
+            "No Compose services were found. Is docker/compose.dev.yml up?"
+        )
 
     if services:
         requested = set(services)

@@ -1388,8 +1388,8 @@ class DashboardChatAssistant:
 
     def _readings_freshness_status(self) -> dict[str, Any]:
         try:
-            from dashboard.k8s_pipeline import PipelineConfig
-            from dashboard.k8s_pipeline import readings_freshness_payload
+            from k8s.pipeline import PipelineConfig
+            from k8s.pipeline import readings_freshness_payload
 
             config = PipelineConfig.from_env()
             return readings_freshness_payload(config)
@@ -1398,8 +1398,8 @@ class DashboardChatAssistant:
 
     def _cluster_pipeline_status(self) -> dict[str, Any]:
         try:
-            from dashboard.k8s_pipeline import PipelineConfig
-            from dashboard.k8s_pipeline import pipeline_status_payload
+            from k8s.pipeline import PipelineConfig
+            from k8s.pipeline import pipeline_status_payload
 
             config = PipelineConfig.from_env()
             if not config.assistant_cluster_context_enabled:
@@ -1410,8 +1410,8 @@ class DashboardChatAssistant:
 
     def _assistant_freshness_status(self) -> dict[str, Any]:
         try:
-            from dashboard.k8s_pipeline import PipelineConfig
-            from dashboard.k8s_pipeline import assistant_freshness_payload
+            from k8s.pipeline import PipelineConfig
+            from k8s.pipeline import assistant_freshness_payload
 
             config = PipelineConfig.from_env()
             if not config.assistant_cluster_context_enabled:

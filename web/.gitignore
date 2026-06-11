@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 .env
 .env.*.local
+dashboard-source.html
+pages-overlay.css
+pages-overlay.js

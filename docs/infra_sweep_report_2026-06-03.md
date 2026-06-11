@@ -12,9 +12,9 @@ I found the two public Pages URLs were broken at the start of the sweep because 
 | INF-002 | Cloudflare Tunnel | HIGH | `docs/cloudflare_cutover_blockers.md`, Cloudflare account | Named hostname `esd-lab-namo.sc.edu` is NXDOMAIN and named tunnel `ESD Lab Namo` is down. | PROPOSE | Blocked on USC DNS and connector |
 | INF-003 | Pages hardening | MEDIUM | `web/vite.config.ts`, `web/public/_headers` | Production build shipped source maps and no Pages security headers. | AUTO-SAFE | Fixed and verified |
 | INF-004 | Legacy routing | MEDIUM | `scripts/build_pages_site.py` | Pages Worker served `/dashboard/` as the SPA shell instead of redirecting to `/overview`. | AUTO-SAFE | Fixed and verified |
-| INF-005 | Docker build | HIGH | `docker/dashboard/Dockerfile`, `dashboard/requirements-dashboard.txt` | Cold Docker build failed because `llama-cpp-python` fell back to a source build without a compiler. | AUTO-SAFE | Fixed and verified |
-| INF-006 | Docker runtime hygiene | MEDIUM | `docker-compose.yml`, `docker-compose.prod.yml` | Dev compose bind-mounts the whole repo, including ignored local files, into `/app`. | AUTO-SAFE | Fixed with production compose file |
-| INF-007 | Local smoke reliability | MEDIUM | `scripts/share_dashboard.sh`, `Makefile`, `docker-compose.yml` | Health probes could hang on a bad listener at `127.0.0.1:8080`, and Python 3.9 could not run dashboard modules. | AUTO-SAFE | Fixed and verified |
+| INF-005 | Docker build | HIGH | `docker/dashboard/Dockerfile`, `dashboard/requirements.txt` | Cold Docker build failed because `llama-cpp-python` fell back to a source build without a compiler. | AUTO-SAFE | Fixed and verified |
+| INF-006 | Docker runtime hygiene | MEDIUM | `docker/compose.dev.yml`, `docker/compose.prod.yml` | Dev compose bind-mounts the whole repo, including ignored local files, into `/app`. | AUTO-SAFE | Fixed with production compose file |
+| INF-007 | Local smoke reliability | MEDIUM | `scripts/share_dashboard.sh`, `Makefile`, `docker/compose.dev.yml` | Health probes could hang on a bad listener at `127.0.0.1:8080`, and Python 3.9 could not run dashboard modules. | AUTO-SAFE | Fixed and verified |
 | INF-008 | Kubernetes scale headroom | HIGH | `k8s/helm/esd-lab-dashboard/*` | Chart had one dashboard replica and no HPA or PDB knobs. | AUTO-SAFE | Fixed and Helm rendered |
 | INF-009 | Logs | MEDIUM | `scripts/prune_logs.sh`, `Makefile` | Local logs had no retention helper. Current `logs/` size is 10M. | AUTO-SAFE | Fixed |
 | INF-010 | Python tests | MEDIUM | `.venv` local environment | Literal `pytest` was absent from PATH; venv lacked `scipy` and `python-dotenv`. | LOCAL ENV | Fixed locally and verified |
@@ -25,7 +25,7 @@ I found the two public Pages URLs were broken at the start of the sweep because 
 - Added production Pages headers and disabled production sourcemaps.
 - Added Worker and `_redirects` handling for `/dashboard`, `/dashboard/`, and `/dashboard/index.html` to `/overview`.
 - Added Docker build prerequisites and used the documented prebuilt `llama-cpp-python` CPU wheel index.
-- Added `docker-compose.prod.yml` without the whole-repo bind mount.
+- Added `docker/compose.prod.yml` without the whole-repo bind mount.
 - Added configurable `DASHBOARD_HOST_PORT` and `DASHBOARD_LOCAL_URL`.
 - Added timed local health checks and Python 3.10+ interpreter selection in `share_dashboard.sh`.
 - Added Helm HPA and PDB templates with conservative defaults.

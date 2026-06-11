@@ -397,7 +397,7 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
           <div className="flex items-start justify-between gap-6">
             <div className="max-w-[720px]">
               <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">
-                Reading geography · ESD Lab readings/{loading ? " · refreshing" : ""}
+                Reading geography · esd-lab-readings/{loading ? " · refreshing" : ""}
               </div>
               <h3 id="readings-geo-title" className="mt-1 font-serif text-[30px] font-semibold leading-[1.08] -tracking-[0.02em] text-[color:var(--warm-fg1)]">
                 Interactive affiliation map from the indexed reading library

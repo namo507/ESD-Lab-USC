@@ -2,7 +2,7 @@ services:
   dashboard:
     init: true
     build:
-      context: .
+      context: ..
       dockerfile: docker/dashboard/Dockerfile
     image: esd-lab-dashboard:local
     ports:
@@ -13,8 +13,8 @@ services:
     mem_limit: 2g
     pids_limit: 512
     volumes:
-      - ./dashboard/data:/app/dashboard/data
-      - ./ESD Lab readings:/app/ESD Lab readings:ro
+      - ../dashboard/data:/app/dashboard/data
+      - ../esd-lab-readings:/app/esd-lab-readings:ro
     healthcheck:
       test:
         - CMD

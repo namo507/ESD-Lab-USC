@@ -9,7 +9,7 @@ continue to work with `K8S_MODE_ENABLED=false`.
 In cluster mode:
 
 1. The dashboard Deployment serves the React SPA and read-only API endpoints.
-2. The readings watcher Deployment observes the mounted `ESD Lab readings/`
+2. The readings watcher Deployment observes the mounted `esd-lab-readings/`
    RWX volume and debounces add/update/delete events.
 3. The watcher records a safe event in
    `dashboard/data/readings_pipeline_events.jsonl` and creates one Kubernetes

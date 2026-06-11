@@ -27,7 +27,7 @@ what will break under load or leak data, and fix it.
 ## REPOSITORY MAP (ground truth — verify each path exists before acting)
 
 ```
-docker-compose.yml                         # dashboard + cloudflared services
+docker/compose.dev.yml                         # dashboard + cloudflared services
 docker/dashboard/Dockerfile                # runtime image, /api/healthz healthcheck
 .dockerignore                              # what is excluded from build context
 .env                                       # REAL secrets (gitignored) — never print values
@@ -135,8 +135,8 @@ Makefile targets you may use: `check-env`, `docker-health`, `dashboard-build`,
 
 # SECTION 1 — Environment & secrets sweep
 
-**Files:** `.env`, `.env.example`, `dashboard/k8s_pipeline/config.py`,
-`scripts/share_dashboard.sh` (it `source`s `.env`), `docker-compose.yml`,
+**Files:** `.env`, `.env.example`, `k8s/pipeline/config.py`,
+`scripts/share_dashboard.sh` (it `source`s `.env`), `docker/compose.dev.yml`,
 `k8s/helm/esd-lab-dashboard/templates/secret.yaml` and `configmap.yaml`,
 `Makefile` target `check-env`.
 
@@ -235,7 +235,7 @@ present.
 
 # SECTION 3 — Cloudflare Tunnel (the load-bearing fragility)
 
-**Files:** `docker-compose.yml` (services `dashboard-share`,
+**Files:** `docker/compose.dev.yml` (services `dashboard-share`,
 `dashboard-share-named`), `scripts/share_dashboard.sh`,
 `scripts/build_pages_wrapper.py`, `scripts/watch_pages_wrapper.py`,
 `dashboard/public/pages_wrapper/manifest.json`,
@@ -287,8 +287,8 @@ API_ORIGIN == a host that returns 200 on `/api/healthz`.
 
 # SECTION 4 — Docker runtime & image
 
-**Files:** `docker/dashboard/Dockerfile`, `docker-compose.yml`,
-`.dockerignore`, `dashboard/requirements-dashboard.txt`,
+**Files:** `docker/dashboard/Dockerfile`, `docker/compose.dev.yml`,
+`.dockerignore`, `dashboard/requirements.txt`,
 `scripts/check_docker_health.py`, `scripts/check_dashboard_runtime.py`,
 `Makefile` targets `docker-health`, `dashboard-build`, `dashboard-smoke`.
 
@@ -300,13 +300,13 @@ API_ORIGIN == a host that returns 200 on `/api/healthz`.
   (`check_dashboard_runtime.py --base-url http://127.0.0.1:8080`). Confirm
   `/api/healthz` returns `status: ok` with non-empty `dashboard` and
   `readings` payloads, matching both healthchecks (compose + Dockerfile).
-- **Bind-mount leak / load risk:** `docker-compose.yml` mounts `.:/app`,
+- **Bind-mount leak / load risk:** `docker/compose.dev.yml` mounts `.:/app`,
   which remounts the ENTIRE repo into the running container at runtime,
   including `.env`, `logs/`, `data/`, and `models/`, even though
   `.dockerignore` excludes them from the build. That is a secret-exposure
   and performance footgun in any non-dev deployment. Flag it.
 - Pin and pip-audit: `python:3.11-slim` base, `pip install` from
-  `requirements-dashboard.txt`. Check whether versions are pinned; run a
+  `dashboard/requirements.txt`. Check whether versions are pinned; run a
   vulnerability scan if a scanner is available. Note image runs as root
   (no `USER` directive) while the Helm chart runs as non-root 1000 — an
   inconsistency.
@@ -324,10 +324,10 @@ unpinned or vulnerable deps; container UID 0.
   Dockerfile to align with the chart's security context; rebuild and
   smoke test.
 - (AUTO-SAFE) Add a hardened production compose override
-  (`docker-compose.prod.yml`) that drops the `.:/app` bind mount and
+  (`docker/compose.prod.yml`) that drops the `.:/app` bind mount and
   mounts only `dashboard/data` and the readings volume read-only, leaving
   the dev compose untouched.
-- (AUTO-SAFE) Pin dependency versions in `requirements-dashboard.txt` if
+- (AUTO-SAFE) Pin dependency versions in `dashboard/requirements.txt` if
   unpinned.
 
 **Verify:** `make dashboard-smoke` passes on the rebuilt image; exec into
@@ -337,7 +337,7 @@ shows non-root user.
 # SECTION 5 — Kubernetes / Helm chart
 
 **Files:** `k8s/helm/esd-lab-dashboard/values.yaml` and all `templates/*`,
-`dashboard/k8s_pipeline/*` (`config.py`, `watcher.py`, `worker.py`,
+`k8s/pipeline/*` (`config.py`, `watcher.py`, `worker.py`,
 `lease.py`, `ledger.py`, `freshness.py`, `observability.py`, `k8s_api.py`),
 `scripts/check_k8s_readings_pipeline.py`, `.github/workflows/k8s-validate.yml`,
 `docs/kubernetes_event_pipeline.md`, `docs/kubernetes_runbook.md`.

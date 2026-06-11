@@ -131,7 +131,7 @@ class KubernetesApiClient:
             {"name": "READINGS_EVENT_ID", "value": event_id},
             {"name": "READINGS_EVENT_SIGNATURE", "value": signature},
             {"name": "READINGS_TRIGGER_SOURCE", "value": trigger_source},
-            {"name": "READINGS_WATCH_PATH", "value": "/app/ESD Lab readings"},
+            {"name": "READINGS_WATCH_PATH", "value": "/app/esd-lab-readings"},
             {"name": "DASHBOARD_DATA_DIR", "value": "/app/dashboard/data"},
             {
                 "name": "READINGS_DATA_OUTPUT",
@@ -217,13 +217,13 @@ class KubernetesApiClient:
                                 "command": [
                                     "python",
                                     "-m",
-                                    "dashboard.k8s_pipeline.worker",
+                                    "k8s.pipeline.worker",
                                 ],
                                 "env": env,
                                 "volumeMounts": [
                                     {
                                         "name": "readings",
-                                        "mountPath": "/app/ESD Lab readings",
+                                        "mountPath": "/app/esd-lab-readings",
                                         "readOnly": False,
                                     },
                                     {

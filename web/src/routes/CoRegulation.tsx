@@ -6,7 +6,7 @@ import { MetricChip } from "@/components/dyn/MetricChip";
 import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { windowedCrossCorrelation } from "@/lib/signal";
 import { useDyadCoregulation, useParticipants } from "@/api/hooks";
-import { FeatureGate, firstParticipant, ParticipantVisitControls, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, ParticipantVisitControls, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type Signal = "rsa" | "heartPeriod";

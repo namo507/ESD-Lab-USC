@@ -1,7 +1,7 @@
 # ESD Buddy — Full-Stack AI Chatbot: Complete Implementation Prompt
 
 > **Target repository:** `namo507/ESD-Lab-USC` · **Live site:** https://esd-lab-namo.pages.dev/  
-> **Design reference:** `Design Ideas/Dashboard ESD_Buddy Feature/` in the repo  
+> **Design reference:** `design-ideas/dashboard-esd-buddy-feature/` in the repo  
 > **Scope:** 10 sequential implementation tasks across Phase 1 (Backend/Automation) and Phase 2 (Frontend/UI), fused with the exact visual language from `v2/buddy.jsx`, `v2/scenes-chat.jsx`, and `v2/styles.css`.
 
 ***
@@ -92,7 +92,7 @@ ESD-Lab-USC/
 │   └── server/
 │       └── live_dashboard_server.py           ← Task 4 (modified)
 ├── .env.example                               ← Task 5 (modified)
-├── dashboard/requirements-dashboard.txt       ← Task 5 (modified)
+├── dashboard/requirements.txt                 ← Task 5 (modified)
 ├── .gitignore                                 ← Task 5 (modified)
 └── web/src/
     ├── styles/
@@ -488,7 +488,7 @@ LLM_TEMPERATURE=0.7
 HF_TOKEN=                    # Optional: raises HF rate limits
 ```
 
-**`dashboard/requirements-dashboard.txt` additions:**
+**`dashboard/requirements.txt` additions:**
 ```
 llama-cpp-python>=0.2.90
 huggingface-hub>=0.23.0

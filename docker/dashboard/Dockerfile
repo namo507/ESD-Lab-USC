@@ -21,9 +21,9 @@ RUN apt-get update \
     && npm install -g npm@10.9.8 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dashboard/requirements-dashboard.txt /tmp/requirements-dashboard.txt
+COPY dashboard/requirements.txt /tmp/dashboard-requirements.txt
 RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}" \
-    && python -m pip install --no-cache-dir -r /tmp/requirements-dashboard.txt
+    && python -m pip install --no-cache-dir -r /tmp/dashboard-requirements.txt
 
 # Install frontend dependencies so `npm run build` works at startup
 COPY web/package.json web/package-lock.json /app/web/

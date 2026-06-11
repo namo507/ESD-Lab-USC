@@ -32,7 +32,7 @@ section views or restore the full long-form dashboard when needed.
 Run the local server and open the canonical routes:
 
 ```bash
-docker compose up --build dashboard
+docker compose -f docker/compose.dev.yml up --build dashboard
 ```
 
 Then open `http://localhost:8080/` or `http://localhost:8080/overview`.
@@ -144,7 +144,7 @@ For visual comfort, use the topbar theme selector:
 ```
  REDCap / Features / Models ──► build_dashboard_data.{py, R} ───────────► dashboard_data.json ──► index.html
  ESD Lab public site        ──► build_org_site_data.py (via Python build) ─┘
- ESD Lab readings/          ──► build_readings_index.py                  ─► readings_data.json  ──► index.html
+ esd-lab-readings/          ──► build_readings_index.py                  ─► readings_data.json  ──► index.html
 ```
 
 1. **Nightly cron** (`scripts/redcap_daily_sync.py`) pulls REDCap and
@@ -153,7 +153,7 @@ For visual comfort, use the topbar theme selector:
    REDCap + features + model metrics, calls the public-site organization
    builder, strips PHI, and writes the JSON.
 3. **Readings index** (`dashboard/pipelines/build_readings_index.py`)
-   scans `ESD Lab readings/` and writes the searchable reading library.
+   scans `esd-lab-readings/` and writes the searchable reading library.
 4. **Local runtime + SPA** (`dashboard/server/live_dashboard_server.py` + `web/src/**`)
    serve both JSON files to the browser and render the canonical Pages-aligned UI.
 

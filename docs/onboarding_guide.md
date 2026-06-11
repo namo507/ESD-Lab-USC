@@ -75,7 +75,7 @@ The NANO Study uses REDCap in **longitudinal mode** with multiple arms and event
 ## Lab Conventions
 
 - **Branches**: `feature/<issue-number>-description` (see `docs/git_workflow.md`)
-- **Commits**: Conventional Commits format (see `CONTRIBUTING.md`)
+- **Commits**: Conventional Commits format (see `docs/governance/CONTRIBUTING.md`)
 - **Data**: Never hardcode paths — always use `config/paths.yml`
 - **Meetings**: Weekly lab meeting Fridays 10am; monthly data review with PI
 

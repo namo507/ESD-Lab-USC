@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Button, Card, SectionLabel } from "@/components/primitives";
 import { useMultimodalSession, useParticipants } from "@/api/hooks";
 import type { HdaPhase, MultimodalSessionResponse } from "@/api/schemas";
-import { FeatureGate, firstParticipant, round } from "./dynRouteUtils";
+import { FeatureGate, firstParticipant, round } from "./routeUtils";
 import styles from "./MultimodalSynchrony.module.css";
 
 const PHASE_COLOR: Record<HdaPhase, string> = {

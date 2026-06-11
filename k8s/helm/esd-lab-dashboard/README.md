@@ -14,7 +14,7 @@ helm upgrade --install esd-lab-dashboard k8s/helm/esd-lab-dashboard \
   --set image.tag=<tag>
 ```
 
-The readings PVC mounts at `/app/ESD Lab readings`. The data PVC mounts at
+The readings PVC mounts at `/app/esd-lab-readings`. The data PVC mounts at
 `/app/dashboard/data` and stores generated JSON, the event ledger, lock file,
 and optional Pages packaging trigger metadata.
 

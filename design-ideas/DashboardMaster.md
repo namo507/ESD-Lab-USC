@@ -1317,7 +1317,7 @@ Keep existing pipeline diagram.
 Add: "Raw data lives on USC Secure Server (no repo access). Contact Dr. Bradshaw's lab for data access."
 
 ## 🤝 Contributing
-Link to CONTRIBUTING.md.
+Link to docs/governance/CONTRIBUTING.md.
 Add: "New contributors: run the Guided Explorer at /guided-explorer for an interactive tour."
 
 ## ⚠️ HIPAA Compliance

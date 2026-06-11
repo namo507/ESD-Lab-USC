@@ -116,20 +116,18 @@ The **NANO Study** (Neurodevelopment of Autonomic and Neural Organization) is a 
 | Directory | Purpose | Primary Role | % Effort |
 |-----------|---------|--------------|----------|
 | `config/` | YAML config files; data paths; study parameters | All | 5% |
-| `data/` | Gitkeep placeholders; data dictionary | Data Coordinator | 10% |
-| `redcap/` | REDCap API, hooks, instruments, QC | RA / Data Coordinator | 20% |
-| `src/data_ingestion/` | Load ECG, temp, behavioral, REDCap data | Research Programmer | 10% |
-| `src/preprocessing/` | ECG cleaning, HRV, temperature pipeline | Research Programmer / Co-I O'Reilly | 15% |
-| `src/feature_engineering/` | Feature matrix construction | Research Programmer / Co-I O'Reilly | 10% |
-| `src/imputation/` | MICE multiple imputation | Biostatistician | 5% |
-| `src/models/` | ML, deep learning, mixed effects, LGCMs | Co-I O'Reilly / Biostatistician | 15% |
-| `src/visualization/` | Publication-quality figures | Research Programmer | 5% |
-| `src/utils/` | Config, logging, HIPAA utilities | Research Programmer | 5% |
+| `data/` | Gitkeep placeholders; data dictionary | Data Coordinator | 8% |
+| `redcap/` | REDCap API, hooks, instruments, QC | RA / Data Coordinator | 12% |
+| `src/` | Python/R research-analysis package: ingestion, preprocessing, features, imputation, models, visualization | Research Programmer / Analysts | 24% |
+| `web/` | Canonical React/Vite frontend deployed to Cloudflare Pages | Research Programmer | 10% |
+| `dashboard/` | Python dashboard runtime, API surface, assistant, and JSON builders | Research Programmer | 10% |
+| `k8s/` | Helm manifests and Kubernetes event-pipeline automation | Research Programmer / DevOps | 4% |
+| `docker/` | Dockerfile and Compose files (`compose.dev.yml`, `compose.prod.yml`) | Research Programmer / DevOps | 4% |
 | `notebooks/` | Exploration, walkthroughs, demos | All | 5% |
 | `scripts/` | Batch processing, cron jobs, pipeline runners | Research Programmer | 5% |
 | `tests/` | pytest unit/integration tests | Research Programmer | 5% |
-| `docs/` | SOPs, guides, compliance checklists | PI / All | 5% |
-| `reports/` | Figures, data quality reports, manuscript drafts | All | 5% |
+| `docs/` | SOPs, guides, compliance checklists | PI / All | 4% |
+| `reports/` | Figures, data quality reports, manuscript drafts | All | 4% |
 
 ---
 
@@ -182,11 +180,13 @@ cp .env.example .env
 
 The repository now includes a live dashboard runtime that serves the repo,
 rebuilds `dashboard/data/dashboard_data.json` when source inputs change, and
-automatically indexes new PDFs added under `ESD Lab readings/`.
+automatically indexes new PDFs added under `esd-lab-readings/`. The canonical
+frontend lives in `web/`; `dashboard/` is the Python runtime and data layer.
+See `docs/repository_structure.md` for the current layout contract.
 
 ```bash
 # Start the live dashboard
-docker compose up --build dashboard
+docker compose -f docker/compose.dev.yml up --build dashboard
 
 # Open it locally
 open http://localhost:8080/
@@ -305,7 +305,7 @@ This is automatically run as a pre-step in `make dashboard-share`.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for branching strategy, commit conventions, and PR checklist.
+See [CONTRIBUTING.md](docs/governance/CONTRIBUTING.md) for branching strategy, commit conventions, and PR checklist.
 
 All contributors must:
 1. Complete CITI Human Subjects (Social/Behavioral) training

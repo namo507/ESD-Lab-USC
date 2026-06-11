@@ -30,7 +30,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{- define "esd-lab-dashboard.requiredReadingsClaim" -}}
-{{- required "existingClaims.readings is required; set it to the RWX PVC mounted at /app/ESD Lab readings." .Values.existingClaims.readings -}}
+{{- required "existingClaims.readings is required; set it to the RWX PVC mounted at /app/esd-lab-readings." .Values.existingClaims.readings -}}
 {{- end -}}
 
 {{- define "esd-lab-dashboard.requiredDataClaim" -}}

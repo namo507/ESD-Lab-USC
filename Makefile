@@ -12,6 +12,7 @@ FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
+COMPOSE := docker compose -f docker/compose.dev.yml
 
 .PHONY: help install test lint clean redcap-sync run-pipeline format check-env dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke logs-prune
 
@@ -100,16 +101,16 @@ dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
 	@echo "✓ Repo-local dashboard demo inputs refreshed."
 
 dashboard-build:  ## Build the live dashboard Docker image
-	docker compose build dashboard
+	$(COMPOSE) build dashboard
 
 dashboard-up:  ## Start the live website runtime at http://localhost:8080/ (overview at /overview)
-	docker compose up --build dashboard
+	$(COMPOSE) up --build dashboard
 
 dashboard-down:  ## Stop the live dashboard container
-	docker compose down
+	$(COMPOSE) down
 
 dashboard-logs:  ## Tail live dashboard logs
-	docker compose logs -f dashboard
+	$(COMPOSE) logs -f dashboard
 
 dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild loop
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)

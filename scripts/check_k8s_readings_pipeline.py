@@ -50,7 +50,7 @@ def run_local_worker(readings_dir: Path, timeout: int) -> None:
     command = [
         sys.executable,
         "-m",
-        "dashboard.k8s_pipeline.worker",
+        "k8s.pipeline.worker",
         "--trigger-source",
         "smoke",
         "--path",
@@ -93,7 +93,7 @@ def main() -> int:
     parser.add_argument(
         "--readings-dir",
         type=Path,
-        default=PROJECT_ROOT / "ESD Lab readings",
+        default=PROJECT_ROOT / "esd-lab-readings",
     )
     parser.add_argument(
         "--skip-simulate-change",

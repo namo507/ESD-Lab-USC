@@ -6,7 +6,7 @@ import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { peristimulusAverage } from "@/lib/signal";
 import { useHrDeceleration } from "@/api/hooks";
 import type { GroupCode } from "@/api/schemas";
-import { FeatureGate, round } from "./dynRouteUtils";
+import { FeatureGate, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
 type GroupChoice = "all" | GroupCode;
