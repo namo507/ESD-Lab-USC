@@ -503,7 +503,12 @@ export function Landing() {
       <div ref={progressRef} className={styles.progress} style={{ transform: "scaleX(0)" }} aria-hidden />
 
       <nav className={styles.nav} aria-label="Landing sections">
-        <button type="button" className={styles.brand} onClick={() => jumpTo("overview")}>
+        <button
+          type="button"
+          className={styles.brand}
+          onClick={() => jumpTo("overview")}
+          aria-label="ESD Lab - return to home"
+        >
           <span className={styles.brandMark}>e</span>
           <span className={styles.brandText}>
             <strong>ESD Lab</strong>

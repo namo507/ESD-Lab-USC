@@ -39,9 +39,9 @@ export default {
           ring: "#d4b676",
         },
         mint: {
-          DEFAULT: "#5b9577",
-          tint: "#e7f1ea",
-          ring: "#7dc59a",
+          DEFAULT: "var(--mint)",
+          tint: "var(--mint-tint)",
+          ring: "var(--mint-ring)",
         },
         ink: "var(--ink)",
         paper: "var(--paper)",
@@ -60,9 +60,9 @@ export default {
         },
       },
       fontFamily: {
-        serif: ["Source Serif 4", "Charter", "Georgia", "serif"],
-        sans:  ["Source Sans 3", "Inter", "system-ui", "sans-serif"],
-        mono:  ["JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"],
+        serif: "var(--font-serif)",
+        sans:  "var(--font-sans)",
+        mono:  "var(--font-mono)",
       },
       fontSize: {
         display: ["48px", { lineHeight: "1.08", letterSpacing: "-0.015em" }],
@@ -80,6 +80,7 @@ export default {
         md: "4px",
         lg: "12px",
         xl: "18px",
+        card: "var(--r-card)",
         "2xl": "24px",
         full: "999px",
       },

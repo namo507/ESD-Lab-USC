@@ -121,7 +121,7 @@ export function AppShell() {
           </div>
         )}
 
-        <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main-content" style={{ maxWidth: 1480 }}>
+        <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main-content">
           <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
           <footer className="app-footer">
             <span>Early Social Development Lab · Dr. Bradshaw · UofSC</span>

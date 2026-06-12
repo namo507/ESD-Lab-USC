@@ -14,14 +14,6 @@
   text-transform: uppercase;
 }
 .runActive { font-size: var(--text-micro); color: var(--blue); }
-.h1 {
-  font-family: var(--font-serif);
-  font-size: var(--text-h1);
-  font-weight: var(--w-semibold);
-  letter-spacing: var(--tracking-tight);
-  line-height: 1.05;
-  margin: 0;
-}
 .lede {
   color: var(--slate-500);
   font-size: 14px;
@@ -34,7 +26,7 @@
 
 .kpis {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
 
@@ -50,12 +42,6 @@
 .viewTitle { margin: 0; font-size: 16px; font-weight: var(--w-semibold); }
 .viewRight { display: flex; align-items: center; gap: 14px; }
 .tip { font-size: var(--text-micro); color: var(--slate-500); }
-
-.bottom {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 14px;
-}
 
 .runsHead {
   padding: 14px 18px;

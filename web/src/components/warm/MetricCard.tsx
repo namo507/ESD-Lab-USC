@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Counter } from "./Counter";
 import { AreaSparkline } from "./AreaSparkline";
 
@@ -25,7 +25,7 @@ const DOT: Record<MetricAccent, string> = {
   sage:  "var(--sage)",
   ocean: "var(--ocean)",
   sand:  "var(--sand)",
-  mint:  "var(--mint-ring)",
+  mint:  "var(--mint)",
 };
 
 const WASH: Record<MetricAccent, string> = {
@@ -40,6 +40,8 @@ const DELTA_COLOR = {
   down: "var(--red)",
   flat: "var(--warm-fg3)",
 };
+
+const TEXT_EMOJI_VARIANT = { fontVariantEmoji: "text" } as CSSProperties;
 
 /**
  * Warm KPI tile from the design package — accent gradient wash + animated
@@ -63,7 +65,7 @@ export function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl bg-white border border-[color:var(--warm-border)] shadow-card min-h-[152px]"
+      className="relative overflow-hidden rounded-card bg-white border border-[color:var(--warm-border)] shadow-card min-h-[168px]"
       data-insight={insightId}
     >
       <div className={`absolute inset-0 pointer-events-none ${WASH[accent]}`} />
@@ -76,7 +78,7 @@ export function MetricCard({
             </span>
           </div>
           {badge && (
-            <span className="text-[10px] font-mono bg-garnet text-white px-1.5 py-[3px] rounded-full tracking-[0.04em]">
+            <span className="badge-garnet text-[10px] font-mono bg-garnet text-white px-1.5 py-[3px] rounded-full tracking-[0.04em]">
               {badge}
             </span>
           )}
@@ -98,7 +100,11 @@ export function MetricCard({
           {unit && <span className="text-[13px] font-mono text-[color:var(--warm-fg3)]">{unit}</span>}
         </div>
 
-        {sub && <div className="text-[12px] text-[color:var(--warm-fg3)] mt-1.5 leading-snug">{sub}</div>}
+        {sub && (
+          <div className="mt-1.5 overflow-hidden text-[12px] leading-snug text-[color:var(--warm-fg3)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+            {sub}
+          </div>
+        )}
 
         <div className="mt-auto pt-3.5 flex justify-between items-end">
           {delta && (
@@ -106,7 +112,7 @@ export function MetricCard({
               className="text-[11px] font-mono inline-flex items-center gap-1"
               style={{ color: DELTA_COLOR[deltaKind] }}
             >
-              <span aria-hidden>{deltaKind === "up" ? "↗" : deltaKind === "down" ? "↘" : "→"}</span>
+              <span aria-hidden style={TEXT_EMOJI_VARIANT}>{deltaKind === "up" ? "↗" : deltaKind === "down" ? "↘" : "→"}</span>
               {delta}
             </span>
           )}

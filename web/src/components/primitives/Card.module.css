@@ -1,7 +1,8 @@
 .card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-2);
+  background: var(--warm-card);
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-overlay);
   text-align: left;
   font: inherit;
   color: inherit;

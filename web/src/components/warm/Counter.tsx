@@ -10,19 +10,20 @@ interface CounterProps {
 }
 
 /**
- * Cubic-eased number counter. Skips animation on first mount; a non-zero
- * trigger replays from 0 → to. Tabular numerals at the call site.
+ * Cubic-eased number counter. Mounts and replay triggers animate 0 -> target.
+ * Reduced-motion users see the final value immediately.
  */
 export function Counter({ to, decimals = 0, duration = 1200, trigger = 0, formatter }: CounterProps) {
-  const [val, setVal] = useState(to);
+  const [val, setVal] = useState(0);
   const startRef = useRef<number | null>(null);
   const fromRef = useRef(0);
 
   useEffect(() => {
-    if (trigger === 0) {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setVal(to);
       return;
     }
+
     fromRef.current = 0;
     startRef.current = null;
     let raf = 0;

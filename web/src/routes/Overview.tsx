@@ -112,8 +112,8 @@ export function Overview() {
           awaiting <Gloss term="HDA">HDA</Gloss> phase labels &amp; ADOS-2 CSS feedback
         </>
       ),
-      delta: "–3 wk over wk",
-      deltaKind: "up",
+      delta: "↓ 3 fewer this wk",
+      deltaKind: "flat",
       spark: [18, 17, 16, 16, 15, 14, 13, 12, 12],
       badge: "3 booked",
       accent: "sand",
@@ -165,15 +165,16 @@ export function Overview() {
   }
 
   return (
-    <div className="flex flex-col gap-7 p-9">
+    <div className="flex flex-col gap-7 p-9 max-[768px]:px-4 max-[768px]:py-6">
       <header className="mb-1 flex items-end justify-between gap-6">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">
+          <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg3)]">
             Lab Pulse · {new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
           </div>
-          <h2 className="m-0 mt-1.5 font-serif text-[38px] font-semibold -tracking-[0.02em] leading-[1.05] text-[color:var(--warm-fg1)]">
+          {/* Display scale intentionally stays 38px while the page heading is semantically h1. */}
+          <h1 className="m-0 mt-1.5 font-serif text-[38px] font-semibold -tracking-[0.02em] leading-[1.05] text-[color:var(--warm-fg1)]">
             Live <span className="italic text-garnet">NANO</span> Pipeline &amp; Lab Operations
-          </h2>
+          </h1>
           <p className="mt-2 text-[14px] text-[color:var(--warm-fg3)] max-w-[640px]">
             From <Gloss term="Actiheart">Actiheart-5</Gloss> 1024 Hz ingest through Pan-Tompkins R-peak detection,{" "}
             continuous wavelet transforms for <Gloss term="HF">RSA</Gloss>, SHAP attribution, and DBSCAN cluster
@@ -199,7 +200,14 @@ export function Overview() {
         </div>
       </header>
 
-      <section className="grid grid-cols-4 gap-3.5" aria-label="Lab KPI ribbon">
+      <section
+        className={`grid gap-3.5 ${
+          kpis.length > 4
+            ? "grid-cols-[repeat(auto-fit,minmax(200px,1fr))]"
+            : "grid-cols-4 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1"
+        }`}
+        aria-label="Lab KPI ribbon"
+      >
         {kpis.map((k) => (
           <MetricCard
             key={k.id}
@@ -237,7 +245,7 @@ export function Overview() {
         <ReadingsGeoMap readings={liveReadings} loading={readingsLibrary.isLoading} />
       </section>
 
-      <section className="grid grid-cols-[1fr_1.1fr] gap-4">
+      <section className="grid grid-cols-[1fr_1.1fr] gap-3.5">
         <AgenticQAPanel syncTick={syncTick} />
         <ParticipantFlow rows={participants.slice(0, 7)} />
       </section>
@@ -306,7 +314,7 @@ function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
     { label: "Enrollment", value: study ? (study.enrolled / study.target) * 100 : 0, sub: `${study?.enrolled ?? 0} / ${study?.target ?? 0}`, color: "var(--usc-garnet)" },
     { label: "Visit forms", value: visitCompletion, sub: "expected visits", color: "var(--blue)" },
     { label: "ECG QC", value: ecgPass, sub: "pass rate", color: "var(--green)" },
-    { label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--usc-gold)" },
+    { label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--amber-warn)" },
   ];
 
   if (!enabled) return null;
@@ -326,7 +334,7 @@ function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
               <ProgressRing value={ring.value} color={ring.color} label={ring.label} />
               <div className="min-w-0">
                 <div className="text-[12px] font-semibold text-[color:var(--warm-fg2)]">{ring.label}</div>
-                <div className="t-mono text-[18px] font-semibold text-[color:var(--warm-fg1)]">{Math.round(ring.value)}%</div>
+                <div className="font-mono text-[18px] font-semibold text-[color:var(--warm-fg1)]">{Math.round(ring.value)}%</div>
                 <div className="text-[11px] text-[color:var(--warm-fg4)] truncate">{ring.sub}</div>
               </div>
             </div>
@@ -343,7 +351,14 @@ function ProgressRing({ value, color, label }: { value: number; color: string; l
   const pct = Math.max(0, Math.min(100, value));
   const offset = circumference * (1 - pct / 100);
   return (
-    <svg width={58} height={58} viewBox="0 0 58 58" role="img" aria-label={`${label} ${Math.round(pct)} percent`}>
+    <svg
+      className="aspect-square flex-none"
+      width={58}
+      height={58}
+      viewBox="0 0 58 58"
+      role="img"
+      aria-label={`${label} ${Math.round(pct)} percent`}
+    >
       <circle cx={29} cy={29} r={radius} fill="none" stroke="var(--slate-100)" strokeWidth={7} />
       <circle
         cx={29}
