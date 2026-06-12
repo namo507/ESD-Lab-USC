@@ -498,6 +498,175 @@
   color: var(--warm-500);
 }
 
+.dynamicsSection {
+  position: relative;
+  isolation: isolate;
+  padding-bottom: 8px;
+}
+
+.dynamicsSection::before {
+  content: "";
+  position: absolute;
+  inset: 28px max(-32px, -3vw) -18px min(34%, 430px);
+  z-index: 0;
+  border-radius: 34px;
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.54) 42%, rgba(231, 237, 238, 0.72) 100%),
+    repeating-linear-gradient(90deg, rgba(120, 107, 89, 0.12) 0 1px, transparent 1px 86px),
+    repeating-linear-gradient(0deg, rgba(120, 107, 89, 0.08) 0 1px, transparent 1px 72px);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 100%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.dynamicsSection::after {
+  content: "";
+  position: absolute;
+  top: 72px;
+  right: clamp(22px, 5vw, 92px);
+  z-index: 0;
+  width: min(38vw, 520px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(115, 0, 10, 0.2), rgba(255, 204, 0, 0.36), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.dynamicsHeader,
+.dynamicsGrid {
+  position: relative;
+  z-index: 1;
+}
+
+.dynamicsHeader {
+  align-items: flex-start;
+}
+
+.dynamicsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+
+.dynamicsCard {
+  min-height: 204px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.dynamicsCard::after {
+  content: "";
+  position: absolute;
+  inset: auto 24px 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(115, 0, 10, 0.18), rgba(255, 204, 0, 0.34), transparent);
+  opacity: 0.62;
+}
+
+.dynamicsPanel {
+  position: relative;
+  grid-column: span 2;
+  min-height: 204px;
+  overflow: hidden;
+  border: 1px solid var(--landing-border);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.66), rgba(246, 248, 247, 0.38)),
+    var(--landing-surface-muted);
+  box-shadow: var(--landing-shadow);
+}
+
+.dynamicsPanel::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  background:
+    linear-gradient(135deg, transparent 0 38%, rgba(115, 0, 10, 0.08) 39%, transparent 40% 100%),
+    linear-gradient(42deg, transparent 0 52%, rgba(56, 92, 105, 0.12) 53%, transparent 54% 100%);
+  opacity: 0.7;
+}
+
+.dynamicsMesh {
+  position: absolute;
+  inset: 22px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  opacity: 0.5;
+}
+
+.dynamicsMesh span {
+  border-top: 1px solid rgba(120, 107, 89, 0.18);
+  border-left: 1px solid rgba(120, 107, 89, 0.1);
+}
+
+.dynamicsMesh span:nth-child(3n) {
+  border-color: rgba(115, 0, 10, 0.16);
+}
+
+.dynamicsTrace {
+  position: absolute;
+  inset: 18px 22px;
+  width: calc(100% - 44px);
+  height: calc(100% - 36px);
+}
+
+.dynamicsTraceSoft,
+.dynamicsTraceLine,
+.dynamicsTraceGold {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dynamicsTraceSoft {
+  stroke: rgba(115, 0, 10, 0.12);
+  stroke-width: 13;
+  filter: blur(8px);
+}
+
+.dynamicsTraceLine {
+  stroke: rgba(115, 0, 10, 0.42);
+  stroke-width: 2;
+  stroke-dasharray: 16 15;
+  animation: dynamics-dash 18s linear infinite;
+}
+
+.dynamicsTraceGold {
+  stroke: rgba(188, 149, 58, 0.58);
+  stroke-width: 2;
+  stroke-dasharray: 4 14;
+  animation: dynamics-dash 22s linear infinite reverse;
+}
+
+.dynamicsRail {
+  position: absolute;
+  top: 26px;
+  right: 24px;
+  bottom: 26px;
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  gap: 11px;
+  transform: skewX(-12deg);
+  opacity: 0.5;
+}
+
+.dynamicsRail span {
+  border: 1px solid rgba(56, 92, 105, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(115, 0, 10, 0.04));
+  animation: rail-breathe 5.4s ease-in-out infinite;
+}
+
+.dynamicsRail span:nth-child(2) {
+  animation-delay: 0.7s;
+}
+
+.dynamicsRail span:nth-child(3) {
+  animation-delay: 1.4s;
+}
+
 .metricGrid,
 .cardGrid,
 .stageGrid,
@@ -1120,12 +1289,160 @@
   gap: 18px;
 }
 
+.qaSection {
+  position: relative;
+  isolation: isolate;
+}
+
+.qaSection::before {
+  content: "";
+  position: absolute;
+  inset: 82px -24px -26px;
+  z-index: 0;
+  border-radius: 34px;
+  background:
+    linear-gradient(100deg, rgba(255, 255, 255, 0.2), transparent 46%, rgba(222, 228, 222, 0.24)),
+    repeating-linear-gradient(90deg, rgba(120, 107, 89, 0.08) 0 1px, transparent 1px 92px);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 18%, #000 92%, transparent 100%);
+  pointer-events: none;
+}
+
+.qaSection > .sectionHeader,
+.qaSection .splitGrid {
+  position: relative;
+  z-index: 1;
+}
+
 .darkCard {
   background: linear-gradient(160deg, #2f241d 0%, #4a3428 100%);
   color: #f3eee6;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 14px 36px rgba(44, 28, 20, 0.24);
 }
+
+.watchCard,
+.participantFlowCard {
+  min-height: 548px;
+}
+
+.watchCard::before {
+  content: "";
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  bottom: 92px;
+  z-index: 0;
+  height: 210px;
+  border-radius: 28px;
+  background:
+    linear-gradient(90deg, rgba(255, 204, 0, 0.08), transparent 40%, rgba(155, 184, 224, 0.08)),
+    repeating-linear-gradient(90deg, rgba(255, 245, 220, 0.08) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(0deg, rgba(255, 245, 220, 0.06) 0 1px, transparent 1px 52px);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+  opacity: 0.62;
+}
+
+.watchSignal {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 82px;
+  z-index: 1;
+  height: 210px;
+  pointer-events: none;
+  opacity: 0.52;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 88%, transparent 100%);
+}
+
+.watchSignal svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.watchSignalGrid {
+  fill: none;
+  stroke: rgba(255, 245, 220, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 2 16;
+}
+
+.watchSignalRail {
+  fill: none;
+  stroke: rgba(188, 149, 58, 0.2);
+  stroke-width: 12;
+  stroke-linecap: round;
+  filter: blur(10px);
+}
+
+.watchSignalPulse {
+  fill: none;
+  stroke: rgba(255, 204, 0, 0.5);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 18 14;
+  animation: signal-run 13s linear infinite;
+}
+
+.participantFlowCard::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 0;
+  width: min(31%, 260px);
+  background:
+    linear-gradient(140deg, transparent 0 38%, rgba(56, 92, 105, 0.08) 39%, transparent 40%),
+    repeating-linear-gradient(0deg, rgba(120, 107, 89, 0.08) 0 1px, transparent 1px 64px);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 34%, #000 100%);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.flowConstellation {
+  position: absolute;
+  right: 20px;
+  bottom: 30px;
+  z-index: 1;
+  width: 220px;
+  height: 150px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.flowConstellation::before,
+.flowConstellation::after {
+  content: "";
+  position: absolute;
+  inset: 24px 6px 30px;
+  border-bottom: 1px solid rgba(56, 92, 105, 0.18);
+  border-left: 1px solid rgba(56, 92, 105, 0.12);
+  transform: skewX(-14deg);
+}
+
+.flowConstellation::after {
+  inset: 42px 20px 16px;
+  border-color: rgba(115, 0, 10, 0.12);
+  transform: skewX(12deg);
+}
+
+.flowConstellation span {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(56, 92, 105, 0.38);
+  box-shadow: 0 0 9px rgba(56, 92, 105, 0.22);
+  animation: node-breathe 4.8s ease-in-out infinite;
+}
+
+.flowConstellation span:nth-child(1) { right: 12px; top: 22px; }
+.flowConstellation span:nth-child(2) { right: 78px; top: 18px; animation-delay: 0.6s; background: rgba(125, 197, 154, 0.42); }
+.flowConstellation span:nth-child(3) { right: 146px; top: 54px; animation-delay: 1.2s; }
+.flowConstellation span:nth-child(4) { right: 58px; top: 92px; animation-delay: 1.8s; background: rgba(115, 0, 10, 0.26); }
+.flowConstellation span:nth-child(5) { right: 176px; top: 112px; animation-delay: 2.4s; background: rgba(188, 149, 58, 0.42); }
 
 .darkCard p,
 .darkCard strong,
@@ -1356,6 +1673,24 @@
 .fillStream span:nth-child(4) { left: 74%; animation-delay: 1.3s; animation-duration: 13s; }
 .fillStream span:nth-child(5) { left: 88%; animation-delay: 5.6s; animation-duration: 9.5s; background: rgba(115, 0, 10, 0.55); box-shadow: 0 0 8px rgba(115, 0, 10, 0.4); }
 
+@keyframes dynamics-dash {
+  to { stroke-dashoffset: -124; }
+}
+
+@keyframes rail-breathe {
+  0%, 100% { opacity: 0.4; transform: translateY(0); }
+  50% { opacity: 0.82; transform: translateY(-4px); }
+}
+
+@keyframes signal-run {
+  to { stroke-dashoffset: -160; }
+}
+
+@keyframes node-breathe {
+  0%, 100% { opacity: 0.34; transform: scale(0.78); }
+  50% { opacity: 0.9; transform: scale(1.18); }
+}
+
 @keyframes fill-rise {
   0%   { transform: translateY(0)   scale(1);   opacity: 0; }
   10%  { opacity: 1; }
@@ -1367,7 +1702,18 @@
   50%      { opacity: 1;   transform: scale(1.1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fillStream span, .fillDotG, .fillDotR, .fillDotB, .fillDotY { animation: none !important; }
+  .dynamicsTraceLine,
+  .dynamicsTraceGold,
+  .dynamicsRail span,
+  .watchSignalPulse,
+  .flowConstellation span,
+  .fillStream span,
+  .fillDotG,
+  .fillDotR,
+  .fillDotB,
+  .fillDotY {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 1180px) {
@@ -1405,6 +1751,20 @@
   .searchShell {
     min-width: 100%;
   }
+
+  .dynamicsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dynamicsPanel {
+    grid-column: 1 / -1;
+    min-height: 172px;
+  }
+
+  .watchCard,
+  .participantFlowCard {
+    min-height: 520px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1418,6 +1778,29 @@
   .pipelineRail,
   .chartGrid {
     grid-template-columns: 1fr;
+  }
+
+  .dynamicsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dynamicsPanel {
+    display: none;
+  }
+
+  .dynamicsSection::before,
+  .dynamicsSection::after,
+  .qaSection::before,
+  .participantFlowCard::before,
+  .flowConstellation {
+    display: none;
+  }
+
+  .watchSignal {
+    left: 18px;
+    right: 18px;
+    bottom: 72px;
+    opacity: 0.34;
   }
 }
 

@@ -674,20 +674,20 @@ export function Landing() {
         </section>
 
         {dynLandingItems.length > 0 && (
-          <section className={styles.section} data-insight="dyn-discovery">
-            <header className={styles.sectionHeader}>
+          <section className={`${styles.section} ${styles.dynamicsSection}`} data-insight="dyn-discovery">
+            <header className={`${styles.sectionHeader} ${styles.dynamicsHeader}`}>
               <div>
                 <span className={styles.sectionEyebrow}>Dynamics &amp; Dyads</span>
                 <h2>Relationships across time.</h2>
               </div>
               <div className={styles.sectionNote}>Feature-flagged V2 previews, all NANOID-only.</div>
             </header>
-            <div className={styles.metricGrid}>
+            <div className={styles.dynamicsGrid}>
               {dynLandingItems.map((item) => (
                 <button
                   key={item.to}
                   type="button"
-                  className={styles.metricCard}
+                  className={`${styles.metricCard} ${styles.dynamicsCard}`}
                   onClick={() => navigate(item.to)}
                   data-insight="dyn-discovery-card"
                 >
@@ -697,6 +697,25 @@ export function Landing() {
                   <div className={styles.metricFooter}>Dynamics route</div>
                 </button>
               ))}
+              {dynLandingItems.length < 4 ? (
+                <div className={styles.dynamicsPanel} aria-hidden="true">
+                  <div className={styles.dynamicsMesh}>
+                    {Array.from({ length: 18 }).map((_, index) => (
+                      <span key={index} />
+                    ))}
+                  </div>
+                  <svg viewBox="0 0 620 210" preserveAspectRatio="none" className={styles.dynamicsTrace}>
+                    <path className={styles.dynamicsTraceSoft} d="M8 132 C82 94 134 164 204 118 S342 76 412 108 S534 160 612 92" />
+                    <path className={styles.dynamicsTraceLine} d="M8 132 C82 94 134 164 204 118 S342 76 412 108 S534 160 612 92" />
+                    <path className={styles.dynamicsTraceGold} d="M30 154 C106 140 142 96 210 106 S328 166 396 134 S516 92 590 122" />
+                  </svg>
+                  <div className={styles.dynamicsRail}>
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              ) : null}
             </div>
           </section>
         )}
@@ -831,7 +850,7 @@ export function Landing() {
           </div>
         </section>
 
-        <section id="qa" className={styles.section} data-insight="landing-qa-watch">
+        <section id="qa" className={`${styles.section} ${styles.qaSection}`} data-insight="landing-qa-watch">
           <header className={styles.sectionHeader}>
             <div>
               <span className={styles.sectionEyebrow}>Quality and flow</span>
@@ -839,11 +858,18 @@ export function Landing() {
             </div>
           </header>
           <div className={styles.splitGrid}>
-            <article className={`${styles.darkCard} ${styles.fillCard}`} data-insight="landing-qa-watch">
+            <article className={`${styles.darkCard} ${styles.fillCard} ${styles.watchCard}`} data-insight="landing-qa-watch">
               <AmbientOrbit tone="gold" size={260} opacity={0.18} spin={36} waveform className={styles.fillOrbitBR} />
               <AmbientOrbit tone="garnet" size={140} opacity={0.22} spin={48} className={styles.fillOrbitBL} />
               <div className={styles.fillStream} aria-hidden>
                 <span /><span /><span /><span /><span />
+              </div>
+              <div className={styles.watchSignal} aria-hidden="true">
+                <svg viewBox="0 0 680 230" preserveAspectRatio="none">
+                  <path className={styles.watchSignalGrid} d="M0 40 H680 M0 92 H680 M0 144 H680 M0 196 H680" />
+                  <path className={styles.watchSignalRail} d="M40 164 C96 130 132 178 178 148 S268 104 314 134 S404 178 456 146 S556 108 640 132" />
+                  <path className={styles.watchSignalPulse} d="M44 168 L108 166 L128 122 L148 194 L166 160 L218 158 L238 132 L254 166 L306 164 L334 94 L362 196 L384 150 L456 148 L482 120 L506 166 L584 164 L620 132 L648 154" />
+                </svg>
               </div>
               <div className={styles.fillContent}>
                 <span className={styles.sectionEyebrow}>Agentic QA</span>
@@ -868,9 +894,16 @@ export function Landing() {
                 </div>
               </div>
             </article>
-            <article className={`${styles.flowCard} ${styles.fillCard}`} data-insight="landing-flow">
+            <article className={`${styles.flowCard} ${styles.fillCard} ${styles.participantFlowCard}`} data-insight="landing-flow">
               <AmbientOrbit tone="sage" size={200} opacity={0.32} spin={44} waveform className={styles.fillOrbitBR} />
               <AmbientOrbit tone="ocean" size={120} opacity={0.22} spin={52} className={styles.fillOrbitTR} />
+              <div className={styles.flowConstellation} aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
               <div className={styles.fillContent}>
                 <span className={styles.sectionEyebrow}>Recent participant flow</span>
                 <h3>The last four hours</h3>
