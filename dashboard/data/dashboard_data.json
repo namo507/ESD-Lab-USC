@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-06-11T20:11:31",
+    "generated_at": "2026-06-12T20:40:21",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2236,7 +2236,7 @@
   ],
   "organization_site": {
     "meta": {
-      "generated_at": "2026-06-11T20:11:31",
+      "generated_at": "2026-06-12T20:40:21",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -3200,7 +3200,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-06-11T20:11:31",
+      "generated_at": "2026-06-12T20:40:23",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -3231,7 +3231,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-06-11T19:46:31",
+        "last_run": "2026-06-12T20:15:23",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -3239,7 +3239,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-06-11T19:46:31",
+        "last_run": "2026-06-12T20:15:23",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -3247,7 +3247,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-06-11T20:01:31",
+        "last_run": "2026-06-12T20:30:23",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -3255,7 +3255,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-06-11T19:51:31",
+        "last_run": "2026-06-12T20:20:23",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
