@@ -1,129 +1,84 @@
 # Dashboard AI Assistant
 
-This repository includes a local dashboard assistant that adds a chat widget to
-the live dashboard and a backend API under `/api/chat`.
+The live dashboard includes a local GGUF-backed assistant exposed under
+`/api/chat` and `/api/assistant/*`. It runs through `llama-cpp-python`, uses only
+dashboard/readings context from the repo, and does not require a paid API key.
 
-The default runtime is a small-but-stronger GGUF model,
-`bartowski/Qwen2.5-1.5B-Instruct-GGUF`, loaded through `llama-cpp-python`. That
-combination fits this CPU-only arm64 dev container with a tighter runtime
-configuration, a 4-thread local default, and a shorter response cap that keeps
-grounded dashboard QA usable on CPU over the earlier 0.5B default.
+## Runtime Pieces
 
-## What Was Added
+- `dashboard/assistant/local_chat_assistant.py` loads the model lazily and builds
+  grounded context from dashboard JSON.
+- `dashboard/assistant/model_catalog.py` owns the vetted local model ladder.
+- `config/llm_model.json` is the checked-in runtime selection.
+- `scripts/prepare_dashboard_assistant.py` installs dependencies, downloads the
+  selected public GGUF, and validates readiness.
+- `scripts/select_best_local_llm.py` refreshes the checked-in config from the
+  catalog without calling external model-ranking APIs.
 
-- A lazy GGUF backend in `dashboard/assistant/local_chat_assistant.py`
-- New runtime endpoints:
-  - `GET /api/chat/status`
-  - `POST /api/chat`
-  - `GET /api/assistant/freshness`
-- A collapsed chat widget inside the dashboard UI
-- A model preparation script: `scripts/prepare_dashboard_assistant.py`
-- Dashboard/assistant runtime dependencies in `dashboard/requirements.txt`
+## Model Ladder
 
-## Default Local Model
+The default checked-in tier is `balanced`:
 
-- Repository: `bartowski/Qwen2.5-1.5B-Instruct-GGUF`
-- Default file: `Qwen2.5-1.5B-Instruct-Q3_K_S.gguf`
-- Runtime: `llama-cpp-python==0.3.19`
-- Intended host: CPU-only local dashboard runtime in this container
+- Repository: `bartowski/SmolLM2-1.7B-Instruct-GGUF`
+- File: `SmolLM2-1.7B-Instruct-Q4_K_M.gguf`
+- License: Apache-2.0
+- Intended use: stronger local QA and presentation planning on CPU laptops or
+  small dashboard hosts.
 
-This default is intentionally tuned for grounded answers rather than maximum
-throughput. It still runs locally, and you can swap the target later by
-changing the assistant environment variables.
+Fallbacks are kept in the same config:
+
+- `tiny`: `bartowski/SmolLM2-360M-Instruct-GGUF` for constrained Docker/local
+  hosts.
+- `accuracy`: `bartowski/Qwen2.5-1.5B-Instruct-GGUF` when that GGUF already
+  exists locally.
+- `quality`: `bartowski/Qwen2.5-3B-Instruct-GGUF` for workstation hosts with
+  more memory headroom.
+
+The runtime checks already-present GGUF files first, so the dashboard can keep
+using the tiny local fallback while the balanced model is being downloaded.
 
 ## Local Setup
 
-1. Install the standard repository dependencies.
-2. Install the dashboard/assistant runtime dependencies:
-
-```bash
-pip install -r dashboard/requirements.txt
-```
-
-3. Copy `.env.example` to `.env` if needed, then confirm the assistant values:
-
-```bash
-DASHBOARD_ASSISTANT_MODEL_ID=bartowski/Qwen2.5-1.5B-Instruct-GGUF
-DASHBOARD_ASSISTANT_MODEL_DIR=models/local_llms/Qwen2.5-1.5B-Instruct-GGUF
-DASHBOARD_ASSISTANT_MODEL_FILE=Qwen2.5-1.5B-Instruct-Q3_K_S.gguf
-DASHBOARD_ASSISTANT_ENABLED=true
-```
-
-4. Check readiness:
+Inspect current readiness:
 
 ```bash
 make assistant-status
 ```
 
-5. Download the model locally on the target machine:
+Install assistant dependencies into `.venv`, download the selected public model,
+write `config/llm_model.json`, and validate readiness:
+
+```bash
+make assistant-bootstrap
+```
+
+Download only the selected model without installing dependencies:
 
 ```bash
 make assistant-prepare
 ```
 
-That command downloads only the configured GGUF file into the local model
-directory instead of pulling an entire transformer snapshot.
-
-6. Start the live dashboard:
+Opt into a different tier for one run:
 
 ```bash
-/workspaces/ESD-Lab-USC/.devcontainer/.venv/bin/python dashboard/server/live_dashboard_server.py --fallback-synthetic
+DASHBOARD_ASSISTANT_TIER=quality make assistant-bootstrap
 ```
 
-7. Open the dashboard and use the floating assistant launcher.
-
-## Why This Runtime
-
-The earlier BioMistral plan was too heavy for this container. The working local
-path here is:
-
-- small Qwen GGUF model
-- CPU inference through `llama-cpp-python`
-- grounded prompts built from the existing dashboard JSON payloads
-- section-aware retrieval that prefers dashboard metrics over generic site copy
-
-This keeps the dashboard stable while making the assistant actually runnable in
-the current environment.
-
-## AI Toolkit Notes
-
-This repo uses a custom Python dashboard backend because the request targets a
-local GGUF checkpoint inside the existing dashboard runtime.
-
-AI Toolkit is still useful for the surrounding workflow:
-
-- Use the **Model Catalog** command to compare candidate models
-- Use the **Model Playground** command to test prompts and interaction style
-- Keep the dashboard runtime separate from those experiments so the live site
-  stays stable
-
-Relevant AI Toolkit commands:
-
-- `ai-mlstudio.models`
-- `ai-mlstudio.modelPlayground`
+No `HF_TOKEN` is needed for the default public GGUF files. `HF_TOKEN` is only
+read if someone intentionally points the config at a private Hugging Face repo.
 
 ## API Contract
 
-### `GET /api/chat/status`
+### `GET /api/chat/status` and `GET /api/assistant/status`
 
-Returns the current assistant readiness, including dependency state, model
-directory, resolved GGUF file path, memory estimate, and whether the generator
-is loaded.
-
-The newer `/api/assistant/status` response also includes a `freshness` block
-when `ASSISTANT_CLUSTER_CONTEXT_ENABLED=true`. It reports:
-
-- readings payload version and latest successful index timestamp,
-- indexed readings count,
-- readings pipeline state and failed/poisoned warnings.
-
-The assistant uses these fields as grounding fragments, so it can answer
-whether new readings were indexed, how many readings are available, and whether
-the cluster readings pipeline is healthy without exposing full PDF text.
+Returns readiness, dependency state, model path, model tier, model label, model
+license, memory estimate, and assistant freshness. When
+`ASSISTANT_CLUSTER_CONTEXT_ENABLED=true`, the payload includes readings pipeline
+freshness so the assistant can answer whether new readings were indexed.
 
 ### `POST /api/chat`
 
-Request body:
+Request:
 
 ```json
 {
@@ -135,17 +90,32 @@ Request body:
 }
 ```
 
-Response body:
+Response:
 
 ```json
 {
   "reply": "...",
   "citations": ["enrollment", "ml_performance.models[0]"],
   "status": {
-    "state": "ready"
+    "state": "ready",
+    "model_tier": "balanced"
   }
 }
 ```
 
-If the model is not ready, the endpoint returns a non-200 response with a
-setup-oriented error payload so the UI can fail gracefully.
+If the model or dependencies are not ready, the endpoint returns a setup-oriented
+error payload so the UI can fail gracefully.
+
+## Maintenance
+
+Refresh the checked-in model config after editing the catalog:
+
+```bash
+make assistant-select-model
+```
+
+Benchmark local presentation planning across installed GGUF files:
+
+```bash
+python scripts/benchmark_presentation_planner.py --compare-json-mode
+```

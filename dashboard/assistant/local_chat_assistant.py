@@ -16,17 +16,25 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from dashboard.assistant.model_catalog import (
+    available_memory_gib as _catalog_available_memory_gib,
+    find_existing_model_path as _catalog_find_existing_model_path,
+    model_dir_for as _catalog_model_dir_for,
+    read_llm_config as _catalog_read_llm_config,
+    select_runtime_model_config,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
-DEFAULT_MODEL_ID = "bartowski/Qwen2.5-1.5B-Instruct-GGUF"
+DEFAULT_MODEL_ID = "bartowski/SmolLM2-1.7B-Instruct-GGUF"
 DEFAULT_MODEL_DIR = (
-    PROJECT_ROOT / "models" / "local_llms" / "Qwen2.5-1.5B-Instruct-GGUF"
+    PROJECT_ROOT / "models" / "local_llms" / "SmolLM2-1.7B-Instruct-GGUF"
 )
-DEFAULT_MODEL_FILE = "Qwen2.5-1.5B-Instruct-Q3_K_S.gguf"
-DEFAULT_CONTEXT_WINDOW = 1536
-DEFAULT_BATCH_SIZE = 128
-DEFAULT_MAX_NEW_TOKENS = 128
+DEFAULT_MODEL_FILE = "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
+DEFAULT_CONTEXT_WINDOW = 4096
+DEFAULT_BATCH_SIZE = 256
+DEFAULT_MAX_NEW_TOKENS = 320
 DEFAULT_THREAD_COUNT = max(1, min(os.cpu_count() or 4, 4))
 CONTEXT_WINDOW_TOKEN_RESERVE = 320
 APPROX_CONTEXT_CHARS_PER_TOKEN = 2
@@ -367,56 +375,23 @@ PRESENTATION_GENERAL_DISCLAIMER = (
 
 
 def _read_llm_model_config() -> dict[str, Any]:
-    if not DEFAULT_LLM_CONFIG_PATH.exists():
-        return {}
-    try:
-        return json.loads(DEFAULT_LLM_CONFIG_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    return _catalog_read_llm_config(DEFAULT_LLM_CONFIG_PATH)
 
 
 def _find_existing_model_path(filename: str) -> Path | None:
     if not filename:
         return None
-
-    search_roots = [
-        PROJECT_ROOT / "models",
-        PROJECT_ROOT / "models" / "local_llms",
-        PROJECT_ROOT / "models" / "local_llms" / "runtime",
-    ]
-    seen: set[Path] = set()
-
-    for root in search_roots:
-        if root in seen or not root.exists():
-            continue
-        seen.add(root)
-
-        direct_path = root / filename
-        if direct_path.exists():
-            return direct_path
-
-        matches = sorted(root.rglob(filename))
-        if matches:
-            return matches[0]
-
-    return None
+    return _catalog_find_existing_model_path({"filename": filename}, PROJECT_ROOT)
 
 
 def _select_llm_model_config(llm_config: dict[str, Any]) -> dict[str, Any]:
     if not llm_config:
         return {}
-
-    candidates = [llm_config, *((llm_config.get("fallbacks") or []))]
-    for candidate in candidates:
-        filename = str(candidate.get("filename") or "").strip()
-        resolved_path = _find_existing_model_path(filename)
-        if resolved_path is None:
-            continue
-        selected = dict(candidate)
-        selected["resolved_path"] = str(resolved_path)
-        return selected
-
-    return llm_config
+    return select_runtime_model_config(
+        llm_config,
+        requested_tier=os.getenv("DASHBOARD_ASSISTANT_TIER"),
+        project_root=PROJECT_ROOT,
+    )
 
 
 class AssistantUnavailable(RuntimeError):
@@ -434,6 +409,9 @@ class AssistantConfig:
     model_id: str = DEFAULT_MODEL_ID
     model_dir: Path = DEFAULT_MODEL_DIR
     model_file: str = DEFAULT_MODEL_FILE
+    model_tier: str = "balanced"
+    model_label: str = "SmolLM2 1.7B Q4"
+    model_license: str = "Apache-2.0"
     auto_download: bool = False
     device_preference: str = "cpu"
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
@@ -457,7 +435,11 @@ class AssistantConfig:
         config_model_dir = (
             resolved_model_path.parent
             if resolved_model_path is not None
-            else (PROJECT_ROOT / "models" if llm_config else DEFAULT_MODEL_DIR)
+            else (
+                _catalog_model_dir_for(llm_config, PROJECT_ROOT)
+                if llm_config
+                else DEFAULT_MODEL_DIR
+            )
         )
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
@@ -477,6 +459,13 @@ class AssistantConfig:
                 or llm_config.get("filename")
                 or DEFAULT_MODEL_FILE
             ),
+            model_tier=str(
+                os.getenv("DASHBOARD_ASSISTANT_TIER")
+                or llm_config.get("tier")
+                or "balanced"
+            ),
+            model_label=str(llm_config.get("label") or "local GGUF"),
+            model_license=str(llm_config.get("license") or ""),
             auto_download=_parse_bool(
                 os.getenv("DASHBOARD_ASSISTANT_AUTO_DOWNLOAD"),
                 default=False,
@@ -490,9 +479,12 @@ class AssistantConfig:
             temperature=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE")
                 or os.getenv("LLM_TEMPERATURE"),
-                default=0.05,
+                default=float(llm_config.get("temperature") or 0.05),
             ),
-            top_p=_parse_float(os.getenv("DASHBOARD_ASSISTANT_TOP_P"), default=0.9),
+            top_p=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_TOP_P"),
+                default=float(llm_config.get("top_p") or 0.9),
+            ),
             context_char_budget=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_CONTEXT_BUDGET"),
                 default=6000,
@@ -512,11 +504,11 @@ class AssistantConfig:
             ),
             batch_size=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_BATCH_SIZE"),
-                default=DEFAULT_BATCH_SIZE,
+                default=int(llm_config.get("batch_size") or DEFAULT_BATCH_SIZE),
             ),
             thread_count=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_THREADS") or os.getenv("LLM_N_THREADS"),
-                default=DEFAULT_THREAD_COUNT,
+                default=int(llm_config.get("thread_count") or DEFAULT_THREAD_COUNT),
             ),
             presentation_max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
@@ -603,6 +595,9 @@ class DashboardChatAssistant:
             "message": message,
             "runtime": "llama-cpp-python",
             "model_id": self.config.model_id,
+            "model_tier": self.config.model_tier,
+            "model_label": self.config.model_label,
+            "model_license": self.config.model_license,
             "model_dir": str(self.config.model_dir),
             "model_file": self.config.model_file,
             "model_path": str(model_path) if model_path else None,
@@ -1816,20 +1811,7 @@ class DashboardChatAssistant:
 
 
 def _available_memory_gib() -> float:
-    meminfo_path = Path("/proc/meminfo")
-    if meminfo_path.exists():
-        for line in meminfo_path.read_text(encoding="utf-8").splitlines():
-            if line.startswith("MemAvailable:"):
-                parts = line.split()
-                if len(parts) >= 2:
-                    return int(parts[1]) / 1024 / 1024
-
-    try:
-        page_size = os.sysconf("SC_PAGE_SIZE")
-        available_pages = os.sysconf("SC_AVPHYS_PAGES")
-        return (page_size * available_pages) / 1024 / 1024 / 1024
-    except (ValueError, OSError, AttributeError):
-        return 0.0
+    return _catalog_available_memory_gib()
 
 
 def _parse_bool(value: str | None, *, default: bool) -> bool:

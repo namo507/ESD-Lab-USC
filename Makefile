@@ -14,7 +14,7 @@ DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -118,6 +118,18 @@ dashboard-logs:  ## Tail live dashboard logs
 dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild loop
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
+
+assistant-select-model:  ## Refresh config/llm_model.json from the local no-API model catalog
+	$(PYTHON) scripts/select_best_local_llm.py --tier $${DASHBOARD_ASSISTANT_TIER:-balanced}
+
+assistant-status:  ## Inspect local assistant dependencies, model file, memory, and readiness
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto}
+
+assistant-prepare:  ## Write local model config and download the selected public GGUF file
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto} --write-config --download
+
+assistant-bootstrap: $(VENV)/bin/activate  ## Install assistant deps, download the selected GGUF, and validate readiness
+	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto} --write-config --install-deps --download --validate-ready
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	@if command -v docker >/dev/null 2>&1; then \

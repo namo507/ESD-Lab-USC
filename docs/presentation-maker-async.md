@@ -59,11 +59,11 @@ the Pages `/api` worker proxy).
 
 ## Model / runtime choice
 
-Planning runs on the same env-driven `AssistantConfig` stack as chat. The active
-local model is **SmolLM2-360M-Instruct-Q2_K** (see `.env.example`), which is the
-smallest, fastest checkpoint that fits constrained CPU containers and is the one
-present in `models/`. `config/llm_model.json` keeps Qwen2.5-0.5B variants as the
-accuracy-leaning fallbacks for roomier hosts.
+Planning runs on the same catalog-driven `AssistantConfig` stack as chat. The
+checked-in default tier is **SmolLM2-1.7B-Instruct-Q4_K_M**, which gives better
+instruction following than the old 360M fallback while staying CPU-friendly.
+`config/llm_model.json` also keeps a tiny 360M fallback for constrained hosts
+and optional Qwen2.5 tiers for machines with more memory headroom.
 
 The key accuracy+speed lever is **JSON mode**: when supported, planning passes
 `response_format={"type": "json_object"}` to `create_chat_completion`, which
