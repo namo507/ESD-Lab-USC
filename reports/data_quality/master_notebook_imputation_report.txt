@@ -1,0 +1,23 @@
+======================================================================
+NANO Study – Imputation Assumptions Report
+Generated: 2026-06-13T18:43:21.917851
+Dataset shape: 180 rows × 16 columns
+======================================================================
+
+Columns with missing values (3):
+
+  Column: rmssd_quad_r_squared
+    Missing: 1/180 (0.6%)
+    Mechanism: MCAR (no significant predictors of missingness)
+
+  Column: sdnn_quad_r_squared
+    Missing: 3/180 (1.7%)
+    Mechanism: MCAR (no significant predictors of missingness)
+
+  Column: rsa_cwt_power_quad_r_squared
+    Missing: 1/180 (0.6%)
+    Mechanism: MCAR (no significant predictors of missingness)
+
+======================================================================
+End of Report
+======================================================================

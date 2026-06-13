@@ -70,6 +70,7 @@ env/
 venv/
 ENV/
 .venv/
+.venv-*/
 .env/
 pip-wheel-metadata/
 .pip
@@ -99,6 +100,7 @@ renv/library/
 renv/python/
 renv/staging/
 renv/.cache/
+/.Rlibs/
 # Keep renv.lock committed; ignore renv/ runtime cache
 
 # ─── Logs ───────────────────────────────────────────────────
@@ -162,6 +164,7 @@ temp/
 *.tmp
 *.bak
 *.orig
+/.tools/
 dashboard/data/.readings_cache.json
 dashboard/data/*.sqlite3
 dashboard/data/*.sqlite3-*

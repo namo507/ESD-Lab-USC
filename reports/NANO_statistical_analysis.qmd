@@ -1,0 +1,654 @@
+---
+title: 'NANO Study Statistical Analysis Companion'
+subtitle: 'Comprehensive R / Quarto workflow for longitudinal inference, imputation, and reporting'
+author: 'ESD Lab Analysis Pipeline'
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+editor: visual
+---
+
+# Overview
+
+This Quarto document is the R-first companion to the master Python notebook. It covers the same end-to-end analysis story, but it is optimized for the statistical side of the repository:
+
+- descriptive cohort tables and missing-data audits
+- multiple imputation with MICE
+- mixed-effects longitudinal inference
+- latent growth curve modeling with `lavaan`
+- publication-oriented figures and exportable tables
+
+The document uses the repository's existing R helpers where they exist. When secure, processed study data are not mounted through `NANO_DATA_ROOT`, it falls back to a synthetic cohort with the same structural contract so the analysis remains executable.
+
+## Signal-processing provenance
+
+The canonical ECG preprocessing implementation in this repository is Python-based and lives in `src/preprocessing/ecg_preprocessing.py` plus `src/preprocessing/hrv_features.py`. This R document begins at the post-feature-matrix stage and treats those processed features as the starting point for statistical analysis.
+
+```{r}
+options(width = 120, scipen = 999)
+
+find_repo_root <- function(start = getwd()) {
+  current <- normalizePath(start, winslash = '/', mustWork = FALSE)
+  repeat {
+    if (file.exists(file.path(current, 'pyproject.toml'))) {
+      return(current)
+    }
+    parent <- dirname(current)
+    if (identical(parent, current)) {
+      stop('Could not locate repository root from: ', start)
+    }
+    current <- parent
+  }
+}
+
+local_r_lib <- file.path(find_repo_root(), '.Rlibs')
+dir.create(local_r_lib, recursive = TRUE, showWarnings = FALSE)
+Sys.setenv(R_LIBS_USER = local_r_lib)
+.libPaths(c(local_r_lib, .libPaths()))
+
+ensure_packages <- function(pkgs) {
+  missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+  if (length(missing) > 0) {
+    install.packages(
+      missing,
+      repos = 'https://cloud.r-project.org',
+      lib = local_r_lib,
+      dependencies = c('Depends', 'Imports', 'LinkingTo')
+    )
+  }
+}
+
+packages <- c(
+  'broom.mixed', 'caret', 'dplyr', 'ggplot2', 'gt', 'gtsummary', 'here',
+  'knitr', 'lavaan', 'lme4', 'mice', 'miceadds', 'naniar', 'nlme', 'readr',
+  'rmarkdown', 'scales', 'semTools', 'tibble', 'tidyr', 'tidyverse',
+  'UpSetR', 'yaml'
+)
+ensure_packages(packages)
+invisible(lapply(packages, library, character.only = TRUE))
+
+repo_root <- find_repo_root()
+setwd(repo_root)
+
+source(file.path(repo_root, 'src', 'imputation', 'mice_imputation.R'), local = TRUE)
+source(file.path(repo_root, 'src', 'imputation', 'imputation_diagnostics.R'), local = TRUE)
+source(file.path(repo_root, 'src', 'models', 'latent_growth_curves.R'), local = TRUE)
+source(file.path(repo_root, 'src', 'models', 'mixed_effects_models.R'), local = TRUE)
+source(file.path(repo_root, 'src', 'visualization', 'missingness_heatmap.R'), local = TRUE)
+source(file.path(repo_root, 'src', 'visualization', 'trajectory_plots.R'), local = TRUE)
+
+theme_set(theme_bw(base_size = 12))
+repo_root
+```
+
+```{r}
+load_yaml_with_env <- function(path) {
+  raw <- paste(readLines(path, warn = FALSE), collapse = '\n')
+  env <- Sys.getenv()
+  for (nm in names(env)) {
+    raw <- gsub(paste0('\\$\\{', nm, '\\}'), env[[nm]], raw)
+  }
+  yaml::yaml.load(raw)
+}
+
+paths_cfg <- load_yaml_with_env(file.path(repo_root, 'config', 'paths.yml'))
+study_cfg <- load_yaml_with_env(file.path(repo_root, 'config', 'study_parameters.yml'))
+
+event_lookup <- tibble::tribble(
+  ~event,            ~month,
+  'nicu_admission',       0,
+  'month_1',              1,
+  'month_2',              2,
+  'month_3',              3,
+  'month_6',              6,
+  'month_9',              9,
+  'month_12',            12,
+  'month_24',            24,
+  'month_36',            36
+)
+physio_events <- c('month_1', 'month_2', 'month_3', 'month_6', 'month_9', 'month_12', 'month_36')
+
+read_tabular <- function(path) {
+  if (grepl('\\.parquet$', path)) {
+    if (!requireNamespace('arrow', quietly = TRUE)) {
+      install.packages('arrow', repos = 'https://cloud.r-project.org', lib = local_r_lib)
+      library(arrow, character.only = TRUE)
+    }
+    return(arrow::read_parquet(path) |> as_tibble())
+  }
+  if (grepl('\\.csv$', path)) {
+    return(readr::read_csv(path, show_col_types = FALSE))
+  }
+  stop('Unsupported file format: ', path)
+}
+
+simulate_cohort_data <- function(n_participants = 180, seed = 42) {
+  set.seed(seed)
+
+  groups <- c('ASIB', 'PT', 'TD')
+  sites <- c('USC_Lab', 'Prisma_Midlands', 'Prisma_Upstate')
+  education_levels <- c('hs', 'some_college', 'bachelors', 'graduate')
+  income_levels <- c('<20k', '20-40k', '40-60k', '60-80k', '>80k')
+
+  redcap_rows <- vector('list', n_participants * nrow(event_lookup))
+  feature_rows <- vector('list', n_participants * length(physio_events))
+  redcap_idx <- 1L
+  feature_idx <- 1L
+
+  for (pid in seq_len(n_participants)) {
+    participant_id <- sprintf('NANO-%04d', pid)
+    group_code <- sample(groups, size = 1, prob = c(0.25, 0.50, 0.25))
+    ga_at_birth_weeks <- max(min(rnorm(1, mean = ifelse(group_code == 'TD', 39.2, 28.5), sd = 2.3), 41), 24)
+    birth_weight_g <- round(max(min(rnorm(1, mean = ifelse(group_code == 'TD', 3200, 1200), sd = 350), 4200), 550))
+    sex <- sample(c('F', 'M'), size = 1)
+    site_id <- sample(sites, size = 1, prob = c(0.40, 0.35, 0.25))
+    maternal_education <- sample(education_levels, size = 1, prob = c(0.20, 0.35, 0.25, 0.20))
+    income_bracket <- sample(income_levels, size = 1, prob = c(0.18, 0.22, 0.24, 0.18, 0.18))
+    insurance_type <- sample(c('medicaid', 'private'), size = 1, prob = if (group_code == 'TD') c(0.30, 0.70) else c(0.60, 0.40))
+    ivh_grade <- min(rpois(1, lambda = ifelse(group_code == 'TD', 0.0, 0.6)), 4)
+    bpd_severity <- min(rpois(1, lambda = ifelse(group_code == 'TD', 0.0, 0.7)), 3)
+    nec <- as.integer(runif(1) < ifelse(group_code == 'TD', 0.02, 0.12))
+    rop <- as.integer(runif(1) < ifelse(group_code == 'TD', 0.03, 0.18))
+    sepsis <- as.integer(runif(1) < ifelse(group_code == 'TD', 0.04, 0.22))
+    withdrawn <- as.integer(runif(1) < 0.03)
+    enrollment_date <- as.Date('2024-01-01') + sample.int(420, 1) - 1L
+
+    base_rmssd <- 28 + ifelse(group_code == 'TD', 8, ifelse(group_code == 'ASIB', 3, 0)) + (ga_at_birth_weeks - 28) * 0.6
+    base_sdnn <- 24 + ifelse(group_code == 'TD', 6, ifelse(group_code == 'ASIB', 2, 0)) + (ga_at_birth_weeks - 28) * 0.4
+    base_rsa <- 1.8 + ifelse(group_code == 'TD', 0.5, ifelse(group_code == 'ASIB', 0.2, 0.0)) + (ga_at_birth_weeks - 28) * 0.05
+
+    for (row_idx in seq_len(nrow(event_lookup))) {
+      event <- event_lookup$event[row_idx]
+      month <- event_lookup$month[row_idx]
+      visit_keep_prob <- if (month == 0) 0.98 else max(0.88 - month * 0.004, 0.68)
+      if (withdrawn == 1L && month >= 12) {
+        visit_keep_prob <- visit_keep_prob * 0.40
+      }
+      if (runif(1) > visit_keep_prob) {
+        next
+      }
+
+      visit_completed <- as.integer(runif(1) < ifelse(month <= 12, 0.97, 0.90))
+      ecg_recording_complete <- if (event %in% physio_events) sample(c(0, 1, 2), 1, prob = c(0.04, 0.11, 0.85)) else NA_real_
+      temp_recording_complete <- if (event %in% physio_events) sample(c(0, 1, 2), 1, prob = c(0.08, 0.17, 0.75)) else NA_real_
+      shift <- rnorm(1, mean = 0, sd = 1.2)
+      rmssd <- base_rmssd + month * 0.35 + shift + rnorm(1, 0, 4.5)
+      sdnn <- base_sdnn + month * 0.28 + shift + rnorm(1, 0, 4.0)
+      rsa_cwt_power <- base_rsa + month * ifelse(group_code == 'ASIB', 0.045, 0.03) + rnorm(1, 0, 0.18)
+      td_mean_ibi <- 430 + month * 1.5 + rnorm(1, 0, 22)
+      td_cvnn <- max(min((sdnn / max(td_mean_ibi, 1)) + rnorm(1, 0, 0.006), 0.25), 0.015)
+
+      sustained <- max(min(0.42 + month / 120 + ifelse(group_code == 'TD', 0.06, ifelse(group_code == 'PT', -0.03, 0.02)) + rnorm(1, 0, 0.05), 0.80), 0.10)
+      orienting <- max(min(0.18 + rnorm(1, 0, 0.03), 0.35), 0.05)
+      termination <- max(min(0.15 + rnorm(1, 0, 0.03), 0.30), 0.05)
+      inattention <- max(min(1 - sustained - orienting - termination, 0.50), 0.05)
+      total_phase <- sustained + orienting + termination + inattention
+      sustained <- sustained / total_phase
+      orienting <- orienting / total_phase
+      termination <- termination / total_phase
+      inattention <- inattention / total_phase
+
+      if (runif(1) < (0.04 + month / 250)) rmssd <- NA_real_
+      if (runif(1) < (0.04 + month / 260)) sdnn <- NA_real_
+      if (runif(1) < (0.03 + month / 300)) rsa_cwt_power <- NA_real_
+
+      ados2_css_total <- NA_real_
+      if (event == 'month_36') {
+        ados2_css_total <- if (group_code == 'ASIB') {
+          max(min(rnorm(1, 7.6, 1.1), 10), 1)
+        } else if (group_code == 'PT') {
+          max(min(rnorm(1, 4.2, 1.2), 10), 1)
+        } else {
+          max(min(rnorm(1, 3.0, 0.9), 10), 1)
+        }
+      }
+
+      bayley4_cog_composite <- NA_real_
+      if (event %in% c('month_12', 'month_36')) {
+        bayley4_cog_composite <- max(min(rnorm(1, 90 + ifelse(group_code == 'TD', 8, ifelse(group_code == 'ASIB', -5, 0)), 11), 130), 55)
+      }
+
+      mchat_total <- NA_real_
+      if (event %in% c('month_9', 'month_24')) {
+        mchat_total <- round(max(min(rnorm(1, ifelse(group_code == 'TD', 2, ifelse(group_code == 'PT', 4, 6)), 2), 20), 0))
+      }
+
+      record_completeness_pct <- max(min(93 - month * 0.4 + rnorm(1, 0, 5), 100), 55)
+      qc_status <- if (record_completeness_pct >= 90) 'Excellent' else if (record_completeness_pct >= 80) 'Good' else 'Marginal'
+
+      redcap_rows[[redcap_idx]] <- tibble::tibble(
+        participant_id = participant_id,
+        record_id = participant_id,
+        event = event,
+        redcap_event_name = event,
+        month = month,
+        group_code = group_code,
+        group_assignment = group_code,
+        ga_at_birth_weeks = ga_at_birth_weeks,
+        sex = sex,
+        birth_weight_g = birth_weight_g,
+        site_id = site_id,
+        maternal_education = maternal_education,
+        income_bracket = income_bracket,
+        insurance_type = insurance_type,
+        ivh_grade = ivh_grade,
+        bpd_severity = bpd_severity,
+        nec = nec,
+        rop = rop,
+        sepsis = sepsis,
+        visit_completed = visit_completed,
+        enrollment_date = enrollment_date,
+        ecg_recording_complete = ecg_recording_complete,
+        temp_recording_complete = temp_recording_complete,
+        double_entry_mismatch = as.integer(runif(1) < 0.02),
+        value_out_of_range = as.integer(runif(1) < 0.03),
+        ecg_transfer_late = as.integer(event %in% physio_events && runif(1) < 0.05),
+        temp_quality_rejected = as.integer(event %in% physio_events && runif(1) < 0.04),
+        open_query = as.integer(runif(1) < 0.03),
+        pi_review_needed = as.integer(runif(1) < 0.04),
+        double_entry_pending = as.integer(runif(1) < 0.05),
+        withdrawn = withdrawn,
+        record_completeness_pct = record_completeness_pct,
+        qc_status = qc_status,
+        bayley4_cog_composite = bayley4_cog_composite,
+        ados2_css_total = ados2_css_total,
+        mchat_total = mchat_total
+      )
+      redcap_idx <- redcap_idx + 1L
+
+      if (event %in% physio_events && visit_completed == 1L) {
+        n_beats_total <- sample(280:360, 1)
+        qa_score <- max(min(record_completeness_pct + rnorm(1, 0, 3), 100), 60)
+        n_beats_valid <- round(n_beats_total * qa_score / 100)
+        feature_rows[[feature_idx]] <- tibble::tibble(
+          participant_id = participant_id,
+          event = event,
+          month = month,
+          group_code = group_code,
+          rmssd = rmssd,
+          sdnn = sdnn,
+          rsa_cwt_power = rsa_cwt_power,
+          td_mean_ibi = td_mean_ibi,
+          td_cvnn = td_cvnn,
+          pc_sd1 = ifelse(is.na(rmssd), NA_real_, rmssd / sqrt(2)),
+          pc_sd2 = ifelse(is.na(sdnn), NA_real_, sdnn * sqrt(2)),
+          hda_pct_orienting = orienting,
+          hda_pct_sustained_attention = sustained,
+          hda_pct_termination = termination,
+          hda_pct_inattention = inattention,
+          qa_score = qa_score,
+          n_beats_valid = n_beats_valid,
+          n_beats_total = n_beats_total
+        )
+        feature_idx <- feature_idx + 1L
+      }
+    }
+  }
+
+  list(
+    redcap = dplyr::bind_rows(redcap_rows),
+    features = dplyr::bind_rows(feature_rows)
+  )
+}
+
+standardize_redcap <- function(df) {
+  df |>
+    rename(
+      participant_id = dplyr::any_of('record_id'),
+      event = dplyr::any_of('redcap_event_name')
+    ) |>
+    mutate(
+      participant_id = dplyr::coalesce(participant_id, .data$participant_id),
+      event = dplyr::coalesce(event, .data$event),
+      redcap_event_name = dplyr::coalesce(.data$redcap_event_name, event),
+      group_code = dplyr::coalesce(.data$group_code, .data$group_assignment),
+      group_assignment = dplyr::coalesce(.data$group_assignment, .data$group_code),
+      month = dplyr::coalesce(.data$month, event_lookup$month[match(event, event_lookup$event)])
+    )
+}
+
+standardize_features <- function(df) {
+  df |>
+    rename(
+      participant_id = dplyr::any_of('record_id'),
+      event = dplyr::any_of('redcap_event_name')
+    ) |>
+    mutate(
+      group_code = dplyr::coalesce(.data$group_code, .data$group_assignment),
+      month = dplyr::coalesce(.data$month, event_lookup$month[match(event, event_lookup$event)]),
+      rsa_cwt_power = dplyr::coalesce(.data$rsa_cwt_power, .data$rsa)
+    )
+}
+
+add_derived_features <- function(df) {
+  df |>
+    mutate(
+      ga_bin = case_when(
+        ga_at_birth_weeks >= 24 & ga_at_birth_weeks <= 26 ~ '24-26w',
+        ga_at_birth_weeks >= 27 & ga_at_birth_weeks <= 29 ~ '27-29w',
+        ga_at_birth_weeks >= 30 & ga_at_birth_weeks <= 32 ~ '30-32w',
+        TRUE ~ 'full_term'
+      ),
+      mat_edu_ord = dplyr::recode(maternal_education, 'hs' = 1L, 'some_college' = 2L, 'bachelors' = 3L, 'graduate' = 4L, .default = NA_integer_),
+      income_ord = dplyr::recode(income_bracket, '<20k' = 0L, '20-40k' = 1L, '40-60k' = 2L, '60-80k' = 3L, '>80k' = 4L, .default = NA_integer_),
+      insurance_ord = dplyr::recode(insurance_type, 'medicaid' = 1L, 'private' = 2L, .default = NA_integer_),
+      morbidity_score = pmin(coalesce(ivh_grade, 0), 4) + pmin(coalesce(bpd_severity, 0), 3) + coalesce(nec, 0) + coalesce(rop, 0) + coalesce(sepsis, 0)
+    )
+}
+
+load_or_simulate_data <- function() {
+  processed_cfg <- paths_cfg$processed
+  redcap_path <- processed_cfg$redcap_latest
+  feature_path <- processed_cfg$feature_matrix
+
+  if (!is.null(redcap_path) && !is.null(feature_path) && !grepl('\\$\\{', redcap_path) && !grepl('\\$\\{', feature_path)) {
+    if (file.exists(redcap_path) && file.exists(feature_path)) {
+      redcap_tbl <- standardize_redcap(read_tabular(redcap_path))
+      feature_tbl <- standardize_features(read_tabular(feature_path))
+      return(list(redcap = redcap_tbl, features = feature_tbl, source = 'repo secure data'))
+    }
+  }
+
+  synthetic <- simulate_cohort_data()
+  list(
+    redcap = standardize_redcap(synthetic$redcap),
+    features = standardize_features(synthetic$features),
+    source = 'synthetic fallback'
+  )
+}
+
+safe_last <- function(x) {
+  vals <- x[!is.na(x)]
+  if (length(vals) == 0) return(NA_real_)
+  vals[[length(vals)]]
+}
+
+build_participant_summary <- function(df) {
+  df |>
+    arrange(participant_id, month) |>
+    group_by(participant_id) |>
+    group_modify(function(.x, .y) {
+      month_36 <- .x |>
+        filter(event == 'month_36') |>
+        pull(ados2_css_total) |>
+        na.omit()
+
+      tibble(
+        group_code = dplyr::first(na.omit(.x$group_code)),
+        ga_at_birth_weeks = dplyr::first(na.omit(.x$ga_at_birth_weeks)),
+        birth_weight_g = dplyr::first(na.omit(.x$birth_weight_g)),
+        morbidity_score = dplyr::first(na.omit(.x$morbidity_score)),
+        mat_edu_ord = dplyr::first(na.omit(.x$mat_edu_ord)),
+        income_ord = dplyr::first(na.omit(.x$income_ord)),
+        insurance_ord = dplyr::first(na.omit(.x$insurance_ord)),
+        rmssd_last = safe_last(.x$rmssd),
+        sdnn_last = safe_last(.x$sdnn),
+        rsa_last = safe_last(.x$rsa_cwt_power),
+        hda_sustained_last = safe_last(.x$hda_pct_sustained_attention),
+        ados2_css_total = if (length(month_36) > 0) month_36[[1]] else NA_real_
+      )
+    }) |>
+    ungroup() |>
+    mutate(asd_risk_flag = if_else(!is.na(ados2_css_total) & ados2_css_total >= 7, 1, 0, missing = NA_real_))
+}
+
+data_bundle <- load_or_simulate_data()
+analysis_long <- data_bundle$redcap |>
+  left_join(data_bundle$features, by = c('participant_id', 'event', 'month', 'group_code')) |>
+  mutate(redcap_event_name = coalesce(redcap_event_name, event)) |>
+  add_derived_features()
+
+analysis_long |> count(group_code, event, sort = TRUE) |> head(12)
+```
+
+# Study design and data contract
+
+The repository's study-level assumptions come from the same YAML configuration used elsewhere in the project.
+
+```{r}
+ecg_parameters <- tibble::enframe(study_cfg$ecg, name = 'parameter', value = 'value')
+visit_schedule <- tibble::enframe(study_cfg$visit_schedule, name = 'component', value = 'value')
+
+knitr::kable(ecg_parameters, caption = 'ECG processing parameters from config/study_parameters.yml')
+knitr::kable(visit_schedule, caption = 'Visit schedule metadata from config/study_parameters.yml')
+```
+
+# Descriptive statistics and visit coverage
+
+The first statistical pass should verify that the cohort and visit structure match expectations before any inferential modeling begins.
+
+```{r}
+baseline_tbl <- analysis_long |>
+  filter(event == 'nicu_admission') |>
+  select(group_code, ga_at_birth_weeks, birth_weight_g, morbidity_score, sex, ga_bin) |>
+  mutate(group_code = factor(group_code, levels = c('ASIB', 'PT', 'TD'))) |>
+  gtsummary::tbl_summary(
+    by = group_code,
+    statistic = list(
+      all_continuous() ~ '{mean} ({sd})',
+      all_categorical() ~ '{n} / {N} ({p}%)'
+    ),
+    missing = 'no'
+  ) |>
+  gtsummary::add_n()
+
+baseline_tbl
+```
+
+```{r}
+visit_completion <- analysis_long |>
+  group_by(group_code, event, month) |>
+  summarise(visit_pct = mean(visit_completed == 1, na.rm = TRUE) * 100, .groups = 'drop')
+
+ggplot(visit_completion, aes(x = month, y = visit_pct, colour = group_code)) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 2.2) +
+  scale_x_continuous(breaks = sort(unique(event_lookup$month))) +
+  scale_y_continuous(labels = scales::label_percent(scale = 1)) +
+  labs(
+    title = 'Visit completion across the longitudinal schedule',
+    x = 'Month',
+    y = 'Completed visits (%)',
+    colour = 'Group'
+  )
+```
+
+# Missing-data diagnostics
+
+Missingness is not a side note in this study design. Attrition and incomplete physiology both change the inferential surface, so this section makes the missing-data structure explicit before imputation or model fitting.
+
+```{r}
+core_vars <- c('rmssd', 'sdnn', 'rsa_cwt_power', 'ados2_css_total', 'bayley4_cog_composite')
+
+plot_vis_miss(
+  analysis_long |>
+    select(all_of(core_vars)),
+  title = 'Core analytic variable missingness'
+)
+```
+
+```{r}
+plot_missing_by_group_event(
+  analysis_long,
+  group_var = 'group_code',
+  event_var = 'event',
+  key_vars = core_vars
+)
+```
+
+```{r}
+plot_upset_missing(
+  analysis_long |>
+    select(all_of(core_vars)),
+  vars = core_vars
+)
+```
+
+# Multiple imputation for participant-level inference
+
+For pooled regression-style inference, the participant-level table is the most practical representation. It combines static covariates, terminal outcomes, and last-observed physiology while still allowing MICE to operate on a compact matrix.
+
+```{r}
+participant_summary <- build_participant_summary(analysis_long)
+
+pooled_model_df <- participant_summary |>
+  select(
+    participant_id, group_code, ga_at_birth_weeks, birth_weight_g, morbidity_score,
+    mat_edu_ord, income_ord, insurance_ord, rmssd_last, sdnn_last, rsa_last,
+    hda_sustained_last, ados2_css_total
+  )
+
+pooled_prep <- prepare_data_for_imputation(pooled_model_df, exclude_cols = 'participant_id')
+mids_obj <- run_mice_imputation(pooled_prep, m = 10, maxit = 5)
+
+mar_example <- tryCatch(
+  test_mar_assumption(
+    pooled_model_df |>
+      select(where(is.numeric)),
+    target_col = 'rmssd_last'
+  ),
+  error = function(e) tibble(message = conditionMessage(e))
+)
+
+head(mar_example)
+```
+
+```{r}
+diagnostic_bundle <- run_all_diagnostics(mids_obj, pooled_prep, output_dir = 'reports/figures')
+
+pooled_fit <- pool_results(
+  mids_obj,
+  ados2_css_total ~ rmssd_last + sdnn_last + rsa_last + hda_sustained_last + ga_at_birth_weeks + morbidity_score + factor(group_code),
+  model_type = 'lm'
+)
+
+pooled_table <- extract_pooled_estimates(pooled_fit)
+gt::gt(pooled_table)
+```
+
+# Mixed-effects longitudinal inference
+
+The mixed-effects layer answers a different question from the pooled participant-level model: not just who differs, but how trajectories differ over time.
+
+```{r}
+mixed_long <- analysis_long |>
+  filter(month %in% c(1, 2, 3, 6, 9, 12, 36), !is.na(rmssd)) |>
+  transmute(
+    participant_id,
+    group_code = factor(group_code, levels = c('ASIB', 'PT', 'TD')),
+    month,
+    rmssd
+  )
+
+rmssd_mixed <- fit_random_intercept_slope(
+  mixed_long,
+  dv = 'rmssd',
+  time_var = 'month',
+  group_var = 'group_code',
+  id_var = 'participant_id'
+)
+
+rmssd_mixed_results <- extract_model_results(rmssd_mixed)
+trajectory_lrt <- compare_group_trajectories(
+  mixed_long,
+  dv = 'rmssd',
+  time_var = 'month',
+  group_var = 'group_code',
+  id_var = 'participant_id'
+)
+
+gt::gt(rmssd_mixed_results)
+trajectory_lrt$lrt_table
+```
+
+```{r}
+plot_group_mean_trajectories(
+  mixed_long,
+  dv = 'rmssd',
+  time_var = 'month',
+  group_var = 'group_code'
+)
+```
+
+# Latent growth curve modeling
+
+LGCM provides a model-based summary of longitudinal change using FIML to handle incomplete repeated-measures data. This complements the mixed-effects model by focusing on latent intercept and slope structure rather than conditional fixed-effect contrasts.
+
+```{r}
+lgcm_events <- c('month_1', 'month_2', 'month_3', 'month_6', 'month_9', 'month_12', 'month_36')
+lgcm_time <- c(1, 2, 3, 6, 9, 12, 36)
+
+wide_rmssd <- analysis_long |>
+  filter(event %in% lgcm_events) |>
+  select(participant_id, group_code, event, rmssd) |>
+  distinct(participant_id, event, .keep_all = TRUE) |>
+  mutate(event = factor(event, levels = lgcm_events)) |>
+  pivot_wider(names_from = event, values_from = rmssd, names_prefix = 'rmssd_')
+
+dv_cols <- paste0('rmssd_', lgcm_events)
+lgcm_fit <- fit_linear_lgcm(wide_rmssd, dv_cols = dv_cols, time_loadings = lgcm_time)
+lgcm_fit_indices <- extract_lgcm_fit_indices(lgcm_fit)
+
+gt::gt(lgcm_fit_indices)
+```
+
+```{r}
+plot_lgcm_implied_trajectories(
+  lgcm_fit,
+  time_points = lgcm_time
+)
+```
+
+# Publication-oriented outputs
+
+The final step writes only aggregate tables to disk so the qmd stays safe to render in-repo even when the secure data path is active.
+
+```{r}
+tables_dir <- file.path(repo_root, 'reports', 'tables')
+dir.create(tables_dir, recursive = TRUE, showWarnings = FALSE)
+
+baseline_export <- analysis_long |>
+  filter(event == 'nicu_admission') |>
+  group_by(group_code) |>
+  summarise(
+    n = dplyr::n(),
+    ga_mean = mean(ga_at_birth_weeks, na.rm = TRUE),
+    birth_weight_mean = mean(birth_weight_g, na.rm = TRUE),
+    morbidity_mean = mean(morbidity_score, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+readr::write_csv(baseline_export, file.path(tables_dir, 'nano_statistical_baseline_summary.csv'))
+readr::write_csv(as_tibble(pooled_table), file.path(tables_dir, 'nano_statistical_pooled_ados_model.csv'))
+readr::write_csv(as_tibble(rmssd_mixed_results), file.path(tables_dir, 'nano_statistical_rmssd_mixed_effects.csv'))
+readr::write_csv(as_tibble(lgcm_fit_indices), file.path(tables_dir, 'nano_statistical_rmssd_lgcm_fit_indices.csv'))
+
+tibble::tibble(
+  output = c(
+    'nano_statistical_baseline_summary.csv',
+    'nano_statistical_pooled_ados_model.csv',
+    'nano_statistical_rmssd_mixed_effects.csv',
+    'nano_statistical_rmssd_lgcm_fit_indices.csv'
+  ),
+  location = tables_dir
+)
+```
+
+# Interpretation
+
+This document is meant to be the statistical backbone for report writing and manuscript drafting.
+
+- The descriptive layer makes visit coverage and variable completeness explicit.
+- The MICE section supports pooled regression-style inference when participant-level outcomes are incomplete.
+- The mixed-effects section characterizes longitudinal biomarker change directly in long format.
+- The LGCM section gives a latent-trajectory view of the same repeated-measures process.
+
+If the secure processed inputs are available, re-rendering the qmd will replace the synthetic fallback with the repository's live analysis tables while keeping the same pipeline structure.
