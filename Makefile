@@ -14,7 +14,7 @@ DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke logs-prune
+.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -121,7 +121,7 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	@if command -v docker >/dev/null 2>&1; then \
-		$(MAKE) docker-health; \
+		$(MAKE) docker-preflight; \
 	else \
 		echo "Docker unavailable; skipping Docker health preflight and using the local runtime fallback."; \
 	fi
@@ -182,8 +182,21 @@ clean:  ## Remove Python cache files and test artifacts
 	@echo "✓ Cleaned Python cache and test artifacts."
 
 
-docker-health:  ## Check Docker daemon and Compose service health
-	$(PYTHON) scripts/check_docker_health.py --service dashboard --service dashboard-share --service dashboard-share-named --check-url $(DASHBOARD_LOCAL_URL)/ --json
+docker-preflight:  ## Check Docker daemon and Compose availability before starting services
+	$(PYTHON) scripts/check_docker_health.py --daemon-only --json
+
+docker-health:  ## Check and repair the dashboard Docker runtime health
+	$(PYTHON) scripts/check_docker_health.py --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+
+docker-share-health:  ## Check dashboard plus the currently selected share sidecar
+	@share_service=dashboard-share; \
+	if [ -n "$${CLOUDFLARE_TUNNEL_TOKEN:-$${CLOUDFLARED_TUNNEL_TOKEN:-}}" ]; then \
+		share_service=dashboard-share-named; \
+	fi; \
+	$(PYTHON) scripts/check_docker_health.py --profile share --service dashboard --service $$share_service --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+
+ops-check: compose-validate  ## Check canonical + runtime-share public dashboard surfaces
+	$(PYTHON) scripts/check_live_surfaces.py --max-stamp-age-hours 168
 
 logs-prune:  ## Delete local log files older than LOG_RETENTION_DAYS (default: 30)
 	bash scripts/prune_logs.sh

@@ -59,6 +59,15 @@ jobs:
       - name: Start dashboard runtime
         run: docker compose -f docker/compose.dev.yml up -d dashboard
 
+      - name: Self-heal Docker runtime if needed
+        run: |
+          python3 scripts/check_docker_health.py \
+            --service dashboard \
+            --check-url http://127.0.0.1:8080/api/healthz \
+            --repair \
+            --wait-seconds 120 \
+            --json
+
       - name: Smoke test dashboard runtime
         run: python3 scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080 --timeout 180
 

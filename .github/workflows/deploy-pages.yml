@@ -20,6 +20,7 @@ on:
       - "dashboard/pipelines/generate_synthetic_dashboard_data.py"
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/build_pages_site.py"
+      - "scripts/check_live_surfaces.py"
       - "scripts/check_site_health.py"
       - "dashboard/public/pages_wrapper/manifest.json"
       - ".github/workflows/deploy-pages.yml"
@@ -114,11 +115,8 @@ jobs:
       - name: Smoke test live URL
         run: |
           sleep 60
-          python scripts/check_site_health.py \
-            --url https://esd-lab-namo.pages.dev/ \
+          python scripts/check_live_surfaces.py \
+            --canonical-url https://esd-lab-namo.pages.dev/ \
+            --runtime-url https://runtime-share.esd-lab-namo.pages.dev/ \
             --timeout 30 \
-            --min-bytes 8192
-          python scripts/check_site_health.py \
-            --url https://esd-lab-namo.pages.dev/overview \
-            --timeout 30 \
-            --min-bytes 8192
+            --max-stamp-age-hours 24

@@ -291,15 +291,22 @@ make dashboard-smoke
 Before sharing or running the dashboard, you can verify Docker and Compose service health:
 
 ```bash
+make docker-preflight
 make docker-health
+make docker-share-health
+make ops-check
 ```
 
-This checks:
-- Docker daemon is running
-- Compose services (dashboard, dashboard-share, dashboard-share-named) are up and healthy
-- The dashboard endpoint is reachable
+These checks cover:
 
-This is automatically run as a pre-step in `make dashboard-share`.
+- `docker-preflight`: Docker daemon and Compose availability before services start.
+- `docker-health`: dashboard service health, `/api/healthz`, and automatic `docker compose up -d dashboard` repair when needed.
+- `docker-share-health`: dashboard plus the selected share sidecar (`dashboard-share` or `dashboard-share-named`), with repair.
+- `ops-check`: Compose config plus the canonical Pages and runtime-share public surfaces.
+
+`make dashboard-share` runs the lightweight Docker preflight before it starts
+or refreshes the share sidecar. Run `make docker-share-health` after sharing is
+up when you want to verify the tunnel container too.
 
 ---
 

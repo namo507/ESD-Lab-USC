@@ -66,6 +66,14 @@ To verify the running container is healthy and the watcher is still triggering r
 python scripts/check_dashboard_runtime.py --base-url http://127.0.0.1:8080
 ```
 
+For the repairable Docker health path used by local operators and CI:
+
+```bash
+make docker-preflight      # daemon + Compose availability before startup
+make docker-health         # dashboard service + /api/healthz, with repair
+make docker-share-health   # dashboard + active share sidecar, with repair
+```
+
 For a public share link from a local machine:
 
 ```bash
@@ -110,6 +118,19 @@ runtime wrapper, run:
 ```bash
 make pages-watch
 ```
+
+To check both public dashboard surfaces without deploying:
+
+```bash
+make ops-check
+# equivalent core probe:
+python scripts/check_live_surfaces.py --max-stamp-age-hours 168
+```
+
+GitHub Actions uses the same live-surface probe after production deploys and in
+the uptime monitor. If the scheduled probe fails, the monitor requests a fresh
+Pages deploy, waits, probes again, and only keeps an incident open when the
+automatic recovery check still fails.
 
 To promote to Tier 1 (a stable branded hostname instead of the wrapper),
 configure a named Cloudflare tunnel and set both `.env` values:

@@ -2,7 +2,8 @@
 """Check Docker daemon, Compose services, and optional HTTP endpoints.
 
 This script is intended for local/devcontainer smoke checks before running
-runtime scripts that depend on Docker services.
+runtime scripts that depend on Docker services. When `--repair` is provided it
+will bring requested Compose services back up and re-run the health checks.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-COMPOSE_FILE = PROJECT_ROOT / "docker" / "compose.dev.yml"
+DEFAULT_COMPOSE_FILE = PROJECT_ROOT / "docker" / "compose.dev.yml"
 
 
 def run_command(
@@ -94,12 +95,28 @@ def is_running_state(value: str) -> bool:
     return normalized in {"running", "up"} or normalized.startswith("running")
 
 
-def check_compose_services(
-    compose_cmd: list[str], project_name: str | None, services: list[str]
-) -> list[dict[str, Any]]:
-    command = [*compose_cmd, "-f", str(COMPOSE_FILE)]
+def compose_base_command(
+    compose_cmd: list[str],
+    compose_file: Path,
+    project_name: str | None,
+    profiles: list[str],
+) -> list[str]:
+    command = [*compose_cmd, "-f", str(compose_file)]
+    for profile in profiles:
+        command.extend(["--profile", profile])
     if project_name:
         command.extend(["-p", project_name])
+    return command
+
+
+def check_compose_services(
+    compose_cmd: list[str],
+    compose_file: Path,
+    project_name: str | None,
+    services: list[str],
+    profiles: list[str],
+) -> list[dict[str, Any]]:
+    command = compose_base_command(compose_cmd, compose_file, project_name, profiles)
     command.extend(["ps", "--format", "json"])
 
     result = run_command(command, cwd=PROJECT_ROOT)
@@ -120,10 +137,12 @@ def check_compose_services(
             for row in rows
             if str(row.get("Service") or row.get("Name") or "") in requested
         ]
-        if not rows:
+        present = {str(row.get("Service") or row.get("Name") or "") for row in rows}
+        missing = sorted(requested - present)
+        if missing:
             raise RuntimeError(
                 "Requested services were not found in Compose status: "
-                + ", ".join(services)
+                + ", ".join(missing)
             )
 
     unhealthy: list[str] = []
@@ -146,6 +165,22 @@ def check_compose_services(
     return rows
 
 
+def repair_compose_services(
+    compose_cmd: list[str],
+    compose_file: Path,
+    project_name: str | None,
+    services: list[str],
+    profiles: list[str],
+) -> None:
+    targets = services or ["dashboard"]
+    command = compose_base_command(compose_cmd, compose_file, project_name, profiles)
+    command.extend(["up", "-d", *targets])
+    result = run_command(command, cwd=PROJECT_ROOT)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip() or "unknown error"
+        raise RuntimeError(f"Compose repair failed: {detail}")
+
+
 def check_http_endpoint(url: str, timeout: int) -> int:
     request = urllib.request.Request(
         url, headers={"User-Agent": "dashboard-docker-health/1.0"}
@@ -154,9 +189,33 @@ def check_http_endpoint(url: str, timeout: int) -> int:
         return int(response.status)
 
 
+def check_http_endpoints(urls: list[str], timeout: int) -> list[dict[str, Any]]:
+    checked_urls: list[dict[str, Any]] = []
+    for url in urls:
+        status_code = check_http_endpoint(url, timeout=timeout)
+        if status_code < 200 or status_code >= 400:
+            raise RuntimeError(
+                f"Endpoint check failed: {url} returned HTTP {status_code}"
+            )
+        checked_urls.append({"url": url, "status": status_code})
+    return checked_urls
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Validate Docker daemon and docker compose service health."
+    )
+    parser.add_argument(
+        "--compose-file",
+        type=Path,
+        default=DEFAULT_COMPOSE_FILE,
+        help="Docker Compose file to inspect.",
+    )
+    parser.add_argument(
+        "--profile",
+        action="append",
+        default=[],
+        help="Compose profile to include. Can be passed multiple times.",
     )
     parser.add_argument(
         "--project-name",
@@ -182,6 +241,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="HTTP timeout in seconds for --check-url probes.",
     )
     parser.add_argument(
+        "--wait-seconds",
+        type=int,
+        default=90,
+        help="How long to wait for repaired Compose services to become healthy.",
+    )
+    parser.add_argument(
+        "--repair",
+        action="store_true",
+        help="Bring requested Compose services up and retry when health checks fail.",
+    )
+    parser.add_argument(
+        "--daemon-only",
+        action="store_true",
+        help="Only verify Docker daemon and Compose availability; skip service and URL checks.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Print structured JSON output.",
@@ -194,25 +269,90 @@ def main(argv: list[str] | None = None) -> int:
 
     ensure_docker_daemon()
     compose_cmd = resolve_compose_command()
-    services = check_compose_services(
-        compose_cmd, args.project_name or None, args.service
-    )
+    compose_file = args.compose_file
+    if not compose_file.is_absolute():
+        compose_file = PROJECT_ROOT / compose_file
 
-    checked_urls: list[dict[str, Any]] = []
-    for url in args.check_url:
-        status_code = check_http_endpoint(url, timeout=args.timeout)
-        if status_code < 200 or status_code >= 400:
-            raise RuntimeError(
-                f"Endpoint check failed: {url} returned HTTP {status_code}"
+    if args.daemon_only:
+        output = {
+            "ok": True,
+            "compose_command": " ".join(compose_cmd),
+            "compose_file": str(compose_file.relative_to(PROJECT_ROOT)),
+            "service_count": 0,
+            "services": [],
+            "url_checks": [],
+            "repair_attempted": False,
+        }
+        if args.json:
+            print(json.dumps(output, indent=2))
+        else:
+            print(
+                "docker-preflight-ok "
+                f"compose={' '.join(compose_cmd)} "
+                f"file={compose_file.relative_to(PROJECT_ROOT)}"
             )
-        checked_urls.append({"url": url, "status": status_code})
+        return 0
+
+    repair_attempted = False
+    try:
+        services = check_compose_services(
+            compose_cmd,
+            compose_file,
+            args.project_name or None,
+            args.service,
+            args.profile,
+        )
+    except RuntimeError:
+        if not args.repair:
+            raise
+        repair_attempted = True
+        repair_compose_services(
+            compose_cmd,
+            compose_file,
+            args.project_name or None,
+            args.service,
+            args.profile,
+        )
+        services = wait_for_compose_services(
+            compose_cmd,
+            compose_file,
+            args.project_name or None,
+            args.service,
+            args.profile,
+            args.wait_seconds,
+        )
+
+    try:
+        checked_urls = check_http_endpoints(args.check_url, timeout=args.timeout)
+    except Exception:
+        if not args.repair:
+            raise
+        repair_attempted = True
+        repair_compose_services(
+            compose_cmd,
+            compose_file,
+            args.project_name or None,
+            args.service,
+            args.profile,
+        )
+        services = wait_for_compose_services(
+            compose_cmd,
+            compose_file,
+            args.project_name or None,
+            args.service,
+            args.profile,
+            args.wait_seconds,
+        )
+        checked_urls = check_http_endpoints(args.check_url, timeout=args.timeout)
 
     output = {
         "ok": True,
         "compose_command": " ".join(compose_cmd),
+        "compose_file": str(compose_file.relative_to(PROJECT_ROOT)),
         "service_count": len(services),
         "services": services,
         "url_checks": checked_urls,
+        "repair_attempted": repair_attempted,
     }
 
     if args.json:
@@ -221,12 +361,42 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "docker-health-ok "
             f"services={len(services)} "
-            f"compose={' '.join(compose_cmd)}"
+            f"compose={' '.join(compose_cmd)} "
+            f"repaired={'yes' if repair_attempted else 'no'}"
         )
         for item in checked_urls:
             print(f"url-ok url={item['url']} status={item['status']}")
 
     return 0
+
+
+def wait_for_compose_services(
+    compose_cmd: list[str],
+    compose_file: Path,
+    project_name: str | None,
+    services: list[str],
+    profiles: list[str],
+    wait_seconds: int,
+) -> list[dict[str, Any]]:
+    import time
+
+    deadline = time.time() + wait_seconds
+    last_error: Exception | None = None
+    while time.time() < deadline:
+        try:
+            return check_compose_services(
+                compose_cmd,
+                compose_file,
+                project_name,
+                services,
+                profiles,
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            time.sleep(3)
+    if last_error is not None:
+        raise RuntimeError(f"Compose services did not become healthy: {last_error}")
+    raise RuntimeError("Compose services did not become healthy")
 
 
 if __name__ == "__main__":

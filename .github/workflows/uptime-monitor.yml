@@ -33,19 +33,13 @@ jobs:
         run: |
           set +e
           : > probe.log
-          rc=0
-          for route in "/" "/overview"; do
-            python scripts/check_site_health.py \
-              --url "https://esd-lab-namo.pages.dev${route}" \
-              --timeout 25 \
-              --min-bytes 8192 \
-              --max-stamp-age-hours 168 \
-              >> probe.log 2>&1
-            route_rc=$?
-            if [ "$route_rc" -ne 0 ]; then
-              rc=$route_rc
-            fi
-          done
+          python scripts/check_live_surfaces.py \
+            --canonical-url "https://esd-lab-namo.pages.dev/" \
+            --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
+            --timeout 25 \
+            --max-stamp-age-hours 168 \
+            >> probe.log 2>&1
+          rc=$?
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
           cat probe.log
           exit 0
@@ -62,8 +56,31 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/dispatches" \
             -d '{"event_type":"redeploy-pages"}'
 
-      - name: Open / update incident issue on failure
+      - name: Verify recovery after redeploy request
+        id: recovery
         if: steps.probe.outputs.exit_code != '0'
+        continue-on-error: true
+        run: |
+          set +e
+          echo "" >> probe.log
+          echo "Recovery probe after automatic redeploy request:" >> probe.log
+          sleep 90
+          python scripts/check_live_surfaces.py \
+            --canonical-url "https://esd-lab-namo.pages.dev/" \
+            --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
+            --timeout 25 \
+            --max-stamp-age-hours 168 \
+            >> probe.log 2>&1
+          recovery_rc=$?
+          if [ "$recovery_rc" -eq 0 ]; then
+            echo "recovered=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "recovered=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Open / update incident issue on failure
+        if: steps.probe.outputs.exit_code != '0' && steps.recovery.outputs.recovered != 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -108,7 +125,7 @@ jobs:
             }
 
       - name: Close incident issue on recovery
-        if: steps.probe.outputs.exit_code == '0'
+        if: steps.probe.outputs.exit_code == '0' || steps.recovery.outputs.recovered == 'true'
         uses: actions/github-script@v7
         with:
           script: |

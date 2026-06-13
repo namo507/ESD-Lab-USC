@@ -14,6 +14,7 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 | `dashboard/public/pages_wrapper/manifest.json` | Records the latest runtime-share origin when a quick tunnel is refreshed. Useful when packaging a manual deploy without an explicit `PAGES_API_ORIGIN`. |
 | `scripts/share_dashboard.sh` | Starts the local dashboard runtime plus Cloudflare tunnel and refreshes the runtime-share preview wrapper. |
 | `scripts/check_site_health.py` | Health probe used by the uptime workflow and local spot checks. Accepts either the older large HTML shell or the current lightweight SPA shell. |
+| `scripts/check_live_surfaces.py` | Composite probe for the canonical Pages site plus the runtime-share preview branch. |
 | `.github/workflows/deploy-pages.yml` | Builds the SPA, packages the worker-backed Pages artifact, deploys it with Wrangler, then runs a smoke test. |
 | `.github/workflows/uptime-monitor.yml` | Probes the live URL on a schedule and can trigger a redeploy when the public site is unhealthy. |
 
@@ -73,6 +74,7 @@ Probe production:
 ```bash
 python scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/
 python scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/ --max-stamp-age-hours 24
+python scripts/check_live_surfaces.py --max-stamp-age-hours 168
 ```
 
 Check the live assistant proxy:
