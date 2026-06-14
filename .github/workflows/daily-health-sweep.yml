@@ -1,0 +1,245 @@
+name: Daily full-stack health sweep
+
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+    inputs:
+      commit_repairs:
+        description: "Commit safe auto-repairs after the sweep passes"
+        required: false
+        default: true
+        type: boolean
+      live_visual:
+        description: "Include public Pages URLs in browser visual checks"
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: daily-full-stack-health-sweep
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CANONICAL_PAGES_URL: https://esd-lab-namo.pages.dev
+      VERSIONED_PAGES_URL: https://esd-lab-namo.pages.dev/?v=20260604-032545
+      DASHBOARD_LOCAL_URL: http://127.0.0.1:8080
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || (
+            python -m pip cache purge &&
+            pip install -r requirements.txt
+          )
+
+      - name: Install frontend dependencies with repair
+        run: |
+          npm --prefix web ci || (
+            rm -rf web/node_modules &&
+            npm --prefix web cache verify &&
+            npm --prefix web ci
+          )
+          npm --prefix web audit --audit-level=high
+
+      - name: Install Chromium for visual checks
+        run: npm --prefix web exec -- playwright install --with-deps chromium
+
+      - name: Clean transient local artifacts
+        run: make clean
+
+      - name: Safe self-heal formatting
+        run: |
+          black src/ tests/ scripts/ redcap/
+          isort src/ tests/ scripts/ redcap/
+          npm --prefix web exec -- eslint --fix --ext .ts,.tsx src
+
+      - name: Refresh generated dashboard data
+        run: make dashboard-refresh
+
+      - name: Validate GitHub workflow wiring
+        run: python scripts/check_github_workflows.py
+
+      - name: Backend checks
+        run: |
+          python scripts/check_compose_config.py
+          pytest tests/ -q --tb=short --ignore=tests/test_imputation.py
+
+      - name: Frontend checks
+        run: |
+          npm --prefix web run lint
+          npm --prefix web run test
+          make pages-build
+
+      - name: Start local dashboard backend
+        run: |
+          mkdir -p artifacts/logs
+          DASHBOARD_REUSE_EXISTING_SPA_BUILD=true \
+            python -m dashboard.server.live_dashboard_server \
+            --host 127.0.0.1 \
+            --port 8080 \
+            --fallback-synthetic \
+            > artifacts/logs/dashboard-runtime.log 2>&1 &
+          echo "$!" > artifacts/logs/dashboard-runtime.pid
+
+      - name: Smoke test local dashboard backend
+        run: python scripts/check_dashboard_runtime.py --base-url "$DASHBOARD_LOCAL_URL" --timeout 180
+
+      - name: Browser visual checks
+        run: |
+          live_args=()
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.live_visual }}" = "true" ]; then
+            live_args+=(--live-url "${CANONICAL_PAGES_URL%/}/overview")
+            live_args+=(--live-url "$VERSIONED_PAGES_URL")
+          fi
+          node web/scripts/visual-health-check.mjs \
+            --base-url "$DASHBOARD_LOCAL_URL" \
+            --output-dir artifacts/visual-health \
+            "${live_args[@]}"
+
+      - name: Probe public Pages surfaces
+        run: |
+          python scripts/check_live_surfaces.py \
+            --canonical-url "$CANONICAL_PAGES_URL" \
+            --canonical-route /overview \
+            --canonical-route '/?v=20260604-032545' \
+            --timeout 30 \
+            --max-stamp-age-hours 168 \
+            --skip-runtime \
+            --json | tee artifacts/logs/live-surfaces.json
+
+      - name: Stop local dashboard backend
+        if: always()
+        run: |
+          if [ -s artifacts/logs/dashboard-runtime.pid ]; then
+            kill "$(cat artifacts/logs/dashboard-runtime.pid)" 2>/dev/null || true
+          fi
+
+      - name: Commit safe repairs
+        if: >-
+          success() &&
+          (github.event_name == 'schedule' || inputs.commit_repairs == true)
+        run: |
+          if git diff --quiet; then
+            echo "No safe repairs to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -u
+          git commit -m "chore: daily full-stack self-heal"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload health artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-health-sweep-${{ github.run_id }}
+          path: |
+            artifacts/
+            dist/pages-wrapper/index.html
+            dist/pages-wrapper/_worker.js
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Open or update sweep failure issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const title = "Daily full-stack health sweep failed";
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            for (const label of [
+              { name: "automation", color: "5319e7", description: "Repository automation and scheduled maintenance" },
+              { name: "health", color: "0e8a16", description: "Health check and reliability automation" },
+            ]) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                });
+              } catch (error) {
+                if (error.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    ...label,
+                  });
+                } else {
+                  throw error;
+                }
+              }
+            }
+            let log = "";
+            for (const file of [
+              "artifacts/logs/live-surfaces.json",
+              "artifacts/logs/dashboard-runtime.log",
+              "artifacts/visual-health/visual-health-results.json",
+            ]) {
+              if (fs.existsSync(file)) {
+                log += `\n\n### ${file}\n\`\`\`\n${fs.readFileSync(file, "utf8").slice(-6000)}\n\`\`\``;
+              }
+            }
+            const body = [
+              "The daily full-stack health sweep could not self-heal cleanly.",
+              "",
+              `Run: ${runUrl}`,
+              "",
+              "The workflow attempted dependency repair, formatting/import-order repair, generated data refresh, backend smoke checks, frontend checks, browser visual checks, and public Pages probes.",
+              log || "\nNo health artifacts were available before failure.",
+            ].join("\n");
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "automation,health",
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["automation", "health"],
+              });
+            }
