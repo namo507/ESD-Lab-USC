@@ -261,11 +261,11 @@
 
 .heroGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(250px, 0.58fr) minmax(320px, 0.72fr);
   gap: clamp(24px, 3vw, 48px);
   align-items: start;
   justify-content: start;
-  max-width: clamp(60rem, 78vw, 68rem);
+  max-width: clamp(72rem, 86vw, 82rem);
   margin-top: 28px;
 }
 
@@ -433,6 +433,205 @@
 
 .heroCard {
   padding: 24px;
+}
+
+.heroSignalCard {
+  position: relative;
+  padding: 22px 20px 20px;
+  border: 1px solid var(--landing-border);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(249, 246, 241, 0.88)),
+    var(--landing-surface);
+  box-shadow: var(--landing-shadow);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.heroSignalGlow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.heroSignalGlow span {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(28px);
+  opacity: 0.34;
+  animation: hero-signal-float 8.5s ease-in-out infinite;
+}
+
+.heroSignalGlow span:nth-child(1) {
+  top: 18px;
+  right: 20px;
+  width: 104px;
+  height: 104px;
+  background: rgba(127, 159, 115, 0.16);
+}
+
+.heroSignalGlow span:nth-child(2) {
+  left: -14px;
+  bottom: 68px;
+  width: 122px;
+  height: 122px;
+  background: rgba(108, 144, 182, 0.15);
+  animation-delay: 1.8s;
+}
+
+.heroSignalGlow span:nth-child(3) {
+  right: 44px;
+  bottom: -22px;
+  width: 136px;
+  height: 92px;
+  background: rgba(212, 162, 83, 0.13);
+  animation-delay: 3.2s;
+}
+
+.heroSignalCard > * {
+  position: relative;
+  z-index: 1;
+}
+
+.heroSignalValueRow {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.heroSignalValueRow strong {
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 4.2vw, 52px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+
+.heroSignalValueRow span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warm-600);
+}
+
+.heroSignalRail {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  margin-top: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(120, 107, 89, 0.1);
+}
+
+.heroSignalRailSegment {
+  height: 100%;
+  transform-origin: left center;
+  animation: hero-signal-pulse 5.8s ease-in-out infinite;
+}
+
+.heroSignalLegend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin-top: 16px;
+}
+
+.heroSignalLegendItem {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--warm-700);
+}
+
+.heroSignalLegendItem strong {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--warm-fg1);
+}
+
+.heroSignalLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.65);
+}
+
+.heroSignalBands {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.heroSignalBand {
+  display: grid;
+  gap: 6px;
+}
+
+.heroSignalBandHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.heroSignalBandHeader span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warm-500);
+}
+
+.heroSignalBandHeader strong {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.heroSignalTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(120, 107, 89, 0.11);
+  overflow: hidden;
+}
+
+.heroSignalFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(127, 159, 115, 0.85), rgba(108, 144, 182, 0.82));
+}
+
+.heroSignalMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(120, 107, 89, 0.12);
+}
+
+.heroSignalMeta span {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warm-500);
+}
+
+.heroSignalMeta strong {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  line-height: 1;
 }
 
 .cardTitle {
@@ -1707,6 +1906,17 @@
   0%, 100% { opacity: 0.5; transform: scale(0.85); }
   50%      { opacity: 1;   transform: scale(1.1); }
 }
+
+@keyframes hero-signal-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.96); }
+  50% { transform: translate3d(0, -8px, 0) scale(1.04); }
+}
+
+@keyframes hero-signal-pulse {
+  0%, 100% { opacity: 0.9; transform: scaleX(1); }
+  50% { opacity: 1; transform: scaleX(1.015); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dynamicsTraceLine,
   .dynamicsTraceGold,
@@ -1717,7 +1927,9 @@
   .fillDotG,
   .fillDotR,
   .fillDotB,
-  .fillDotY {
+  .fillDotY,
+  .heroSignalGlow span,
+  .heroSignalRailSegment {
     animation: none !important;
   }
 }
@@ -1746,6 +1958,7 @@
   .studioGrid,
   .suggestionGrid {
     grid-template-columns: 1fr;
+    max-width: none;
   }
 
   .dock {
@@ -1771,6 +1984,11 @@
   .participantFlowCard {
     min-height: 520px;
   }
+
+  .heroSignalLegend,
+  .heroSignalMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
@@ -1779,6 +1997,8 @@
   .stageGrid,
   .groupGrid,
   .heroMetaStrip,
+  .heroSignalLegend,
+  .heroSignalMeta,
   .aimGrid,
   .comparisonStrip,
   .pipelineRail,

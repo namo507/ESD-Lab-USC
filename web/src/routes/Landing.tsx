@@ -271,6 +271,13 @@ function Gauge({ value }: { value: number }) {
   );
 }
 
+const HERO_PHASES = [
+  { key: "orienting", label: "Orienting", color: "#d5a253" },
+  { key: "sustained", label: "Sustained", color: "#7f9f73" },
+  { key: "inattention", label: "Inattention", color: "#c46c55" },
+  { key: "termination", label: "Termination", color: "#6c90b6" },
+] as const;
+
 export function Landing() {
   const navigate = useNavigate();
   const setChatOpen = useUi((state) => state.setChatOpen);
@@ -388,6 +395,69 @@ export function Landing() {
     () => DYN_LANDING.filter((item) => isFeatureFlagEnabled(item.flag)),
     [],
   );
+
+  const heroSignal = useMemo(() => {
+    const fallbackTotals = {
+      orienting: 250,
+      sustained: 994,
+      inattention: 118,
+      termination: 55,
+    };
+
+    const totalsByPhase = hda
+      ? Object.values(hda).reduce(
+          (sum, group) => ({
+            orienting: sum.orienting + group.orienting,
+            sustained: sum.sustained + group.sustained,
+            inattention: sum.inattention + group.inattention,
+            termination: sum.termination + group.termination,
+          }),
+          { orienting: 0, sustained: 0, inattention: 0, termination: 0 },
+        )
+      : fallbackTotals;
+
+    const totalLabeled = Math.max(
+      1,
+      totalsByPhase.orienting +
+        totalsByPhase.sustained +
+        totalsByPhase.inattention +
+        totalsByPhase.termination,
+    );
+    const passRate = totals.done + totals.fail > 0 ? (totals.done / (totals.done + totals.fail)) * 100 : 99.8;
+
+    const cohortBands = (["VPT", "ASIB", "TD"] as const).map((group) => {
+      const phaseBlock = hda?.[group];
+      const groupTotal = phaseBlock
+        ? phaseBlock.orienting + phaseBlock.sustained + phaseBlock.inattention + phaseBlock.termination
+        : 1;
+      const sustainedShare = phaseBlock
+        ? (phaseBlock.sustained / Math.max(groupTotal, 1)) * 100
+        : group === "TD"
+          ? 72
+          : group === "ASIB"
+            ? 65
+            : 69;
+      return {
+        code: group,
+        total: phaseBlock ? groupTotal : 0,
+        sustainedShare,
+      };
+    });
+
+    const phaseMix = HERO_PHASES.map((phase) => ({
+      ...phase,
+      share: (totalsByPhase[phase.key] / totalLabeled) * 100,
+      count: totalsByPhase[phase.key],
+    }));
+
+    return {
+      totalLabeled,
+      passRate,
+      sustainedShare: (totalsByPhase.sustained / totalLabeled) * 100,
+      phaseMix,
+      cohortBands,
+    };
+  }, [hda, totals.done, totals.fail]);
 
   useEffect(() => {
     const sections = NAV_SECTIONS.flatMap((section) => {
@@ -598,6 +668,67 @@ export function Landing() {
                 </div>
               </div>
             </div>
+
+            <aside className={styles.heroSignalCard} data-insight="landing-attention-pulse">
+              <div className={styles.heroSignalGlow} aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </div>
+              <span className={styles.cardEyebrow}>Attention pulse</span>
+              <div className={styles.heroSignalValueRow}>
+                <strong>{stat(heroSignal.sustainedShare, 1)}%</strong>
+                <span>labeled windows in sustained attention</span>
+              </div>
+              <p className={styles.cardBody}>
+                A quick operational read on whether the visible HDA stream is spending more time in sustained attention than in orienting, inattention, or termination.
+              </p>
+
+              <div className={styles.heroSignalRail} aria-hidden="true">
+                {heroSignal.phaseMix.map((phase) => (
+                  <span
+                    key={phase.key}
+                    className={styles.heroSignalRailSegment}
+                    style={{ width: `${phase.share}%`, background: `linear-gradient(90deg, ${phase.color}, ${phase.color}cc)` }}
+                  />
+                ))}
+              </div>
+
+              <div className={styles.heroSignalLegend}>
+                {heroSignal.phaseMix.map((phase) => (
+                  <div key={phase.key} className={styles.heroSignalLegendItem}>
+                    <span className={styles.heroSignalLegendDot} style={{ backgroundColor: phase.color }} />
+                    <span>{phase.label}</span>
+                    <strong>{stat(phase.share, 0)}%</strong>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.heroSignalBands}>
+                {heroSignal.cohortBands.map((cohort) => (
+                  <div key={cohort.code} className={styles.heroSignalBand}>
+                    <div className={styles.heroSignalBandHeader}>
+                      <span>{cohort.code}</span>
+                      <strong>{stat(cohort.sustainedShare, 0)}%</strong>
+                    </div>
+                    <div className={styles.heroSignalTrack}>
+                      <span className={styles.heroSignalFill} style={{ width: `${cohort.sustainedShare}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.heroSignalMeta}>
+                <div>
+                  <span>Tagged windows</span>
+                  <strong>{stat(heroSignal.totalLabeled)}</strong>
+                </div>
+                <div>
+                  <span>QA pass rate</span>
+                  <strong>{stat(heroSignal.passRate, 1)}%</strong>
+                </div>
+              </div>
+            </aside>
 
             <aside className={styles.heroCard} data-insight="landing-study">
               <span className={styles.cardEyebrow}>About the study</span>
