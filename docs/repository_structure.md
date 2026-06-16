@@ -36,6 +36,15 @@ truth remains `dashboard/data/readings_data.json`.
 | Kubernetes Helm | `k8s/helm/` |
 | Kubernetes Python automation | `k8s/pipeline/` |
 
+## Automation Entry Points
+
+`Makefile` is the top-level operator surface for routine development, health
+checks, packaging, and sharing commands.
+
+`scripts/` contains the narrower automation entry points behind those targets.
+See `scripts/README.md` for the current health, build, deploy, and maintenance
+script catalog.
+
 ## R Environment
 
 `renv.lock` remains at the repository root because R scripts are spread across

@@ -262,9 +262,15 @@
 .heroGrid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
-  gap: 32px;
+  gap: clamp(24px, 3vw, 48px);
   align-items: start;
+  justify-content: start;
+  max-width: clamp(60rem, 78vw, 68rem);
   margin-top: 28px;
+}
+
+.heroCopy {
+  min-width: 0;
 }
 
 .heroTitle {

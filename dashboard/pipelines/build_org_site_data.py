@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.error import HTTPError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
@@ -77,6 +78,12 @@ if not logger.handlers:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s :: %(message)s",
     )
+
+
+def _is_missing_optional_page(exc: Exception) -> bool:
+    if isinstance(exc, HTTPError):
+        return exc.code == 404
+    return "404" in str(exc)
 
 
 @dataclass
@@ -518,7 +525,7 @@ def enrich_story_summaries(links: list[dict[str, str]], timeout: int = 12) -> li
 
 
 def fallback_payload() -> dict[str, Any]:
-    return {
+    payload = {
         "meta": {
             "generated_at": None,
             "source_mode": "fallback",
@@ -527,13 +534,13 @@ def fallback_payload() -> dict[str, Any]:
             "errors": [],
         },
         "summary": {
-            "current_public_studies": 2,
-            "featured_stories": 3,
-            "partner_count": 16,
-            "publication_items": 2,
-            "news_mentions": 4,
-            "impact_item_count": 9,
-            "available_years": [2026, 2025, 2024, 2022, 2021, 2020],
+            "current_public_studies": 0,
+            "featured_stories": 0,
+            "partner_count": 0,
+            "publication_items": 0,
+            "news_mentions": 0,
+            "impact_item_count": 0,
+            "available_years": [],
             "phone": "(803) 993-8356",
             "emails": ["esdlab@sc.edu", "esdlab.espanol@sc.edu"],
             "address": "1800 Gervais Street, Columbia, SC 29201",
@@ -632,9 +639,9 @@ def fallback_payload() -> dict[str, Any]:
             {"title": "Parents as Teachers | SC First Steps", "href": "https://www.scfirststeps.org/what-we-do/programs/parents-as-teachers/", "category": "Family Support", "source_page": PAGE_URLS["resources"]},
         ],
         "partners": [
-            {"name": "About Play", "href": "https://aboutplaysc.com/", "source_page": PAGE_URLS["partners"]},
-            {"name": "Team Therapy", "href": "https://teamtherapysc.com/", "source_page": PAGE_URLS["partners"]},
-            {"name": "Project Hope Foundation", "href": "https://www.projecthopesc.org/", "source_page": PAGE_URLS["partners"]},
+            {"name": "About Play", "href": "https://aboutplaysc.com/", "source_page": PAGE_URLS["about"]},
+            {"name": "Team Therapy", "href": "https://teamtherapysc.com/", "source_page": PAGE_URLS["about"]},
+            {"name": "Project Hope Foundation", "href": "https://www.projecthopesc.org/", "source_page": PAGE_URLS["about"]},
         ],
         "contact": {
             "phone": "(803) 993-8356",
@@ -664,6 +671,48 @@ def fallback_payload() -> dict[str, Any]:
         "impact_feed": [],
         "impact_summary": {},
     }
+
+    impact_feed = sorted(
+        payload["publications"] + payload["news"] + payload["stories"],
+        key=lambda item: (
+            item.get("year") or 0,
+            item.get("kind") == "story",
+            item.get("title") or "",
+        ),
+        reverse=True,
+    )
+    years = sorted(
+        {item["year"] for item in impact_feed if item.get("year")}, reverse=True
+    )
+    payload["impact_feed"] = impact_feed
+    payload["impact_summary"] = {
+        "types": [
+            {
+                "label": "Publications",
+                "value": "publication",
+                "count": len(payload["publications"]),
+            },
+            {"label": "News", "value": "news", "count": len(payload["news"])},
+            {
+                "label": "Stories",
+                "value": "story",
+                "count": len(payload["stories"]),
+            },
+        ],
+        "years": years,
+    }
+    payload["summary"].update(
+        {
+            "current_public_studies": len(payload["studies"]),
+            "featured_stories": len(payload["stories"]),
+            "partner_count": len(payload["partners"]),
+            "publication_items": len(payload["publications"]),
+            "news_mentions": len(payload["news"]),
+            "impact_item_count": len(impact_feed),
+            "available_years": years,
+        }
+    )
+    return payload
 
 
 def build_payload_from_pages(pages: dict[str, PageDocument], timeout: int = 12) -> dict[str, Any]:
@@ -790,6 +839,8 @@ def build_payload(allow_network: bool = True, timeout: int = 12) -> dict[str, An
             except Exception as exc:  # pragma: no cover - defensive network path
                 if key in OPTIONAL_PAGE_KEYS:
                     logger.info("Optional page unavailable: %s (%s): %s", key, url, exc)
+                    if _is_missing_optional_page(exc):
+                        continue
                 else:
                     logger.warning("Unable to fetch %s (%s): %s", key, url, exc)
                 errors.append(f"{key}: {exc}")
@@ -803,19 +854,6 @@ def build_payload(allow_network: bool = True, timeout: int = 12) -> dict[str, An
     payload = fallback_payload()
     payload["meta"]["generated_at"] = datetime.now().isoformat(timespec="seconds")
     payload["meta"]["errors"] = errors
-    payload["impact_feed"] = sorted(
-        payload["publications"] + payload["news"] + payload["stories"],
-        key=lambda item: (item.get("year") or 0, item.get("kind") == "story", item.get("title") or ""),
-        reverse=True,
-    )
-    payload["impact_summary"] = {
-        "types": [
-            {"label": "Publications", "value": "publication", "count": len(payload["publications"])},
-            {"label": "News", "value": "news", "count": len(payload["news"])},
-            {"label": "Stories", "value": "story", "count": len(payload["stories"])},
-        ],
-        "years": payload["summary"]["available_years"],
-    }
     return payload
 
 

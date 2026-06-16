@@ -102,6 +102,72 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
 
+LEGACY_STUDY_TARGETS = {"VPT": 130, "ASIB": 65, "TD": 65}
+LEGACY_STAGE_CATALOG = {
+    "ingest": {
+        "short": "Actiheart-5 + REDCap",
+        "description": "Pull raw ECG captures and matched visit metadata into the de-identified dashboard pipeline.",
+    },
+    "preprocess": {
+        "short": "filter · detect R-peaks",
+        "description": "Bandpass filtering, R-peak detection, and inter-beat interval extraction ahead of QA.",
+    },
+    "qa": {
+        "short": "epoch-level review",
+        "description": "Surface 5-second windows for automated and operator QA review before downstream features.",
+    },
+    "hrv": {
+        "short": "time- & freq-domain",
+        "description": "Compute RMSSD, SDNN, and frequency-domain HRV features for the visible cohort slice.",
+    },
+    "hda": {
+        "short": "phase classification",
+        "description": "Assign heart-defined attention phase labels and confidence for accepted windows.",
+    },
+    "merge": {
+        "short": "long-form parquet",
+        "description": "Join REDCap, HRV, HDA, and de-identified cohort metadata into dashboard-ready payloads.",
+    },
+}
+LEGACY_VISIT_LOG = [
+    {
+        "ts": "2026-04-25 09:18",
+        "actor": "system",
+        "event": "merge.parquet written",
+        "kind": "ok",
+        "detail": "dashboard payload refreshed from the de-identified cohort export.",
+    },
+    {
+        "ts": "2026-04-25 09:14",
+        "actor": "system",
+        "event": "HDA labels emitted",
+        "kind": "ok",
+        "detail": "Heart-defined attention phases written for accepted epochs.",
+    },
+    {
+        "ts": "2026-04-25 09:11",
+        "actor": "system",
+        "event": "HRV features computed",
+        "kind": "ok",
+        "detail": "RMSSD, SDNN, and related autonomic features available for the visit.",
+    },
+    {
+        "ts": "2026-04-25 09:07",
+        "actor": "operator",
+        "event": "QA accepted",
+        "kind": "ok",
+        "detail": "Signal-quality review completed with only minor ectopic flags.",
+    },
+    {
+        "ts": "2026-04-25 08:58",
+        "actor": "system",
+        "event": "ingest complete",
+        "kind": "info",
+        "detail": "Actiheart-5 source capture ingested and matched to visit metadata.",
+    },
+]
+LEGACY_EPOCH_STORE: dict[str, list[dict[str, Any]]] = {}
+
 
 # ---- Async presentation jobs ----------------------------------------------
 # Jobs are persisted in SQLite so polls can hop across workers and in-flight
@@ -328,6 +394,300 @@ def _api_list(
             "source": source,
         },
     }
+
+
+def _legacy_group_counts(payload: dict[str, Any]) -> dict[str, dict[str, int]]:
+    raw = (payload.get("enrollment") or {}).get("by_group") or {}
+    groups = {
+        code: {"count": 0, "target": target}
+        for code, target in LEGACY_STUDY_TARGETS.items()
+    }
+    for raw_group, block in raw.items():
+        if not isinstance(block, dict):
+            continue
+        group = _normalize_group(raw_group)
+        groups[group] = {
+            "count": int(block.get("current") or groups[group]["count"]),
+            "target": int(block.get("target") or groups[group]["target"]),
+        }
+    return groups
+
+
+def _legacy_study_summary() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    groups = _legacy_group_counts(payload)
+    enrolled = sum(item["count"] for item in groups.values())
+    target = int(
+        payload.get("meta", {}).get("study", {}).get("n_target")
+        or sum(item["target"] for item in groups.values())
+        or 260
+    )
+    return {
+        "enrolled": enrolled,
+        "target": target,
+        "groups": groups,
+    }
+
+
+def _legacy_stage_rows() -> list[dict[str, Any]]:
+    rows = []
+    for row in data_features.stages_rows():
+        meta = LEGACY_STAGE_CATALOG.get(
+            str(row.get("id") or ""),
+            {
+                "short": str(row.get("label") or row.get("id") or "stage"),
+                "description": "Pipeline stage status from the live dashboard runtime.",
+            },
+        )
+        rows.append(
+            {
+                "id": str(row.get("id") or "stage"),
+                "label": str(row.get("label") or "Stage"),
+                "short": meta["short"],
+                "description": meta["description"],
+                "inflight": int(row.get("inflight") or 0),
+                "queued": int(row.get("queued") or 0),
+                "done": int(row.get("done") or 0),
+                "fail": int(row.get("fail") or 0),
+                "rate": float(row.get("rate") or 0),
+                "eta": str(row.get("eta") or "—"),
+            }
+        )
+    return rows
+
+
+def _legacy_runs(limit: int) -> list[dict[str, Any]]:
+    rows = data_features.runs_rows()
+    bounded = rows[: max(1, limit)]
+    return [
+        {
+            "id": str(row.get("id") or "run"),
+            "triggered": str(row.get("triggered") or ""),
+            "actor": str(row.get("actor") or "system"),
+            "scope": str(row.get("scope") or "nightly"),
+            "status": str(row.get("status") or "idle"),
+            "duration": str(row.get("duration") or "0m"),
+            "stage": str(row.get("stage") or "merge"),
+            "windows": int(row.get("windows") or 0),
+        }
+        for row in bounded
+    ]
+
+
+def _legacy_participants() -> list[dict[str, Any]]:
+    payload = _dashboard_payload()
+    return [
+        {
+            "id": str(row.get("id") or "NANO-0000"),
+            "group": _normalize_group(row.get("group")),
+            "cga_wks": float(row.get("cga_wks") or 0),
+            "sex": str(row.get("sex") or "X"),
+            "visit": str(row.get("visit") or "cga_12mo"),
+            "windows": int(row.get("windows") or 0),
+            "qa": str(row.get("qa") or "pending"),
+            "rmssd": row.get("rmssd"),
+            "hf": row.get("hf"),
+            "hda": row.get("hda"),
+            "updated": str(row.get("updated") or "now"),
+            "enrolled": str(row.get("enrolled") or ""),
+            "site": str(row.get("site") or "USC Lab"),
+        }
+        for row in data_features.participants_from_payload(payload)
+    ]
+
+
+def _legacy_participant_detail(nano_id: str) -> dict[str, Any] | None:
+    subject = next((row for row in _legacy_participants() if row["id"] == nano_id), None)
+    if subject is None:
+        return None
+    return {
+        **subject,
+        "visit_log": [dict(item) for item in LEGACY_VISIT_LOG],
+    }
+
+
+def _make_legacy_epochs() -> list[dict[str, Any]]:
+    flags = [
+        "clean",
+        "clean",
+        "clean",
+        "clean",
+        "clean",
+        "clean",
+        "clean",
+        "ectopic",
+        "motion",
+        "noise",
+        "clean",
+        "clean",
+        "flatline",
+        "clean",
+    ]
+    rows: list[dict[str, Any]] = []
+    t0 = 0
+    for idx in range(64):
+        flag = flags[(idx * 7 + 3) % len(flags)]
+        sqi = (
+            0.78 + (idx % 7) * 0.03
+            if flag == "clean"
+            else 0.55 - (idx % 4) * 0.05
+            if flag == "ectopic"
+            else 0.32
+            if flag == "motion"
+            else 0.18
+            if flag == "noise"
+            else 0.04
+        )
+        rows.append(
+            {
+                "idx": idx,
+                "t0": t0,
+                "t1": t0 + 5,
+                "flag": flag,
+                "sqi": round(max(0.02, min(0.99, sqi)), 2),
+                "ibi_n": 8 + (idx % 3)
+                if flag == "clean"
+                else 6
+                if flag == "ectopic"
+                else 4
+                if flag == "motion"
+                else 2,
+                "decision": "auto",
+            }
+        )
+        t0 += 5
+    return rows
+
+
+def _legacy_epochs_for_visit(visit_id: str) -> list[dict[str, Any]]:
+    if visit_id not in LEGACY_EPOCH_STORE:
+        LEGACY_EPOCH_STORE[visit_id] = _make_legacy_epochs()
+    return LEGACY_EPOCH_STORE[visit_id]
+
+
+def _legacy_update_epoch_decision(
+    visit_id: str, idx: int, decision: str
+) -> dict[str, Any] | None:
+    epochs = _legacy_epochs_for_visit(visit_id)
+    if idx < 0 or idx >= len(epochs):
+        return None
+    epochs[idx] = {
+        **epochs[idx],
+        "decision": decision,
+    }
+    return dict(epochs[idx])
+
+
+def _legacy_trajectory(metric: str) -> dict[str, Any]:
+    payload = _dashboard_payload()
+    normalized_metric = metric.lower()
+    source_metric = {
+        "rmssd": "RMSSD",
+        "sdnn": "SDNN",
+        "hf": None,
+    }.get(normalized_metric, "RMSSD")
+    trajectories = payload.get("trajectories") or {}
+    months = trajectories.get("months") or [3, 6, 9, 12, 18, 24]
+    by_group = trajectories.get("by_group") or {}
+    groups = _legacy_group_counts(payload)
+
+    if source_metric is None:
+        base_months = [3, 6, 9, 12, 18, 24]
+        base = 280
+        step = 35
+        return {
+            "months": base_months,
+            "series": {
+                "VPT": [
+                    {"x": month, "y": base + idx * step + (-1 if idx == 5 else 0), "n": max(4, groups["VPT"]["count"] - idx * 8)}
+                    for idx, month in enumerate(base_months)
+                ],
+                "ASIB": [
+                    {"x": month, "y": base + 4 + idx * (step + 0.4), "n": max(4, round(groups["ASIB"]["count"] - idx * 1.5))}
+                    for idx, month in enumerate(base_months)
+                ],
+                "TD": [
+                    {"x": month, "y": base + 7 + idx * (step + 0.7), "n": max(4, groups["TD"]["count"] - idx)}
+                    for idx, month in enumerate(base_months)
+                ],
+            },
+        }
+
+    series: dict[str, list[dict[str, Any]]] = {"VPT": [], "ASIB": [], "TD": []}
+    for raw_group, block in by_group.items():
+        group = _normalize_group(raw_group)
+        means = (block.get("mean") or {}).get(source_metric) or []
+        ci = (block.get("ci") or {}).get(source_metric) or {}
+        lows = ci.get("low") or []
+        highs = ci.get("high") or []
+        current_n = groups[group]["count"]
+        points: list[dict[str, Any]] = []
+        for idx, month in enumerate(months):
+            mean = means[idx] if idx < len(means) else None
+            if mean is None:
+                continue
+            point: dict[str, Any] = {
+                "x": float(month),
+                "y": round(float(mean), 3),
+                "n": max(4, current_n - idx * (8 if group == "VPT" else 2)),
+            }
+            low = lows[idx] if idx < len(lows) else None
+            high = highs[idx] if idx < len(highs) else None
+            if low is not None and high is not None:
+                point["ci"] = [round(float(low), 3), round(float(high), 3)]
+            points.append(point)
+        series[group] = points
+
+    filtered_months = sorted(
+        {
+            int(point["x"])
+            for group_points in series.values()
+            for point in group_points
+        }
+    )
+    return {
+        "months": filtered_months,
+        "series": series,
+    }
+
+
+def _legacy_hda_distribution() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    groups = _legacy_group_counts(payload)
+    block = payload.get("hda_composition") or {}
+    by_group = block.get("by_group") if isinstance(block, dict) else None
+    if not isinstance(by_group, dict):
+        by_group = {}
+    out: dict[str, dict[str, int]] = {}
+    for group in ("VPT", "ASIB", "TD"):
+        points = by_group.get(group) or by_group.get("PT" if group == "VPT" else group) or []
+        latest = next(
+            (point for point in reversed(points) if isinstance(point, dict)),
+            None,
+        )
+        scale = max(24, groups[group]["count"] * 6)
+        if latest is None:
+            latest = {
+                "orienting": 0.25,
+                "sustained": 0.45,
+                "inattention": 0.22,
+                "termination": 0.08,
+            }
+        out[group] = {
+            phase: int(round(float(latest.get(phase, 0)) * scale))
+            for phase in ("orienting", "sustained", "inattention", "termination")
+        }
+    return out
+
+
+def _legacy_redcap_events() -> list[dict[str, Any]]:
+    return data_features.redcap_event_rows(_dashboard_payload())
+
+
+def _legacy_matlab_integration() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    matlab = payload.get("matlab_integration")
+    return matlab if isinstance(matlab, dict) else {}
 
 
 def _v2_rsa_trajectories(age_basis: str) -> dict[str, Any]:
@@ -1936,6 +2296,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         request_path = urlparse(self.path).path
+        query = parse_qs(urlparse(self.path).query)
 
         if self._redirect_legacy_dashboard(request_path):
             return
@@ -1974,6 +2335,57 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         if request_path == "/api/chat/status":
             self._send_json(self.assistant.get_status())
+            return
+
+        if request_path == "/api/study/summary":
+            self._send_json(_legacy_study_summary())
+            return
+
+        if request_path == "/api/pipeline/stages":
+            self._send_json(_legacy_stage_rows())
+            return
+
+        if request_path == "/api/runs":
+            limit = int((query.get("limit") or [20])[0] or 20)
+            self._send_json(_legacy_runs(limit))
+            return
+
+        if request_path == "/api/participants":
+            self._send_json(_legacy_participants())
+            return
+
+        if request_path.startswith("/api/participants/"):
+            participant_id = request_path[len("/api/participants/") :].strip("/")
+            participant = _legacy_participant_detail(unquote(participant_id))
+            if participant is None:
+                self._send_json(
+                    {"error": "Participant not found"},
+                    status=HTTPStatus.NOT_FOUND,
+                )
+                return
+            self._send_json(participant)
+            return
+
+        if request_path.startswith("/api/visits/") and request_path.endswith("/epochs"):
+            visit_id = request_path[len("/api/visits/") : -len("/epochs")].strip("/")
+            self._send_json(_legacy_epochs_for_visit(unquote(visit_id)))
+            return
+
+        if request_path == "/api/results/trajectory":
+            metric = (query.get("metric") or ["rmssd"])[0]
+            self._send_json(_legacy_trajectory(metric))
+            return
+
+        if request_path == "/api/results/hda":
+            self._send_json(_legacy_hda_distribution())
+            return
+
+        if request_path == "/api/redcap/events":
+            self._send_json(_legacy_redcap_events())
+            return
+
+        if request_path == "/api/matlab/integration":
+            self._send_json(_legacy_matlab_integration())
             return
 
         if request_path == "/api/assistant/status":
@@ -2019,7 +2431,6 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             return
 
         if request_path == "/api/publications":
-            query = parse_qs(urlparse(self.path).query)
             self._send_json(
                 data_features.list_publications(
                     data_features.parse_query_params(query)
@@ -2169,6 +2580,33 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def do_PATCH(self) -> None:
         request_path = urlparse(self.path).path
+        if request_path.startswith("/api/visits/") and "/epochs/" in request_path:
+            parts = request_path[len("/api/visits/") :].strip("/").split("/")
+            if len(parts) == 3 and parts[1] == "epochs":
+                try:
+                    payload = self._read_json_body()
+                    decision = str(payload.get("decision") or "").strip()
+                    if decision not in {"auto", "accept", "reject"}:
+                        self._send_json(
+                            {"error": "decision must be one of auto, accept, reject"},
+                            status=HTTPStatus.BAD_REQUEST,
+                        )
+                        return
+                    updated = _legacy_update_epoch_decision(
+                        unquote(parts[0]), int(parts[2]), decision
+                    )
+                    if updated is None:
+                        self._send_json(
+                            {"error": "Epoch not found"},
+                            status=HTTPStatus.NOT_FOUND,
+                        )
+                        return
+                    self._send_json(updated)
+                except ValueError as exc:
+                    self._send_json(
+                        {"error": str(exc)}, status=HTTPStatus.BAD_REQUEST
+                    )
+                return
         if request_path.startswith("/api/publications/") and request_path.endswith(
             "/tags"
         ):

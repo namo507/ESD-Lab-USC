@@ -1,7 +1,7 @@
 {
-  "dashboard_url": "https://equivalent-industrial-smoke-xbox.trycloudflare.com/",
-  "origin_host": "equivalent-industrial-smoke-xbox.trycloudflare.com",
+  "dashboard_url": "https://headers-mixer-charger-quest.trycloudflare.com/",
+  "origin_host": "headers-mixer-charger-quest.trycloudflare.com",
   "tunnel_kind": "quick",
-  "generated_at": "2026-06-03T23:40:00+00:00",
-  "wrapper_canonical": "https://esd-lab-namo.pages.dev/"
+  "generated_at": "2026-06-16T20:53:57+00:00",
+  "wrapper_canonical": "https://runtime-share.esd-lab-namo.pages.dev/"
 }

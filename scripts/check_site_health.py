@@ -40,7 +40,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 DEFAULT_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_MUST_CONTAIN = "esd-deploy-stamp,NANO"
@@ -143,6 +143,19 @@ def _probe_assistant_status(
     return state or ("ready" if ready else "unknown"), message
 
 
+def _origin_from_url(url: str) -> str:
+    parsed = urlparse(url)
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+
+def _probe_api_origin_health(api_origin: str, timeout: int) -> None:
+    status, _raw = _fetch(api_origin.rstrip("/") + "/api/healthz", timeout)
+    if status != 200:
+        raise RuntimeError(
+            f"api origin probe expected 200, got {status} from {api_origin.rstrip('/') + '/api/healthz'}"
+        )
+
+
 def check(
     url: str,
     timeout: int,
@@ -152,6 +165,7 @@ def check(
     assistant_status_path: str,
     probe_assistant: bool,
     require_assistant_ready: bool,
+    probe_api_origin: bool,
 ) -> int:
     try:
         status, raw = _fetch(url, timeout)
@@ -169,6 +183,7 @@ def check(
     body = raw.decode("utf-8", errors="ignore")
     spa_shell = _looks_like_spa_shell(body)
     api_origin = _extract_api_origin(body)
+    page_origin = _origin_from_url(url)
 
     if len(raw) < min_bytes and not spa_shell:
         print(
@@ -201,6 +216,22 @@ def check(
                 f"[FAIL] deploy stamp {stamp} is {age_h:.1f} h old, "
                 f"max {max_stamp_age_hours} h"
             )
+            return 1
+
+    if probe_api_origin:
+        if api_origin is None:
+            print("[FAIL] esd-api-origin meta missing — cannot verify backend origin health")
+            return 1
+        if api_origin.rstrip("/") == page_origin:
+            print(f"[FAIL] esd-api-origin points back to the page origin: {api_origin}")
+            return 1
+        try:
+            _probe_api_origin_health(api_origin, timeout)
+        except RuntimeError as e:
+            print(f"[FAIL] {e}")
+            return 1
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            print(f"[FAIL] api origin probe failed for {api_origin}: {e}")
             return 1
 
     assistant_state = None
@@ -267,6 +298,7 @@ def main() -> int:
         assistant_status_path=args.assistant_status_path,
         probe_assistant=not args.skip_assistant_probe,
         require_assistant_ready=not args.allow_assistant_unready,
+        probe_api_origin=False,
     )
 
 

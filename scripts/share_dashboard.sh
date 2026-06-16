@@ -73,12 +73,22 @@ named_tunnel_token="${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}"
 public_hostname="${DASHBOARD_PUBLIC_HOSTNAME:-}"
 share_service="dashboard-share"
 
+is_invalid_named_hostname() {
+  [[ "$1" == *.pages.dev ]]
+}
+
 case "$mode" in
   named)
     if [[ -z "$named_tunnel_token" ]] || [[ -z "$public_hostname" ]]; then
       echo "ERROR: --mode named requires CLOUDFLARE_TUNNEL_TOKEN and DASHBOARD_PUBLIC_HOSTNAME in .env." >&2
       echo "       The legacy CLOUDFLARED_TUNNEL_TOKEN alias is also accepted for the token." >&2
       echo "Hint: see README.md § Stable named-tunnel sharing." >&2
+      exit 78
+    fi
+    if is_invalid_named_hostname "$public_hostname"; then
+      echo "ERROR: DASHBOARD_PUBLIC_HOSTNAME cannot use a Cloudflare Pages domain (${public_hostname})." >&2
+      echo "       Named tunnels require a hostname on a DNS zone you control, not *.pages.dev." >&2
+      echo "Hint: use --mode quick for an ephemeral tunnel, or attach a custom domain and set DASHBOARD_PUBLIC_HOSTNAME to that hostname." >&2
       exit 78
     fi
     use_named="true"
@@ -93,7 +103,15 @@ case "$mode" in
     ;;
   auto)
     if [[ -n "$named_tunnel_token" && -n "$public_hostname" ]]; then
-      use_named="true"
+      if is_invalid_named_hostname "$public_hostname"; then
+        echo "WARNING: DASHBOARD_PUBLIC_HOSTNAME=${public_hostname} uses *.pages.dev, which cannot host a named tunnel." >&2
+        echo "         Falling back to a quick tunnel. Attach a custom domain for stable named-tunnel mode." >&2
+        named_tunnel_token=""
+        public_hostname=""
+        use_named="false"
+      else
+        use_named="true"
+      fi
     elif [[ -n "$named_tunnel_token" && -z "$public_hostname" ]]; then
       echo "WARNING: a Cloudflare tunnel token is set but DASHBOARD_PUBLIC_HOSTNAME is blank." >&2
       echo "         Falling back to a quick (random) tunnel because no stable hostname is wired up." >&2

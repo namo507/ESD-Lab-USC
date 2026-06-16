@@ -45,6 +45,7 @@ def probe(
     max_stamp_age_hours: float | None,
     probe_assistant: bool,
     require_assistant_ready: bool,
+    probe_api_origin: bool,
 ) -> dict[str, object]:
     print(f"[surface] {name} -> {url}")
     exit_code = check(
@@ -56,6 +57,7 @@ def probe(
         assistant_status_path="/api/assistant/status",
         probe_assistant=probe_assistant,
         require_assistant_ready=require_assistant_ready,
+        probe_api_origin=probe_api_origin,
     )
     return {"name": name, "url": url, "ok": exit_code == 0, "exit_code": exit_code}
 
@@ -120,6 +122,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_stamp_age_hours=args.max_stamp_age_hours,
                 probe_assistant=True,
                 require_assistant_ready=not args.allow_assistant_unready,
+                probe_api_origin=True,
             )
         )
 
@@ -134,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_stamp_age_hours=None,
                 probe_assistant=False,
                 require_assistant_ready=False,
+                probe_api_origin=False,
             )
         )
 

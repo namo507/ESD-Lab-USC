@@ -56,10 +56,28 @@ def test_org_site_live_payload_tolerates_missing_optional_page(monkeypatch):
     payload = build_org_site_data.build_payload(allow_network=True)
 
     assert payload["meta"]["source_mode"] == "live_fetch"
-    assert any(error.startswith("partners:") for error in payload["meta"]["errors"])
+    assert not any(error.startswith("partners:") for error in payload["meta"]["errors"])
     assert payload["partners"]
     assert payload["summary"]["partner_count"] == len(payload["partners"])
+    assert {
+        item["source_page"] for item in payload["partners"]
+    } == {build_org_site_data.PAGE_URLS["about"]}
     json.loads(json.dumps(payload, allow_nan=False))
+
+
+def test_org_site_fallback_summary_counts_match_payload():
+    payload = build_org_site_data.build_payload(allow_network=False)
+
+    assert payload["summary"]["current_public_studies"] == len(payload["studies"])
+    assert payload["summary"]["featured_stories"] == len(payload["stories"])
+    assert payload["summary"]["partner_count"] == len(payload["partners"])
+    assert payload["summary"]["publication_items"] == len(payload["publications"])
+    assert payload["summary"]["news_mentions"] == len(payload["news"])
+    assert payload["summary"]["impact_item_count"] == len(payload["impact_feed"])
+    assert all(
+        item["source_page"] == build_org_site_data.PAGE_URLS["about"]
+        for item in payload["partners"]
+    )
 
 
 def test_production_payload_includes_organization_site_block(tmp_path):
