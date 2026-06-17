@@ -669,7 +669,12 @@ export function Landing() {
               </div>
             </div>
 
-            <aside className={styles.heroSignalCard} data-insight="landing-attention-pulse">
+            <a
+              href="/results"
+              className={`${styles.heroSignalCard} ${styles.heroSignalButton}`}
+              data-insight="landing-attention-pulse"
+              aria-label="Open results view for deeper HDA and cohort metrics"
+            >
               <div className={styles.heroSignalGlow} aria-hidden="true">
                 <span />
                 <span />
@@ -728,7 +733,11 @@ export function Landing() {
                   <strong>{stat(heroSignal.passRate, 1)}%</strong>
                 </div>
               </div>
-            </aside>
+              <div className={styles.heroSignalCta}>
+                <span>Open results view</span>
+                <ArrowRight size={14} strokeWidth={1.5} aria-hidden />
+              </div>
+            </a>
 
             <aside className={styles.heroCard} data-insight="landing-study">
               <span className={styles.cardEyebrow}>About the study</span>

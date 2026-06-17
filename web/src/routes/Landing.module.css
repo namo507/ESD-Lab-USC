@@ -448,6 +448,25 @@
   isolation: isolate;
 }
 
+.heroSignalButton {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.heroSignalButton:hover,
+.heroSignalButton:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(115, 0, 10, 0.18);
+  box-shadow: 0 16px 40px rgba(71, 53, 34, 0.1);
+}
+
+.heroSignalButton:focus-visible {
+  outline: 2px solid rgba(115, 0, 10, 0.22);
+  outline-offset: 4px;
+}
+
 .heroSignalGlow {
   position: absolute;
   inset: 0;
@@ -632,6 +651,18 @@
   font-family: var(--font-serif);
   font-size: 24px;
   line-height: 1;
+}
+
+.heroSignalCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--usc-garnet);
 }
 
 .cardTitle {
@@ -1988,6 +2019,12 @@
   .heroSignalLegend,
   .heroSignalMeta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1480px) and (min-width: 1181px) {
+  .heroTitle {
+    font-size: clamp(44px, 6.1vw, 88px);
   }
 }
 
