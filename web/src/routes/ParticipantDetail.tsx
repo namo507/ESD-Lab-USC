@@ -5,6 +5,14 @@ import { useEntityHistory, useHdaSession, useParticipant } from "@/api/hooks";
 import { ecgPath } from "@/lib/ecgPath";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { ChangelogAction, GroupCode, ParticipantDetail as ParticipantDetailType, VisitId } from "@/api/schemas";
+import {
+  enrollmentKind,
+  formPolicyLabel,
+  operationsFor,
+  questionnaireKind,
+  questionnaireLabel,
+  riskKind,
+} from "@/lib/participantOperations";
 import styles from "./ParticipantDetail.module.css";
 
 const VISITS: VisitId[] = ["nicu_dc", "cga_3mo", "cga_6mo", "cga_9mo", "cga_12mo", "cga_18mo", "cga_24mo"];
@@ -30,6 +38,7 @@ export function ParticipantDetail() {
   }
 
   const cur = VISITS.indexOf(p.visit);
+  const operations = operationsFor(p);
   const visitStatus = VISITS.map((v, i) => {
     let s: "scheduled" | "complete" | "in_progress" | "failed" = "scheduled";
     if (i < cur) s = "complete";
@@ -56,10 +65,14 @@ export function ParticipantDetail() {
             <div className={styles.idRow}>
               <span className={styles.idLarge}>{p.id}</span>
               <Badge kind={GROUP_KIND[p.group]}>{p.group}</Badge>
+              <Badge kind={enrollmentKind(operations.enrollment_type)} size="sm">{operations.enrollment_type}</Badge>
+              {operations.study_roles.map((study) => (
+                <Badge key={study} kind={study === "NANO" ? "vpt" : study === "ANONICO" ? "asib" : "info"} size="sm">{study}</Badge>
+              ))}
               <Badge kind="phi" size="sm">PHI gated</Badge>
             </div>
             <div className={`${styles.metaLine} t-mono`}>
-              <Gloss term="CGA">CGA</Gloss> {p.cga_wks.toFixed(1)} wks · {p.sex} · enrolled {p.enrolled} · {p.site}
+              <Gloss term="CGA">CGA</Gloss> {p.cga_wks.toFixed(1)} wks · {p.sex} · enrolled {p.enrolled} · {p.site} · {operations.participant_code}
             </div>
           </div>
           <div className={styles.actions}>
@@ -83,6 +96,74 @@ export function ParticipantDetail() {
           gloss={p.hda ? p.hda.charAt(0).toUpperCase() + p.hda.slice(1) : "HDA"}
         />
       </section>
+
+      <Card pad={20}>
+        <div className={styles.opsHead}>
+          <div>
+            <SectionLabel>Participant operations summary</SectionLabel>
+            <div className={styles.opsTitle}>
+              {operations.role_label} · {operations.visit_type} · {operations.visit_marker}
+            </div>
+          </div>
+          <Badge kind={riskKind(operations.scheduling_risk)}>
+            scheduling risk: {operations.scheduling_risk}
+          </Badge>
+        </div>
+
+        <div className={styles.opsGrid}>
+          <div className={styles.opsPanel} data-insight="participant-id-legend">
+            <div className={styles.opsLabel}>ID legend</div>
+            <div className={`${styles.opsValue} t-mono`}>{operations.participant_code}</div>
+            <p>{operations.numbering_convention}. {operations.scheduling_note}</p>
+          </div>
+          <div className={styles.opsPanel} data-insight="participant-form-policy">
+            <div className={styles.opsLabel}>Form policy</div>
+            <div className={styles.opsValue}>{operations.form_policy.label}</div>
+            <p>{operations.form_policy.rule}</p>
+            <div className={`${styles.linkId} t-mono`}>{operations.linking_id}</div>
+          </div>
+          <div className={styles.opsPanel}>
+            <div className={styles.opsLabel}>Next packet</div>
+            <div className={styles.opsValue}>{operations.next_visit.label}</div>
+            <ul className={styles.compactList}>
+              {operations.packet_requirements.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className={styles.opsPanel}>
+            <div className={styles.opsLabel}>Intervention history</div>
+            <div className={styles.opsValue}>{operations.intervention_history.last_review}</div>
+            <p>{operations.intervention_history.summary}</p>
+            <div className={`${styles.historyOrder} t-mono`}>{operations.intervention_history.order}</div>
+          </div>
+        </div>
+
+        <div className={styles.opsSplit}>
+          <div>
+            <div className={styles.opsLabel}>Questionnaire checklist</div>
+            <div className={styles.checklist}>
+              {operations.questionnaire_checklist.map((item) => (
+                <div key={`${item.name}-${item.due}`} className={styles.checkRow}>
+                  <span>{item.name}</span>
+                  <Badge kind={questionnaireKind(item.status)} size="sm">{questionnaireLabel(item.status)}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className={styles.opsLabel}>Linked forms</div>
+            <div className={styles.checklist}>
+              {operations.linked_forms.slice(0, 6).map((form) => (
+                <div key={`${form.form}-${form.owner}`} className={styles.checkRow}>
+                  <span>{form.form} · {form.owner} · {formPolicyLabel(form.policy)}</span>
+                  <Badge kind={questionnaireKind(form.status)} size="sm">{questionnaireLabel(form.status)}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <Card pad={20}>
         <div className={styles.timelineHead}>

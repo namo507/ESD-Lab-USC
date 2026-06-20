@@ -5,11 +5,12 @@
  * @hipaa-note: PHI_SCRUB_REQUIRED - use src/utils/hipaa_utils.py before real participant exports; assistant prompts must pass web/src/lib/phiScrub.ts.
  */
 import { useMemo, useState } from "react";
-import { Card, SectionLabel } from "@/components/primitives";
+import { Badge, Card, SectionLabel } from "@/components/primitives";
 import { StageDrawer } from "@/components/pipeline/StageDrawer";
 import { useCohortSwimmer, useParticipants } from "@/api/hooks";
 import type { Participant, QaStatus, Stage } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { enrollmentKind, operationsFor, riskKind } from "@/lib/participantOperations";
 import { TimelineAxis } from "@/components/timeline/TimelineAxis";
 import { SwimLane } from "@/components/timeline/SwimLane";
 import type { TimelineEvent, TimelineEventType } from "@/components/timeline/EventMark";
@@ -42,7 +43,11 @@ function monthFromVisit(visit: string): number {
   return 0;
 }
 
-function makeEvents(participant: Participant, milestones: Array<{ visit: string; month: number; status: string }> | undefined): TimelineEvent[] {
+function makeEvents(
+  participant: Participant,
+  milestones: Array<{ visit: string; month: number; status: string }> | undefined,
+  operations = operationsFor(participant),
+): TimelineEvent[] {
   const baseDate = participant.enrolled || "2024-01-01";
   const milestoneEvents = (milestones ?? []).flatMap((milestone): TimelineEvent[] => {
     if (milestone.status === "scheduled") {
@@ -69,6 +74,24 @@ function makeEvents(participant: Participant, milestones: Array<{ visit: string;
   const activeMonth = monthFromVisit(participant.visit);
   return [
     ...milestoneEvents,
+    ...(operations.enrollment_type === "dual" ? [{
+      id: `${participant.id}-dual-overlap`,
+      type: "redcap" as const,
+      month: Math.max(0, activeMonth - 0.35),
+      label: `Dual enrollment: ${operations.role_label}`,
+      date: participant.updated,
+      cga: activeMonth,
+      status: operations.form_policy.label,
+    }] : []),
+    ...(operations.scheduling_risk === "low" ? [] : [{
+      id: `${participant.id}-packet-risk`,
+      type: "qa" as const,
+      month: activeMonth + 0.35,
+      label: "Packet cross-check needed",
+      date: participant.updated,
+      cga: activeMonth,
+      status: `${operations.scheduling_risk} scheduling risk`,
+    }]),
     {
       id: `${participant.id}-run-${participant.visit}`,
       type: "run" as const,
@@ -122,9 +145,10 @@ export function ParticipantTimeline() {
   const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
 
-  const rows = useMemo(() => participants.map((participant) => {
+  const rows = useMemo(() => participants.map((participant, index) => {
+    const operations = operationsFor(participant, index);
     const swimmer = swimmers.find((row) => row.nanoId === participant.id);
-    return { participant, events: makeEvents(participant, swimmer?.milestones) };
+    return { participant, operations, events: makeEvents(participant, swimmer?.milestones, operations) };
   }), [participants, swimmers]);
 
   const filtered = rows.filter(({ participant, events }) => {
@@ -134,7 +158,9 @@ export function ParticipantTimeline() {
     return events.some((event) => eventTypes.has(event.type));
   });
   const visibleRows = filtered.slice(0, 28);
-  const selectedParticipant = participants.find((participant) => participant.id === selectedParticipantId) ?? visibleRows[0]?.participant;
+  const selectedRow = rows.find(({ participant }) => participant.id === selectedParticipantId) ?? visibleRows[0];
+  const selectedParticipant = selectedRow?.participant;
+  const selectedOperations = selectedRow?.operations;
   const W = Math.round(980 * zoom);
   const H = 80 + visibleRows.length * 38;
   const x = (month: number) => 180 + (month / 36) * (W - 220);
@@ -227,6 +253,13 @@ export function ParticipantTimeline() {
                 <p className={shared.muted} style={{ margin: 0, fontSize: 13 }}>
                   {selectedParticipant.group} · {selectedParticipant.sex} · last visit {selectedParticipant.visit}
                 </p>
+                {selectedOperations && (
+                  <div className={styles.opsBadges} data-insight="participant-timeline-ops">
+                    <Badge kind={enrollmentKind(selectedOperations.enrollment_type)} size="sm">{selectedOperations.enrollment_type}</Badge>
+                    <Badge kind={riskKind(selectedOperations.scheduling_risk)} size="sm">{selectedOperations.scheduling_risk} risk</Badge>
+                    <Badge kind="neutral" size="sm">{selectedOperations.form_policy.label}</Badge>
+                  </div>
+                )}
                 <div className={styles.metaGrid}>
                   <div className={styles.metaCell}><div className={styles.metaLabel}>Completion</div><div className={`${styles.metaValue} t-mono`}>{selectedParticipant.windows} windows</div></div>
                   <div className={styles.metaCell}><div className={styles.metaLabel}>QA</div><div className={`${styles.metaValue} t-mono`}>{selectedParticipant.qa}</div></div>
@@ -235,6 +268,13 @@ export function ParticipantTimeline() {
                   <div className={styles.metaCell}><div className={styles.metaLabel}>SDNN</div><div className={`${styles.metaValue} t-mono`}>{selectedParticipant.rmssd ? (selectedParticipant.rmssd * 1.18).toFixed(1) : "missing"}</div></div>
                   <div className={styles.metaCell}><div className={styles.metaLabel}>Missingness</div><div className={`${styles.metaValue} t-mono`}>{selectedParticipant.qa === "pass" ? "low" : "review"}</div></div>
                 </div>
+                {selectedOperations && (
+                  <div className={styles.opsPanel}>
+                    <div className={styles.metaLabel}>Scheduling note</div>
+                    <p>{selectedOperations.scheduling_note}</p>
+                    <div className={`${styles.opsCode} t-mono`}>{selectedOperations.participant_code} · next {selectedOperations.next_visit.marker} · {selectedOperations.linking_id}</div>
+                  </div>
+                )}
               </>
             ) : (
               <p className={shared.muted}>Select a participant row to inspect metadata and mini-metrics.</p>

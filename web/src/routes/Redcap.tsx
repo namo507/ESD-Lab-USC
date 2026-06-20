@@ -7,12 +7,15 @@ import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { RedcapCompletenessRow } from "@/api/schemas";
+import { formPolicyLabel, questionnaireKind, questionnaireLabel, riskKind } from "@/lib/participantOperations";
 import styles from "./Redcap.module.css";
 
 const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Last-hour fail triage",   prompt: "Triage every REDCap sync that failed in the last hour. Group by form, surface the auth or schema cause, and recommend a fix order." },
   { lane: "redcap", label: "PHI column audit",        prompt: "Re-audit the PHI gate on every form in the active project. Flag any field where the strip rule is unset or stale." },
   { lane: "redcap", label: "Missing DOB · open",      prompt: "List every open Intake record missing DOB or MRN. Group by site and surface the assigned coordinator." },
+  { lane: "redcap", label: "Dual AIH/EH policy",      prompt: "Explain the dual-enrollment AIH and EH form policy. When do we use one shared master form, and when do duplicate study-specific forms need a linking ID?" },
+  { lane: "redcap", label: "Packet cross-check",      prompt: "Before scheduling a dual-enrolled participant, what enrollment-type, packet, questionnaire, and REDCap checks should staff complete?" },
   { lane: "qa",     label: "Sync vs QA mismatch",     prompt: "Cross-check tonight's REDCap visit_completion flags against QA epoch decisions. Flag any visit where REDCap says complete but QA yield is below 75%." },
   { lane: "qa",     label: "Bayley-4 missingness",    prompt: "Build a missingness heatmap for Bayley-4 across active visits and rank the worst-offending fields." },
   { lane: "model",  label: "Feature freshness",       prompt: "Which classifier features depend on REDCap fields that have not synced in 48 h? Rank by SHAP importance." },
@@ -183,6 +186,14 @@ function RedcapCompletenessScorecard() {
   const completeCells = required.filter((row) => row.status === "complete").length;
   const watchCells = required.filter((row) => row.status === "watch").length;
   const missingCells = required.filter((row) => row.status === "missing").length;
+  const workflowCounts = {
+    complete: required.filter((row) => (row.workflowState ?? row.status) === "complete").length,
+    due: required.filter((row) => row.workflowState === "due").length,
+    missing: required.filter((row) => (row.workflowState ?? row.status) === "missing").length,
+    did_not_qualify: required.filter((row) => row.workflowState === "did_not_qualify").length,
+    other: required.filter((row) => row.workflowState === "other").length,
+  };
+  const dualRows = required.filter((row) => row.enrollmentType === "dual").length;
   const avgCompleteness = required.reduce((sum, row) => sum + row.completenessPct, 0) / Math.max(1, required.length);
 
   return (
@@ -208,6 +219,16 @@ function RedcapCompletenessScorecard() {
         <KPI label="Complete cells" value={completeCells} sub="ready" deltaKind="up" />
         <KPI label="Partial cells" value={watchCells} sub="review" deltaKind="flat" />
         <KPI label="Missing cells" value={missingCells} sub="before NDA" deltaKind="down" />
+        <KPI label="Dual rows" value={dualRows} sub="cross-study forms" deltaKind={dualRows ? "flat" : "up"} />
+      </div>
+      <div className={styles.stateChecklist} data-insight="redcap-workflow-states">
+        {(["complete", "due", "missing", "did_not_qualify", "other"] as const).map((state) => (
+          <label key={state} className={styles.stateItem}>
+            <input type="checkbox" checked readOnly />
+            <span>{questionnaireLabel(state)}</span>
+            <Badge kind={questionnaireKind(state)} size="sm">{workflowCounts[state]}</Badge>
+          </label>
+        ))}
       </div>
       <div className={styles.scoreBars}>
         {byInstrument.map((item) => (
@@ -238,10 +259,13 @@ function RedcapCompletenessScorecard() {
                         type="button"
                         className={cell?.status === "complete" ? styles.cellOk : cell?.status === "watch" ? styles.cellWarn : cell ? styles.cellFail : styles.cellUnscheduled}
                         onClick={() => cell && setSelected(cell)}
-                        aria-label={cell ? `${cell.nanoId} ${cell.instrument} ${cell.status}` : `${nanoId} ${instrument} unscheduled`}
+                        aria-label={cell ? `${cell.nanoId} ${cell.instrument} ${cell.workflowState ?? cell.status}` : `${nanoId} ${instrument} unscheduled`}
                       >
                         {cell ? `${cell.completenessPct.toFixed(0)}%` : "—"}
                       </button>
+                      {cell?.workflowState && cell.workflowState !== cell.status && (
+                        <div className={styles.workflowState}>{questionnaireLabel(cell.workflowState)}</div>
+                      )}
                     </td>
                   );
                 })}
@@ -262,13 +286,26 @@ function RedcapCompletenessScorecard() {
           <div className={styles.drawerBody}>
             <div><strong>{selected.nanoId}</strong></div>
             <div className="t-mono">{selected.instrument}</div>
-            <Badge kind={selected.status === "complete" ? "ok" : selected.status === "watch" ? "warn" : "fail"} size="sm">
-              {selected.status === "watch" ? "partial" : selected.status}
-            </Badge>
+            <div className={styles.drawerBadges}>
+              <Badge kind={selected.status === "complete" ? "ok" : selected.status === "watch" ? "warn" : "fail"} size="sm">
+                {selected.status === "watch" ? "partial" : selected.status}
+              </Badge>
+              <Badge kind={questionnaireKind(selected.workflowState ?? selected.status)} size="sm">
+                {questionnaireLabel(selected.workflowState ?? selected.status)}
+              </Badge>
+              {selected.schedulingRisk && <Badge kind={riskKind(selected.schedulingRisk)} size="sm">{selected.schedulingRisk} risk</Badge>}
+            </div>
             <p>
               {selected.requiredMissing} of {selected.requiredTotal} required fields missing.
               {selected.dueDate ? ` NDA due ${selected.dueDate}.` : " Not NDA-required."}
             </p>
+            <div className={styles.drawerContext}>
+              <div><span>Enrollment</span><strong>{selected.enrollmentType ?? "single"}</strong></div>
+              <div><span>Studies</span><strong>{selected.studies?.join(" + ") ?? "NANO"}</strong></div>
+              <div><span>Visit type</span><strong>{selected.visitType ?? "CGA longitudinal"}</strong></div>
+              <div><span>Form policy</span><strong>{formPolicyLabel(selected.formPolicy)}</strong></div>
+              <div><span>Linking ID</span><strong className="t-mono">{selected.linkingId ?? "not needed"}</strong></div>
+            </div>
             <Button size="sm" icon="external-link" onClick={() => window.open("https://redcap.healthsciencessc.org", "_blank", "noopener,noreferrer")}>
               Open in REDCap
             </Button>

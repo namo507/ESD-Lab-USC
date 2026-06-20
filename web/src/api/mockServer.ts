@@ -59,6 +59,7 @@ import type {
   DatasetSnapshot,
   AdminCapabilities,
 } from "./schemas";
+import { operationsFor } from "@/lib/participantOperations";
 
 const STUDY: StudySummary = {
   enrolled: 231,
@@ -88,7 +89,7 @@ const RUNS: Run[] = [
   { id: "run_2026_113_b", triggered: "2026-04-23 09:00", actor: "cron", scope: "nightly", status: "done", duration: "1h 58m", stage: "merge", windows: 4096 },
 ];
 
-const PARTICIPANTS: Participant[] = [
+const PARTICIPANT_BASE: Participant[] = [
   { id: "NANO-0102", group: "VPT", cga_wks: 28.4, sex: "F", visit: "cga_12mo", windows: 51, qa: "pass", rmssd: 38.41, hf: 412.1, hda: "sustained", updated: "2 min", enrolled: "2024-08-12", site: "Prisma Midlands" },
   { id: "NANO-0107", group: "VPT", cga_wks: 26.1, sex: "M", visit: "cga_12mo", windows: 33, qa: "pending", rmssd: null, hf: null, hda: null, updated: "4 min", enrolled: "2024-08-19", site: "Prisma Midlands" },
   { id: "NANO-0114", group: "ASIB", cga_wks: 39.2, sex: "F", visit: "cga_9mo", windows: 47, qa: "pass", rmssd: 44.92, hf: 528.7, hda: "orienting", updated: "6 min", enrolled: "2024-09-02", site: "USC Lab" },
@@ -112,6 +113,11 @@ const PARTICIPANTS: Participant[] = [
   { id: "NANO-0218", group: "VPT", cga_wks: 27.5, sex: "M", visit: "cga_3mo", windows: 18, qa: "pending", rmssd: null, hf: null, hda: null, updated: "1 d", enrolled: "2025-01-22", site: "Prisma Midlands" },
   { id: "NANO-0224", group: "VPT", cga_wks: 28.7, sex: "F", visit: "cga_9mo", windows: 50, qa: "pass", rmssd: 37.92, hf: 408.6, hda: "sustained", updated: "1 d", enrolled: "2024-07-08", site: "Prisma Midlands" },
 ];
+
+const PARTICIPANTS: Participant[] = PARTICIPANT_BASE.map((participant, index) => ({
+  ...participant,
+  operations: operationsFor(participant, index),
+}));
 
 const VISIT_LOG = [
   { ts: "2026-04-25 09:18", actor: "system", event: "merge.parquet written", kind: "ok" as const, detail: "data/processed/deidentified/cga_12mo/NANO-0102.parquet · 0.42 MB" },
@@ -402,6 +408,8 @@ const REDCAP_COMPLETENESS: RedcapCompletenessResponse = v2Envelope(
     REDCAP_INSTRUMENTS.map((form, fi) => {
       const requiredMissing = Math.max(0, ((pi + fi * 2) % 5) - (p.qa === "pass" ? 2 : 0));
       const completenessPct = ((form.requiredTotal - requiredMissing) / form.requiredTotal) * 100;
+      const checklist = p.operations?.questionnaire_checklist ?? [];
+      const workflowState = checklist[fi % Math.max(1, checklist.length)]?.status ?? (requiredMissing === 0 ? "complete" : "missing");
       return {
         nanoId: p.id,
         group: p.group,
@@ -412,6 +420,13 @@ const REDCAP_COMPLETENESS: RedcapCompletenessResponse = v2Envelope(
         ndaRequired: form.ndaRequired,
         dueDate: form.ndaRequired ? "2026-08-01" : null,
         status: requiredMissing === 0 ? "complete" : requiredMissing <= 2 ? "watch" : "missing",
+        workflowState,
+        enrollmentType: p.operations?.enrollment_type ?? "single",
+        studies: p.operations?.study_roles ?? ["NANO"],
+        visitType: p.operations?.visit_type ?? "CGA longitudinal",
+        formPolicy: p.operations?.form_policy.mode ?? "single_study",
+        schedulingRisk: p.operations?.scheduling_risk ?? "low",
+        linkingId: p.operations?.linking_id ?? null,
       };
     }),
   ),
@@ -480,6 +495,7 @@ const COHORT_SWIMMER: CohortSwimmerResponse = v2Envelope(
         month: v.month,
         status: vi < completedVisits ? "complete" : vi === completedVisits && idx % 5 === 0 ? "missed" : "scheduled",
       })),
+      operations: p.operations,
     };
   }),
   STUDY.enrolled,
@@ -944,6 +960,7 @@ function makePassport(nanoId: string): PassportResponse {
     ],
     nicu: p.group === "VPT" ? { hrcSummary: "HRC summary available", thermalSummary: "Thermal gradient stable" } : undefined,
     outcome: { adosCSS: p.group === "TD" ? 2 : p.group === "ASIB" ? 4 : 3, ageMonths: 36 },
+    operations: p.operations,
   };
 }
 
@@ -1166,6 +1183,18 @@ function mockAssistantReply(message: string): string {
 
   if (q.includes("rmssd")) {
     return "RMSSD is the root mean square of successive IBI differences. In this dashboard it is used as a vagal-tone marker, so higher values generally indicate stronger parasympathetic regulation during attention tasks.";
+  }
+
+  if (q.includes("participant id") || q.includes("id legend") || q.includes("5-series") || q.includes("9-series")) {
+    return "The participant operations legend makes role visible without PHI: NANO-primary IDs use the 5-series, NICO and ANONICO primary IDs use the 9-series, and DUAL codes indicate cross-study enrollment. Visit markers such as NICU, CGA-12, and CGA-24 route packets and questionnaires.";
+  }
+
+  if (q.includes("dual") && (q.includes("aih") || q.includes("eh") || q.includes("form"))) {
+    return "Dual-enrolled participants default to a single master AIH/EH that follows the participant across studies. A dual-form exception is used only when a REDCap/backend pull requires study-specific duplicates; the linking ID keeps those duplicate AIH/EH records digitally connected.";
+  }
+
+  if (q.includes("packet") || q.includes("questionnaire") || q.includes("scheduling risk")) {
+    return "Before scheduling, staff should confirm enrollment type, study role, visit marker, form policy, linked-form ID, and questionnaire checklist. The dashboard surfaces Complete, Due, Missing, Did Not Qualify, and Other states so packet decisions are explicit instead of memory-based.";
   }
 
   if (q.includes("risk") || q.includes("classifier") || q.includes("auroc")) {

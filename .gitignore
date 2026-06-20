@@ -31,6 +31,8 @@
 *_raw*
 NANO_ID_*
 participant_*
+!dashboard/pipelines/participant_operations.py
+!docs/participant_operations_workflow.md
 
 # ─── Directories with raw/sensitive data ────────────────────
 # Ignore raw data contents but allow .gitkeep tracker

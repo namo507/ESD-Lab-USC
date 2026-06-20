@@ -14,6 +14,9 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "SHAP explorer",                prompt: "Explain how to read the SHAP Explorer beeswarm and what participant highlighting changes." },
   { lane: "model",  label: "Model leaderboard",            prompt: "Summarize the Model Leaderboard and which metrics I should compare before trusting a model." },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
+  { lane: "redcap", label: "Participant ID legend",       prompt: "What does the participant ID legend mean for NANO, NICO, ANONICO, and dual-enrolled participants? Explain 5-series versus 9-series and visit markers." },
+  { lane: "redcap", label: "Dual forms policy",           prompt: "For a dual-enrolled participant, should AIH and EH be one shared master form or duplicate study-specific forms? Explain the linking ID rule." },
+  { lane: "qa",     label: "Next visit packet",           prompt: "Given a participant's role, enrollment type, visit marker, and scheduling risk, how should staff cross-check forms, questionnaires, and packets before scheduling?" },
   { lane: "redcap", label: "Data Explorer",               prompt: "Walk me through the Data Explorer tables, filters, pagination, column visibility, and CSV export guardrails." },
   { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
   { lane: "redcap", label: "NDA completeness",            prompt: "How should I use the REDCap completeness scorecard before an NDA deadline?" },
@@ -76,7 +79,7 @@ export function ChatDrawer() {
     {
       id: "welcome",
       role: "bot",
-      text: "Hi — I'm ESD Buddy. Ask me about the NANO Study, what you're seeing on screen, or any term you want unpacked.",
+      text: "Hi — I'm ESD Buddy. Ask me about the NANO Study, participant operations, REDCap forms, or any term you want unpacked.",
     },
   ]);
   const [input, setInput] = useState("");

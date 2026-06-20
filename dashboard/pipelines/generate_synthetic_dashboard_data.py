@@ -25,6 +25,8 @@ Writes ``dashboard/data/dashboard_data.json`` with the following keys:
 - ``trajectories``     : RSA / RMSSD / HRV trajectories by group over 0-36m
 - ``redcap_audit``     : open queries, incomplete records, double-entry errors
 - ``cohort_table``     : per-participant summary rows (synthetic IDs)
+- ``participant_operations``: ID legend, study-role mapping, form policy,
+                              questionnaire routing, and scheduling risk
 - ``organization_site``: fallback public-site metadata for organization views
 
 Usage
@@ -43,6 +45,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+
+try:
+    from dashboard.pipelines.participant_operations import build_participant_operations
+except ImportError:  # pragma: no cover - script can be run directly
+    from participant_operations import build_participant_operations
 
 # ─── Reproducibility ────────────────────────────────────────────────────────
 SEED = 42
@@ -453,6 +460,7 @@ def build_payload() -> dict:
     from dashboard.pipelines.build_geo_data import generate_geo_data
 
     enrollment = generate_enrollment()
+    cohort_table = generate_cohort_table()
 
     return {
         "meta": {
@@ -475,7 +483,8 @@ def build_payload() -> dict:
         "ml_performance": generate_ml_performance(),
         "trajectories": generate_trajectories(),
         "redcap_audit": generate_redcap_audit(),
-        "cohort_table": generate_cohort_table(),
+        "cohort_table": cohort_table,
+        "participant_operations": build_participant_operations(cohort_table),
         "organization_site": build_org_site_data.build_payload(allow_network=False),
         "geo": generate_geo_data(enrollment_data=enrollment),
         "matlab_integration": generate_matlab_integration(),

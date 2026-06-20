@@ -38,7 +38,7 @@ Output schema
 Identical to ``generate_synthetic_dashboard_data.py``:
 ``meta``, ``enrollment``, ``visit_completion``, ``data_quality``,
 ``ml_performance``, ``trajectories``, ``redcap_audit``, ``cohort_table``,
-``organization_site``.
+``participant_operations``, ``organization_site``.
 
 Reproducibility
 ---------------
@@ -83,6 +83,8 @@ except Exception:  # pragma: no cover
         format="%(asctime)s [%(levelname)s] %(name)s :: %(message)s",
     )
     logger = logging.getLogger("build_dashboard_data")
+
+from dashboard.pipelines.participant_operations import build_participant_operations
 
 
 # ─── Configuration loading ──────────────────────────────────────────────────
@@ -602,6 +604,8 @@ def build_payload(
 
     redcap = drop_phi(redcap, dd)
 
+    cohort_table = build_cohort_table(redcap, salt)
+
     payload = {
         "meta": {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -623,7 +627,8 @@ def build_payload(
         "ml_performance":   build_ml_performance(metrics),
         "trajectories":     build_trajectories(features),
         "redcap_audit":     build_redcap_audit(redcap),
-        "cohort_table":     build_cohort_table(redcap, salt),
+        "cohort_table":     cohort_table,
+        "participant_operations": build_participant_operations(cohort_table),
         "organization_site": organization_site or {},
         "matlab_integration": build_matlab_integration(),
         "hda_composition":  build_hda_stream(features),

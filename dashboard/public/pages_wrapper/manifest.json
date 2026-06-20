@@ -1,7 +1,7 @@
 {
-  "dashboard_url": "https://headers-mixer-charger-quest.trycloudflare.com/",
-  "origin_host": "headers-mixer-charger-quest.trycloudflare.com",
+  "dashboard_url": "https://betty-ref-ends-registrar.trycloudflare.com/",
+  "origin_host": "betty-ref-ends-registrar.trycloudflare.com",
   "tunnel_kind": "quick",
-  "generated_at": "2026-06-16T20:53:57+00:00",
+  "generated_at": "2026-06-20T20:44:35+00:00",
   "wrapper_canonical": "https://runtime-share.esd-lab-namo.pages.dev/"
 }

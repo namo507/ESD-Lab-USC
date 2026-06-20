@@ -7,6 +7,14 @@ import { RouteDataTable } from "@/components/dyn/RouteDataTable";
 import { GroupTag } from "@/components/warm/GroupTag";
 import { useParticipants, usePassport } from "@/api/hooks";
 import type { HdaDist, VisitId } from "@/api/schemas";
+import {
+  enrollmentKind,
+  formPolicyLabel,
+  operationsFor,
+  questionnaireKind,
+  questionnaireLabel,
+  riskKind,
+} from "@/lib/participantOperations";
 import { FeatureGate, firstParticipant, round } from "./routeUtils";
 import styles from "@/components/dyn/DynamicRoutes.module.css";
 
@@ -35,6 +43,9 @@ function PassportInner() {
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
   const activeId = nanoId || firstParticipant(participants);
   const { data } = usePassport(activeId);
+  const activeParticipantIndex = participants.findIndex((participant) => participant.id === activeId);
+  const activeParticipant = participants[activeParticipantIndex] ?? participants[0];
+  const operations = data?.operations ?? (activeParticipant ? operationsFor(activeParticipant, Math.max(0, activeParticipantIndex)) : null);
 
   const modalities = useMemo(() => {
     const grouped = new Map<string, NonNullable<typeof data>["timeline"]>();
@@ -62,7 +73,7 @@ function PassportInner() {
             One de-identified longitudinal view across physiology, attention, CVA, attachment, spatial
             assessment, NICU context, and model-updated risk trend.
           </p>
-          {data && <div style={{ marginTop: 8 }}><GroupTag group={data.group} /> <span className="t-mono" style={{ color: "var(--warm-fg3)", marginLeft: 8 }}>{activeId} · sex {data.sex}</span></div>}
+          {data && <div style={{ marginTop: 8 }}><GroupTag group={data.group} /> <span className="t-mono" style={{ color: "var(--warm-fg3)", marginLeft: 8 }}>{activeId} · sex {data.sex} · {operations?.participant_code ?? "operation code pending"}</span></div>}
         </div>
         <div className={styles.actions}>
           <label className={styles.controlGroup}>
@@ -82,6 +93,8 @@ function PassportInner() {
 
       <section className={styles.kpis} aria-label="Passport summary">
         <MetricChip label="Group" value={data?.group ?? "-"} insight="dyn-passport-group" />
+        <MetricChip label="Study role" value={operations?.role_label ?? "-"} insight="dyn-passport-role" />
+        <MetricChip label="Enrollment" value={operations?.enrollment_type ?? "-"} insight="dyn-passport-enrollment" />
         <MetricChip label="Gestational age" value={data ? round(data.gestationalAge, 1) : "-"} unit="wks" insight="dyn-passport-ga" />
         <MetricChip label="Completeness" value={`${Math.round(completeness)}%`} insight="dyn-passport-complete" />
         <MetricChip label="Latest risk trend" value={round(latestRisk, 2)} verify insight="dyn-passport-risk" />
@@ -121,6 +134,43 @@ function PassportInner() {
           </div>
         )}
       </Card>
+
+      {operations && (
+        <Card pad={20}>
+          <div className={styles.cardHead}>
+            <div>
+              <SectionLabel>Operations passport</SectionLabel>
+              <div className={styles.cardTitle}>{operations.role_label} · {operations.form_policy.label} · next {operations.next_visit.marker}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Badge kind={enrollmentKind(operations.enrollment_type)} size="sm">{operations.enrollment_type}</Badge>
+              <Badge kind={riskKind(operations.scheduling_risk)} size="sm">{operations.scheduling_risk} risk</Badge>
+              <Badge kind="neutral" size="sm">{operations.linking_id}</Badge>
+            </div>
+          </div>
+          <div className={styles.split} style={{ marginTop: 12 }}>
+            <div className={styles.detailPanel}>
+              <div className={styles.chipLabel}>Scheduling note</div>
+              <p className={styles.muted}>{operations.scheduling_note}</p>
+              <div className={styles.chipLabel}>Packet requirements</div>
+              <ul className={styles.muted} style={{ margin: "8px 0 0", paddingLeft: 18 }}>
+                {operations.packet_requirements.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+            <div className={styles.detailPanel}>
+              <div className={styles.chipLabel}>Linked forms</div>
+              <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                {operations.linked_forms.slice(0, 5).map((form) => (
+                  <div key={`${form.form}-${form.owner}`} style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span>{form.form} · {form.owner} · {formPolicyLabel(form.policy)}</span>
+                    <Badge kind={questionnaireKind(form.status)} size="sm">{questionnaireLabel(form.status)}</Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className={styles.split}>
         <Card pad={20}>

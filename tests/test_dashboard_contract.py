@@ -23,6 +23,9 @@ def test_synthetic_payload_contains_organization_site_block():
 def test_synthetic_payload_contains_next_wave_aggregate_blocks():
     payload = generate_synthetic_dashboard_data.build_payload()
 
+    assert payload["participant_operations"]["id_legend"]
+    assert payload["participant_operations"]["participants"]
+    assert payload["participant_operations"]["summary"]["dual"] >= 1
     assert payload["hda_composition"]["by_group"]["VPT"]
     assert {
         "orienting",
@@ -112,6 +115,8 @@ def test_production_payload_includes_organization_site_block(tmp_path):
 
     assert payload["organization_site"]["summary"]["partner_count"] >= 1
     assert payload["organization_site"]["contact"]["signup_url"]
+    assert payload["participant_operations"]["participants"]
+    assert payload["participant_operations"]["form_policy_options"]
     assert any(
         item["kind"] == "story" for item in payload["organization_site"]["impact_feed"]
     )

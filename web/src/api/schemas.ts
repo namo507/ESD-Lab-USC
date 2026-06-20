@@ -33,6 +33,74 @@ export type RunStatus = z.infer<typeof RunStatus>;
 export const HdaPhase = z.enum(["orienting", "sustained", "inattention", "termination"]);
 export type HdaPhase = z.infer<typeof HdaPhase>;
 
+export const StudyCode = z.enum(["NANO", "NICO", "ANONICO"]);
+export type StudyCode = z.infer<typeof StudyCode>;
+
+export const EnrollmentType = z.enum(["single", "dual"]);
+export type EnrollmentType = z.infer<typeof EnrollmentType>;
+
+export const SchedulingRisk = z.enum(["low", "watch", "high"]);
+export type SchedulingRisk = z.infer<typeof SchedulingRisk>;
+
+export const QuestionnaireStatus = z.enum(["complete", "due", "missing", "did_not_qualify", "other"]);
+export type QuestionnaireStatus = z.infer<typeof QuestionnaireStatus>;
+
+export const FormPolicyMode = z.enum(["single_study", "single_master", "dual_form"]);
+export type FormPolicyMode = z.infer<typeof FormPolicyMode>;
+
+export const VisitRef = z.object({
+  id: z.string(),
+  label: z.string(),
+  marker: z.string(),
+  month: z.number().optional(),
+});
+export type VisitRef = z.infer<typeof VisitRef>;
+
+export const ParticipantOperations = z.object({
+  participant_id: z.string(),
+  participant_code: z.string(),
+  role_label: z.string(),
+  study_roles: z.array(StudyCode),
+  enrollment_type: EnrollmentType,
+  primary_study: StudyCode,
+  group: GroupCode,
+  visit_type: z.string(),
+  visit_marker: z.string(),
+  current_visit: VisitRef,
+  next_visit: VisitRef,
+  numbering_convention: z.string(),
+  form_policy: z.object({
+    mode: FormPolicyMode,
+    label: z.string(),
+    rule: z.string(),
+  }),
+  linking_id: z.string(),
+  linked_forms: z.array(z.object({
+    form: z.string(),
+    owner: z.string(),
+    policy: FormPolicyMode,
+    status: QuestionnaireStatus,
+    linking_id: z.string(),
+  })),
+  questionnaire_checklist: z.array(z.object({
+    name: z.string(),
+    domain: z.string(),
+    status: QuestionnaireStatus,
+    due: z.string(),
+  })),
+  packet_requirements: z.array(z.string()),
+  scheduling_risk: SchedulingRisk,
+  scheduling_risk_reasons: z.array(z.string()),
+  pre_visit_checks: z.array(z.string()),
+  intervention_history: z.object({
+    order: z.string(),
+    summary: z.string(),
+    last_review: z.string(),
+  }),
+  scheduling_note: z.string(),
+});
+export type ParticipantOperations = z.infer<typeof ParticipantOperations>;
+
 /** /api/study/summary */
 export const StudySummary = z.object({
   enrolled: z.number().int(),
@@ -88,6 +156,7 @@ export const Participant = z.object({
   updated: z.string(),
   enrolled: z.string(),
   site: z.string(),
+  operations: ParticipantOperations.nullish(),
 });
 export type Participant = z.infer<typeof Participant>;
 
@@ -404,6 +473,13 @@ export const RedcapCompletenessRow = z.object({
   ndaRequired: z.boolean(),
   dueDate: z.string().nullable(),
   status: z.enum(["complete", "watch", "missing"]),
+  workflowState: QuestionnaireStatus.optional(),
+  enrollmentType: EnrollmentType.optional(),
+  studies: z.array(StudyCode).optional(),
+  visitType: z.string().optional(),
+  formPolicy: FormPolicyMode.optional(),
+  schedulingRisk: SchedulingRisk.optional(),
+  linkingId: z.string().nullable().optional(),
 });
 export type RedcapCompletenessRow = z.infer<typeof RedcapCompletenessRow>;
 export const RedcapCompletenessResponse = ApiListResponse(RedcapCompletenessRow);
@@ -451,6 +527,7 @@ export const CohortSwimmerRow = z.object({
     month: z.number(),
     status: z.enum(["complete", "scheduled", "missed"]),
   })),
+  operations: ParticipantOperations.nullish(),
 });
 export type CohortSwimmerRow = z.infer<typeof CohortSwimmerRow>;
 export const CohortSwimmerResponse = ApiListResponse(CohortSwimmerRow);
@@ -755,6 +832,7 @@ export const PassportResponse = z.object({
     adosCSS: z.number(),
     ageMonths: z.number(),
   }).optional(),
+  operations: ParticipantOperations.nullish(),
 });
 export type PassportResponse = z.infer<typeof PassportResponse>;
 

@@ -35,6 +35,100 @@
 
 .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 
+.opsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.opsTitle {
+  margin-top: 4px;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--w-semibold);
+}
+
+.opsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.opsPanel {
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 12px;
+  min-width: 0;
+}
+
+.opsLabel {
+  color: var(--slate-500);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: var(--w-bold);
+}
+
+.opsValue {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: var(--w-semibold);
+}
+
+.opsPanel p {
+  color: var(--slate-700);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 8px 0 0;
+}
+
+.linkId,
+.historyOrder {
+  margin-top: 8px;
+  color: var(--slate-500);
+  font-size: 10px;
+}
+
+.compactList {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--slate-700);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.opsSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.checklist {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  overflow: hidden;
+}
+
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--slate-100);
+  font-size: 12px;
+  color: var(--slate-700);
+}
+
+.checkRow:last-child { border-bottom: 0; }
+
 .timelineHead {
   display: flex;
   align-items: center;
@@ -195,4 +289,14 @@
   font-family: var(--font-mono);
   font-size: var(--text-micro);
   text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .kpis, .opsGrid, .opsSplit, .bottom {
+    grid-template-columns: 1fr;
+  }
+  .head, .opsHead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

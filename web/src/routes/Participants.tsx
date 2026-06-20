@@ -4,11 +4,18 @@ import { Badge, Button, Card, Gloss, Icon, Segmented, Tooltip } from "@/componen
 import { useParticipants } from "@/api/hooks";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { Participant, GroupCode, QaStatus, VisitId } from "@/api/schemas";
+import {
+  PARTICIPANT_ID_LEGEND,
+  enrollmentKind,
+  operationsFor,
+  riskKind,
+} from "@/lib/participantOperations";
 import styles from "./Participants.module.css";
 
 type GroupF = "all" | GroupCode;
 type QaF = "all" | QaStatus;
 type VisitF = "all" | VisitId;
+type EnrollmentF = "all" | "single" | "dual";
 type SortKey = keyof Participant | "updated";
 
 const VISITS: VisitId[] = ["nicu_dc", "cga_3mo", "cga_6mo", "cga_9mo", "cga_12mo", "cga_18mo", "cga_24mo"];
@@ -30,18 +37,27 @@ export function Participants() {
   const [groupF, setGroupF] = useState<GroupF>("all");
   const [qaF, setQaF] = useState<QaF>("all");
   const [visitF, setVisitF] = useState<VisitF>("all");
+  const [enrollmentF, setEnrollmentF] = useState<EnrollmentF>("all");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "updated", dir: "desc" });
+  const operationsById = useMemo(() => new Map(rows.map((row, index) => [row.id, operationsFor(row, index)])), [rows]);
 
   const filtered = useMemo(() => {
     let r = rows.slice();
     const q = (query || "").toLowerCase();
     if (q) {
       r = r.filter(
-        (p) =>
-          p.id.toLowerCase().includes(q) ||
-          p.group.toLowerCase().includes(q) ||
-          p.visit.toLowerCase().includes(q) ||
-          (p.hda ?? "").toLowerCase().includes(q),
+        (p) => {
+          const ops = operationsById.get(p.id);
+          return (
+            p.id.toLowerCase().includes(q) ||
+            p.group.toLowerCase().includes(q) ||
+            p.visit.toLowerCase().includes(q) ||
+            (p.hda ?? "").toLowerCase().includes(q) ||
+            (ops?.participant_code ?? "").toLowerCase().includes(q) ||
+            (ops?.role_label ?? "").toLowerCase().includes(q) ||
+            (ops?.visit_type ?? "").toLowerCase().includes(q)
+          );
+        },
       );
     }
     if (groupF !== "all") r = r.filter((p) => p.group === groupF);
@@ -49,6 +65,7 @@ export function Participants() {
     if (studyParam === "fiscal") r = r.filter((p) => p.group === "ASIB");
     if (qaF !== "all") r = r.filter((p) => p.qa === qaF);
     if (visitF !== "all") r = r.filter((p) => p.visit === visitF);
+    if (enrollmentF !== "all") r = r.filter((p) => operationsById.get(p.id)?.enrollment_type === enrollmentF);
 
     r.sort((a, b) => {
       const av = a[sort.key as keyof Participant];
@@ -60,30 +77,35 @@ export function Participants() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, query, groupF, studyParam, qaF, visitF, sort]);
+  }, [rows, query, groupF, studyParam, qaF, visitF, enrollmentF, sort, operationsById]);
 
   const counts = {
     VPT: rows.filter((p) => p.group === "VPT").length,
     ASIB: rows.filter((p) => p.group === "ASIB").length,
     TD: rows.filter((p) => p.group === "TD").length,
   };
+  const dualCount = rows.filter((p) => operationsById.get(p.id)?.enrollment_type === "dual").length;
+  const elevatedRiskCount = rows.filter((p) => {
+    const risk = operationsById.get(p.id)?.scheduling_risk;
+    return risk === "watch" || risk === "high";
+  }).length;
 
   function toggleSort(key: SortKey) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
   }
 
-  const headers: Array<{ key: SortKey; label: ReactNode }> = [
-    { key: "id", label: "Participant" },
-    { key: "group", label: "Group" },
-    { key: "cga_wks", label: <Gloss term="CGA">CGA</Gloss> },
-    { key: "sex", label: "Sex" },
-    { key: "visit", label: "Visit" },
-    { key: "windows", label: <Gloss term="Window">Windows</Gloss> },
-    { key: "qa", label: <Gloss term="SQI">QA</Gloss> },
-    { key: "rmssd", label: <Gloss term="RMSSD">RMSSD</Gloss> },
-    { key: "hf", label: <Gloss term="HF">HF</Gloss> },
-    { key: "hda", label: <Gloss term="HDA">HDA</Gloss> },
-    { key: "updated", label: "Updated" },
+  const headers: Array<{ id: string; key?: SortKey; label: ReactNode }> = [
+    { id: "id", key: "id", label: "Participant" },
+    { id: "role", label: "Role" },
+    { id: "enrollment", label: "Enroll" },
+    { id: "group", key: "group", label: "Group" },
+    { id: "cga", key: "cga_wks", label: <Gloss term="CGA">CGA</Gloss> },
+    { id: "sex", key: "sex", label: "Sex" },
+    { id: "visit", key: "visit", label: "Visit" },
+    { id: "visit-type", label: "Visit type" },
+    { id: "qa", key: "qa", label: <Gloss term="SQI">QA</Gloss> },
+    { id: "risk", label: "Risk" },
+    { id: "updated", key: "updated", label: "Updated" },
   ];
 
   return (
@@ -98,6 +120,7 @@ export function Participants() {
             {studyParam === "home" && "Home Study prefilter · "}
             {studyParam === "fiscal" && "FiSCAL-ASD prefilter · "}
             <Gloss term="VPT">VPT</Gloss> {counts.VPT} · <Gloss term="ASIB">ASIB</Gloss> {counts.ASIB} · <Gloss term="TD">TD</Gloss> {counts.TD}
+            {" · "}dual {dualCount} · elevated scheduling risk {elevatedRiskCount}
           </div>
         </div>
         <div className={styles.actions}>
@@ -142,8 +165,23 @@ export function Participants() {
               ))}
             </select>
           </div>
+          <div className={styles.filterGroup}>
+            <span className={styles.filterLabel}>Enrollment</span>
+            <Segmented<EnrollmentF>
+              size="sm"
+              options={[{ value: "all", label: "all" }, { value: "single", label: "single" }, { value: "dual", label: "dual" }]}
+              value={enrollmentF}
+              onChange={setEnrollmentF}
+            />
+          </div>
           <span style={{ flex: 1 }} />
           <span className={`${styles.rowCount} t-mono`}>{filtered.length} rows</span>
+        </div>
+
+        <div className={styles.legendBar} data-insight="participant-id-legend">
+          {PARTICIPANT_ID_LEGEND.map((item) => (
+            <span key={item} className={`${styles.legendItem} t-mono`}>{item}</span>
+          ))}
         </div>
 
         <div className={styles.tableWrap}>
@@ -152,14 +190,14 @@ export function Participants() {
             <thead>
               <tr>
                 {headers.map((h) => {
-                  const active = sort.key === h.key;
+                  const active = h.key ? sort.key === h.key : false;
                   return (
                     <th
-                      key={String(h.key)}
+                      key={h.id}
                       scope="col"
                       aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-                      onClick={() => toggleSort(h.key)}
-                      className={styles.th}
+                      onClick={() => h.key && toggleSort(h.key)}
+                      className={`${styles.th} ${!h.key ? styles.staticTh : ""}`}
                     >
                       <span className={styles.thInner}>
                         {h.label}
@@ -173,29 +211,46 @@ export function Participants() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} onClick={() => navigate(`/participants/${r.id}`)} className={styles.tr}>
-                  <td className={`${styles.td} ${styles.idCell} t-mono`}>{r.id}</td>
-                  <td className={styles.td}><Badge kind={GROUP_KIND[r.group]} size="sm">{r.group}</Badge></td>
-                  <td className={`${styles.td} t-num t-mono`}>{r.cga_wks.toFixed(1)} <span className={styles.dim}>wks</span></td>
-                  <td className={`${styles.td} ${styles.muted}`}>{r.sex}</td>
-                  <td className={`${styles.td} t-mono ${styles.smallMuted}`}>{r.visit}</td>
-                  <td className={`${styles.td} t-num t-mono`}>{r.windows}</td>
-                  <td className={styles.td}>
-                    <Badge kind={r.qa === "pass" ? "ok" : r.qa === "reject" ? "fail" : "pending"} size="sm">{r.qa}</Badge>
-                  </td>
-                  <td className={`${styles.td} t-num t-mono`}>{r.rmssd != null ? r.rmssd.toFixed(2) : <span className={styles.dim}>—</span>}</td>
-                  <td className={`${styles.td} t-num t-mono ${styles.muted}`}>{r.hf != null ? r.hf.toFixed(1) : <span className={styles.dim}>—</span>}</td>
-                  <td className={styles.td}>
-                    {r.hda ? (
-                      <Tooltip gloss={r.hda.charAt(0).toUpperCase() + r.hda.slice(1)} maxWidth={300}>
-                        <span className={styles.hda}>{r.hda}</span>
+              {filtered.map((r) => {
+                const ops = operationsById.get(r.id) ?? operationsFor(r);
+                return (
+                  <tr key={r.id} onClick={() => navigate(`/participants/${r.id}`)} className={styles.tr}>
+                    <td className={`${styles.td} ${styles.idCell}`}>
+                      <span className="t-mono">{r.id}</span>
+                      <span className={`${styles.opCode} t-mono`}>{ops.participant_code}</span>
+                    </td>
+                    <td className={styles.td}>
+                      <span className={styles.studyFlags}>
+                        {ops.study_roles.map((study) => (
+                          <Badge key={study} kind={study === "NANO" ? "vpt" : study === "ANONICO" ? "asib" : "info"} size="sm">{study}</Badge>
+                        ))}
+                      </span>
+                    </td>
+                    <td className={styles.td}>
+                      <Badge kind={enrollmentKind(ops.enrollment_type)} size="sm">{ops.enrollment_type}</Badge>
+                    </td>
+                    <td className={styles.td}><Badge kind={GROUP_KIND[r.group]} size="sm">{r.group}</Badge></td>
+                    <td className={`${styles.td} t-num t-mono`}>{r.cga_wks.toFixed(1)} <span className={styles.dim}>wks</span></td>
+                    <td className={`${styles.td} ${styles.muted}`}>{r.sex}</td>
+                    <td className={`${styles.td} t-mono ${styles.smallMuted}`}>{r.visit}</td>
+                    <td className={styles.td}>
+                      <div className={styles.visitType}>{ops.visit_type}</div>
+                      <div className={`${styles.visitMarker} t-mono`}>{ops.visit_marker} · next {ops.next_visit.marker}</div>
+                    </td>
+                    <td className={styles.td}>
+                      <Badge kind={r.qa === "pass" ? "ok" : r.qa === "reject" ? "fail" : "pending"} size="sm">{r.qa}</Badge>
+                    </td>
+                    <td className={styles.td}>
+                      <Tooltip text={ops.scheduling_risk_reasons.join(" ") || ops.scheduling_note} maxWidth={340}>
+                        <span>
+                          <Badge kind={riskKind(ops.scheduling_risk)} size="sm">{ops.scheduling_risk}</Badge>
+                        </span>
                       </Tooltip>
-                    ) : <span className={styles.dim}>—</span>}
-                  </td>
-                  <td className={`${styles.td} ${styles.muted} t-mono`}>{r.updated}</td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={`${styles.td} ${styles.muted} t-mono`}>{r.updated}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

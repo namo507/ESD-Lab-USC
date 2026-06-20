@@ -37,6 +37,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dashboard.pipelines import build_dashboard_data, build_readings_index
+from dashboard.pipelines.participant_operations import (
+    build_participant_operations,
+    operation_lookup,
+)
 from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
 from k8s.pipeline import PipelineConfig
 from k8s.pipeline import assistant_freshness_payload
@@ -474,8 +478,23 @@ def _legacy_runs(limit: int) -> list[dict[str, Any]]:
     ]
 
 
+def _participant_operations_lookup(
+    payload: dict[str, Any],
+    fallback_rows: list[dict[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    lookup = operation_lookup(payload.get("participant_operations"))
+    if lookup:
+        return lookup
+    cohort = payload.get("cohort_table")
+    if not isinstance(cohort, list) or not cohort:
+        cohort = fallback_rows or []
+    return operation_lookup(build_participant_operations(cohort))
+
+
 def _legacy_participants() -> list[dict[str, Any]]:
     payload = _dashboard_payload()
+    rows = data_features.participants_from_payload(payload)
+    operations = _participant_operations_lookup(payload, rows)
     return [
         {
             "id": str(row.get("id") or "NANO-0000"),
@@ -491,8 +510,9 @@ def _legacy_participants() -> list[dict[str, Any]]:
             "updated": str(row.get("updated") or "now"),
             "enrolled": str(row.get("enrolled") or ""),
             "site": str(row.get("site") or "USC Lab"),
+            "operations": operations.get(str(row.get("id") or "NANO-0000")),
         }
-        for row in data_features.participants_from_payload(payload)
+        for row in rows
     ]
 
 
@@ -730,6 +750,7 @@ def _v2_rsa_trajectories(age_basis: str) -> dict[str, Any]:
 def _v2_redcap_completeness() -> dict[str, Any]:
     payload = _dashboard_payload()
     cohort = payload.get("cohort_table") or []
+    operations = _participant_operations_lookup(payload)
     instruments = [
         ("visit_intake_v2", True, 18),
         ("medical_history_v1", True, 22),
@@ -743,10 +764,17 @@ def _v2_redcap_completeness() -> dict[str, Any]:
     for p_idx, participant in enumerate(cohort[:24]):
         nano_id = str(participant.get("nano_id") or f"NANO-{p_idx + 1:04d}")
         group = _normalize_group(participant.get("group"))
+        ops = operations.get(nano_id, {})
+        checklist = ops.get("questionnaire_checklist") if isinstance(ops, dict) else []
         base = float(participant.get("completeness_pct") or 82)
         for f_idx, (instrument, nda_required, total_required) in enumerate(instruments):
             missing = max(0, int(round((100 - base) / 18)) + ((p_idx + f_idx) % 3) - 1)
             completeness = max(0.0, min(100.0, ((total_required - missing) / total_required) * 100))
+            workflow_state = None
+            if isinstance(checklist, list) and checklist:
+                matched = checklist[f_idx % len(checklist)]
+                if isinstance(matched, dict):
+                    workflow_state = matched.get("status")
             rows.append(
                 {
                     "nanoId": nano_id,
@@ -758,6 +786,13 @@ def _v2_redcap_completeness() -> dict[str, Any]:
                     "ndaRequired": nda_required,
                     "dueDate": deadline if nda_required else None,
                     "status": "complete" if missing == 0 else "watch" if missing <= 2 else "missing",
+                    "workflowState": workflow_state or ("complete" if missing == 0 else "missing"),
+                    "enrollmentType": ops.get("enrollment_type") if isinstance(ops, dict) else "single",
+                    "studies": ops.get("study_roles") if isinstance(ops, dict) else ["NANO"],
+                    "visitType": ops.get("visit_type") if isinstance(ops, dict) else "CGA longitudinal",
+                    "formPolicy": (ops.get("form_policy") or {}).get("mode") if isinstance(ops, dict) else "single_study",
+                    "schedulingRisk": ops.get("scheduling_risk") if isinstance(ops, dict) else "low",
+                    "linkingId": ops.get("linking_id") if isinstance(ops, dict) else None,
                 }
             )
     return _api_list(rows, payload)
@@ -824,6 +859,7 @@ def _v2_thermal_heatmap(nano_id: str) -> dict[str, Any]:
 def _v2_cohort_swimmer() -> dict[str, Any]:
     payload = _dashboard_payload()
     cohort = payload.get("cohort_table") or []
+    operations = _participant_operations_lookup(payload)
     visits = [
         ("nicu_dc", 0),
         ("cga_3mo", 3),
@@ -835,6 +871,7 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
     ]
     rows = []
     for idx, participant in enumerate(cohort[:60]):
+        nano_id = str(participant.get("nano_id") or f"NANO-{idx + 1:04d}")
         last_label = str(participant.get("last_visit") or "12 Months").lower()
         completed = 1 + max(
             0,
@@ -845,7 +882,7 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
         )
         rows.append(
             {
-                "nanoId": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
+                "nanoId": nano_id,
                 "group": _normalize_group(participant.get("group")),
                 "enrolledAt": f"2024-{(idx % 12) + 1:02d}-{(idx % 24) + 1:02d}",
                 "lastVisit": visits[min(completed - 1, len(visits) - 1)][0],
@@ -861,6 +898,7 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
                     }
                     for i, (visit, month) in enumerate(visits)
                 ],
+                "operations": operations.get(nano_id),
             }
         )
     return _api_list(rows, payload)
@@ -1466,6 +1504,7 @@ def _v2_passport(nano_id: str) -> dict[str, Any]:
     payload = _dashboard_payload()
     cohort = payload.get("cohort_table") or []
     participant = next((p for p in cohort if p.get("nano_id") == nano_id), None) or {}
+    operations = _participant_operations_lookup(payload).get(nano_id)
     group = _normalize_group(participant.get("group") or "VPT")
     modalities = ["RSA", "HDA", "CVA", "Attachment", "Spatial", "Risk"]
     timeline = []
@@ -1493,6 +1532,7 @@ def _v2_passport(nano_id: str) -> dict[str, Any]:
         ],
         **({"nicu": {"hrcSummary": "HRC summary available", "thermalSummary": "Thermal gradient stable"}} if group == "VPT" else {}),
         "outcome": {"adosCSS": 2 if group == "TD" else 4 if group == "ASIB" else 3, "ageMonths": 36},
+        "operations": operations,
     }
 
 

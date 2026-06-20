@@ -48,6 +48,7 @@ SUMMARY_KEYS = (
     "hda_composition",
     "attrition_funnel",
     "county_profiles",
+    "participant_operations",
     "redcap_audit",
     "matlab_integration",
     "cohort_table",
@@ -96,6 +97,32 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "active",
         "withdrawn",
         "review",
+    },
+    "participant_operations": {
+        "participant",
+        "participants",
+        "role",
+        "roles",
+        "id",
+        "legend",
+        "dual",
+        "enrollment",
+        "nino",
+        "nico",
+        "anonico",
+        "nano",
+        "aih",
+        "eh",
+        "form",
+        "forms",
+        "packet",
+        "questionnaire",
+        "questionnaires",
+        "scheduling",
+        "risk",
+        "linking",
+        "numbering",
+        "intervention",
     },
     "database_features": {
         "data",
@@ -1162,6 +1189,12 @@ class DashboardChatAssistant:
         by_group = enrollment.get("by_group", {})
         data_quality = payload.get("data_quality", {})
         redcap_audit_summary = payload.get("redcap_audit", {}).get("summary", {})
+        participant_operations = payload.get("participant_operations") or {}
+        participant_operations_summary = (
+            participant_operations.get("summary")
+            if isinstance(participant_operations, dict)
+            else {}
+        ) or {}
         readings_summary = readings.get("summary", {})
         fragments: list[tuple[str, str]] = []
 
@@ -1257,6 +1290,24 @@ class DashboardChatAssistant:
                 ("enrollment.by_group", f"Enrollment by group: {group_summary}")
             )
 
+        if participant_operations_summary:
+            source_doc = (
+                participant_operations.get("meta", {}).get("source_doc")
+                if isinstance(participant_operations, dict)
+                else None
+            )
+            fragments.append(
+                (
+                    "participant_operations.summary",
+                    "Participant operations: "
+                    f"{participant_operations_summary.get('single', 0)} single, "
+                    f"{participant_operations_summary.get('dual', 0)} dual, "
+                    f"{participant_operations_summary.get('risk_watch', 0)} watch-risk, "
+                    f"{participant_operations_summary.get('risk_high', 0)} high-risk. "
+                    f"Source doc: {source_doc or 'not listed'}",
+                )
+            )
+
         best_index, best = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
         )
@@ -1283,6 +1334,12 @@ class DashboardChatAssistant:
         data_quality = payload.get("data_quality", {})
         matlab = payload.get("matlab_integration", {})
         cohort = payload.get("cohort_table") or []
+        participant_operations = payload.get("participant_operations") or {}
+        participant_operations_summary = (
+            participant_operations.get("summary")
+            if isinstance(participant_operations, dict)
+            else {}
+        )
         hda_composition = payload.get("hda_composition") or {}
         hda_by_group = (
             hda_composition.get("by_group") if isinstance(hda_composition, dict) else {}
@@ -1340,6 +1397,31 @@ class DashboardChatAssistant:
             "matlab_files": matlab.get("files") or [],
             "data_quality": data_quality,
             "cohort_rows": len(cohort) if isinstance(cohort, list) else 0,
+            "participant_operations_summary": (
+                participant_operations_summary
+                if isinstance(participant_operations_summary, dict)
+                else {}
+            ),
+            "participant_operations_doc": (
+                participant_operations.get("meta", {}).get("source_doc")
+                if isinstance(participant_operations, dict)
+                else None
+            ),
+            "participant_id_legend": (
+                participant_operations.get("id_legend") or []
+                if isinstance(participant_operations, dict)
+                else []
+            ),
+            "participant_form_policies": (
+                participant_operations.get("form_policy_options") or []
+                if isinstance(participant_operations, dict)
+                else []
+            ),
+            "participant_workflow_steps": (
+                participant_operations.get("workflow_steps") or []
+                if isinstance(participant_operations, dict)
+                else []
+            ),
             "hda_groups": (
                 sorted(str(group) for group in hda_by_group.keys())
                 if isinstance(hda_by_group, dict)
@@ -1552,6 +1634,47 @@ class DashboardChatAssistant:
                 "The CGA Milestone River summarizes HDA phase composition over corrected gestational age months. "
                 "It uses the aggregate hda_composition payload, normalized phase shares, and VPT/ASIB/TD grouping. "
                 f"Current indexed groups are {', '.join(groups) if groups else 'not listed'} across {month_count or 'the configured'} month points."
+            )
+
+        if (
+            question_tokens & {"participant", "participants", "id", "legend", "numbering"}
+            and question_tokens & {"id", "legend", "numbering", "5", "9", "series"}
+        ):
+            legend = facts.get("participant_id_legend") or []
+            summary = facts.get("participant_operations_summary") or {}
+            doc = facts.get("participant_operations_doc") or "docs/participant_operations_workflow.md"
+            legend_text = "; ".join(
+                f"{item.get('code')}: {item.get('meaning')}"
+                for item in legend[:4]
+                if isinstance(item, dict)
+            )
+            return (
+                "Participant operations use visible role codes so staff do not have to infer study membership from memory. "
+                f"{legend_text or 'NANO-primary uses 5-series, NICO/ANONICO primary uses 9-series, and DUAL marks cross-study enrollment.'} "
+                f"Current operations context lists {summary.get('dual', 0)} dual-enrolled participants. Source doc: {doc}."
+            )
+
+        if question_tokens & {"dual", "aih", "eh", "form", "forms", "linking"} and question_tokens & {"dual", "aih", "eh", "form", "forms"}:
+            policies = facts.get("participant_form_policies") or []
+            policy_text = "; ".join(
+                f"{item.get('label')}: {item.get('rule')}"
+                for item in policies[:3]
+                if isinstance(item, dict)
+            )
+            doc = facts.get("participant_operations_doc") or "docs/participant_operations_workflow.md"
+            return (
+                "For dual-enrolled participants, the dashboard policy defaults to one master AIH/EH unless a backend data-pull rule requires study-specific duplicates. "
+                f"{policy_text} Source doc: {doc}."
+            )
+
+        if question_tokens & {"packet", "questionnaire", "questionnaires", "scheduling", "risk"}:
+            steps = facts.get("participant_workflow_steps") or []
+            summary = facts.get("participant_operations_summary") or {}
+            step_text = "; ".join(str(step) for step in steps[:5])
+            return (
+                "Before scheduling, staff should verify enrollment type, study role, visit marker, form policy, linked-form ID, questionnaire checklist, and packet requirements. "
+                f"Workflow steps: {step_text or 'operations workflow steps are not listed in the current payload'}. "
+                f"Current risk counts: watch={summary.get('risk_watch', 0)}, high={summary.get('risk_high', 0)}."
             )
 
         if question_tokens & {"county", "counties", "comparator"}:
