@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-17T01:58:46",
+  "generated_at": "2026-06-19T18:03:36",
   "status": "ok",
-  "build_count": 10,
-  "last_build_reason": "source-change",
-  "last_build_started_at": "2026-06-17T01:58:37",
-  "last_build_finished_at": "2026-06-17T01:58:46",
-  "last_successful_build_finished_at": "2026-06-17T01:58:46",
+  "build_count": 1,
+  "last_build_reason": "startup",
+  "last_build_started_at": "2026-06-19T18:03:24",
+  "last_build_finished_at": "2026-06-19T18:03:36",
+  "last_successful_build_finished_at": "2026-06-19T18:03:36",
   "watch_interval_seconds": 20,
   "fallback_synthetic": true,
   "dashboard": {
-    "generated_at": "2026-06-17T01:58:43",
+    "generated_at": "2026-06-19T18:03:34",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -23,7 +23,7 @@
     }
   },
   "readings": {
-    "generated_at": "2026-06-17T01:58:46",
+    "generated_at": "2026-06-19T18:03:36",
     "source_dir": "esd-lab-readings",
     "total_readings": 20,
     "latest_modified_at": "2026-04-18T01:12:08",
