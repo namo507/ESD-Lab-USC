@@ -1,173 +1,440 @@
-# Feature Implementation Prompt: REDCap-Integrated Participant Tracker Dashboard
+# Feature Implementation Prompt: REDCap-Integrated Participant Visit Health Monitor
 ## For: https://esd-lab-namo.pages.dev/redcap | Repo: https://github.com/namo507/ESD-Lab-USC
 
 ---
 
 ## CONTEXT AND BACKGROUND
 
-You are building a new feature page at the `/redcap` route of an existing React + Vite research lab dashboard deployed on Cloudflare Pages (https://esd-lab-namo.pages.dev). The dashboard belongs to the ESD Lab at USC and is used by research coordinators who manage a longitudinal infant development study.
+You are extending the existing `/redcap` route of a **React 18 + TypeScript + Vite** research dashboard deployed on Cloudflare Pages (https://esd-lab-namo.pages.dev). The dashboard belongs to the ESD Lab at USC and is used by research coordinators who manage a longitudinal infant development study (NANO Study, PI: Dr. Jessica Bradshaw).
 
-The study uses REDCap to collect caregiver questionnaires (including the CSBS Caregiver Questionnaire) at 6-month, 9-month, and 12-month visit timepoints. The research team currently has a known issue where incomplete surveys from earlier timepoints carry forward into later visits due to a structural limitation in REDCap's Survey Queue, causing data to land in the wrong event columns. The fix (Form Display Logic + Auto-Continue + Missing Data Codes) is already being implemented directly in REDCap. This dashboard feature is the companion monitoring and coordination layer that runs alongside REDCap using the REDCap API.
+### Current State of `/redcap`
 
-The REDCap instance is hosted at the user's institution. The API token will be stored as an environment variable (REDCAP_API_TOKEN) in Cloudflare Pages. REDCap's API endpoint follows the standard format: https://[institution-redcap-url]/api/
+The `/redcap` route **already exists** as a fully implemented page at:
+- **Route component:** `web/src/routes/Redcap.tsx` — exports `Redcap` component
+- **Route styles:** `web/src/routes/Redcap.module.css` — 260 lines of CSS Module styles
+- **Routing:** Registered at line 124 of `web/src/App.tsx` via `<Route path="/redcap" element={<Redcap />} />`
+- **Lazy import:** Line 14 of `App.tsx` — `const Redcap = lazy(() => import("@/routes/Redcap").then((m) => ({ default: m.Redcap })));`
+
+The existing page currently shows:
+1. Sync event KPIs (forms tracked, records/24h, warnings, failures)
+2. A sync event table (`useRedcapEvents` hook → `GET /api/redcap/events`)
+3. A field map panel (study_id, dob, sex, cga_wks, mrn, caregiver_id, site)
+4. A **REDCap Completeness Scorecard** (feature-flagged behind `REDCAP_COMPLETENESS` — currently `true`)
+   - NDA deadline alert banner
+   - Completeness matrix: participants × instruments
+   - Workflow state checklist (complete / due / missing / did_not_qualify / other)
+   - Instrument-level completeness score bars
+   - Cell detail drawer (right-side fixed panel)
+5. Fast-path prompts for the ESD Buddy AI assistant (9 prompts for redcap/qa/model lanes)
+6. AmbientOrbit decorative elements using the garnet tone
+
+### The Study Problem This Feature Addresses
+
+The study uses REDCap to collect caregiver questionnaires (including the CSBS Caregiver Questionnaire) at 6-month, 9-month, and 12-month visit timepoints. The research team has a known issue where incomplete surveys from earlier timepoints carry forward into later visits due to a structural limitation in REDCap's Survey Queue, causing data to land in the wrong event columns. The fix (Form Display Logic + Auto-Continue + Missing Data Codes) is already being implemented directly in REDCap. This dashboard feature is the **companion monitoring and coordination layer** that runs alongside REDCap using the REDCap API.
+
+The REDCap instance is hosted at the user's institution. The API token will be stored as an environment variable. REDCap's API endpoint follows the standard format: `https://[institution-redcap-url]/api/`
 
 ---
 
-## THE CORE FEATURE IDEA: "Participant Visit Health Monitor" — A REDCap-Integrated Coordination Panel
+## EXACT REPOSITORY STRUCTURE (verified against live codebase)
 
-### Concept
-Build a real-time, REDCap-API-powered coordination panel embedded at /redcap that gives research coordinators a bird's-eye view of every participant's survey completion status across all three visit timepoints (6m, 9m, 12m), with intelligent anomaly detection that automatically flags the specific carry-forward misalignment issue described above — before it corrupts data.
+### Tech Stack
+- **Frontend:** React 18 + TypeScript + Vite (`web/` directory)
+- **Styling:** TailwindCSS v3.4 + CSS Modules (`.module.css`) + `web/src/styles/tokens.css` design system
+- **State management:** Zustand v4.5 (`web/src/store/ui.ts`) for UI state; TanStack Query v5.32 for server state
+- **API layer:** Zod-validated fetch client (`web/src/api/client.ts`), typed hooks (`web/src/api/hooks.ts`), schemas (`web/src/api/schemas.ts`)
+- **Charts:** Recharts v3.8 (already in `package.json`)
+- **Icons:** Lucide React v0.378 (`strokeWidth={1.5}` strictly)
+- **Backend:** Python HTTP server at `dashboard/server/live_dashboard_server.py`
+- **Deployment:** Cloudflare Pages with a `_worker.js` proxy (generated by `scripts/build_pages_site.py`)
+- **Routing:** React Router v6 — all authenticated routes wrap in `<AppShell />` which includes sidebar, topnav, HIPAA banner, Buddy, and ChatDrawer
 
-Think of it as a "mission control" layer on top of REDCap: coordinators see everything they need without logging into REDCap itself, and the system proactively alerts them when the exact known failure mode (a misaligned CSBS CG survey) is occurring or about to occur.
+### Key Files You Must Know
+
+```
+# ── Frontend (web/src/) ─────────────────────────────────────────────────────
+
+web/src/App.tsx                          # Route registry, lazy imports, ThemeBoot, QueryClient
+web/src/main.tsx                         # React root mount
+
+# Routes
+web/src/routes/Redcap.tsx                # EXISTING /redcap page component (extend this)
+web/src/routes/Redcap.module.css         # EXISTING CSS Module (extend this)
+
+# API Layer
+web/src/api/client.ts                    # Zod-validated fetch client (api.get / api.post / api.patch)
+web/src/api/hooks.ts                     # TanStack Query hooks (useRedcapEvents, useRedcapCompleteness, etc.)
+web/src/api/schemas.ts                   # Zod schemas (RedcapEvent, RedcapCompletenessRow, etc.)
+web/src/api/chatApi.ts                   # AI chat streaming (streamChat, fetchAssistantStatus)
+
+# Store
+web/src/store/ui.ts                      # Zustand: chatOpen, chatSeed, theme, density, showHipaa, etc.
+
+# Components
+web/src/components/primitives/           # Badge, Button, Card, Gloss, KPI, SectionLabel, Segmented,
+                                         # Sparkline, Tooltip, DataTable, Icon, VersionTag
+web/src/components/shell/AppShell.tsx     # App shell wrapper (Sidebar + TopNav + Buddy + ChatDrawer)
+web/src/components/shell/Buddy.tsx        # Hover insight assistant (data-insight attribute system)
+web/src/components/shell/ChatDrawer.tsx   # AI chat drawer with FastPaths prompts
+web/src/components/shell/Sidebar.tsx      # Navigation sidebar
+web/src/components/shell/TopNav.tsx       # Top navigation bar
+web/src/components/shell/HipaaBanner.tsx  # HIPAA compliance banner
+web/src/components/warm/                  # AmbientOrbit, FastPaths, MetricCard, StatusPill, etc.
+
+# Hooks & Config
+web/src/hooks/useFeatureFlag.ts          # Feature flag hook
+web/src/config/featureFlags.ts           # Feature flag definitions (REDCAP_COMPLETENESS = true)
+
+# Lib / Utilities
+web/src/lib/audit.ts                     # Audit logging (logAudit)
+web/src/lib/phiScrub.ts                  # PHI scrubbing (scrubPhi)
+web/src/lib/exportCsv.ts                 # CSV export utility (exportCsvFile)
+web/src/lib/participantOperations.ts     # Questionnaire status utilities, form policy helpers
+web/src/lib/lmStudio.ts                  # LM Studio local model streaming
+web/src/lib/glossary.ts                  # Glossary term definitions
+
+# Styles
+web/src/styles/tokens.css                # CSS custom properties design system (USC brand tokens)
+web/src/styles/global.css                # Global styles
+
+# ── Backend (dashboard/) ────────────────────────────────────────────────────
+
+dashboard/server/live_dashboard_server.py     # Python HTTP server (all API routes)
+dashboard/server/data_features.py             # Data feature computations
+dashboard/assistant/local_chat_assistant.py    # AI assistant with GGUF model + NANO system prompt
+dashboard/assistant/model_catalog.py           # LLM model catalog
+dashboard/data/dashboard_data.json             # Dashboard data (355KB)
+dashboard/data/readings_data.json              # Readings data
+dashboard/data/runtime_status.json             # Runtime status
+
+# ── REDCap Module (redcap/) ──────────────────────────────────────────────────
+
+redcap/__init__.py                       # PyCap compatibility shim (redcap.Project)
+redcap/api/redcap_pull.py                # REDCap data pull (POST to REDCap API)
+redcap/api/redcap_push.py                # REDCap data push (import records)
+redcap/api/redcap_audit.py               # REDCap audit trail
+redcap/api/redcap_r_pull.R               # R-based REDCap pull
+redcap/hooks/visit_completion_checker.js  # REDCap DET hook: visit completion
+redcap/hooks/auto_complete_dob.js         # REDCap DET hook: DOB auto-complete
+redcap/hooks/flag_missing_ecg.js          # REDCap DET hook: ECG missingness
+redcap/hooks/participant_id_validator.js   # REDCap DET hook: ID validation
+redcap/instruments/field_mapping_ADOS2.csv # ADOS-2 field mapping
+redcap/instruments/field_mapping_Bayley4.csv # Bayley-4 field mapping
+
+# ── Knowledge Database ───────────────────────────────────────────────────────
+
+dashboard/context_skill/SKILL.md                   # Knowledge skill definition
+dashboard/context_skill/extract_context.py          # Context extraction script
+dashboard/context_skill/references/entities.md      # Study vocabulary (groups, events, people)
+dashboard/context_skill/references/metrics.md       # Biomarker + ML metric definitions
+dashboard/context_skill/references/dashboard_schema.md  # JSON key → data source mapping
+dashboard/context_skill/references/qc_flags.md      # QC flag codes
+dashboard/context_skill/references/tables/           # Table-level references
+
+# ── Deployment ───────────────────────────────────────────────────────────────
+
+scripts/build_pages_site.py              # Generates _worker.js proxy + packages for CF Pages
+.github/workflows/deploy-pages.yml       # CI/CD: build + deploy to Cloudflare Pages
+web/vite.config.ts                       # Vite config (dev proxy at /api → 127.0.0.1:8080)
+web/tailwind.config.ts                   # TailwindCSS config
+web/package.json                         # Dependencies (esd-lab-nano-dashboard v0.14.2)
+
+# ── Environment ──────────────────────────────────────────────────────────────
+
+.env.example                             # Environment variable reference
+.env                                     # Active environment variables (git-ignored)
+```
+
+---
+
+## DESIGN SYSTEM COMPLIANCE (NON-NEGOTIABLE)
+
+### CSS Tokens (from `web/src/styles/tokens.css`)
+All new components MUST use these existing CSS custom properties — **zero hex literals in component files**:
+
+```css
+/* USC Brand */
+--usc-garnet: #73000a;
+--usc-gold: #ffcc00;
+--usc-gold-tint: #fff4bf;
+
+/* Surfaces */
+--bg-page, --bg-surface, --bg-subtle, --bg-hover
+--warm-card, --warm-border, --warm-fg2, --warm-fg4
+
+/* Text */
+--ink, --slate-100, --slate-400, --slate-500, --slate-700
+
+/* Status */
+--green-tint, --on-ok, --usc-gold-tint, --warn-fg, --red-tint, --on-fail
+--hipaa-border, --hipaa-notice-bg, --hipaa-fg
+
+/* Glass */
+--glass-100, --glass-200, --glass-300, --glass-400
+--glass-stroke, --glass-stroke-soft
+
+/* Radii */
+--r-card: 22px; --r-pill: 999px; --r-2
+
+/* Shadows */
+--shadow-floating
+
+/* Easing */
+--ease-sharp, --ease-soft, --ease-back
+
+/* Typography */
+--font-serif (Source Serif 4), --font-mono (JetBrains Mono)
+--text-micro, --text-small, --text-h1
+--w-semibold, --w-bold
+```
+
+### Typography Rules
+- **Source Serif 4** (`--font-serif`): h1, page titles, lede paragraphs
+- **Source Sans 3 / Inter**: body, UI labels, h2–h4
+- **JetBrains Mono** (`--font-mono`, class `t-mono`): every number, ID, timestamp, metric value — always with `font-feature-settings: 'tnum' 1`
+- **Lucide icons** everywhere: `strokeWidth={1.5}` **strictly**
+
+### Component Reuse (from `web/src/components/primitives/`)
+Use the existing primitive components. DO NOT create custom versions:
+- `Badge` — with `kind`: `"ok" | "warn" | "fail" | "phi" | "neutral" | "pending" | "info" | "gold"`
+- `Button` — with `variant`: `"primary" | "secondary"`, `size`: `"sm" | "md"`, `icon` prop
+- `Card` — with `pad` prop (number, use 0 for no padding)
+- `Gloss` — hover-glossary term wrapper
+- `KPI` — label, value, sub, delta, deltaKind, insightId
+- `SectionLabel` — section headers
+- `Segmented` — tab-like toggle (use for tab bar)
+- `DataTable` — sortable, filterable table with toolbar context
+- `Tooltip` — info popover
+
+### CSS Module Pattern (match existing `Redcap.module.css`)
+- Use CSS Modules (`.module.css`) for all component styles
+- Reference design tokens via `var(--token-name)`
+- Use existing class patterns: `.page`, `.hero`, `.eyebrow`, `.h1`, `.lede`, `.kpis`, `.split`, `.listHead`, `.tableWrap`, `.table`, `.th`, `.td`
+- Responsive breakpoints: `@media (max-width: 1100px)` and `@media (max-width: 640px)`
 
 ---
 
 ## TECHNICAL ARCHITECTURE
 
-### Stack
-- Frontend: React + Vite (existing project structure)
-- Deployment: Cloudflare Pages
-- API proxy: Cloudflare Pages Functions (functions/api/redcap.js) to handle CORS and keep the API token server-side
-- REDCap API: POST requests to the institution's REDCap API endpoint
-- Styling: Match existing dashboard design system (Tailwind CSS or whatever CSS framework is already in use in the repo)
-- State management: React hooks (useState, useEffect, useCallback) — no external state library needed
-- Charts: Recharts or Chart.js (whichever is already in package.json; add Recharts if neither is present)
+### API Proxy Pattern (CRITICAL — read carefully)
 
-### Cloudflare Pages Function (Proxy Layer)
-Create the file: functions/api/redcap.js
+This project does **NOT** use a Cloudflare Pages Functions directory (`functions/`). Instead, it uses a **generated `_worker.js` file** created by `scripts/build_pages_site.py`.
 
-This function receives POST requests from the React frontend, injects the REDCAP_API_TOKEN environment variable, and forwards them to the REDCap API endpoint. This keeps the token completely server-side and solves CORS since all requests appear same-origin to the browser.
+The architecture works like this:
+
+1. **In development** (`npm run dev`): Vite dev server at port 5173 proxies `/api/*` requests to `http://127.0.0.1:8080` (the Python backend) via `web/vite.config.ts`
+2. **In production** (Cloudflare Pages): The `_worker.js` advanced-mode worker proxies `/api/*` requests to the live backend origin (from `dashboard/public/pages_wrapper/manifest.json`) and includes **fallback handlers** for when the backend is unavailable
+
+Therefore, the REDCap API proxy must be implemented as:
+
+#### Option A — Backend Route in `dashboard/server/live_dashboard_server.py` (Recommended)
+Add new route handlers in the Python server that proxy to the REDCap API. This is consistent with how all other API routes work in this project (e.g., `/api/redcap/events`, `/api/v2/redcap-completeness`).
+
+```python
+# In dashboard/server/live_dashboard_server.py
+# Add alongside existing routes near line 2423+
+
+# New endpoint: /api/v2/redcap-visit-health
+# Proxies to the institution's REDCap API, injects token, returns processed data
+
+def _v2_redcap_visit_health() -> dict[str, Any]:
+    """Fetch all records with survey fields, run anomaly detection, return structured response."""
+    token = os.environ.get("REDCAP_API_TOKEN", "")
+    api_url = os.environ.get("REDCAP_API_URL", "")
+    
+    if not token or not api_url:
+        return {"data": [], "meta": _api_list_meta(), "anomalies": [], "error": "REDCAP_API_TOKEN or REDCAP_API_URL not configured"}
+    
+    # POST to REDCap API with token injection
+    form_data = {
+        "token": token,
+        "content": "record",
+        "format": "json",
+        "returnFormat": "json",
+        "type": "flat",
+        "exportSurveyFields": "true",
+        "exportDataAccessGroups": "false",
+    }
+    
+    resp = requests.post(api_url, data=form_data, timeout=30)
+    records = resp.json()
+    
+    # Run anomaly detection server-side
+    anomalies = _detect_carry_forward_risk(records)
+    
+    return {
+        "data": records,
+        "meta": _api_list_meta(),
+        "anomalies": anomalies,
+    }
+```
+
+#### Option B — Fallback in `_worker.js` (for when backend is down)
+Add a fallback handler in the `fallbackApiResponse` function of `scripts/build_pages_site.py` so the `/redcap` page shows meaningful status even when the backend is offline:
 
 ```javascript
-// functions/api/redcap.js
-export async function onRequestPost(context) {
-  const { REDCAP_API_TOKEN, REDCAP_API_URL } = context.env;
-  
-  const body = await context.request.json();
-  
-  const formData = new URLSearchParams({
-    token: REDCAP_API_TOKEN,
-    format: 'json',
-    returnFormat: 'json',
-    ...body
-  });
-
-  const response = await fetch(REDCAP_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: formData.toString()
-  });
-
-  const data = await response.json();
-  
-  return new Response(JSON.stringify(data), {
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
-    }
-  });
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    }
+// Add to the fallbackApiResponse function in scripts/build_pages_site.py
+if (path === "/api/v2/redcap-visit-health") {
+  return jsonResponse({
+    data: [],
+    meta: { generatedAt: new Date().toISOString(), participantCount: 0, source: "mock" },
+    anomalies: [],
+    error: "Backend offline — live REDCap data unavailable"
   });
 }
 ```
 
-Set these in Cloudflare Pages environment variables:
-- REDCAP_API_TOKEN = [your REDCap project API token]
-- REDCAP_API_URL = https://[your-institution].edu/redcap/api/
+### New Backend Endpoints to Add
+
+Add these routes to `dashboard/server/live_dashboard_server.py`:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/v2/redcap-visit-health` | All participant records + anomaly flags |
+| GET | `/api/v2/redcap-visit-health/:record_id` | Single participant detail |
+| POST | `/api/v2/redcap-visit-entry` | Import a visit date into REDCap |
+| GET | `/api/v2/redcap-missing-data` | Records with SKIP missing data codes |
+
+### Environment Variables
+
+Add to **`.env.example`** and **`.env`** (server-side only, never in frontend bundle):
+```bash
+# ── REDCap API (Visit Health Monitor) ─────────────────────────────────────
+REDCAP_API_TOKEN=                        # REDCap project API token (import rights required for visit entry)
+REDCAP_API_URL=https://redcap.healthsciencessc.org/api/    # Institution REDCap API endpoint
+REDCAP_VISIT_POLL_INTERVAL_S=300         # Auto-refresh interval (default: 300 = 5 minutes)
+```
+
+These are injected **only in the Python backend process** — they never appear in the Vite build or the frontend bundle.
 
 ---
 
-## FEATURES TO BUILD (implement all of the following)
+## FEATURES TO BUILD (extend the existing `Redcap.tsx`)
+
+All features below should be **added to the existing `Redcap.tsx` component** using a tab-based layout. The existing sync events table, field map, and completeness scorecard remain — the new features add tabs alongside them.
 
 ---
 
 ### FEATURE 1: Participant Visit Status Grid
 
-A color-coded grid/table showing all participant records with their survey completion status per event per instrument.
+A color-coded grid/table showing all participant records with their CSBS survey completion status per event per instrument.
 
-**Data fetching (call via the proxy):**
-```
-POST /api/redcap
-Body: {
-  content: 'record',
-  type: 'flat',
-  exportSurveyFields: 'true',
-  exportDataAccessGroups: 'false'
+**Frontend hook (new, in `web/src/api/hooks.ts`):**
+```typescript
+export function useRedcapVisitHealth() {
+  return useQuery({
+    queryKey: ["v2", "redcap-visit-health"],
+    queryFn: () => api.get("/api/v2/redcap-visit-health", S.RedcapVisitHealthResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchInterval: 5 * 60_000,  // auto-refresh every 5 minutes
+  });
 }
+```
+
+**Zod schema (new, in `web/src/api/schemas.ts`):**
+```typescript
+export const CsbsVisitStatus = z.enum(["incomplete", "unverified", "complete", "not_started", "skipped"]);
+export type CsbsVisitStatus = z.infer<typeof CsbsVisitStatus>;
+
+export const RedcapVisitRecord = z.object({
+  recordId: z.string(),
+  sixMonth: z.object({
+    visitDate: z.string().nullable(),
+    csbsStatus: CsbsVisitStatus,
+    csbsTimestamp: z.string().nullable(),
+  }),
+  nineMonth: z.object({
+    visitDate: z.string().nullable(),
+    csbsStatus: CsbsVisitStatus,
+    csbsTimestamp: z.string().nullable(),
+  }),
+  twelveMonth: z.object({
+    visitDate: z.string().nullable(),
+    csbsStatus: CsbsVisitStatus,
+    csbsTimestamp: z.string().nullable(),
+  }),
+  anomalyFlags: z.array(z.string()),
+  hasCarryForwardRisk: z.boolean(),
+});
+export type RedcapVisitRecord = z.infer<typeof RedcapVisitRecord>;
+
+export const RedcapVisitHealthResponse = z.object({
+  data: z.array(RedcapVisitRecord),
+  meta: ApiListMeta,
+  anomalies: z.array(z.object({
+    recordId: z.string(),
+    risks: z.array(z.string()),
+  })),
+});
+export type RedcapVisitHealthResponse = z.infer<typeof RedcapVisitHealthResponse>;
 ```
 
 **What to render:**
 - One row per participant (record_id)
 - Columns: Record ID | 6m Visit Date | 6m CSBS Status | 9m Visit Date | 9m CSBS Status | 12m Visit Date | 12m CSBS Status | Anomaly Flag
-- Status values from REDCap's _complete field: 0 = Incomplete (red badge), 1 = Unverified (yellow badge), 2 = Complete (green badge), "" = Not started (grey badge), "SKIP" = Intentionally skipped (blue badge with skip icon)
-- Color-code each cell using a consistent status color system
+- Status mapping from REDCap's `_complete` field:
+  - `0` → Incomplete → `<Badge kind="fail">Incomplete</Badge>`
+  - `1` → Unverified → `<Badge kind="warn">Unverified</Badge>`
+  - `2` → Complete → `<Badge kind="ok">Complete</Badge>`
+  - `""` → Not started → `<Badge kind="neutral">Not Started</Badge>`
+  - `"SKIP"` → Skipped → `<Badge kind="info">Skipped</Badge>`
+- Anomaly-flagged rows use `<Badge kind="fail">⚠️ Carry-Forward Risk</Badge>` and sort to top by default
 
-**Anomaly detection logic (run client-side after data loads):**
-Flag a participant row as "⚠️ Carry-Forward Risk" if ANY of the following conditions are true:
-1. The 6m CSBS status is 0 (incomplete) AND the 9m visit_date is not blank (meaning the 9m visit has already started — the 6m form should have been closed already)
-2. The 9m CSBS status is 0 (incomplete) AND the 12m visit_date is not blank
-3. The 6m CSBS status is blank ("") AND the 9m CSBS status is 2 (complete) — data may have already shifted
-4. Any event has a CSBS _complete value of 0 while the NEXT event's visit_date is non-null
-
-These four conditions directly encode the exact failure mode from the lab's documented issue.
+**Anomaly detection logic (server-side in `dashboard/server/live_dashboard_server.py`):**
+Flag a participant as "⚠️ Carry-Forward Risk" if ANY of:
+1. 6m CSBS status is `0` (incomplete) AND 9m visit_date is non-blank (9m has started — 6m should be closed)
+2. 9m CSBS status is `0` (incomplete) AND 12m visit_date is non-blank
+3. 6m CSBS status is blank AND 9m CSBS status is `2` (data may have already shifted)
+4. Any event has CSBS `_complete` = `0` while the NEXT event's visit_date is non-null
 
 ---
 
 ### FEATURE 2: Real-Time Anomaly Alert Banner
 
-At the top of the /redcap page, display a dismissible banner that shows:
-- Total number of participants currently flagged with carry-forward risk
-- A collapsible list of the flagged record IDs and the specific risk condition
-- A "Last checked: [timestamp]" indicator
-- A "Refresh" button that re-fetches from REDCap API
+At the top of the `/redcap` page (above the existing hero section), display a dismissible alert:
 
-If zero anomalies: show a green "All records clean — no carry-forward risks detected" status bar.
-If anomalies exist: show an amber warning banner with the count and expandable details.
-
-This is the single most operationally valuable feature because it replaces the current manual case-by-case audit with an automated early-warning system.
+- Use the existing `deadlineAlert` CSS class pattern from `Redcap.module.css` (line 97–103)
+- If zero anomalies: green banner — "All records clean — no carry-forward risks detected" with `<Badge kind="ok">`
+- If anomalies exist: amber/garnet warning banner with count, collapsible record list
+- "Last synced: [timestamp]" indicator using `useUi((s) => s.lastSyncAt)` from the Zustand store
+- "Refresh" button (`<Button icon="refresh-cw">`) that invalidates the TanStack Query cache: `queryClient.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] })`
 
 ---
 
-### FEATURE 3: Visit Completion Progress Tracker (Visual)
+### FEATURE 3: Visit Completion Progress Chart (Recharts)
 
-A stacked bar chart or grouped bar chart (using Recharts) showing:
-- X axis: the three visit timepoints (6m, 9m, 12m)
+A grouped bar chart using **Recharts** (already in `package.json` as `recharts@^3.8.1`):
+
+- X axis: three visit timepoints (6m, 9m, 12m)
 - Y axis: count of participants
 - Stacked segments: Complete (green) | Unverified (yellow) | Incomplete (orange) | Not Started (grey) | Skipped (blue)
-- Hovering over a segment shows the record IDs in that category for that timepoint
+- Use CSS token colors via the `fill` prop, referencing token values
+- Tooltip on hover showing record IDs in that category for that timepoint
 
-This gives the PI and coordinators an instant visual progress overview during lab meetings.
-
-**Data source:** Same record export as Feature 1, aggregated client-side by event and _complete status.
+**Data source:** Same `useRedcapVisitHealth()` response, aggregated client-side by event and status.
 
 ---
 
-### FEATURE 4: Individual Record Detail Modal / Drawer
+### FEATURE 4: Individual Record Detail Drawer
 
-Clicking any row in the Feature 1 grid opens a right-side drawer (or modal) for that specific participant showing:
-- All three visit timepoints with their dates and CSBS completion status
-- The survey timestamp fields (if exported: [instrument]_timestamp) to show when each form was last touched
-- A timeline visualization: horizontal line with three nodes (6m, 9m, 12m), color-coded by status
-- If the participant is flagged for carry-forward risk: a prominent red alert card explaining exactly which timepoint is at risk and what the coordinator should do (the exact FDL/visit_date action from the solution doc)
-- A direct deep-link button: "Open in REDCap →" that constructs the REDCap record URL for that participant
+Clicking any row in the Feature 1 grid opens a right-side drawer. **Reuse the existing drawer pattern** from `Redcap.module.css` lines 185–248 (`.matrixDrawer`, `.drawerHead`, `.drawerBody`, `.drawerClose`, `.drawerContext`):
 
-**Data fetching for detail view:**
-```
-POST /api/redcap
-Body: {
-  content: 'record',
-  type: 'flat',
-  records: '[record_id]',
-  exportSurveyFields: 'true'
+- All three visit timepoints with dates and CSBS completion status
+- Survey timestamp fields (`[instrument]_timestamp`)
+- Timeline visualization: horizontal line with three nodes (6m, 9m, 12m), color-coded by status
+- If carry-forward risk: prominent alert card explaining the risk and coordinator action
+- "Open in REDCap →" button: `<Button size="sm" icon="external-link" onClick={() => window.open("https://redcap.healthsciencessc.org", "_blank", "noopener,noreferrer")}>`
+
+**API call for detail:**
+```typescript
+export function useRedcapVisitDetail(recordId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(recordId),
+    queryKey: ["v2", "redcap-visit-health", recordId],
+    queryFn: () => api.get(`/api/v2/redcap-visit-health/${recordId}`, S.RedcapVisitRecordDetail),
+    staleTime: 2 * 60_000,
+  });
 }
 ```
 
@@ -175,252 +442,383 @@ Body: {
 
 ### FEATURE 5: Missing Data Code Tracker
 
-A separate tab or collapsible section within the /redcap page that shows:
-- All records where the CSBS fields contain the "SKIP" missing data code (indicating the visit was intentionally skipped using the new workflow)
-- A count of total skipped timepoints by visit month
-- A "Coverage" metric: (Complete + Skipped) / Total expected = effective data coverage rate per timepoint
+A collapsible section (using `<Card pad={0}>` with `<SectionLabel>`) showing:
 
-This lets the team distinguish between "data we don't have because something went wrong" vs. "data we intentionally don't have because the visit was skipped" — directly addressing the audit trail concern from the solution documentation.
+- All records where CSBS fields contain "SKIP" missing data code
+- Count of skipped timepoints by visit month — render as three `<KPI>` tiles
+- Coverage metric: `(Complete + Skipped) / Total expected = effective data coverage rate`
+- This distinguishes "data missing because something broke" from "data intentionally skipped"
 
 ---
 
 ### FEATURE 6: Visit Date Entry Quick-Action Panel
 
-A staff-only quick-entry form within the /redcap page that allows coordinators to enter a visit date for a participant without navigating to REDCap:
+A staff-only form within the `/redcap` page:
 
-- Dropdown: select participant record ID
-- Dropdown: select visit timepoint (6m / 9m / 12m)
-- Date picker: visit date
-- Submit button: "Record Visit Start"
+- Dropdown: select participant `record_id` (populated from the visit health data)
+- Dropdown: select visit timepoint (6m / 9m / 12m) — maps to REDCap event names
+- Date picker: visit date (`<input type="date">` styled to match design system)
+- Submit button: `<Button icon="check">Record Visit Start</Button>`
 
-On submit, call the REDCap API to save the visit_date field via the import records endpoint:
-```
-POST /api/redcap
-Body: {
-  content: 'record',
-  action: 'import',
-  data: JSON.stringify([{
-    record_id: selectedRecord,
-    redcap_event_name: selectedEvent,
-    visit_date: formattedDate
-  }])
+**Import mutation (new, in `web/src/api/hooks.ts`):**
+```typescript
+export function useRedcapVisitEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { recordId: string; eventName: string; visitDate: string }) =>
+      api.post("/api/v2/redcap-visit-entry", body, S.RedcapImportResponse),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
+    },
+  });
 }
 ```
 
-This is the linchpin of the entire FDL-based fix: the visit_date entry is what disables the previous event's form. Making it easy to do from the dashboard means the fix gets used consistently by the team.
+**Backend endpoint** (`POST /api/v2/redcap-visit-entry` in `live_dashboard_server.py`):
+- Receives `{ recordId, eventName, visitDate }`
+- Calls REDCap API with `content: 'record', action: 'import'` using the server-side `REDCAP_API_TOKEN`
+- Returns success/error response
 
-After a successful import, automatically refresh the Feature 1 grid to reflect the updated state.
-
-Include a confirmation toast notification: "Visit date recorded for [record_id] at [event]. REDCap Form Display Logic will now disable the previous timepoint's CSBS survey."
+**After successful import:**
+- Toast notification (use existing audit pattern): "Visit date recorded for [record_id] at [event]. REDCap Form Display Logic will now disable the previous timepoint's CSBS survey."
+- Auto-refresh the visit health grid via query invalidation
 
 ---
 
 ## PAGE LAYOUT STRUCTURE
 
 ```
-/redcap page layout:
+/redcap page layout (extending existing Redcap.tsx):
 
-[Header: "REDCap Study Monitor — Nano Study | Powered by REDCap API"]
-[Last synced: timestamp | Refresh button | Sync status indicator]
+[Existing Hero: "REDCap · forms & metadata" + Rotate token / Sync now buttons]
 
-[Anomaly Alert Banner — Feature 2]
+[NEW: Anomaly Alert Banner — Feature 2 (above or below hero)]
 
-[Tab Bar: Overview | Records | Visit Entry | Coverage]
+[Existing Fast-path prompts row with AmbientOrbit]
 
-Tab: Overview
-  [Feature 3: Visit Completion Progress Chart]
-  [Feature 5: Missing Data Code / Skipped Visits Summary]
+[Existing KPI row: Forms tracked | Records · 24h | Warnings | Failures]
 
-Tab: Records
-  [Feature 1: Participant Visit Status Grid]
-  [Feature 4: Record Detail Drawer — opens on row click]
+[NEW: Tab bar using <Segmented> component]
+  Tab: "Sync & Completeness"  (default — shows existing content)
+    [Existing: RedcapCompletenessScorecard]
+    [Existing: Sync events table + Field map]
 
-Tab: Visit Entry
-  [Feature 6: Visit Date Quick-Action Panel]
+  Tab: "Visit Health"
+    [Feature 3: Visit Completion Progress Chart]
+    [Feature 1: Participant Visit Status Grid]
+    [Feature 4: Record Detail Drawer — opens on row click]
 
-Tab: Coverage
-  [Aggregate stats: % complete by timepoint, CSBS completion rates, anomaly history log]
+  Tab: "Visit Entry"
+    [Feature 6: Visit Date Quick-Action Panel]
+
+  Tab: "Coverage"
+    [Feature 5: Missing Data Code / Skipped Visits Summary]
+    [Aggregate stats: % complete by timepoint, CSBS rates, anomaly history]
 ```
 
 ---
 
-## COMPONENT FILE STRUCTURE TO CREATE
+## COMPONENT FILE STRUCTURE
+
+**DO NOT create a separate `pages/REDCapMonitor.jsx` or `components/redcap/` directory.** This project does not use a `pages/` directory — it uses `web/src/routes/` for page components. All new components should follow the existing pattern:
 
 ```
-src/
-  pages/
-    REDCapMonitor.jsx          — main page component, handles routing tabs
-  components/redcap/
-    AnomalyBanner.jsx          — Feature 2
-    ParticipantGrid.jsx        — Feature 1
-    RecordDetailDrawer.jsx     — Feature 4
-    VisitCompletionChart.jsx   — Feature 3
-    MissingDataTracker.jsx     — Feature 5
-    VisitDateEntryForm.jsx     — Feature 6
-  hooks/
-    useREDCapData.js           — custom hook for API calls and polling
-  utils/
-    redcapHelpers.js           — anomaly detection logic, status color mapping, event name constants
-  constants/
-    redcapConfig.js            — event names, instrument names, status codes
-functions/
+web/src/
+  routes/
+    Redcap.tsx                           ← MODIFY: add tab layout, new sub-components
+    Redcap.module.css                    ← MODIFY: add new styles for visit health features
+
   api/
-    redcap.js                  — Cloudflare Pages Function proxy (server-side token injection)
+    schemas.ts                           ← MODIFY: add RedcapVisitRecord, RedcapVisitHealthResponse, etc.
+    hooks.ts                             ← MODIFY: add useRedcapVisitHealth, useRedcapVisitEntry, etc.
+
+  lib/
+    redcapAnomalyDetection.ts            ← NEW: client-side anomaly detection helpers (if not server-only)
+
+  config/
+    featureFlags.ts                      ← MODIFY: add REDCAP_VISIT_HEALTH flag
+
+dashboard/
+  server/
+    live_dashboard_server.py             ← MODIFY: add /api/v2/redcap-visit-health, /api/v2/redcap-visit-entry
+
+  context_skill/
+    references/
+      dashboard_schema.md                ← MODIFY: add visit-health API documentation
 ```
 
 ---
 
-## CONSTANTS / CONFIGURATION (fill in with actual values from the REDCap project)
+## CONSTANTS / CONFIGURATION
 
-```javascript
-// src/constants/redcapConfig.js
-export const EVENTS = {
-  SIX_MONTH:   'visit_6m_arm_1',   // replace with actual unique event name
-  NINE_MONTH:  'visit_9m_arm_1',
-  TWELVE_MONTH:'visit_12m_arm_1'
-};
+Add to the backend (`dashboard/server/live_dashboard_server.py`), not a frontend constants file:
 
-export const INSTRUMENTS = {
-  CSBS_CG: 'csbs_cg'              // replace with actual instrument variable name
-};
-
-export const VISIT_DATE_FIELD = 'visit_date';  // replace with actual field name
-
-export const COMPLETE_STATUS = {
-  INCOMPLETE:   '0',
-  UNVERIFIED:   '1',
-  COMPLETE:     '2',
-  NOT_STARTED:  '',
-  SKIPPED:      'SKIP'
-};
-
-export const STATUS_COLORS = {
-  '0':    { bg: 'bg-red-100',    text: 'text-red-700',    label: 'Incomplete' },
-  '1':    { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Unverified' },
-  '2':    { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Complete'   },
-  '':     { bg: 'bg-gray-100',   text: 'text-gray-500',   label: 'Not Started'},
-  'SKIP': { bg: 'bg-blue-100',   text: 'text-blue-600',   label: 'Skipped'    }
-};
-```
-
----
-
-## ANOMALY DETECTION UTILITY FUNCTION
-
-```javascript
-// src/utils/redcapHelpers.js
-
-export function detectCarryForwardRisk(records) {
-  // records is a flat array of REDCap record rows (one per record_id + event pair)
-  // group by record_id first
-  const byRecord = {};
-  records.forEach(row => {
-    if (!byRecord[row.record_id]) byRecord[row.record_id] = {};
-    byRecord[row.record_id][row.redcap_event_name] = row;
-  });
-
-  const flagged = [];
-
-  Object.entries(byRecord).forEach(([recordId, events]) => {
-    const e6  = events['visit_6m_arm_1']  || {};
-    const e9  = events['visit_9m_arm_1']  || {};
-    const e12 = events['visit_12m_arm_1'] || {};
-
-    const risks = [];
-
-    // Risk 1: 6m CSBS incomplete but 9m visit has started
-    if (e6.csbs_cg_complete === '0' && e9.visit_date && e9.visit_date !== '') {
-      risks.push('6m CSBS is incomplete but 9m visit has already started — carry-forward active');
-    }
-
-    // Risk 2: 9m CSBS incomplete but 12m visit has started
-    if (e9.csbs_cg_complete === '0' && e12.visit_date && e12.visit_date !== '') {
-      risks.push('9m CSBS is incomplete but 12m visit has already started — carry-forward active');
-    }
-
-    // Risk 3: 6m CSBS blank but 9m CSBS complete (data may have already shifted)
-    if ((e6.csbs_cg_complete === '' || !e6.csbs_cg_complete) && e9.csbs_cg_complete === '2') {
-      risks.push('6m CSBS is blank but 9m CSBS is complete — possible data misalignment already occurred');
-    }
-
-    // Risk 4: 9m CSBS blank but 12m CSBS complete
-    if ((e9.csbs_cg_complete === '' || !e9.csbs_cg_complete) && e12.csbs_cg_complete === '2') {
-      risks.push('9m CSBS is blank but 12m CSBS is complete — possible data misalignment already occurred');
-    }
-
-    if (risks.length > 0) {
-      flagged.push({ recordId, risks });
-    }
-  });
-
-  return flagged;
+```python
+# REDCap Visit Health Monitor constants
+REDCAP_EVENTS = {
+    "SIX_MONTH":    "visit_6m_arm_1",   # replace with actual unique event name from REDCap Codebook
+    "NINE_MONTH":   "visit_9m_arm_1",   # replace with actual unique event name
+    "TWELVE_MONTH": "visit_12m_arm_1",  # replace with actual unique event name
 }
+
+REDCAP_CSBS_INSTRUMENT = "csbs_cg"      # replace with actual instrument variable name
+REDCAP_VISIT_DATE_FIELD = "visit_date"  # replace with actual field name
+
+COMPLETE_STATUS_MAP = {
+    "0": "incomplete",
+    "1": "unverified",
+    "2": "complete",
+    "":  "not_started",
+    "SKIP": "skipped",
+}
+```
+
+> **IMPORTANT:** The instrument variable name for CSBS CG, the exact unique event names, and the visit_date field name **must be confirmed from the actual REDCap project's Codebook** before deploying. These are placeholders.
+
+---
+
+## ESD BUDDY AI ASSISTANT INTEGRATION (CRITICAL)
+
+The dashboard has a full AI assistant system with two interaction layers. **Both must be updated for the new REDCap Visit Health features:**
+
+### 1. Buddy Hover Insights (add to `web/src/components/shell/Buddy.tsx`)
+
+The Buddy character shows context-aware tooltips when users hover over elements with `data-insight` attributes. Add new insight entries to the `INSIGHTS` record (currently ~147 entries) in `Buddy.tsx`:
+
+```typescript
+// Add to the INSIGHTS record in web/src/components/shell/Buddy.tsx
+
+"redcap-visit-health": {
+  term: "Visit Health Monitor",
+  body: "The Visit Health Monitor cross-checks CSBS completion status across 6m, 9m, and 12m timepoints against REDCap survey queue behavior to catch carry-forward misalignment before it corrupts longitudinal data."
+},
+"redcap-anomaly-banner": {
+  term: "Carry-forward alert",
+  body: "This banner flags participants whose earlier timepoint CSBS surveys remain incomplete while a later timepoint's visit has already started — the exact failure mode that causes survey data to land in the wrong event column."
+},
+"redcap-visit-grid": {
+  term: "Visit status grid",
+  body: "Each row shows one participant's CSBS completion status across all three visit timepoints. Anomaly-flagged records sort to the top with a garnet badge. Click any row for the timeline detail drawer."
+},
+"redcap-visit-chart": {
+  term: "Completion chart",
+  body: "The stacked bar chart groups participants by completion state (complete, unverified, incomplete, not started, skipped) at each timepoint. Hover for the record IDs behind each bar segment."
+},
+"redcap-visit-entry": {
+  term: "Visit date entry",
+  body: "Entering a visit date here triggers REDCap's Form Display Logic to disable the prior timepoint's CSBS survey. This is the key coordination step that prevents carry-forward."
+},
+"redcap-missing-data": {
+  term: "Missing data codes",
+  body: "The SKIP code distinguishes intentionally skipped visits from missing data caused by errors. The coverage metric includes skips in the denominator so the team can assess true data completeness."
+},
+"redcap-visit-drawer": {
+  term: "Visit detail",
+  body: "The detail drawer shows one participant's three-timepoint timeline with survey timestamps, risk explanations, and a deep link into the secure REDCap record."
+},
+"redcap-coverage-metric": {
+  term: "Data coverage",
+  body: "Coverage = (Complete + Skipped) / Total expected. This separates 'data we intentionally don't have' from 'data missing due to workflow errors.'"
+},
+```
+
+**For each new component section, add the `data-insight` attribute:**
+```tsx
+// Example usage in the new visit health tab:
+<div data-insight="redcap-visit-health">
+  <SectionLabel>Visit Health Monitor</SectionLabel>
+  ...
+</div>
+```
+
+### 2. ChatDrawer Fast-Path Prompts (add to `web/src/components/shell/ChatDrawer.tsx`)
+
+The chat drawer includes `BUDDY_FAST_PATHS` prompts that seed the AI conversation. Add REDCap Visit Health specific prompts to the existing array in `ChatDrawer.tsx`:
+
+```typescript
+// Add to BUDDY_FAST_PATHS in web/src/components/shell/ChatDrawer.tsx
+
+{ lane: "redcap", label: "Carry-forward risk",     prompt: "Explain how the carry-forward risk detection works for CSBS surveys across 6m, 9m, and 12m visits. What conditions trigger a warning, and what should the coordinator do?" },
+{ lane: "redcap", label: "Visit date entry",        prompt: "Walk me through the visit date entry workflow and how it triggers Form Display Logic to disable prior timepoint surveys." },
+{ lane: "redcap", label: "Coverage vs completeness", prompt: "What's the difference between the NDA completeness scorecard and the visit health coverage metric? How should I use each one?" },
+{ lane: "redcap", label: "Anomaly triage",          prompt: "A participant has a carry-forward risk flag. Walk me through the triage steps: what to check in the dashboard, what to fix in REDCap, and how to confirm the fix worked." },
+```
+
+### 3. Redcap Page Fast-Path Prompts (add to `web/src/routes/Redcap.tsx`)
+
+The existing `REDCAP_FAST_PATHS` array in `Redcap.tsx` has 9 prompts. Add visit-health-specific prompts:
+
+```typescript
+// Add to REDCAP_FAST_PATHS in web/src/routes/Redcap.tsx
+
+{ lane: "redcap", label: "Carry-forward triage",    prompt: "List every participant with an active carry-forward risk flag. Group by timepoint and surface the specific condition that triggered each flag." },
+{ lane: "redcap", label: "CSBS gap analysis",        prompt: "Show which participants have incomplete CSBS at 6m or 9m while their next visit has already started. What's the coordinator action for each?" },
+{ lane: "redcap", label: "Coverage report",          prompt: "Generate a data coverage report across all three CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
+{ lane: "redcap", label: "Visit entry log",          prompt: "List the visit dates entered via the dashboard in the last 7 days and confirm whether Form Display Logic has disabled the prior surveys." },
+```
+
+### 4. Knowledge Database Update (`dashboard/context_skill/`)
+
+Update the knowledge base so the AI assistant can answer questions about the visit health features:
+
+**Add to `dashboard/context_skill/references/dashboard_schema.md`:**
+
+```markdown
+## Visit Health Monitor (v2)
+
+| JSON Key | API Endpoint | Source | Computation |
+|----------|-------------|--------|-------------|
+| `redcap-visit-health` | `/api/v2/redcap-visit-health` | REDCap API (live) | POST to REDCap with `exportSurveyFields: true`, flat export grouped by record_id, anomaly detection on `csbs_cg_complete` × `visit_date` pairs |
+| `anomalies[].risks[]` | computed server-side | Cross-timepoint logic | Flags 4 carry-forward conditions: incomplete→next-started, blank→next-complete |
+| `coverage` | computed client-side | Aggregation | `(complete + skipped) / total_expected` per timepoint |
+```
+
+**Add to `dashboard/context_skill/references/entities.md`:**
+
+```markdown
+## REDCap Visit Timepoints
+
+| Code | Event Name | Month | Description |
+|------|-----------|-------|-------------|
+| 6m | visit_6m_arm_1 | 6 | First CSBS collection window |
+| 9m | visit_9m_arm_1 | 9 | Second CSBS collection window |
+| 12m | visit_12m_arm_1 | 12 | Third CSBS collection window |
+
+## Carry-Forward Risk Conditions
+
+1. **Incomplete → Next Started:** CSBS `_complete` = 0 at timepoint N, but visit_date is non-blank at N+1
+2. **Blank → Next Complete:** CSBS `_complete` is blank at N, but CSBS is complete (2) at N+1
+3. **Root Cause:** REDCap Survey Queue carries incomplete forms into the next event
+4. **Fix:** Form Display Logic (FDL) + visit_date entry to disable prior timepoint surveys
+```
+
+### 5. Backend Assistant Context (in `dashboard/server/live_dashboard_server.py`)
+
+Add a visit-health-specific fallback reply in the `_worker.js` assistant reply table (in `scripts/build_pages_site.py`):
+
+```javascript
+// Add to assistantReply() in the _worker.js template within scripts/build_pages_site.py
+
+if (text.includes("carry-forward") || text.includes("visit health") || text.includes("csbs")) {
+  return "The Visit Health Monitor checks CSBS CG completion status across 6m, 9m, and 12m timepoints. It flags carry-forward risks when an earlier incomplete survey persists while a later visit has started. The fix is to enter the visit date, which triggers Form Display Logic to disable the prior timepoint's form.";
+}
+if (text.includes("visit entry") || text.includes("visit date")) {
+  return "The Visit Date Entry panel lets coordinators record when a visit starts without navigating to REDCap. This triggers Form Display Logic to disable the previous timepoint's CSBS survey, preventing carry-forward.";
+}
+if (text.includes("coverage") && text.includes("skip")) {
+  return "Coverage = (Complete + Skipped) / Total expected. The SKIP missing data code marks intentionally skipped visits so the team can distinguish workflow errors from planned study design decisions.";
+}
+```
+
+### 6. Backend Assistant SYSTEM Prompt Update
+
+The `DashboardChatAssistant.SYSTEM` prompt in `dashboard/assistant/local_chat_assistant.py` should be extended to mention the visit health features. Add to the system prompt:
+
+```python
+# Append to the SYSTEM prompt in local_chat_assistant.py
+
+"You also know about the REDCap Visit Health Monitor, which tracks CSBS "
+"caregiver questionnaire completion across 6m, 9m, and 12m timepoints and "
+"detects carry-forward risk when incomplete surveys persist into later events. "
+"The fix uses Form Display Logic triggered by visit_date entry. "
+```
+
+---
+
+## FEATURE FLAG
+
+Add a new feature flag to gate the visit health features:
+
+**`web/src/config/featureFlags.ts`:**
+```typescript
+// Add to FEATURE_FLAGS object
+REDCAP_VISIT_HEALTH: false,  // Enable when backend endpoints are ready
+```
+
+**Usage in `Redcap.tsx`:**
+```typescript
+const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
+// Only render the Visit Health, Visit Entry, and Coverage tabs when enabled
+```
+
+**`deploy-pages.yml`:**
+```yaml
+# Add to the build step env vars
+VITE_FEATURE_REDCAP_VISIT_HEALTH: "true"
 ```
 
 ---
 
 ## POLLING / AUTO-REFRESH
 
-Implement a polling mechanism in useREDCapData.js that:
-- On initial page load: fetches all records from REDCap API
-- Auto-refreshes every 5 minutes (configurable via a constant)
-- Shows a "Last synced: X minutes ago" indicator that counts up in real time
-- On manual "Refresh" button click: immediately re-fetches and resets the countdown
-- Uses a loading skeleton state while data is being fetched (not a full-page spinner — just shimmer rows in the grid)
+Implement auto-refresh using TanStack Query's `refetchInterval` option (already used throughout the codebase):
+
+```typescript
+// In useRedcapVisitHealth hook:
+refetchInterval: 5 * 60_000,  // 5 minutes (matches REDCAP_VISIT_POLL_INTERVAL_S env var)
+```
+
+- The "Last synced" indicator should use the Zustand store's `setLastSyncAt` action (already exists in `ui.ts`)
+- Show a loading skeleton state (shimmer rows) using the existing `t-mono` class + opacity animation while data loads
+- On manual "Refresh" button click: `queryClient.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] })`
 
 ---
 
-## UX / DESIGN REQUIREMENTS
+## SECURITY REQUIREMENTS (NON-NEGOTIABLE)
 
-- Match the existing ESD Lab dashboard color scheme, font, and component style exactly — do not introduce a new design system
-- All status badges must be accessible (sufficient color contrast + text label, not just color alone)
-- The anomaly banner should be the first thing a coordinator sees when opening the page — make it visually prominent (amber/red background if anomalies present, green if clean)
-- The Participant Grid must be sortable by: Record ID, Visit Date, Anomaly Flag (anomalous records sort to top by default)
-- The grid must be filterable by: status (show only incomplete / only flagged / only skipped)
-- On mobile/tablet, the grid collapses into a card view per participant
-- All REDCap API errors must surface as user-friendly toast notifications (not console-only errors), e.g., "Could not connect to REDCap API — check token configuration"
+These constraints are already enforced throughout the codebase. The new features MUST follow them:
 
----
-
-## SECURITY REQUIREMENTS
-
-- The REDCAP_API_TOKEN must NEVER appear in the frontend JavaScript bundle. It lives only in Cloudflare Pages environment variables and is injected by the server-side function.
-- All REDCap API calls must route through the Cloudflare Pages Function proxy at /api/redcap — never call the REDCap API directly from the browser.
-- The /redcap page should check for an authenticated session before rendering the data grid (use whatever auth mechanism is already in the existing dashboard).
-- Log all API calls and errors to the browser console in development mode, silent in production.
+1. **REDCAP_API_TOKEN** lives ONLY in the Python backend's environment — never in the Vite build, never in `_worker.js`, never in any frontend file
+2. All REDCap API calls proxy through the Python backend at `/api/v2/redcap-*` — the frontend never calls the REDCap API directly
+3. PHI scrubbing: any user input that could reach the AI assistant MUST call `scrubPhi()` from `web/src/lib/phiScrub.ts`
+4. Audit logging: all assistant interactions MUST call `logAudit()` from `web/src/lib/audit.ts`
+5. Session data: **sessionStorage only** (never localStorage except theme) — enforced by `web/src/store/ui.ts`
+6. HIPAA banner remains mandatory on all authenticated routes (enforced by `AppShell.tsx`)
+7. The existing `hipaaReminder` section at the bottom of the completeness scorecard (IRB #Pro00115234) should also appear on the new visit health sections
 
 ---
 
 ## IMPLEMENTATION NOTES AND CONSTRAINTS
 
-1. The instrument variable name for CSBS CG and the exact unique event names (visit_6m_arm_1 etc.) must be confirmed from the actual REDCap project's Codebook before finalizing the constants file. Placeholder values are used above — replace them before deploying.
+1. **Codebook confirmation required:** The instrument variable name for CSBS CG and the exact unique event names (`visit_6m_arm_1` etc.) must be confirmed from the actual REDCap project Codebook before deploying. Placeholder values are used above.
 
-2. The visit_date field variable name must also be confirmed from the Codebook. If no such field currently exists, it needs to be added to REDCap first as part of the FDL implementation (see the full REDCap solution document).
+2. **visit_date field:** If no such field currently exists in REDCap, it must be added as part of the FDL implementation before the dashboard feature can work.
 
-3. REDCap's flat export format returns one row per record_id + event combination. The anomaly detection utility groups these by record_id before analysis.
+3. **REDCap flat export format** returns one row per `record_id` + event combination. The anomaly detection utility groups these by `record_id` before analysis.
 
-4. The import records call in Feature 6 (Visit Date Entry) requires the API token to have import rights. Confirm this with the REDCap admin when requesting the token.
+4. **Import rights:** The `REDCAP_API_TOKEN` must have import rights enabled for Feature 6 (Visit Date Entry). Confirm with the REDCap admin.
 
-5. The Cloudflare Pages Function (functions/api/redcap.js) will need to be added to the repository root, not inside /src. Cloudflare Pages automatically detects and deploys files in the /functions directory.
+5. **The `functions/` directory pattern is NOT used** in this project. Do not create `functions/api/redcap.js`. The API proxy is handled by `_worker.js` (generated) + the Python backend.
 
-6. Add the following to wrangler.toml (create it at the repo root if it does not exist):
-   compatibility_date = "2024-11-25"
+6. **For local development**, the Vite dev server already proxies `/api/*` to the Python backend at `http://127.0.0.1:8080`. No additional wrangler configuration is needed.
 
-7. For local development, use: npx wrangler pages dev dist --binding REDCAP_API_TOKEN=your_token_here --binding REDCAP_API_URL=https://your-redcap.edu/api/
+7. **Existing REDCap Python module** at `redcap/api/` already has `redcap_pull.py` and `redcap_push.py` utilities. Reuse these patterns for the new backend endpoints instead of writing raw `requests.post()` calls.
 
 ---
 
 ## DELIVERABLE CHECKLIST
 
-When complete, the /redcap page should:
-- [ ] Load all participant records from REDCap API on mount via the secure proxy
-- [ ] Display a color-coded status grid with all participants, all three events, CSBS completion per event
-- [ ] Automatically flag carry-forward risk records with ⚠️ and surface them in an anomaly banner at the top
-- [ ] Show a grouped bar chart of completion status across all three visit timepoints
-- [ ] Allow clicking any participant row to open a detail drawer with timeline and risk explanation
-- [ ] Show a Missing Data Code tracker distinguishing SKIP-coded records from missing records
-- [ ] Allow staff to enter a visit date from the dashboard (which triggers REDCap FDL to disable the prior event)
-- [ ] Auto-refresh every 5 minutes with a visible countdown
+When complete, the `/redcap` page should:
+- [ ] Retain all existing functionality (sync events, field map, completeness scorecard)
+- [ ] Add a tab bar (`<Segmented>`) to organize existing + new sections
+- [ ] Load all participant records from REDCap API via the Python backend proxy
+- [ ] Display a color-coded visit status grid with all participants and three CSBS timepoints
+- [ ] Automatically flag carry-forward risk records with ⚠️ via server-side anomaly detection
+- [ ] Surface anomalies in a prominent alert banner at the top of the page
+- [ ] Show a Recharts grouped bar chart of completion status across all timepoints
+- [ ] Allow clicking any row to open a detail drawer (reusing the existing drawer CSS pattern)
+- [ ] Show a Missing Data Code tracker distinguishing SKIP from truly missing records
+- [ ] Allow staff to enter a visit date (triggers REDCap FDL to disable the prior event)
+- [ ] Auto-refresh every 5 minutes with TanStack Query's `refetchInterval`
 - [ ] Show zero sensitive data (API token, raw REDCap URLs) in the frontend bundle
-- [ ] Handle errors gracefully with user-facing toast messages
-- [ ] Be fully functional on Cloudflare Pages with the Cloudflare Pages Function proxy in place
+- [ ] Handle errors with user-facing toast notifications (not console-only)
+- [ ] Gate all new features behind the `REDCAP_VISIT_HEALTH` feature flag
+- [ ] Add hover insights for ESD Buddy on all new sections (`data-insight` attributes)
+- [ ] Add fast-path prompts to ChatDrawer and the Redcap page's FastPaths
+- [ ] Update the knowledge database (`dashboard/context_skill/references/`) for AI assistant context
+- [ ] Update the backend assistant fallback replies in `scripts/build_pages_site.py`
+- [ ] Add new Zod schemas and TanStack Query hooks following the existing patterns
+- [ ] Use CSS Modules with design tokens — no hex literals, no ad-hoc styles
+- [ ] Be responsive: grid collapses at 1100px and 640px breakpoints
+- [ ] Include the HIPAA/IRB reminder on new sections
+- [ ] Follow the existing TypeScript export pattern (`export function Redcap()`, named export)
