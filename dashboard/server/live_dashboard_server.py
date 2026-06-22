@@ -33,6 +33,8 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
+import requests
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -105,6 +107,26 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
+
+REDCAP_EVENTS = {
+    "SIX_MONTH": "visit_6m_arm_1",
+    "NINE_MONTH": "visit_9m_arm_1",
+    "TWELVE_MONTH": "visit_12m_arm_1",
+}
+REDCAP_CSBS_INSTRUMENT = "csbs_cg"
+REDCAP_VISIT_DATE_FIELD = "visit_date"
+COMPLETE_STATUS_MAP = {
+    "0": "incomplete",
+    "1": "unverified",
+    "2": "complete",
+    "": "not_started",
+    "SKIP": "skipped",
+}
+REDCAP_VISIT_KEYS = (
+    ("sixMonth", "SIX_MONTH", "6m"),
+    ("nineMonth", "NINE_MONTH", "9m"),
+    ("twelveMonth", "TWELVE_MONTH", "12m"),
+)
 
 LEGACY_STUDY_TARGETS = {"VPT": 130, "ASIB": 65, "TD": 65}
 LEGACY_STAGE_CATALOG = {
@@ -796,6 +818,292 @@ def _v2_redcap_completeness() -> dict[str, Any]:
                 }
             )
     return _api_list(rows, payload)
+
+
+def _redcap_event_config() -> dict[str, str]:
+    return {
+        "SIX_MONTH": os.getenv("REDCAP_EVENT_6M", REDCAP_EVENTS["SIX_MONTH"]),
+        "NINE_MONTH": os.getenv("REDCAP_EVENT_9M", REDCAP_EVENTS["NINE_MONTH"]),
+        "TWELVE_MONTH": os.getenv("REDCAP_EVENT_12M", REDCAP_EVENTS["TWELVE_MONTH"]),
+    }
+
+
+def _redcap_csbs_instrument() -> str:
+    return os.getenv("REDCAP_CSBS_INSTRUMENT", REDCAP_CSBS_INSTRUMENT)
+
+
+def _redcap_visit_date_field() -> str:
+    return os.getenv("REDCAP_VISIT_DATE_FIELD", REDCAP_VISIT_DATE_FIELD)
+
+
+def _redcap_visit_options() -> list[dict[str, str]]:
+    events = _redcap_event_config()
+    return [
+        {"key": key, "label": label, "eventName": events[event_key]}
+        for key, event_key, label in REDCAP_VISIT_KEYS
+    ]
+
+
+def _redcap_visit_health_envelope(
+    data: list[dict[str, Any]],
+    *,
+    source: str = "live",
+    error: str | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "data": data,
+        "meta": {
+            "generatedAt": datetime.now().isoformat(timespec="seconds"),
+            "participantCount": len(data),
+            "source": source,
+        },
+        "anomalies": [
+            {"recordId": row["recordId"], "risks": row["anomalyFlags"]}
+            for row in data
+            if row.get("hasCarryForwardRisk")
+        ],
+        "visitOptions": _redcap_visit_options(),
+    }
+    if error:
+        payload["error"] = error
+    return payload
+
+
+def _nullable_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _redcap_status(value: Any, *, skipped: bool = False) -> str:
+    if skipped:
+        return "skipped"
+    key = str(value or "").strip().upper()
+    return COMPLETE_STATUS_MAP.get(key, COMPLETE_STATUS_MAP.get(key.lower(), "not_started"))
+
+
+def _redcap_row_has_skip_code(row: dict[str, Any]) -> bool:
+    instrument = _redcap_csbs_instrument()
+    for key, value in row.items():
+        if str(value or "").strip().upper() != "SKIP":
+            continue
+        if instrument in key or "csbs" in key.lower():
+            return True
+    return False
+
+
+def _empty_redcap_timepoint(event_name: str) -> dict[str, Any]:
+    return {
+        "eventName": event_name,
+        "visitDate": None,
+        "csbsStatus": "not_started",
+        "csbsTimestamp": None,
+    }
+
+
+def _redcap_timepoint_from_row(
+    row: dict[str, Any] | None,
+    event_name: str,
+) -> dict[str, Any]:
+    if not row:
+        return _empty_redcap_timepoint(event_name)
+    instrument = _redcap_csbs_instrument()
+    status_field = f"{instrument}_complete"
+    timestamp_field = f"{instrument}_timestamp"
+    return {
+        "eventName": event_name,
+        "visitDate": _nullable_text(row.get(_redcap_visit_date_field())),
+        "csbsStatus": _redcap_status(
+            row.get(status_field),
+            skipped=_redcap_row_has_skip_code(row),
+        ),
+        "csbsTimestamp": _nullable_text(row.get(timestamp_field)),
+    }
+
+
+def _detect_carry_forward_risk(record: dict[str, Any]) -> list[str]:
+    flags: list[str] = []
+    sequence = [
+        ("6m", record["sixMonth"]),
+        ("9m", record["nineMonth"]),
+        ("12m", record["twelveMonth"]),
+    ]
+
+    if sequence[0][1]["csbsStatus"] == "incomplete" and sequence[1][1]["visitDate"]:
+        flags.append("6m CSBS incomplete while 9m visit has started")
+    if sequence[1][1]["csbsStatus"] == "incomplete" and sequence[2][1]["visitDate"]:
+        flags.append("9m CSBS incomplete while 12m visit has started")
+    if sequence[0][1]["csbsStatus"] == "not_started" and sequence[1][1]["csbsStatus"] == "complete":
+        flags.append("6m CSBS blank while 9m CSBS is complete")
+
+    for idx in range(len(sequence) - 1):
+        label, current = sequence[idx]
+        next_label, next_visit = sequence[idx + 1]
+        risk = f"{label} CSBS incomplete while {next_label} visit has started"
+        if current["csbsStatus"] == "incomplete" and next_visit["visitDate"] and risk not in flags:
+            flags.append(risk)
+    return flags
+
+
+def _redcap_flat_records_to_visit_health(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    events = _redcap_event_config()
+    event_to_key = {
+        events[event_key]: key
+        for key, event_key, _label in REDCAP_VISIT_KEYS
+    }
+    grouped: dict[str, dict[str, dict[str, Any]]] = {}
+    for row in records:
+        if not isinstance(row, dict):
+            continue
+        record_id = _nullable_text(row.get("record_id") or row.get("study_id"))
+        event_name = _nullable_text(row.get("redcap_event_name"))
+        if not record_id:
+            continue
+        bucket = grouped.setdefault(record_id, {})
+        if event_name in event_to_key:
+            bucket[event_to_key[event_name]] = row
+        elif not event_name:
+            bucket.setdefault("sixMonth", row)
+
+    visit_records: list[dict[str, Any]] = []
+    for record_id, rows_by_visit in grouped.items():
+        record = {
+            "recordId": record_id,
+            "sixMonth": _redcap_timepoint_from_row(rows_by_visit.get("sixMonth"), events["SIX_MONTH"]),
+            "nineMonth": _redcap_timepoint_from_row(rows_by_visit.get("nineMonth"), events["NINE_MONTH"]),
+            "twelveMonth": _redcap_timepoint_from_row(rows_by_visit.get("twelveMonth"), events["TWELVE_MONTH"]),
+            "anomalyFlags": [],
+            "hasCarryForwardRisk": False,
+        }
+        flags = _detect_carry_forward_risk(record)
+        record["anomalyFlags"] = flags
+        record["hasCarryForwardRisk"] = bool(flags)
+        visit_records.append(record)
+
+    return sorted(
+        visit_records,
+        key=lambda row: (not row["hasCarryForwardRisk"], row["recordId"]),
+    )
+
+
+def _fetch_redcap_flat_records() -> list[dict[str, Any]]:
+    token = os.environ.get("REDCAP_API_TOKEN", "")
+    api_url = os.environ.get("REDCAP_API_URL", "")
+    if not token or not api_url:
+        raise EnvironmentError("REDCAP_API_TOKEN or REDCAP_API_URL not configured")
+
+    response = requests.post(
+        api_url,
+        data={
+            "token": token,
+            "content": "record",
+            "format": "json",
+            "returnFormat": "json",
+            "type": "flat",
+            "exportSurveyFields": "true",
+            "exportDataAccessGroups": "false",
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, list):
+        raise ValueError("REDCap API returned an unexpected payload")
+    return [row for row in payload if isinstance(row, dict)]
+
+
+def _v2_redcap_visit_health() -> dict[str, Any]:
+    try:
+        raw_records = _fetch_redcap_flat_records()
+    except EnvironmentError as exc:
+        return _redcap_visit_health_envelope([], source="mock", error=str(exc))
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning("REDCap visit-health pull failed: %s", exc)
+        return _redcap_visit_health_envelope(
+            [],
+            source="mock",
+            error="REDCap API request failed; check backend logs and credentials.",
+        )
+    return _redcap_visit_health_envelope(_redcap_flat_records_to_visit_health(raw_records))
+
+
+def _v2_redcap_visit_detail(record_id: str) -> dict[str, Any] | None:
+    target = unquote(record_id).strip()
+    if not target:
+        return None
+    health = _v2_redcap_visit_health()
+    return next((row for row in health["data"] if row["recordId"] == target), None)
+
+
+def _v2_redcap_missing_data() -> dict[str, Any]:
+    health = _v2_redcap_visit_health()
+    skipped = [
+        row
+        for row in health["data"]
+        if any(
+            row[key]["csbsStatus"] == "skipped"
+            for key, _event_key, _label in REDCAP_VISIT_KEYS
+        )
+    ]
+    payload = _redcap_visit_health_envelope(
+        skipped,
+        source=str(health.get("meta", {}).get("source") or "live"),
+        error=health.get("error"),
+    )
+    return payload
+
+
+def _import_redcap_visit_date(
+    *,
+    record_id: str,
+    event_name: str,
+    visit_date: str,
+) -> dict[str, Any]:
+    token = os.environ.get("REDCAP_API_TOKEN", "")
+    api_url = os.environ.get("REDCAP_API_URL", "")
+    if not token or not api_url:
+        raise EnvironmentError("REDCAP_API_TOKEN or REDCAP_API_URL not configured")
+
+    record = {
+        "record_id": record_id,
+        "redcap_event_name": event_name,
+        _redcap_visit_date_field(): visit_date,
+    }
+    response = requests.post(
+        api_url,
+        data={
+            "token": token,
+            "content": "record",
+            "format": "json",
+            "type": "flat",
+            "overwriteBehavior": "normal",
+            "returnContent": "count",
+            "returnFormat": "json",
+            "data": json.dumps([record]),
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    count = int(payload.get("count", 0)) if isinstance(payload, dict) else 0
+    errors = payload.get("errors", []) if isinstance(payload, dict) else []
+    return {
+        "success": not errors,
+        "count": count,
+        "errors": errors if isinstance(errors, list) else [str(errors)],
+        "recordId": record_id,
+        "eventName": event_name,
+        "visitDate": visit_date,
+    }
+
+
+def _redcap_app_url() -> str | None:
+    app_url = os.getenv("REDCAP_APP_URL", "").strip()
+    if app_url:
+        return app_url.rstrip("/") + "/"
+    api_url = os.getenv("REDCAP_API_URL", "").strip()
+    if "/api" not in api_url:
+        return None
+    return api_url.split("/api", 1)[0].rstrip("/") + "/"
 
 
 def _visit_age(raw: str) -> float:
@@ -2579,6 +2887,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._handle_create_snapshot()
             return
 
+        if request_path == "/api/v2/redcap-visit-entry":
+            self._handle_redcap_visit_entry()
+            return
+
         if request_path == "/api/audit":
             self._handle_audit()
             return
@@ -2754,6 +3066,46 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
+    def _handle_redcap_visit_entry(self) -> None:
+        try:
+            payload = self._read_json_body()
+            record_id = str(payload.get("recordId") or "").strip()
+            event_name = str(payload.get("eventName") or "").strip()
+            visit_date = str(payload.get("visitDate") or "").strip()
+            allowed_events = {item["eventName"] for item in _redcap_visit_options()}
+            if not record_id:
+                self._send_json({"error": "recordId is required"}, status=HTTPStatus.BAD_REQUEST)
+                return
+            if event_name not in allowed_events:
+                self._send_json({"error": "eventName is not configured for visit entry"}, status=HTTPStatus.BAD_REQUEST)
+                return
+            try:
+                datetime.strptime(visit_date, "%Y-%m-%d")
+            except ValueError:
+                self._send_json({"error": "visitDate must use YYYY-MM-DD"}, status=HTTPStatus.BAD_REQUEST)
+                return
+            self._send_json(_import_redcap_visit_date(
+                record_id=record_id,
+                event_name=event_name,
+                visit_date=visit_date,
+            ))
+        except EnvironmentError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.SERVICE_UNAVAILABLE)
+        except requests.RequestException as exc:
+            logger.warning("REDCap visit-date import failed: %s", exc)
+            self._send_json(
+                {"error": "REDCap import failed; check backend logs and token import rights."},
+                status=HTTPStatus.BAD_GATEWAY,
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("REDCap visit-date entry failed")
+            self._send_json(
+                {"error": f"Unexpected visit entry failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
     def _handle_update_publication_tags(self, identifier: str) -> None:
         try:
             payload = self._read_json_body()
@@ -2890,6 +3242,36 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 return
             if request_path == "/api/v2/redcap-completeness":
                 self._send_json(_v2_redcap_completeness())
+                return
+            if request_path == "/api/v2/redcap-visit-health":
+                self._send_json(_v2_redcap_visit_health())
+                return
+            if request_path.startswith("/api/v2/redcap-visit-health/"):
+                record_id = request_path[len("/api/v2/redcap-visit-health/") :].strip("/")
+                detail = _v2_redcap_visit_detail(record_id)
+                if detail is None:
+                    self._send_json(
+                        {"error": "REDCap visit record not found"},
+                        status=HTTPStatus.NOT_FOUND,
+                    )
+                    return
+                self._send_json(detail)
+                return
+            if request_path == "/api/v2/redcap-missing-data":
+                self._send_json(_v2_redcap_missing_data())
+                return
+            if request_path == "/api/v2/redcap-open":
+                target = _redcap_app_url()
+                if not target:
+                    self._send_json(
+                        {"error": "REDCap application URL is not configured"},
+                        status=HTTPStatus.SERVICE_UNAVAILABLE,
+                    )
+                    return
+                self.send_response(HTTPStatus.FOUND)
+                self.send_header("Location", target)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
                 return
             if request_path == "/api/v2/cohort-swimmer":
                 self._send_json(_v2_cohort_swimmer())

@@ -124,6 +124,15 @@ function assistantStatus(reason = "upstream-unavailable") {
 
 function assistantReply(message) {
   const text = String(message || "").toLowerCase();
+  if (text.includes("carry-forward") || text.includes("visit health") || text.includes("csbs")) {
+    return "The Visit Health Monitor checks CSBS CG completion status across 6m, 9m, and 12m timepoints. It flags carry-forward risks when an earlier incomplete survey persists while a later visit has started. The fix is to enter the visit date, which triggers Form Display Logic to disable the prior timepoint's form.";
+  }
+  if (text.includes("visit entry") || text.includes("visit date")) {
+    return "The Visit Date Entry panel lets coordinators record when a visit starts without navigating to REDCap. This triggers Form Display Logic to disable the previous timepoint's CSBS survey, preventing carry-forward.";
+  }
+  if (text.includes("coverage") && text.includes("skip")) {
+    return "Coverage = (Complete + Skipped) / Total expected. The SKIP missing data code marks intentionally skipped visits so the team can distinguish workflow errors from planned study design decisions.";
+  }
   if (text.includes("cga") || text.includes("milestone river") || (text.includes("hda") && text.includes("river"))) {
     return "The CGA Milestone River shows aggregate HDA phase composition across corrected-age milestones for VPT, ASIB, and TD groups. It uses normalized orienting, sustained, inattention, and termination shares from the /api/v2/hda-composition contract.";
   }
@@ -274,6 +283,22 @@ async function fallbackApiResponse(url, request, reason) {
       readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
       pipeline: { state: "pages-fallback", warnings: [] },
     });
+  }
+  if (path === "/api/v2/redcap-visit-health" || path === "/api/v2/redcap-missing-data") {
+    return jsonResponse({
+      data: [],
+      meta: { generatedAt: new Date().toISOString(), participantCount: 0, source: "mock" },
+      anomalies: [],
+      visitOptions: [
+        { key: "sixMonth", label: "6m", eventName: "visit_6m_arm_1" },
+        { key: "nineMonth", label: "9m", eventName: "visit_9m_arm_1" },
+        { key: "twelveMonth", label: "12m", eventName: "visit_12m_arm_1" },
+      ],
+      error: "Backend offline - live REDCap data unavailable",
+    });
+  }
+  if (path === "/api/v2/redcap-visit-entry" && request?.method === "POST") {
+    return jsonResponse({ error: "Backend offline - REDCap visit entry unavailable" }, 503);
   }
   if (path === "/api/assistant/chat" && request?.method === "POST") {
     const payload = await readJson(request);

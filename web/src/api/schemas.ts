@@ -485,6 +485,65 @@ export type RedcapCompletenessRow = z.infer<typeof RedcapCompletenessRow>;
 export const RedcapCompletenessResponse = ApiListResponse(RedcapCompletenessRow);
 export type RedcapCompletenessResponse = z.infer<typeof RedcapCompletenessResponse>;
 
+export const CsbsVisitStatus = z.enum(["incomplete", "unverified", "complete", "not_started", "skipped"]);
+export type CsbsVisitStatus = z.infer<typeof CsbsVisitStatus>;
+
+export const RedcapVisitTimepoint = z.object({
+  eventName: z.string(),
+  visitDate: z.string().nullable(),
+  csbsStatus: CsbsVisitStatus,
+  csbsTimestamp: z.string().nullable(),
+});
+export type RedcapVisitTimepoint = z.infer<typeof RedcapVisitTimepoint>;
+
+export const RedcapVisitRecord = z.object({
+  recordId: z.string(),
+  sixMonth: RedcapVisitTimepoint,
+  nineMonth: RedcapVisitTimepoint,
+  twelveMonth: RedcapVisitTimepoint,
+  anomalyFlags: z.array(z.string()),
+  hasCarryForwardRisk: z.boolean(),
+});
+export type RedcapVisitRecord = z.infer<typeof RedcapVisitRecord>;
+
+export const RedcapVisitAnomaly = z.object({
+  recordId: z.string(),
+  risks: z.array(z.string()),
+});
+export type RedcapVisitAnomaly = z.infer<typeof RedcapVisitAnomaly>;
+
+export const RedcapVisitOption = z.object({
+  key: z.enum(["sixMonth", "nineMonth", "twelveMonth"]),
+  label: z.string(),
+  eventName: z.string(),
+});
+export type RedcapVisitOption = z.infer<typeof RedcapVisitOption>;
+
+export const RedcapVisitHealthResponse = z.object({
+  data: z.array(RedcapVisitRecord),
+  meta: ApiListMeta,
+  anomalies: z.array(RedcapVisitAnomaly),
+  visitOptions: z.array(RedcapVisitOption),
+  error: z.string().optional(),
+});
+export type RedcapVisitHealthResponse = z.infer<typeof RedcapVisitHealthResponse>;
+
+export const RedcapVisitRecordDetail = RedcapVisitRecord;
+export type RedcapVisitRecordDetail = z.infer<typeof RedcapVisitRecordDetail>;
+
+export const RedcapMissingDataResponse = RedcapVisitHealthResponse;
+export type RedcapMissingDataResponse = z.infer<typeof RedcapMissingDataResponse>;
+
+export const RedcapImportResponse = z.object({
+  success: z.boolean(),
+  count: z.number().int(),
+  errors: z.array(z.string()),
+  recordId: z.string(),
+  eventName: z.string(),
+  visitDate: z.string(),
+});
+export type RedcapImportResponse = z.infer<typeof RedcapImportResponse>;
+
 export const HdaSessionRow = z.object({
   nanoId: z.string(),
   visitAge: z.number(),

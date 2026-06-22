@@ -101,6 +101,66 @@
   color: var(--ink);
   font-size: 13px;
 }
+.anomalyClean {
+  border: 1px solid var(--green);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--green-tint) 72%, var(--bg-surface));
+}
+.anomalyWarn {
+  border: 1px solid var(--usc-gold);
+  border-radius: var(--r-card);
+  background: color-mix(in srgb, var(--usc-gold-tint) 70%, var(--bg-surface));
+}
+.alertBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.alertMain, .alertActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.alertActions {
+  justify-content: flex-end;
+  color: var(--slate-500);
+  font-size: 11px;
+}
+.alertClose {
+  border: 1px solid var(--warm-border);
+  background: var(--bg-surface);
+  color: var(--warm-fg2);
+  border-radius: var(--r-2);
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+}
+.alertNote {
+  margin: 8px 0 0;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.alertDetails {
+  margin-top: 10px;
+  color: var(--slate-700);
+}
+.alertDetails summary {
+  cursor: pointer;
+  font-weight: var(--w-semibold);
+}
+.alertDetails ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.alertDetails li {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+}
 .scoreBars {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -115,6 +175,191 @@
   padding: 14px 18px;
   border-bottom: 1px solid var(--warm-border);
   background: var(--bg-surface);
+}
+.tabRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.chartPanel {
+  padding: 16px 18px 18px;
+}
+.chartLoading {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: end;
+  gap: 18px;
+  height: 220px;
+}
+.skeletonBar, .skeletonLine {
+  display: block;
+  border-radius: var(--r-2);
+  background: linear-gradient(90deg, var(--bg-hover), var(--bg-surface), var(--bg-hover));
+  background-size: 200% 100%;
+  animation: shimmer 1.15s linear infinite;
+}
+.skeletonBar:nth-child(1) { height: 62%; }
+.skeletonBar:nth-child(2) { height: 82%; }
+.skeletonBar:nth-child(3) { height: 48%; }
+.skeletonLine {
+  width: 100%;
+  height: 18px;
+}
+.chartTooltip {
+  display: grid;
+  gap: 8px;
+  min-width: 240px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-floating);
+  padding: 10px;
+  color: var(--ink);
+  font-size: 12px;
+}
+.chartTooltip div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  border-top: 1px solid var(--slate-100);
+  padding-top: 6px;
+}
+.chartTooltip small {
+  grid-column: 1 / -1;
+  color: var(--slate-500);
+  overflow-wrap: anywhere;
+}
+.clickRow, .riskRow {
+  cursor: pointer;
+}
+.clickRow:hover, .riskRow:hover {
+  background: var(--bg-hover);
+}
+.riskRow {
+  background: color-mix(in srgb, var(--red-tint) 48%, var(--bg-surface));
+}
+.stateCell {
+  padding: 18px;
+  color: var(--slate-500);
+  text-align: center;
+  border-bottom: 1px solid var(--slate-100);
+}
+.riskCard {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--usc-gold);
+  border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--usc-gold-tint) 62%, var(--bg-surface));
+  padding: 10px;
+  color: var(--ink);
+}
+.riskCard p {
+  margin: 0;
+  color: var(--slate-700);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.riskCard ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.timeline {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 18px 0 4px;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 11%;
+  right: 11%;
+  top: 28px;
+  height: 1px;
+  background: var(--warm-border);
+}
+.timelineNode {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.timelineDot {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--bg-surface);
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px var(--warm-border);
+}
+.status-complete { background: var(--green); }
+.status-unverified { background: var(--usc-gold); }
+.status-incomplete { background: var(--red); }
+.status-not_started { background: var(--slate-300); }
+.status-skipped { background: var(--blue); }
+.entryForm {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 0.8fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 18px;
+}
+.entryForm label {
+  display: grid;
+  gap: 6px;
+  color: var(--slate-700);
+  font-size: 11px;
+  font-weight: var(--w-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.entryForm select,
+.entryForm input {
+  width: 100%;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  color: var(--ink);
+  padding: 9px 10px;
+  font: 12px var(--font-mono);
+  font-feature-settings: 'tnum' 1;
+}
+.entryForm select:disabled {
+  color: var(--slate-400);
+  background: var(--bg-subtle);
+}
+.toast {
+  margin: 0 18px 18px;
+  border-radius: var(--r-2);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.toastOk {
+  border: 1px solid var(--green);
+  background: var(--green-tint);
+  color: var(--on-ok);
+}
+.toastFail {
+  border: 1px solid var(--red);
+  background: var(--red-tint);
+  color: var(--on-fail);
+}
+.coverageStack {
+  display: grid;
+  gap: 14px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
 .stateChecklist {
@@ -250,10 +495,16 @@
 @media (max-width: 1100px) {
   .scoreBars { grid-template-columns: 1fr; }
   .matrixKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .entryForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .alertBody { align-items: flex-start; flex-direction: column; }
+  .alertActions { justify-content: flex-start; }
   .hero, .split { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
 }
 
 @media (max-width: 640px) {
   .matrixKpis, .kpis { grid-template-columns: 1fr; }
+  .entryForm, .timeline { grid-template-columns: 1fr; }
+  .timeline::before { display: none; }
+  .alertDetails li { grid-template-columns: 1fr; }
   .listHead { align-items: flex-start; flex-direction: column; }
 }

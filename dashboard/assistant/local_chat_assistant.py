@@ -1120,6 +1120,8 @@ class DashboardChatAssistant:
                     "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
+                    "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, and 12m timepoints and detects carry-forward risk when incomplete surveys persist into later events. "
+                    "The fix uses Form Display Logic triggered by visit_date entry.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
             }

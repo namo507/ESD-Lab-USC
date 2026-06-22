@@ -302,6 +302,54 @@ export function useRedcapCompleteness() {
   });
 }
 
+export function useRedcapVisitHealth(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["v2", "redcap-visit-health"],
+    queryFn: () => api.get("/api/v2/redcap-visit-health", S.RedcapVisitHealthResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+export function useRedcapVisitDetail(recordId: string | undefined) {
+  return useQuery({
+    enabled: Boolean(recordId),
+    queryKey: ["v2", "redcap-visit-health", recordId],
+    queryFn: () =>
+      api.get(
+        `/api/v2/redcap-visit-health/${encodeURIComponent(recordId as string)}`,
+        S.RedcapVisitRecordDetail,
+      ),
+    staleTime: 2 * 60_000,
+    gcTime: 20 * 60_000,
+  });
+}
+
+export function useRedcapMissingData(enabled = true) {
+  return useQuery({
+    enabled,
+    queryKey: ["v2", "redcap-missing-data"],
+    queryFn: () => api.get("/api/v2/redcap-missing-data", S.RedcapMissingDataResponse),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+export function useRedcapVisitEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { recordId: string; eventName: string; visitDate: string }) =>
+      api.post("/api/v2/redcap-visit-entry", body, S.RedcapImportResponse),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
+      void qc.invalidateQueries({ queryKey: ["v2", "redcap-missing-data"] });
+    },
+  });
+}
+
 export function useHdaSession(nanoId: string | undefined, visitAge: number | undefined) {
   return useQuery({
     enabled: Boolean(nanoId) && visitAge !== undefined,

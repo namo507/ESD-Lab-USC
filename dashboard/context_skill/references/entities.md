@@ -61,6 +61,21 @@
 | **PyCap** | Python REDCap API wrapper | Used by `redcap/api/redcap_pull.py` |
 | **REDCapR** | R REDCap API wrapper | Used by R analysts |
 
+## REDCap Visit Timepoints
+
+| Code | Event Name | Month | Description |
+|------|------------|-------|-------------|
+| 6m | `visit_6m_arm_1` | 6 | First CSBS collection window |
+| 9m | `visit_9m_arm_1` | 9 | Second CSBS collection window |
+| 12m | `visit_12m_arm_1` | 12 | Third CSBS collection window |
+
+## Carry-Forward Risk Conditions
+
+1. **Incomplete to Next Started:** CSBS `_complete` = 0 at timepoint N, but `visit_date` is non-blank at N+1
+2. **Blank to Next Complete:** CSBS `_complete` is blank at N, but CSBS is complete (2) at N+1
+3. **Root Cause:** REDCap Survey Queue carries incomplete forms into the next event
+4. **Fix:** Form Display Logic (FDL) plus visit_date entry to disable prior timepoint surveys
+
 ## File-system anchors
 
 * `${NANO_DATA_ROOT}` — secure server mount; never appears in repo

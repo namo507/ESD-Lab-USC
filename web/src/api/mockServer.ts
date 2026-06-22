@@ -25,6 +25,9 @@ import type {
   MatlabIntegration,
   RsaTrajectoryResponse,
   RedcapCompletenessResponse,
+  RedcapImportResponse,
+  RedcapMissingDataResponse,
+  RedcapVisitHealthResponse,
   HdaSessionResponse,
   HdaCompositionResponse,
   ThermalHeatmapResponse,
@@ -432,6 +435,66 @@ const REDCAP_COMPLETENESS: RedcapCompletenessResponse = v2Envelope(
   ),
   STUDY.enrolled,
 );
+
+const REDCAP_VISIT_OPTIONS = [
+  { key: "sixMonth" as const, label: "6m", eventName: "visit_6m_arm_1" },
+  { key: "nineMonth" as const, label: "9m", eventName: "visit_9m_arm_1" },
+  { key: "twelveMonth" as const, label: "12m", eventName: "visit_12m_arm_1" },
+];
+
+const REDCAP_VISIT_HEALTH: RedcapVisitHealthResponse = {
+  data: [
+    {
+      recordId: "NANO-0102",
+      sixMonth: { eventName: "visit_6m_arm_1", visitDate: "2026-01-12", csbsStatus: "incomplete", csbsTimestamp: "2026-01-12 09:14" },
+      nineMonth: { eventName: "visit_9m_arm_1", visitDate: "2026-04-12", csbsStatus: "unverified", csbsTimestamp: "2026-04-12 09:22" },
+      twelveMonth: { eventName: "visit_12m_arm_1", visitDate: null, csbsStatus: "not_started", csbsTimestamp: null },
+      anomalyFlags: ["6m CSBS incomplete while 9m visit has started"],
+      hasCarryForwardRisk: true,
+    },
+    {
+      recordId: "NANO-0114",
+      sixMonth: { eventName: "visit_6m_arm_1", visitDate: "2026-02-02", csbsStatus: "not_started", csbsTimestamp: null },
+      nineMonth: { eventName: "visit_9m_arm_1", visitDate: "2026-05-04", csbsStatus: "complete", csbsTimestamp: "2026-05-04 10:05" },
+      twelveMonth: { eventName: "visit_12m_arm_1", visitDate: null, csbsStatus: "not_started", csbsTimestamp: null },
+      anomalyFlags: ["6m CSBS blank while 9m CSBS is complete"],
+      hasCarryForwardRisk: true,
+    },
+    {
+      recordId: "NANO-0153",
+      sixMonth: { eventName: "visit_6m_arm_1", visitDate: "2026-01-26", csbsStatus: "complete", csbsTimestamp: "2026-01-26 11:21" },
+      nineMonth: { eventName: "visit_9m_arm_1", visitDate: "2026-04-28", csbsStatus: "skipped", csbsTimestamp: null },
+      twelveMonth: { eventName: "visit_12m_arm_1", visitDate: null, csbsStatus: "not_started", csbsTimestamp: null },
+      anomalyFlags: [],
+      hasCarryForwardRisk: false,
+    },
+    {
+      recordId: "NANO-0173",
+      sixMonth: { eventName: "visit_6m_arm_1", visitDate: "2026-01-09", csbsStatus: "complete", csbsTimestamp: "2026-01-09 14:04" },
+      nineMonth: { eventName: "visit_9m_arm_1", visitDate: "2026-04-09", csbsStatus: "complete", csbsTimestamp: "2026-04-09 14:09" },
+      twelveMonth: { eventName: "visit_12m_arm_1", visitDate: "2026-06-18", csbsStatus: "unverified", csbsTimestamp: "2026-06-18 15:20" },
+      anomalyFlags: [],
+      hasCarryForwardRisk: false,
+    },
+  ],
+  meta: { generatedAt: V2_GENERATED_AT, participantCount: 4, source: "mock" },
+  anomalies: [
+    { recordId: "NANO-0102", risks: ["6m CSBS incomplete while 9m visit has started"] },
+    { recordId: "NANO-0114", risks: ["6m CSBS blank while 9m CSBS is complete"] },
+  ],
+  visitOptions: REDCAP_VISIT_OPTIONS,
+};
+
+const REDCAP_MISSING_DATA: RedcapMissingDataResponse = {
+  ...REDCAP_VISIT_HEALTH,
+  data: REDCAP_VISIT_HEALTH.data.filter((record) =>
+    record.sixMonth.csbsStatus === "skipped" ||
+    record.nineMonth.csbsStatus === "skipped" ||
+    record.twelveMonth.csbsStatus === "skipped",
+  ),
+  anomalies: [],
+  meta: { generatedAt: V2_GENERATED_AT, participantCount: 1, source: "mock" },
+};
 
 function visitAgeFromPath(raw: string): number {
   const n = Number(raw);
@@ -1651,6 +1714,25 @@ export function installMockServer() {
     }
     if (p === "/api/v2/rsa-trajectories") return reply(makeRsaTrajectories(u.searchParams.get("age") ?? "adjusted"));
     if (p === "/api/v2/redcap-completeness") return reply(REDCAP_COMPLETENESS);
+    if (p === "/api/v2/redcap-visit-health") return reply(REDCAP_VISIT_HEALTH);
+    if (p === "/api/v2/redcap-missing-data") return reply(REDCAP_MISSING_DATA);
+    const redcapVisitDetail = p.match(/^\/api\/v2\/redcap-visit-health\/([^/]+)$/);
+    if (redcapVisitDetail && method === "GET") {
+      const record = REDCAP_VISIT_HEALTH.data.find((row) => row.recordId === decodeURIComponent(redcapVisitDetail[1] as string));
+      return record ? reply(record) : reply({ error: "not found" }, 404);
+    }
+    if (p === "/api/v2/redcap-visit-entry" && method === "POST") {
+      const body = (await new Response(init?.body as BodyInit).json()) as { recordId?: string; eventName?: string; visitDate?: string };
+      const response: RedcapImportResponse = {
+        success: true,
+        count: 1,
+        errors: [],
+        recordId: body.recordId ?? "NANO-0000",
+        eventName: body.eventName ?? "visit_6m_arm_1",
+        visitDate: body.visitDate ?? new Date().toISOString().slice(0, 10),
+      };
+      return reply(response);
+    }
     if (p === "/api/v2/cohort-swimmer") return reply(COHORT_SWIMMER);
     if (p === "/api/v2/hda-composition") return reply(HDA_COMPOSITION);
     if (p === "/api/v2/attrition-funnel") return reply(ATTRITION_FUNNEL);

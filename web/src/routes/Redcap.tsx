@@ -1,12 +1,21 @@
-import { useState } from "react";
-import { Badge, Button, Card, Gloss, KPI, SectionLabel } from "@/components/primitives";
-import { useRedcapCompleteness, useRedcapEvents } from "@/api/hooks";
+import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
+import { Badge, Button, Card, Gloss, KPI, SectionLabel, Segmented, type BadgeKind } from "@/components/primitives";
+import {
+  useRedcapCompleteness,
+  useRedcapEvents,
+  useRedcapMissingData,
+  useRedcapVisitDetail,
+  useRedcapVisitEntry,
+  useRedcapVisitHealth,
+} from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
-import type { RedcapCompletenessRow } from "@/api/schemas";
+import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitOption, RedcapVisitRecord } from "@/api/schemas";
 import { formPolicyLabel, questionnaireKind, questionnaireLabel, riskKind } from "@/lib/participantOperations";
 import styles from "./Redcap.module.css";
 
@@ -20,7 +29,120 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "qa",     label: "Bayley-4 missingness",    prompt: "Build a missingness heatmap for Bayley-4 across active visits and rank the worst-offending fields." },
   { lane: "model",  label: "Feature freshness",       prompt: "Which classifier features depend on REDCap fields that have not synced in 48 h? Rank by SHAP importance." },
   { lane: "model",  label: "Cohort drift on sync gap", prompt: "Quantify how a 24 h REDCap sync gap shifts the VPT vs TD cohort feature distributions." },
+  { lane: "redcap", label: "Carry-forward triage",    prompt: "List every participant with an active carry-forward risk flag. Group by timepoint and surface the specific condition that triggered each flag." },
+  { lane: "redcap", label: "CSBS gap analysis",       prompt: "Show which participants have incomplete CSBS at 6m or 9m while their next visit has already started. What's the coordinator action for each?" },
+  { lane: "redcap", label: "Coverage report",         prompt: "Generate a data coverage report across all three CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
+  { lane: "redcap", label: "Visit entry log",         prompt: "List the visit dates entered via the dashboard in the last 7 days and confirm whether Form Display Logic has disabled the prior surveys." },
 ];
+
+type RedcapTab = "sync" | "visit-health" | "visit-entry" | "coverage";
+type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth";
+
+const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
+  { key: "sixMonth", label: "6m" },
+  { key: "nineMonth", label: "9m" },
+  { key: "twelveMonth", label: "12m" },
+];
+
+const STATUS_ORDER: CsbsVisitStatus[] = ["complete", "unverified", "incomplete", "not_started", "skipped"];
+
+const STATUS_META: Record<CsbsVisitStatus, { label: string; badge: BadgeKind; chart: string }> = {
+  complete: { label: "Complete", badge: "ok", chart: "var(--green)" },
+  unverified: { label: "Unverified", badge: "warn", chart: "var(--usc-gold)" },
+  incomplete: { label: "Incomplete", badge: "fail", chart: "var(--red)" },
+  not_started: { label: "Not Started", badge: "neutral", chart: "var(--slate-300)" },
+  skipped: { label: "Skipped", badge: "info", chart: "var(--blue)" },
+};
+
+interface VisitChartRow {
+  visit: string;
+  idsByStatus: Record<CsbsVisitStatus, string[]>;
+  complete: number;
+  unverified: number;
+  incomplete: number;
+  not_started: number;
+  skipped: number;
+}
+
+interface VisitSummary {
+  chartRows: VisitChartRow[];
+  totals: Record<CsbsVisitStatus, number>;
+  skippedByVisit: Record<VisitKey, number>;
+  coveragePct: number;
+}
+
+function emptyStatusCounts(): Record<CsbsVisitStatus, number> {
+  return {
+    complete: 0,
+    unverified: 0,
+    incomplete: 0,
+    not_started: 0,
+    skipped: 0,
+  };
+}
+
+function summarizeVisitHealth(records: RedcapVisitRecord[]): VisitSummary {
+  const totals = emptyStatusCounts();
+  const skippedByVisit: Record<VisitKey, number> = {
+    sixMonth: 0,
+    nineMonth: 0,
+    twelveMonth: 0,
+  };
+  const chartRows = VISIT_COLUMNS.map(({ key, label }) => {
+    const counts = emptyStatusCounts();
+    const idsByStatus: Record<CsbsVisitStatus, string[]> = {
+      complete: [],
+      unverified: [],
+      incomplete: [],
+      not_started: [],
+      skipped: [],
+    };
+    records.forEach((record) => {
+      const status = record[key].csbsStatus;
+      counts[status] += 1;
+      totals[status] += 1;
+      idsByStatus[status].push(record.recordId);
+      if (status === "skipped") skippedByVisit[key] += 1;
+    });
+    return { visit: label, idsByStatus, ...counts };
+  });
+  const totalExpected = Math.max(records.length * VISIT_COLUMNS.length, 1);
+  const coveragePct = ((totals.complete + totals.skipped) / totalExpected) * 100;
+  return { chartRows, totals, skippedByVisit, coveragePct };
+}
+
+function formatDate(value: string | null): string {
+  return value || "—";
+}
+
+function formatTimestamp(value: string | null): string {
+  if (!value) return "not recorded";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatSyncTime(value: string | null): string {
+  if (!value) return "not synced";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function VisitStatusBadge({ status }: { status: CsbsVisitStatus }) {
+  const meta = STATUS_META[status];
+  return <Badge kind={meta.badge} size="sm">{meta.label}</Badge>;
+}
 
 interface FieldRow {
   k: string;
@@ -39,14 +161,47 @@ const FIELD_MAP: FieldRow[] = [
 ];
 
 export function Redcap() {
-  const { data: events = [] } = useRedcapEvents();
+  const eventsQuery = useRedcapEvents();
+  const events = eventsQuery.data ?? [];
   const okN = events.filter((e) => e.status === "ok").length;
   const warnN = events.filter((e) => e.status === "warn").length;
   const failN = events.filter((e) => e.status === "fail").length;
+  const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
+  const visitHealth = useRedcapVisitHealth(visitHealthEnabled);
+  const visitRecords = visitHealth.data?.data ?? [];
+  const visitSummary = useMemo(() => summarizeVisitHealth(visitRecords), [visitRecords]);
+  const queryClient = useQueryClient();
   const theme = useUi((s) => s.theme);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const setChatSeed = useUi((s) => s.setChatSeed);
+  const lastSyncAt = useUi((s) => s.lastSyncAt);
+  const setLastSyncAt = useUi((s) => s.setLastSyncAt);
   const fastPathTone = resolveTheme(theme);
+  const [activeTab, setActiveTab] = useState<RedcapTab>("sync");
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
+  const tabOptions = useMemo(
+    () =>
+      visitHealthEnabled
+        ? [
+            { value: "sync" as const, label: "Sync & Completeness" },
+            { value: "visit-health" as const, label: "Visit Health" },
+            { value: "visit-entry" as const, label: "Visit Entry" },
+            { value: "coverage" as const, label: "Coverage" },
+          ]
+        : [{ value: "sync" as const, label: "Sync & Completeness" }],
+    [visitHealthEnabled],
+  );
+
+  useEffect(() => {
+    if (!visitHealthEnabled && activeTab !== "sync") setActiveTab("sync");
+  }, [activeTab, visitHealthEnabled]);
+
+  useEffect(() => {
+    if (visitHealth.data?.meta.generatedAt) {
+      setLastSyncAt(visitHealth.data.meta.generatedAt);
+    }
+  }, [setLastSyncAt, visitHealth.data?.meta.generatedAt]);
 
   function fastPath(prompt: string) {
     setChatSeed(prompt);
@@ -54,8 +209,34 @@ export function Redcap() {
     void logAudit({ action: "run.trigger", scope: "/redcap/fast-path" });
   }
 
+  function refreshVisitHealth() {
+    void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
+    void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-missing-data"] });
+    setLastSyncAt(new Date().toISOString());
+  }
+
+  function syncNow() {
+    void eventsQuery.refetch();
+    if (visitHealthEnabled) refreshVisitHealth();
+    void logAudit({ action: "run.trigger", scope: "/redcap/sync" });
+  }
+
+  const visitHealthError =
+    visitHealth.data?.error ?? (visitHealth.error instanceof Error ? visitHealth.error.message : null);
+
   return (
     <div className={styles.page}>
+      {visitHealthEnabled && !alertDismissed && (
+        <VisitAnomalyBanner
+          anomalies={visitHealth.data?.anomalies ?? []}
+          error={visitHealthError}
+          isLoading={visitHealth.isLoading}
+          lastSyncAt={lastSyncAt}
+          onDismiss={() => setAlertDismissed(true)}
+          onRefresh={refreshVisitHealth}
+        />
+      )}
+
       <header className={styles.hero}>
         <div>
           <span className={`${styles.eyebrow} t-mono`}>REDCap sync</span>
@@ -68,7 +249,7 @@ export function Redcap() {
         </div>
         <div className={styles.actions}>
           <Button variant="secondary" icon="key">Rotate token</Button>
-          <Button icon="refresh-cw">Sync now</Button>
+          <Button icon="refresh-cw" onClick={syncNow}>Sync now</Button>
         </div>
       </header>
 
@@ -86,6 +267,17 @@ export function Redcap() {
         />
       </section>
 
+      {visitHealthEnabled && (
+        <div className={styles.tabRow}>
+          <Segmented
+            options={tabOptions}
+            value={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="REDCap dashboard sections"
+          />
+        </div>
+      )}
+
       <section className={styles.kpis}>
         <KPI label="Forms tracked" value="14" sub="versioned · v1–v4" insightId="redcap-forms" />
         <KPI label="Records · 24 h" value="25" sub="pulled and pushed" delta={`+${okN}`} deltaKind="up" insightId="redcap-records" />
@@ -100,49 +292,76 @@ export function Redcap() {
         />
       </section>
 
-      <RedcapCompletenessScorecard />
+      {activeTab === "sync" && (
+        <>
+          <RedcapCompletenessScorecard />
+          <RedcapSyncPanel events={events} />
+        </>
+      )}
 
-      <div className={styles.split}>
-        <Card pad={0}>
-          <div className={styles.listHead}>
-            <SectionLabel>Sync events · last 1 h</SectionLabel>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <caption className="sr-only">REDCap sync events.</caption>
-              <thead>
-                <tr>
-                  {["Time", "Form", "n", "Status", "Note"].map((h) => (
-                    <th key={h} scope="col" className={styles.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((e, i) => (
-                  <tr key={i}>
-                    <td className={`${styles.td} t-mono ${styles.muted}`}>{e.ts}</td>
-                    <td className={`${styles.td} t-mono`}>{e.form}</td>
-                    <td className={`${styles.td} t-num t-mono`}>{e.n}</td>
-                    <td className={styles.td}>
-                      <Badge kind={e.status === "ok" ? "ok" : e.status === "warn" ? "warn" : "fail"} size="sm">{e.status}</Badge>
-                    </td>
-                    <td className={`${styles.td} ${styles.note}`}>{e.note}</td>
-                  </tr>
+      {visitHealthEnabled && activeTab === "visit-health" && (
+        <VisitHealthTab
+          records={visitRecords}
+          summary={visitSummary}
+          isLoading={visitHealth.isLoading}
+          error={visitHealthError}
+        />
+      )}
+
+      {visitHealthEnabled && activeTab === "visit-entry" && (
+        <VisitEntryPanel records={visitRecords} visitOptions={visitHealth.data?.visitOptions ?? []} />
+      )}
+
+      {visitHealthEnabled && activeTab === "coverage" && (
+        <CoveragePanel records={visitRecords} summary={visitSummary} />
+      )}
+    </div>
+  );
+}
+
+function RedcapSyncPanel({ events }: { events: Array<{ ts: string; form: string; n: number; status: "ok" | "warn" | "fail"; note: string }> }) {
+  return (
+    <div className={styles.split}>
+      <Card pad={0}>
+        <div className={styles.listHead}>
+          <SectionLabel>Sync events · last 1 h</SectionLabel>
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <caption className="sr-only">REDCap sync events.</caption>
+            <thead>
+              <tr>
+                {["Time", "Form", "n", "Status", "Note"].map((h) => (
+                  <th key={h} scope="col" className={styles.th}>{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e, i) => (
+                <tr key={i}>
+                  <td className={`${styles.td} t-mono ${styles.muted}`}>{e.ts}</td>
+                  <td className={`${styles.td} t-mono`}>{e.form}</td>
+                  <td className={`${styles.td} t-num t-mono`}>{e.n}</td>
+                  <td className={styles.td}>
+                    <Badge kind={e.status === "ok" ? "ok" : e.status === "warn" ? "warn" : "fail"} size="sm">{e.status}</Badge>
+                  </td>
+                  <td className={`${styles.td} ${styles.note}`}>{e.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
-        <Card pad={20}>
-          <div className={styles.fieldMapWrap}>
-            <AmbientOrbit
-              tone="garnet"
-              size={140}
-              opacity={0.16}
-              spin={48}
-              className={styles.fieldOrbit}
-            />
+      <Card pad={20}>
+        <div className={styles.fieldMapWrap}>
+          <AmbientOrbit
+            tone="garnet"
+            size={140}
+            opacity={0.16}
+            spin={48}
+            className={styles.fieldOrbit}
+          />
           <SectionLabel>Field map · medical_history_v1</SectionLabel>
           <div className={`${styles.fieldMap} t-mono`}>
             {FIELD_MAP.map((f) => (
@@ -159,9 +378,443 @@ export function Redcap() {
             PHI fields never leave the secure REDCap proxy — only hashed/derived columns are written to{" "}
             <code className="t-mono">processed/deidentified/</code>.
           </div>
-          </div>
-        </Card>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function VisitAnomalyBanner({
+  anomalies,
+  error,
+  isLoading,
+  lastSyncAt,
+  onDismiss,
+  onRefresh,
+}: {
+  anomalies: Array<{ recordId: string; risks: string[] }>;
+  error: string | null;
+  isLoading: boolean;
+  lastSyncAt: string | null;
+  onDismiss: () => void;
+  onRefresh: () => void;
+}) {
+  const hasRisk = anomalies.length > 0;
+  const message = isLoading
+    ? "Checking REDCap visit-health records..."
+    : hasRisk
+      ? `${anomalies.length} carry-forward risk ${anomalies.length === 1 ? "record" : "records"} need coordinator review`
+      : "All records clean — no carry-forward risks detected";
+  return (
+    <div
+      className={`${styles.deadlineAlert} ${hasRisk ? styles.anomalyWarn : styles.anomalyClean}`}
+      data-insight="redcap-anomaly-banner"
+    >
+      <div className={styles.alertBody}>
+        <div className={styles.alertMain}>
+          <Badge kind={hasRisk ? "fail" : "ok"} size="sm">
+            {hasRisk ? "Carry-Forward Risk" : "Clean"}
+          </Badge>
+          <span>{message}</span>
+        </div>
+        <div className={styles.alertActions}>
+          <span className="t-mono">Last synced: {formatSyncTime(lastSyncAt)}</span>
+          {error && <Badge kind="warn" size="sm">offline fallback</Badge>}
+          <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onRefresh}>Refresh</Button>
+          <button type="button" className={styles.alertClose} onClick={onDismiss} aria-label="Dismiss carry-forward alert">x</button>
+        </div>
       </div>
+      {error && <p className={styles.alertNote}>{error}</p>}
+      {hasRisk && (
+        <details className={styles.alertDetails}>
+          <summary>Review flagged records</summary>
+          <ul>
+            {anomalies.slice(0, 8).map((item) => (
+              <li key={item.recordId}>
+                <span className="t-mono">{item.recordId}</span>
+                <span>{item.risks.join("; ")}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function VisitHealthTab({
+  records,
+  summary,
+  isLoading,
+  error,
+}: {
+  records: RedcapVisitRecord[];
+  summary: VisitSummary;
+  isLoading: boolean;
+  error: string | null;
+}) {
+  const [selected, setSelected] = useState<RedcapVisitRecord | null>(null);
+  const sortedRecords = useMemo(
+    () => [...records].sort((a, b) => Number(b.hasCarryForwardRisk) - Number(a.hasCarryForwardRisk) || a.recordId.localeCompare(b.recordId)),
+    [records],
+  );
+
+  return (
+    <>
+      <Card pad={0}>
+        <div className={styles.listHead} data-insight="redcap-visit-health">
+          <SectionLabel>Visit Health Monitor · CSBS carry-forward guard</SectionLabel>
+          {error && <Badge kind="warn" size="sm">Backend fallback active</Badge>}
+        </div>
+        <VisitCompletionChart summary={summary} isLoading={isLoading} />
+      </Card>
+
+      <Card pad={0}>
+        <div className={styles.listHead} data-insight="redcap-visit-grid">
+          <SectionLabel>Participant visit status grid</SectionLabel>
+          <Badge kind={summary.totals.incomplete ? "warn" : "ok"} size="sm">
+            {records.filter((record) => record.hasCarryForwardRisk).length} risk rows
+          </Badge>
+        </div>
+        <VisitStatusGrid records={sortedRecords} isLoading={isLoading} onSelect={setSelected} />
+        <div className={styles.hipaaReminder}>
+          IRB #Pro00115234 · Visit-health review uses REDCap proxy data and de-identified record IDs only. Open source records from the secure study network.
+        </div>
+      </Card>
+
+      {selected && <VisitRecordDrawer record={selected} onClose={() => setSelected(null)} />}
+    </>
+  );
+}
+
+function VisitCompletionChart({ summary, isLoading }: { summary: VisitSummary; isLoading: boolean }) {
+  return (
+    <div className={styles.chartPanel} data-insight="redcap-visit-chart">
+      {isLoading ? (
+        <div className={styles.chartLoading}>
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <span key={idx} className={styles.skeletonBar} />
+          ))}
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={summary.chartRows} margin={{ top: 14, right: 18, bottom: 8, left: 0 }}>
+            <CartesianGrid stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="visit" tickLine={false} axisLine={false} />
+            <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+            <ChartTooltip content={<VisitChartTooltip />} cursor={{ fill: "var(--bg-hover)" }} />
+            <Legend />
+            {STATUS_ORDER.map((status) => (
+              <Bar
+                key={status}
+                dataKey={status}
+                stackId="visit"
+                name={STATUS_META[status].label}
+                fill={STATUS_META[status].chart}
+                radius={status === "complete" ? [6, 6, 0, 0] : undefined}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+function VisitChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ dataKey?: string | number; value?: number; payload?: VisitChartRow }>;
+  label?: string;
+}) {
+  const row = payload?.[0]?.payload;
+  if (!active || !row) return null;
+  return (
+    <div className={styles.chartTooltip}>
+      <strong>{label} CSBS</strong>
+      {STATUS_ORDER.map((status) => {
+        const ids = row.idsByStatus[status];
+        if (!ids.length) return null;
+        return (
+          <div key={status}>
+            <span>{STATUS_META[status].label}</span>
+            <span className="t-mono">{ids.length}</span>
+            <small>{ids.slice(0, 6).join(", ")}{ids.length > 6 ? ` +${ids.length - 6}` : ""}</small>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function VisitStatusGrid({
+  records,
+  isLoading,
+  onSelect,
+}: {
+  records: RedcapVisitRecord[];
+  isLoading: boolean;
+  onSelect: (record: RedcapVisitRecord) => void;
+}) {
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <caption className="sr-only">CSBS visit completion status across 6, 9, and 12 month REDCap events.</caption>
+        <thead>
+          <tr>
+            {["Record ID", "6m Visit Date", "6m CSBS Status", "9m Visit Date", "9m CSBS Status", "12m Visit Date", "12m CSBS Status", "Anomaly Flag"].map((h) => (
+              <th key={h} scope="col" className={styles.th}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, idx) => (
+              <tr key={idx}>
+                <td className={styles.td} colSpan={8}><span className={styles.skeletonLine} /></td>
+              </tr>
+            ))
+          ) : records.length ? (
+            records.map((record) => (
+              <tr
+                key={record.recordId}
+                className={record.hasCarryForwardRisk ? styles.riskRow : styles.clickRow}
+                tabIndex={0}
+                onClick={() => onSelect(record)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") onSelect(record);
+                }}
+              >
+                <td className={`${styles.td} t-mono`}>{record.recordId}</td>
+                {VISIT_COLUMNS.map(({ key }) => (
+                  <Fragment key={key}>
+                    <td key={`${key}-date`} className={`${styles.td} t-mono ${styles.muted}`}>{formatDate(record[key].visitDate)}</td>
+                    <td key={`${key}-status`} className={styles.td}><VisitStatusBadge status={record[key].csbsStatus} /></td>
+                  </Fragment>
+                ))}
+                <td className={styles.td}>
+                  {record.hasCarryForwardRisk
+                    ? <Badge kind="fail" size="sm">Carry-Forward Risk</Badge>
+                    : <Badge kind="ok" size="sm">Clean</Badge>}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td className={styles.stateCell} colSpan={8}>No REDCap visit-health records are available yet.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function VisitRecordDrawer({ record, onClose }: { record: RedcapVisitRecord; onClose: () => void }) {
+  const { data } = useRedcapVisitDetail(record.recordId);
+  const detail = data ?? record;
+  const openRedcap = () => {
+    window.open(`/api/v2/redcap-open?record_id=${encodeURIComponent(detail.recordId)}`, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <aside className={styles.matrixDrawer} aria-label="REDCap visit detail" data-insight="redcap-visit-drawer">
+      <div className={styles.drawerHead}>
+        <SectionLabel>Visit detail</SectionLabel>
+        <button type="button" className={styles.drawerClose} onClick={onClose} aria-label="Close visit detail">x</button>
+      </div>
+      <div className={styles.drawerBody}>
+        <div><strong className="t-mono">{detail.recordId}</strong></div>
+        <div className={styles.drawerBadges}>
+          {detail.hasCarryForwardRisk
+            ? <Badge kind="fail" size="sm">Carry-Forward Risk</Badge>
+            : <Badge kind="ok" size="sm">No active risk</Badge>}
+        </div>
+        {detail.hasCarryForwardRisk && (
+          <div className={styles.riskCard}>
+            <strong>Coordinator action</strong>
+            <p>Close or resolve the earlier CSBS survey before later-event data lands in the wrong REDCap column. Confirm Form Display Logic after visit-date entry.</p>
+            <ul>
+              {detail.anomalyFlags.map((flag) => <li key={flag}>{flag}</li>)}
+            </ul>
+          </div>
+        )}
+        <div className={styles.timeline}>
+          {VISIT_COLUMNS.map(({ key, label }) => (
+            <div key={key} className={styles.timelineNode}>
+              <span className={`${styles.timelineDot} ${styles[`status-${detail[key].csbsStatus}`]}`} />
+              <strong>{label}</strong>
+              <VisitStatusBadge status={detail[key].csbsStatus} />
+            </div>
+          ))}
+        </div>
+        <div className={styles.drawerContext}>
+          {VISIT_COLUMNS.map(({ key, label }) => (
+            <div key={key}>
+              <span>{label} visit</span>
+              <strong>
+                {formatDate(detail[key].visitDate)} · {STATUS_META[detail[key].csbsStatus].label}
+                <br />
+                <span className="t-mono">Survey: {formatTimestamp(detail[key].csbsTimestamp)}</span>
+              </strong>
+            </div>
+          ))}
+        </div>
+        <Button size="sm" icon="external-link" onClick={openRedcap}>Open in REDCap</Button>
+      </div>
+    </aside>
+  );
+}
+
+function VisitEntryPanel({
+  records,
+  visitOptions,
+}: {
+  records: RedcapVisitRecord[];
+  visitOptions: RedcapVisitOption[];
+}) {
+  const options = useMemo(() => {
+    if (visitOptions.length) return visitOptions;
+    const first = records[0];
+    if (!first) return [];
+    return VISIT_COLUMNS.map(({ key, label }) => ({ key, label, eventName: first[key].eventName }));
+  }, [records, visitOptions]);
+  const [recordId, setRecordId] = useState("");
+  const [eventName, setEventName] = useState("");
+  const [visitDate, setVisitDate] = useState("");
+  const [toast, setToast] = useState<{ kind: "ok" | "fail"; text: string } | null>(null);
+  const mutation = useRedcapVisitEntry();
+
+  useEffect(() => {
+    if (!recordId && records[0]) setRecordId(records[0].recordId);
+  }, [recordId, records]);
+
+  useEffect(() => {
+    if (!eventName && options[0]) setEventName(options[0].eventName);
+  }, [eventName, options]);
+
+  async function submitVisitEntry(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setToast(null);
+    try {
+      const result = await mutation.mutateAsync({ recordId, eventName, visitDate });
+      if (!result.success) {
+        throw new Error(result.errors.join("; ") || "REDCap returned an import error.");
+      }
+      const label = options.find((option) => option.eventName === eventName)?.label ?? eventName;
+      setToast({
+        kind: "ok",
+        text: `Visit date recorded for ${recordId} at ${label}. REDCap Form Display Logic will now disable the previous timepoint's CSBS survey.`,
+      });
+      void logAudit({ action: "run.trigger", scope: "/redcap/visit-entry", detail: { event: label } });
+    } catch (error) {
+      setToast({
+        kind: "fail",
+        text: error instanceof Error ? error.message : "Visit date import failed.",
+      });
+    }
+  }
+
+  return (
+    <Card pad={0}>
+      <div className={styles.listHead} data-insight="redcap-visit-entry">
+        <SectionLabel>Visit date entry · staff quick action</SectionLabel>
+        <Badge kind="phi" size="sm">server-side token only</Badge>
+      </div>
+      <form className={styles.entryForm} onSubmit={submitVisitEntry}>
+        <label>
+          <span>Participant record</span>
+          <select value={recordId} onChange={(event) => setRecordId(event.target.value)} disabled={!records.length}>
+            {records.length ? records.map((record) => (
+              <option key={record.recordId} value={record.recordId}>{record.recordId}</option>
+            )) : <option value="">No records loaded</option>}
+          </select>
+        </label>
+        <label>
+          <span>Visit timepoint</span>
+          <select value={eventName} onChange={(event) => setEventName(event.target.value)} disabled={!options.length}>
+            {options.length ? options.map((option) => (
+              <option key={option.key} value={option.eventName}>{option.label}</option>
+            )) : <option value="">No REDCap events configured</option>}
+          </select>
+        </label>
+        <label>
+          <span>Visit date</span>
+          <input type="date" value={visitDate} onChange={(event) => setVisitDate(event.target.value)} />
+        </label>
+        <Button type="submit" icon="check" disabled={!recordId || !eventName || !visitDate || mutation.isPending}>
+          {mutation.isPending ? "Recording..." : "Record Visit Start"}
+        </Button>
+      </form>
+      {toast && (
+        <div className={`${styles.toast} ${toast.kind === "ok" ? styles.toastOk : styles.toastFail}`}>
+          {toast.text}
+        </div>
+      )}
+      <div className={styles.hipaaReminder}>
+        IRB #Pro00115234 · Visit entry writes only the configured visit-date field through the backend REDCap proxy. API tokens never enter the browser bundle.
+      </div>
+    </Card>
+  );
+}
+
+function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; summary: VisitSummary }) {
+  const missingData = useRedcapMissingData();
+  const skippedRecords = missingData.data?.data ?? records.filter((record) =>
+    VISIT_COLUMNS.some(({ key }) => record[key].csbsStatus === "skipped"),
+  );
+  const anomalyCount = records.filter((record) => record.hasCarryForwardRisk).length;
+  return (
+    <div className={styles.coverageStack}>
+      <Card pad={0}>
+        <div className={styles.listHead} data-insight="redcap-missing-data">
+          <SectionLabel>Missing data code tracker · CSBS SKIP coverage</SectionLabel>
+          {missingData.data?.error && <Badge kind="warn" size="sm">fallback active</Badge>}
+        </div>
+        <div className={styles.matrixKpis}>
+          <KPI label="6m skipped" value={summary.skippedByVisit.sixMonth} sub="intentional SKIP" insightId="redcap-missing-data" />
+          <KPI label="9m skipped" value={summary.skippedByVisit.nineMonth} sub="intentional SKIP" />
+          <KPI label="12m skipped" value={summary.skippedByVisit.twelveMonth} sub="intentional SKIP" />
+          <KPI label="Coverage" value={`${summary.coveragePct.toFixed(1)}%`} sub="complete + skipped" insightId="redcap-coverage-metric" />
+          <KPI label="Active risks" value={anomalyCount} sub="carry-forward flags" deltaKind={anomalyCount ? "down" : "up"} />
+        </div>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <caption className="sr-only">Records with CSBS missing data code SKIP.</caption>
+            <thead>
+              <tr>
+                {["Record ID", "Skipped visits", "6m", "9m", "12m"].map((h) => (
+                  <th key={h} scope="col" className={styles.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {skippedRecords.length ? skippedRecords.map((record) => {
+                const skipped = VISIT_COLUMNS.filter(({ key }) => record[key].csbsStatus === "skipped").map(({ label }) => label);
+                return (
+                  <tr key={record.recordId}>
+                    <td className={`${styles.td} t-mono`}>{record.recordId}</td>
+                    <td className={styles.td}>{skipped.join(", ")}</td>
+                    {VISIT_COLUMNS.map(({ key }) => (
+                      <td key={key} className={styles.td}><VisitStatusBadge status={record[key].csbsStatus} /></td>
+                    ))}
+                  </tr>
+                );
+              }) : (
+                <tr>
+                  <td className={styles.stateCell} colSpan={5}>No SKIP-coded CSBS records found in the current payload.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className={styles.hipaaReminder}>
+          IRB #Pro00115234 · Coverage = (Complete + Skipped) / Total expected, separating intentional missingness from workflow errors.
+        </div>
+      </Card>
     </div>
   );
 }
@@ -306,7 +959,7 @@ function RedcapCompletenessScorecard() {
               <div><span>Form policy</span><strong>{formPolicyLabel(selected.formPolicy)}</strong></div>
               <div><span>Linking ID</span><strong className="t-mono">{selected.linkingId ?? "not needed"}</strong></div>
             </div>
-            <Button size="sm" icon="external-link" onClick={() => window.open("https://redcap.healthsciencessc.org", "_blank", "noopener,noreferrer")}>
+            <Button size="sm" icon="external-link" onClick={() => window.open(`/api/v2/redcap-open?record_id=${encodeURIComponent(selected.nanoId)}`, "_blank", "noopener,noreferrer")}>
               Open in REDCap
             </Button>
           </div>
