@@ -6,6 +6,8 @@ services:
       dockerfile: docker/dashboard/Dockerfile
     ports:
       - "${DASHBOARD_HOST_PORT:-8080}:8080"
+    env_file:
+      - ../.env
     environment:
       PYTHONUNBUFFERED: "1"
     cpus: "2.0"
