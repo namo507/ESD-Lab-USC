@@ -8,7 +8,7 @@
 
 ## SECURITY NOTICE, READ FIRST
 
-The token `55D6F4DA0C2D702CE76C5AB47AC788AB` is a full-access password to PID 5955\. This master prompt file is intentionally kept OUT of the repository. Do not commit it. The token must live only in: `.env` (local), `.dev.vars` (local Wrangler), GitHub Actions Secrets, and Cloudflare Pages environment variables. Every committed code example below uses the variable name (`REDCAP_API_KEY` / `REDCAP_API_TOKEN`), never the literal value. After you finish local setup, vault or delete this file.
+The REDCap API token for PID 5955 is a full-access password and must never appear in a committed file. This committed prompt keeps the token redacted as `<REDACTED_REDCAP_API_TOKEN>`. Any private copy that contains the real token must stay outside the repository and live only in `.env` (local), `.dev.vars` (local Wrangler), GitHub Actions Secrets, and Cloudflare Pages environment variables. Every committed code example below uses the variable name (`REDCAP_API_KEY` / `REDCAP_API_TOKEN`), never the literal value.
 
 ---
 
