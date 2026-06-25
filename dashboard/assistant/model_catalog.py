@@ -18,8 +18,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
 LOCAL_MODEL_ROOT = PROJECT_ROOT / "models" / "local_llms"
 DEFAULT_TIER = "balanced"
-CATALOG_VERSION = 2
-DEFAULT_THREAD_COUNT = max(1, min(os.cpu_count() or 4, 6))
+CATALOG_VERSION = 3
+DEFAULT_THREAD_COUNT = 4
 
 
 MODEL_CATALOG: tuple[dict[str, Any], ...] = (
@@ -103,6 +103,29 @@ MODEL_CATALOG: tuple[dict[str, Any], ...] = (
         "source": "built-in-catalog",
         "reason": "Optional larger local model for workstation hosts with more memory headroom.",
     },
+    {
+        "tier": "clinical",
+        "label": "BioMistral 7B Q4",
+        "repo_id": "BioMistral/BioMistral-7B-GGUF",
+        "filename": "ggml-model-Q4_K_M.gguf",
+        "model_dir": "models/local_llms/BioMistral-7B-GGUF",
+        "params_b": 7.0,
+        "context_length": 2048,
+        "min_memory_gib": 8.5,
+        "min_disk_gib": 4.7,
+        "max_tokens": 384,
+        "batch_size": 128,
+        "thread_count": DEFAULT_THREAD_COUNT,
+        "temperature": 0.03,
+        "top_p": 0.85,
+        "license": "Apache-2.0",
+        "priority": 55,
+        "source": "built-in-catalog",
+        "reason": (
+            "Preferred no-API clinical tier for biomedical and psychiatric "
+            "dashboard questions; falls back automatically on smaller hosts."
+        ),
+    },
 )
 
 
@@ -116,6 +139,10 @@ TIER_ALIASES = {
     "accuracy": "accuracy",
     "quality": "quality",
     "large": "quality",
+    "clinical": "clinical",
+    "medical": "clinical",
+    "biomedical": "clinical",
+    "biomistral": "clinical",
     "auto": "auto",
 }
 

@@ -17,25 +17,28 @@ dashboard/readings context from the repo, and does not require a paid API key.
 
 ## Model Ladder
 
-The default checked-in tier is `balanced`:
+The default checked-in tier is `clinical`:
 
-- Repository: `bartowski/SmolLM2-1.7B-Instruct-GGUF`
-- File: `SmolLM2-1.7B-Instruct-Q4_K_M.gguf`
+- Repository: `BioMistral/BioMistral-7B-GGUF`
+- File: `ggml-model-Q4_K_M.gguf`
 - License: Apache-2.0
-- Intended use: stronger local QA and presentation planning on CPU laptops or
-  small dashboard hosts.
+- Intended use: no-API biomedical/clinical QA, REDCap operations explanation,
+  and psychiatric/longitudinal study context where a clinical vocabulary helps.
 
 Fallbacks are kept in the same config:
 
-- `tiny`: `bartowski/SmolLM2-360M-Instruct-GGUF` for constrained Docker/local
-  hosts.
+- `quality`: `bartowski/Qwen2.5-3B-Instruct-GGUF` for workstation hosts with
+  more memory headroom and long-context general QA.
+- `balanced`: `bartowski/SmolLM2-1.7B-Instruct-GGUF` for CPU laptops or small
+  dashboard hosts.
 - `accuracy`: `bartowski/Qwen2.5-1.5B-Instruct-GGUF` when that GGUF already
   exists locally.
-- `quality`: `bartowski/Qwen2.5-3B-Instruct-GGUF` for workstation hosts with
-  more memory headroom.
+- `tiny`: `bartowski/SmolLM2-360M-Instruct-GGUF` for constrained Docker/local
+  hosts.
 
 The runtime checks already-present GGUF files first, so the dashboard can keep
-using the tiny local fallback while the balanced model is being downloaded.
+using a smaller local fallback while BioMistral is being downloaded or when the
+current host lacks enough free memory.
 
 ## Local Setup
 
@@ -61,11 +64,12 @@ make assistant-prepare
 Opt into a different tier for one run:
 
 ```bash
-DASHBOARD_ASSISTANT_TIER=quality make assistant-bootstrap
+DASHBOARD_ASSISTANT_TIER=balanced make assistant-bootstrap
 ```
 
-No `HF_TOKEN` is needed for the default public GGUF files. `HF_TOKEN` is only
-read if someone intentionally points the config at a private Hugging Face repo.
+No `HF_TOKEN` is needed for the default public BioMistral GGUF file. `HF_TOKEN`
+is only read if someone intentionally points the config at a gated or private
+Hugging Face repo.
 
 ## API Contract
 
@@ -98,7 +102,7 @@ Response:
   "citations": ["enrollment", "ml_performance.models[0]"],
   "status": {
     "state": "ready",
-    "model_tier": "balanced"
+    "model_tier": "clinical"
   }
 }
 ```

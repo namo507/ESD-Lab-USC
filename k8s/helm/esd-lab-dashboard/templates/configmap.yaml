@@ -31,3 +31,10 @@ data:
   K8S_DATA_PVC: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}
   CLUSTER_VISUALIZATION_ENABLED: {{ .Values.pipeline.clusterVisualizationEnabled | quote }}
   ASSISTANT_CLUSTER_CONTEXT_ENABLED: {{ .Values.pipeline.assistantClusterContextEnabled | quote }}
+  DASHBOARD_ASSISTANT_TIER: {{ .Values.assistant.tier | quote }}
+  DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: {{ .Values.assistant.autoDownload | quote }}
+  DASHBOARD_ASSISTANT_CONTEXT_WINDOW: {{ .Values.assistant.contextWindow | quote }}
+  DASHBOARD_ASSISTANT_THREADS: {{ .Values.assistant.threads | quote }}
+  DASHBOARD_ASSISTANT_MAX_NEW_TOKENS: {{ .Values.assistant.maxNewTokens | quote }}
+  DASHBOARD_ASSISTANT_MIN_MEMORY_GIB: {{ .Values.assistant.minMemoryGiB | quote }}
+  HF_HOME: "/app/models/.cache/huggingface"

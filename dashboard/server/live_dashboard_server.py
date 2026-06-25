@@ -4071,6 +4071,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             "status": status,
             "error": error,
             "model": payload.get("model_id"),
+            "model_tier": payload.get("model_tier"),
+            "model_label": payload.get("model_label"),
+            "model_license": payload.get("model_license"),
+            "runtime": payload.get("runtime"),
         }
         if config.assistant_cluster_context_enabled:
             status_payload["freshness"] = assistant_freshness_payload(

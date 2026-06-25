@@ -132,13 +132,13 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
 assistant-select-model:  ## Refresh config/llm_model.json from the local no-API model catalog
-	$(PYTHON) scripts/select_best_local_llm.py --tier $${DASHBOARD_ASSISTANT_TIER:-balanced}
+	$(PYTHON) scripts/select_best_local_llm.py --tier $${DASHBOARD_ASSISTANT_TIER:-clinical}
 
 assistant-status:  ## Inspect local assistant dependencies, model file, memory, and readiness
 	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto}
 
 assistant-prepare:  ## Write local model config and download the selected public GGUF file
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto} --write-config --download
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-clinical} --write-config --download
 
 assistant-bootstrap: $(VENV)/bin/activate  ## Install assistant deps, download the selected GGUF, and validate readiness
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto} --write-config --install-deps --download --validate-ready

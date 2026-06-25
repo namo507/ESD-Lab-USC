@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Run model selector
-        run: python scripts/select_best_local_llm.py --tier balanced
+        run: python scripts/select_best_local_llm.py --tier clinical
 
       - name: Commit if changed
         run: |

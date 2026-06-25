@@ -11,12 +11,18 @@ services:
       - ../.env
     environment:
       PYTHONUNBUFFERED: "1"
+      DASHBOARD_ASSISTANT_TIER: ${DASHBOARD_ASSISTANT_TIER:-auto}
+      DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: ${DASHBOARD_ASSISTANT_AUTO_DOWNLOAD:-false}
+      DASHBOARD_ASSISTANT_CONTEXT_WINDOW: ${DASHBOARD_ASSISTANT_CONTEXT_WINDOW:-2048}
+      DASHBOARD_ASSISTANT_THREADS: ${DASHBOARD_ASSISTANT_THREADS:-4}
+      HF_HOME: /app/models/.cache/huggingface
     cpus: "2.0"
-    mem_limit: 2g
+    mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
     pids_limit: 512
     volumes:
       - ../dashboard/data:/app/dashboard/data
       - ../esd-lab-readings:/app/esd-lab-readings:ro
+      - ../models/local_llms:/app/models/local_llms
     healthcheck:
       test:
         - CMD
@@ -34,6 +40,33 @@ services:
       retries: 3
       start_period: 45s
     restart: unless-stopped
+
+  assistant-bootstrap:
+    profiles: ["assistant"]
+    init: true
+    build:
+      context: ..
+      dockerfile: docker/dashboard/Dockerfile
+    image: esd-lab-dashboard:local
+    env_file:
+      - ../.env
+    environment:
+      PYTHONUNBUFFERED: "1"
+      DASHBOARD_ASSISTANT_TIER: ${DASHBOARD_ASSISTANT_TIER:-clinical}
+      HF_HOME: /app/models/.cache/huggingface
+    command:
+      - python
+      - scripts/prepare_dashboard_assistant.py
+      - --tier
+      - ${DASHBOARD_ASSISTANT_TIER:-clinical}
+      - --write-config
+      - --download
+      - --reindex
+    volumes:
+      - ../dashboard/data:/app/dashboard/data
+      - ../config:/app/config
+      - ../models/local_llms:/app/models/local_llms
+    restart: "no"
 
   dashboard-share:
     profiles: ["share"]

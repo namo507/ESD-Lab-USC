@@ -86,7 +86,7 @@ DEFAULT_DASHBOARD_CONTROLS: dict[str, Any] = {
         "small_cell_min": 5,
     },
     "sync": {"cadence_cron": "0 8 * * *", "chunk_size": 500},
-    "assistant": {"model_tier": "balanced", "max_fragments": 25},
+    "assistant": {"model_tier": "clinical", "max_fragments": 25},
     "feature_flags": {
         "redcap.visitHealth": True,
         "redcap.whatif": True,
@@ -191,7 +191,7 @@ def normalize_dashboard_controls(raw: dict[str, Any] | None = None) -> dict[str,
         maximum=5000,
     )
     assistant = controls.setdefault("assistant", {})
-    assistant["model_tier"] = str(assistant.get("model_tier") or "balanced")
+    assistant["model_tier"] = str(assistant.get("model_tier") or "clinical")
     assistant["max_fragments"] = _clamp_int(
         assistant.get("max_fragments"),
         default=25,

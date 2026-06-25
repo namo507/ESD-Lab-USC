@@ -225,7 +225,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--tier",
         default=os.getenv("DASHBOARD_ASSISTANT_TIER", "auto"),
-        help="Model tier: auto, tiny, balanced, accuracy, or quality.",
+        help="Model tier: auto, tiny, balanced, accuracy, quality, or clinical.",
     )
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--download-fallbacks", action="store_true")

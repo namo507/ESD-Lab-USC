@@ -510,7 +510,7 @@ const MOCK_REDCAP_CONTROLS = {
     small_cell_min: 5,
   },
   sync: { cadence_cron: "0 8 * * *", chunk_size: 500 },
-  assistant: { model_tier: "balanced", max_fragments: 25 },
+  assistant: { model_tier: "clinical", max_fragments: 25 },
   feature_flags: {
     "redcap.visitHealth": true,
     "redcap.whatif": true,

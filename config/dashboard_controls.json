@@ -10,7 +10,7 @@
     "chunk_size": 500
   },
   "assistant": {
-    "model_tier": "balanced",
+    "model_tier": "clinical",
     "max_fragments": 25
   },
   "feature_flags": {

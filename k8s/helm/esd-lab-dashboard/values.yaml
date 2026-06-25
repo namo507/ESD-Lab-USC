@@ -39,6 +39,16 @@ dashboard:
       cpu: "1"
       memory: 1536Mi
 
+assistant:
+  enabled: true
+  tier: auto
+  autoDownload: false
+  contextWindow: 2048
+  threads: 4
+  maxNewTokens: ""
+  minMemoryGiB: ""
+  modelCacheClaim: ""
+
 watcher:
   enabled: true
   pollSeconds: 2
@@ -86,6 +96,7 @@ secret:
   participantIdSalt: ""
   dashboardOperatorToken: ""
   pagesDeployHookUrl: ""
+  hfToken: ""
 
 networkPolicy:
   enabled: true

@@ -16,6 +16,20 @@ def test_auto_selection_prefers_balanced_when_host_fits():
     assert selected["filename"] == "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
 
 
+def test_auto_selection_prefers_clinical_on_capable_host():
+    selected = select_catalog_model(memory_gib=12.0, disk_free_gib=12.0)
+
+    assert selected["tier"] == "clinical"
+    assert selected["filename"] == "ggml-model-Q4_K_M.gguf"
+
+
+def test_explicit_clinical_selection_uses_biomistral():
+    selected = select_catalog_model(tier="medical", memory_gib=1.0, disk_free_gib=1.0)
+
+    assert selected["tier"] == "clinical"
+    assert selected["repo_id"] == "BioMistral/BioMistral-7B-GGUF"
+
+
 def test_auto_selection_uses_tiny_when_memory_is_low():
     selected = select_catalog_model(memory_gib=1.0, disk_free_gib=8.0)
 
@@ -40,6 +54,25 @@ def test_runtime_selection_uses_present_tiny_fallback(tmp_path, monkeypatch):
 
     assert selected["tier"] == "tiny"
     assert selected["resolved_path"] == str(tiny_path)
+
+
+def test_runtime_selection_falls_back_when_clinical_missing(tmp_path, monkeypatch):
+    primary = select_catalog_model(tier="clinical")
+    config = build_llm_config(primary)
+    balanced_dir = tmp_path / "models" / "local_llms" / "SmolLM2-1.7B-Instruct-GGUF"
+    balanced_dir.mkdir(parents=True)
+    balanced_path = balanced_dir / "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
+    balanced_path.write_bytes(b"GGUF")
+
+    monkeypatch.setattr(
+        "dashboard.assistant.model_catalog.available_memory_gib",
+        lambda: 4.0,
+    )
+
+    selected = select_runtime_model_config(config, project_root=tmp_path)
+
+    assert selected["tier"] == "balanced"
+    assert selected["resolved_path"] == str(balanced_path)
 
 
 def test_runtime_selection_honors_requested_tier_when_present(tmp_path, monkeypatch):

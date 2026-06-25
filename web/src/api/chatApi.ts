@@ -10,6 +10,9 @@ export interface AssistantStatus {
   status: "ready" | "unloaded" | "error";
   error: string | null;
   model: string | null;
+  model_tier?: string | null;
+  model_label?: string | null;
+  model_license?: string | null;
   freshness?: {
     readings?: {
       last_indexed_at?: string | null;
@@ -36,6 +39,9 @@ interface AssistantStatusPayload {
   status?: unknown;
   error?: unknown;
   model?: unknown;
+  model_tier?: unknown;
+  model_label?: unknown;
+  model_license?: unknown;
   ready?: unknown;
   state?: unknown;
   last_error?: unknown;
@@ -61,7 +67,7 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
     || payload.status === "unloaded"
     || payload.status === "error"
   ) {
-    return {
+    const status: AssistantStatus = {
       status: payload.status,
       error: typeof payload.error === "string" ? payload.error : null,
       model:
@@ -75,6 +81,10 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
           ? (payload.freshness as AssistantStatus["freshness"])
           : undefined,
     };
+    if (typeof payload.model_tier === "string") status.model_tier = payload.model_tier;
+    if (typeof payload.model_label === "string") status.model_label = payload.model_label;
+    if (typeof payload.model_license === "string") status.model_license = payload.model_license;
+    return status;
   }
 
   const ready = payload.ready === true;
@@ -95,7 +105,7 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
     status = "unloaded";
   }
 
-  return {
+  const statusPayload: AssistantStatus = {
     status,
     error: status === "ready" ? null : error,
     model:
@@ -109,6 +119,10 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
         ? (payload.freshness as AssistantStatus["freshness"])
         : undefined,
   };
+  if (typeof payload.model_tier === "string") statusPayload.model_tier = payload.model_tier;
+  if (typeof payload.model_label === "string") statusPayload.model_label = payload.model_label;
+  if (typeof payload.model_license === "string") statusPayload.model_license = payload.model_license;
+  return statusPayload;
 }
 
 function scrubHistory(history: ChatMessage[]): ChatMessage[] {

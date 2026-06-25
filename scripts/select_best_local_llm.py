@@ -28,7 +28,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--tier",
         default=os.getenv("DASHBOARD_ASSISTANT_TIER", "auto"),
-        help="Model tier to select: auto, tiny, balanced, accuracy, or quality.",
+        help="Model tier to select: auto, tiny, balanced, accuracy, quality, or clinical.",
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_LLM_CONFIG_PATH)
     parser.add_argument(

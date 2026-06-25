@@ -13,6 +13,7 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
   { lane: "model",  label: "SHAP explorer",                prompt: "Explain how to read the SHAP Explorer beeswarm and what participant highlighting changes." },
   { lane: "model",  label: "Model leaderboard",            prompt: "Summarize the Model Leaderboard and which metrics I should compare before trusting a model." },
+  { lane: "model",  label: "Local AI model",                prompt: "Which local no-API model is configured for ESD Buddy, why was it selected, and when will the dashboard fall back to a smaller model?" },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
   { lane: "redcap", label: "Participant ID legend",       prompt: "What does the participant ID legend mean for NANO, NICO, ANONICO, and dual-enrolled participants? Explain 5-series versus 9-series and visit markers." },
   { lane: "redcap", label: "Dual forms policy",           prompt: "For a dual-enrolled participant, should AIH and EH be one shared master form or duplicate study-specific forms? Explain the linking ID rule." },
@@ -228,10 +229,11 @@ export function ChatDrawer() {
   }, []);
 
   const statusTone = statusBusy ? "loading" : status?.status === "ready" ? "ready" : "error";
+  const modelDisplay = status?.model_label || status?.model?.split("/").pop() || "model";
   const statusLabel = statusBusy
     ? "loading…"
     : status?.status === "ready"
-      ? `ready · ${status.model?.split("/").pop() ?? "model"}`
+      ? `ready · ${modelDisplay}`
       : status?.status === "unloaded"
         ? "model unavailable"
         : "offline";
@@ -259,7 +261,15 @@ export function ChatDrawer() {
           <div style={{ position: "relative", zIndex: 1 }}>
             <div className={styles.headTitle}>ESD Buddy</div>
             <div className={styles.headSub}>Grounded in NANO study context</div>
-            <div className={styles.statusPill}>
+            <div
+              className={styles.statusPill}
+              data-insight="assistant-model-clinical"
+              data-insight-body={
+                status?.model_label
+                  ? `${status.model_label} (${status.model_tier ?? "auto"} tier, ${status.model_license ?? "local"} license) is the active local GGUF policy for this assistant status.`
+                  : undefined
+              }
+            >
               <span className={`${styles.statusDot} ${styles[statusTone]}`} aria-hidden />
               <span>{statusLabel}</span>
             </div>

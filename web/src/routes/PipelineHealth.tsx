@@ -196,7 +196,7 @@ export function PipelineHealth() {
             <div><span>Completeness warn</span><strong>{pct(controls?.anomaly_thresholds?.completeness_warn_pct)}</strong></div>
             <div><span>Freshness SLA</span><strong>{controls?.anomaly_thresholds?.freshness_sla_hours ?? 48}h</strong></div>
             <div><span>Chunk size</span><strong>{controls?.sync?.chunk_size ?? 500}</strong></div>
-            <div><span>Assistant tier</span><strong>{controls?.assistant?.model_tier ?? "balanced"}</strong></div>
+            <div><span>Assistant tier</span><strong>{controls?.assistant?.model_tier ?? "clinical"}</strong></div>
             <div><span>Fragments</span><strong>{controls?.assistant?.max_fragments ?? 25}</strong></div>
           </div>
         </Card>
