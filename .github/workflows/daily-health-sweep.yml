@@ -131,6 +131,8 @@ jobs:
           python scripts/check_live_surfaces.py \
             --canonical-url "$CANONICAL_PAGES_URL" \
             --canonical-route /overview \
+            --canonical-route /redcap \
+            --canonical-route /pipeline-health \
             --canonical-route '/?v=20260604-032545' \
             --timeout 30 \
             --max-stamp-age-hours 168 \

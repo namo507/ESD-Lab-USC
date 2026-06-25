@@ -62,6 +62,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dashboard/data/dashboard_data.json dashboard/context_skill/references/tables/redcap.md dashboard/context_skill/references/dashboard_schema.md web/src/constants/redcapConfig.ts
+          git add dashboard/data/dashboard_data.json config/dashboard_controls.json dashboard/context_skill/references/tables/redcap.md dashboard/context_skill/references/dashboard_schema.md web/src/constants/redcapConfig.ts
           git diff --cached --quiet || git commit -m "Auto: REDCap sync + context regen [skip ci]"
           git push || true
+
+      - name: Trigger Pages deploy hook
+        if: ${{ secrets.PAGES_DEPLOY_HOOK_URL != '' }}
+        env:
+          PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$PAGES_DEPLOY_HOOK_URL"

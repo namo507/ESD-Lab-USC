@@ -80,6 +80,8 @@ export function PublicInsights() {
   const lineSeries = trajectoryToSeries(metric, trajectory, rsa.data);
   const counts = study.data?.groups;
   const redcapStats = redcap.data?.redcap_completion_stats ?? {};
+  const smallCellMin = redcap.data?.redcap_ops.controls_snapshot?.anomaly_thresholds?.small_cell_min ?? 5;
+  const publicCount = (value: number) => (value > 0 && value < smallCellMin ? `fewer than ${smallCellMin}` : value.toFixed(0));
   const redcapCompletenessSeries: CdcLineSeries[] = [{
     label: "CSBS complete",
     color: "var(--status-green)",
@@ -95,7 +97,7 @@ export function PublicInsights() {
       label: row?.label ?? eventName,
       left: row?.complete ?? 0,
       right: (row?.incomplete ?? 0) + (row?.not_started ?? 0) + (row?.unverified ?? 0),
-      format: (v: number) => v.toFixed(0),
+      format: publicCount,
     };
   });
 
@@ -276,7 +278,7 @@ export function PublicInsights() {
             </div>
             <p>
               The public view shows aggregate counts only. Current carry-forward anomaly count:
-              {" "}{redcap.data?.redcap_meta.anomaly_count ?? 0}.
+              {" "}{publicCount(redcap.data?.redcap_meta.anomaly_count ?? 0)}.
             </p>
           </Card>
           <CumulativeCurve

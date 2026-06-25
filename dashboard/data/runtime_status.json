@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-25T01:35:17",
+  "generated_at": "2026-06-25T13:15:05",
   "status": "ok",
   "build_count": 1,
   "last_build_reason": "startup",
-  "last_build_started_at": "2026-06-25T01:35:06",
-  "last_build_finished_at": "2026-06-25T01:35:17",
-  "last_successful_build_finished_at": "2026-06-25T01:35:17",
-  "watch_interval_seconds": 999,
-  "fallback_synthetic": true,
+  "last_build_started_at": "2026-06-25T13:14:54",
+  "last_build_finished_at": "2026-06-25T13:15:05",
+  "last_successful_build_finished_at": "2026-06-25T13:15:05",
+  "watch_interval_seconds": 3600,
+  "fallback_synthetic": false,
   "dashboard": {
-    "generated_at": "2026-06-25T01:35:15",
+    "generated_at": "2026-06-25T13:15:02",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -23,7 +23,7 @@
     }
   },
   "readings": {
-    "generated_at": "2026-06-25T01:35:17",
+    "generated_at": "2026-06-25T13:15:04",
     "source_dir": "esd-lab-readings",
     "total_readings": 20,
     "latest_modified_at": "2026-04-18T01:12:08",
@@ -75,6 +75,7 @@
     "esd-lab-readings",
     "config/paths.yml",
     "config/study_parameters.yml",
+    "config/dashboard_controls.json",
     "data/data_dictionary/NANO_master_data_dictionary.csv",
     "dashboard/pipelines/build_dashboard_data.py",
     "dashboard/pipelines/build_org_site_data.py",

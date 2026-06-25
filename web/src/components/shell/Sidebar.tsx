@@ -45,6 +45,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     items: [
       { to: "/runs", label: "Clinical Pipeline", icon: "git-branch" },
       { to: "/redcap", label: "REDCap Sync", icon: "refresh-cw" },
+      { to: "/pipeline-health", label: "Pipeline Health", icon: "server-cog", flag: "REDCAP_PIPELINE_HEALTH" },
       { to: "/matlab", label: "MATLAB Bridge", icon: "function-square" },
       { to: "/data-explorer", label: "Data Explorer", icon: "table", flag: "SQL_TABLE_EXPLORER" },
       { to: "/results", label: "Results & Trajectories", icon: "line-chart" },
@@ -124,6 +125,7 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
     items: [
       { to: "/executive", label: "Executive", icon: "presentation", flag: "EXECUTIVE_MODE" },
       { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+      { to: "/pipeline-health", label: "Pipeline Health", icon: "server-cog", flag: "REDCAP_PIPELINE_HEALTH" },
       { to: "/public-insights", label: "Public Insights", icon: "bar-chart-3", flag: "PUBLIC_INSIGHTS" },
       { to: "/results", label: "Results", icon: "line-chart" },
       { to: "/attrition-funnel", label: "Retention", icon: "git-merge", flag: "ATTRITION_FUNNEL_V2" },

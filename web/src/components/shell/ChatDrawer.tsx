@@ -24,6 +24,8 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "R1 flagged records",          prompt: "Which de-identified records are flagged R1, and what does R1 mean?" },
   { lane: "redcap", label: "9m CSBS completeness",        prompt: "Show 9-month CSBS completeness with complete, unverified, incomplete, not-started, skipped, and total counts." },
   { lane: "redcap", label: "REDCap freshness",            prompt: "When was REDCap last synced, how many records were loaded, and was the source redcap-api or synthetic-fallback?" },
+  { lane: "redcap", label: "Behind target",               prompt: "Which REDCap event is furthest behind target, and how large is the gap?" },
+  { lane: "redcap", label: "Runtime parity",              prompt: "Are Pages, Docker, and K8s serving the same REDCap payload hash right now?" },
   { lane: "redcap", label: "Carry-forward risk",          prompt: "Explain how the carry-forward risk detection works for CSBS surveys across 6m, 9m, 12m, and 24m visits. What R1-R5 conditions trigger a warning, and what should the coordinator do?" },
   { lane: "redcap", label: "Coverage vs completeness",     prompt: "What's the difference between the NDA completeness scorecard and the visit health coverage metric? How should I use each one?" },
   { lane: "redcap", label: "Anomaly triage",               prompt: "A participant has a carry-forward risk flag. Walk me through the triage steps: what to check in the dashboard, what to fix in REDCap, and how to confirm the fix worked." },
@@ -235,7 +237,7 @@ export function ChatDrawer() {
         : "offline";
   const redcapFreshness = status?.freshness?.redcap;
   const redcapFreshnessLabel = redcapFreshness?.generated_at
-    ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags`
+    ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags${typeof redcapFreshness.age_hours === "number" ? ` · ${redcapFreshness.age_hours.toFixed(1)}h old` : ""}`
     : null;
 
   return (

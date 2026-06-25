@@ -12,6 +12,7 @@ const QA = lazy(() => import("@/routes/QA").then((m) => ({ default: m.QA })));
 const Results = lazy(() => import("@/routes/Results").then((m) => ({ default: m.Results })));
 const Runs = lazy(() => import("@/routes/Runs").then((m) => ({ default: m.Runs })));
 const Redcap = lazy(() => import("@/routes/Redcap").then((m) => ({ default: m.Redcap })));
+const PipelineHealth = lazy(() => import("@/routes/PipelineHealth").then((m) => ({ default: m.PipelineHealth })));
 const Matlab = lazy(() => import("@/routes/Matlab").then((m) => ({ default: m.Matlab })));
 const DataExplorer = lazy(() => import("@/routes/DataExplorer").then((m) => ({ default: m.DataExplorer })));
 const Publications = lazy(() => import("@/routes/Publications").then((m) => ({ default: m.Publications })));
@@ -122,6 +123,7 @@ export default function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/runs" element={<Runs />} />
             <Route path="/redcap" element={<Redcap />} />
+            <Route path="/pipeline-health" element={<PipelineHealth />} />
             <Route path="/matlab" element={<Matlab />} />
             <Route path="/data-explorer" element={<DataExplorer />} />
             <Route path="/publications" element={<Publications />} />

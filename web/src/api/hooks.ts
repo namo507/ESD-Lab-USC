@@ -14,7 +14,13 @@ import * as S from "./schemas";
 import { z, type ZodType } from "zod";
 import { fetchAssistantStatus } from "./chatApi";
 import { CARRY_FORWARD, EVENT_LABELS, REDCAP_DASHBOARD_DATA_URL } from "@/constants/redcapConfig";
-import { RedcapPayload, type RedcapCompletionStat, type RedcapPayload as RedcapPayloadType } from "./redcapSchemas";
+import {
+  RedcapOps,
+  RedcapPayload,
+  type RedcapCompletionStat,
+  type RedcapOps as RedcapOpsType,
+  type RedcapPayload as RedcapPayloadType,
+} from "./redcapSchemas";
 import {
   planPresentation,
   createPresentationJob,
@@ -343,20 +349,78 @@ function completionStatsFromRecords(records: S.RedcapVisitRecord[]): Record<stri
 
 function legacyVisitHealthToPayload(health: S.RedcapVisitHealthResponse): RedcapPayloadType {
   const anomalyCount = health.data.filter((row) => row.hasCarryForwardRisk).length;
+  const completionStats = completionStatsFromRecords(health.data);
+  const generatedAt = health.meta.generatedAt;
   return {
     redcap_meta: {
-      generated_at: health.meta.generatedAt,
+      generated_at: generatedAt,
       pid: 5955,
       record_count: health.data.length,
       anomaly_count: anomalyCount,
       source: health.meta.source ?? "legacy-api",
       contract_version: "2.0",
-      payload_version: health.meta.generatedAt,
+      payload_version: generatedAt,
     },
-    redcap_completion_stats: completionStatsFromRecords(health.data),
+    redcap_completion_stats: completionStats,
     redcap_visit_health: {
       anomaly_count: anomalyCount,
       data: health.data,
+    },
+    redcap_trackers: {
+      enrollment: CARRY_FORWARD.events.map((eventName) => {
+        const stat = completionStats[eventName] ?? emptyCompletionStat(eventName);
+        return {
+          event: eventName,
+          label: stat.label,
+          expected: stat.total,
+          scheduled: stat.total,
+          completed: stat.complete,
+        };
+      }),
+      instrument_completeness: [{
+        instrument: "csbs_caregiver",
+        label: "CSBS Caregiver",
+        byEvent: Object.fromEntries(
+          Object.entries(completionStats).map(([eventName, stat]) => [
+            eventName,
+            { complete: stat.complete, total: stat.total },
+          ]),
+        ),
+      }],
+      queue_funnel: [
+        { stage: "expected", count: Object.values(completionStats).reduce((sum, stat) => sum + stat.total, 0) },
+        { stage: "scheduled", count: Object.values(completionStats).reduce((sum, stat) => sum + stat.total, 0) },
+        { stage: "started", count: Object.values(completionStats).reduce((sum, stat) => sum + stat.complete + stat.unverified + stat.incomplete + stat.skipped, 0) },
+        { stage: "complete", count: Object.values(completionStats).reduce((sum, stat) => sum + stat.complete, 0) },
+      ],
+      thresholds: { completeness_warn_pct: 0.8, stale_visit_days: 30 },
+    },
+    redcap_timeline: {
+      records: health.data.map((record) => ({
+        recordId: record.recordId,
+        events: [
+          { event: "6_months_arm_1", label: "6m", month: 6, visitDate: record.sixMonth.visitDate ?? "", status: record.sixMonth.csbsStatus, hasRisk: record.hasCarryForwardRisk },
+          { event: "9_months_arm_1", label: "9m", month: 9, visitDate: record.nineMonth.visitDate ?? "", status: record.nineMonth.csbsStatus, hasRisk: record.hasCarryForwardRisk },
+          { event: "12_months_arm_1", label: "12m", month: 12, visitDate: record.twelveMonth.visitDate ?? "", status: record.twelveMonth.csbsStatus, hasRisk: record.hasCarryForwardRisk },
+          { event: "24_months_arm_1", label: "24m", month: 24, visitDate: record.twentyFourMonth.visitDate ?? "", status: record.twentyFourMonth.csbsStatus, hasRisk: record.hasCarryForwardRisk },
+        ],
+      })),
+    },
+    redcap_ops: {
+      freshness: {
+        generated_at: generatedAt,
+        age_hours: 0,
+        source: health.meta.source ?? "legacy-api",
+        sla_hours: 48,
+      },
+      runtime_parity: {},
+      run_ledger: [{
+        run_id: `legacy-${generatedAt}`,
+        started_at: generatedAt,
+        status: "ok",
+        records: health.data.length,
+        anomalies: anomalyCount,
+      }],
     },
   };
 }
@@ -382,6 +446,24 @@ export function useRedcapData(enabled = true): UseQueryResult<RedcapPayloadType>
     queryFn: fetchRedcapDashboardPayload,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
+  });
+}
+
+export function useRedcapOps(enabled = true): UseQueryResult<RedcapOpsType> {
+  return useQuery({
+    enabled,
+    queryKey: ["redcap", "ops"],
+    queryFn: async () => {
+      try {
+        return await api.get("/api/ops", RedcapOps);
+      } catch {
+        const payload = await fetchRedcapDashboardPayload();
+        return payload.redcap_ops;
+      }
+    },
+    staleTime: 60_000,
+    gcTime: 30 * 60_000,
+    refetchInterval: 60_000,
   });
 }
 

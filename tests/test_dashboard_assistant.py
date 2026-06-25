@@ -226,3 +226,88 @@ def test_summary_uses_best_model_actual_index(tmp_path):
         "ml_performance.models[1]",
         "Best model: 1D-CNN + LSTM (0.899)",
     ) in fragments
+
+
+def test_assistant_answers_redcap_runtime_parity_from_ops_payload(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "redcap_ops": {
+                    "runtime_parity": {
+                        "pages": "abc12345",
+                        "docker": "abc12345",
+                        "k8s": "abc12345",
+                    }
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("Are Pages, Docker, and K8s in runtime parity?")
+    response = assistant._maybe_short_circuit_response(
+        "Are Pages, Docker, and K8s in runtime parity?",
+        context,
+    )
+
+    assert response is not None
+    assert "in sync" in response
+    assert "pages=abc12345" in response
+
+
+def test_assistant_answers_redcap_furthest_behind_from_trackers(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "redcap_trackers": {
+                    "enrollment": [
+                        {
+                            "event": "6_months_arm_1",
+                            "label": "6 months",
+                            "expected": 50,
+                            "completed": 45,
+                        },
+                        {
+                            "event": "24_months_arm_1",
+                            "label": "24 months",
+                            "expected": 40,
+                            "completed": 20,
+                        },
+                    ]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("Which REDCap event is furthest behind target?")
+    response = assistant._maybe_short_circuit_response(
+        "Which REDCap event is furthest behind target?",
+        context,
+    )
+
+    assert response is not None
+    assert "24 months is furthest behind target" in response
+    assert "20/40 complete" in response

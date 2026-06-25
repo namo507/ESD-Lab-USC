@@ -369,6 +369,129 @@
   display: grid;
   gap: 14px;
 }
+.opsStack {
+  display: grid;
+  gap: 14px;
+}
+.opsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 14px;
+  align-items: start;
+}
+.whatIfBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--warm-border);
+  background: var(--bg-subtle);
+  padding: 12px 18px;
+}
+.whatIfBar label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--slate-500);
+  font-size: 11px;
+  font-weight: var(--w-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.whatIfBar input {
+  width: 160px;
+  accent-color: var(--usc-garnet);
+}
+.boardColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+.riskColumn {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 220px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 10px;
+}
+.riskColumnTitle {
+  color: var(--slate-500);
+  font-size: 10px;
+  font-weight: var(--w-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.riskMiniCard {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 9px 10px;
+}
+.riskMiniCard strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+.riskMiniCard span,
+.emptyMini {
+  color: var(--slate-500);
+  font-size: 11px;
+}
+.emptyMini {
+  border: 1px dashed var(--warm-border);
+  border-radius: var(--r-2);
+  padding: 10px;
+}
+.heatwall {
+  display: grid;
+  grid-template-columns: minmax(132px, 1.1fr) repeat(12, minmax(54px, 1fr));
+  gap: 4px;
+  overflow-x: auto;
+  padding: 14px 18px 18px;
+}
+.heatHeader {
+  color: var(--slate-500);
+  font-size: 10px;
+  font-weight: var(--w-bold);
+  text-align: center;
+  text-transform: uppercase;
+}
+.heatInstrument {
+  min-height: 30px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: var(--w-semibold);
+  line-height: 1.2;
+  align-content: center;
+}
+.heatCell {
+  display: grid;
+  place-items: center;
+  min-width: 54px;
+  min-height: 30px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.heatOk { background: var(--green-tint); color: var(--on-ok); }
+.heatWarn { background: var(--usc-gold-tint); color: var(--warn-fg); }
+.heatFail { background: var(--red-tint); color: var(--on-fail); }
+.swimlaneWrap {
+  overflow-x: auto;
+  padding: 14px 18px 18px;
+}
+.swimlaneSvg {
+  display: block;
+  min-width: 760px;
+  width: 100%;
+  height: auto;
+}
 
 @keyframes shimmer {
   0% { background-position: 100% 0; }
@@ -511,7 +634,8 @@
   .entryForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .alertBody { align-items: flex-start; flex-direction: column; }
   .alertActions { justify-content: flex-start; }
-  .hero, .split { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
+  .hero, .split, .opsGrid { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
+  .boardColumns { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -520,4 +644,6 @@
   .timeline::before { display: none; }
   .alertDetails li { grid-template-columns: 1fr; }
   .listHead { align-items: flex-start; flex-direction: column; }
+  .whatIfBar { align-items: flex-start; flex-direction: column; }
+  .whatIfBar label { align-items: flex-start; flex-direction: column; }
 }

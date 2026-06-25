@@ -26,6 +26,8 @@ export interface AssistantStatus {
       record_count?: number | null;
       anomaly_count?: number | null;
       source?: string | null;
+      age_hours?: number | null;
+      sla_hours?: number | null;
     };
   };
 }

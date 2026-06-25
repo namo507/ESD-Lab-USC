@@ -38,8 +38,10 @@ Reproducibility
 Seeded at ``SEED = 42``. Parameters match the real study configuration
 in ``config/study_parameters.yml`` (n_target = 260, 3 groups, 9 events).
 """
+
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -58,8 +60,8 @@ rng = np.random.default_rng(SEED)
 # ─── Study constants (match config/study_parameters.yml) ────────────────────
 GROUPS = {
     "ASIB": {"n_target": 65, "color": "#C44E52", "label": "ASIB (VPT + ASD traits)"},
-    "PT":   {"n_target": 130, "color": "#4C72B0", "label": "PT (VPT typical)"},
-    "TD":   {"n_target": 65, "color": "#55A868", "label": "TD (Term-born typical)"},
+    "PT": {"n_target": 130, "color": "#4C72B0", "label": "PT (VPT typical)"},
+    "TD": {"n_target": 65, "color": "#55A868", "label": "TD (Term-born typical)"},
 }
 EVENTS = [
     ("nicu_admission", 0, "NICU Admission"),
@@ -73,28 +75,36 @@ EVENTS = [
     ("month_36", 36, "36 Months"),
 ]
 INSTRUMENTS = [
-    "demographics", "nicu_morbidity", "nnns_attention_1_3m",
-    "ecg_recording_log", "temperature_recording_log",
-    "behavioral_coding_log", "csbs_social_communication",
-    "bayley4_scores", "ados2_scores", "mchat_r_tf",
-    "asq3_milestones", "prapare_sdoh", "epds_maternal_depression",
+    "demographics",
+    "nicu_morbidity",
+    "nnns_attention_1_3m",
+    "ecg_recording_log",
+    "temperature_recording_log",
+    "behavioral_coding_log",
+    "csbs_social_communication",
+    "bayley4_scores",
+    "ados2_scores",
+    "mchat_r_tf",
+    "asq3_milestones",
+    "prapare_sdoh",
+    "epds_maternal_depression",
     "hmet_recording_log",
 ]
 MODELS = [
-    ("Random Forest",   "rf",      0.82, 0.03),
-    ("XGBoost",         "xgb",     0.86, 0.025),
+    ("Random Forest", "rf", 0.82, 0.03),
+    ("XGBoost", "xgb", 0.86, 0.025),
     ("Logistic Regression", "logreg", 0.74, 0.04),
-    ("SVM (RBF)",       "svm",     0.78, 0.035),
-    ("1D-CNN + LSTM",   "cnn_lstm", 0.89, 0.03),
-    ("Transformer",     "transformer", 0.87, 0.032),
+    ("SVM (RBF)", "svm", 0.78, 0.035),
+    ("1D-CNN + LSTM", "cnn_lstm", 0.89, 0.03),
+    ("Transformer", "transformer", 0.87, 0.032),
 ]
 FEATURES = [
     ("rmssd_mean_m6", "RMSSD mean @ 6mo", 0.186),
     ("rsa_slope_0_12", "RSA slope 0→12mo", 0.154),
     ("hda_sa_latency_m3", "HDA sust. attention latency @ 3mo", 0.118),
     ("sdnn_mean_m9", "SDNN mean @ 9mo", 0.093),
-    ("cptd_nicu",    "Central-Peripheral Temp Δ (NICU)", 0.078),
-    ("ga_weeks",     "Gestational age (weeks)", 0.065),
+    ("cptd_nicu", "Central-Peripheral Temp Δ (NICU)", 0.078),
+    ("ga_weeks", "Gestational age (weeks)", 0.065),
     ("birth_weight_g", "Birth weight (g)", 0.054),
     ("nnns_attention_m1", "NNNS attention @ 1mo", 0.048),
     ("mchat_total_m9", "M-CHAT total @ 9mo", 0.041),
@@ -102,6 +112,23 @@ FEATURES = [
     ("hr_decel_magnitude", "HR deceleration magnitude", 0.033),
     ("sample_entropy_m6", "Sample entropy @ 6mo", 0.028),
 ]
+
+DEFAULT_CONTROLS = {
+    "anomaly_thresholds": {
+        "stale_visit_days": 30,
+        "completeness_warn_pct": 0.8,
+        "freshness_sla_hours": 48,
+        "small_cell_min": 5,
+    },
+    "sync": {"cadence_cron": "0 8 * * *", "chunk_size": 500},
+    "assistant": {"model_tier": "balanced", "max_fragments": 25},
+    "feature_flags": {
+        "redcap.visitHealth": True,
+        "redcap.whatif": True,
+        "redcap.writeback": False,
+        "redcap.pipelineHealth": True,
+    },
+}
 
 
 def _atomic_write_json(output_path: Path, payload: dict) -> None:
@@ -144,7 +171,11 @@ def generate_enrollment() -> dict:
 
 def generate_visit_completion() -> dict:
     """Completion rate per event × group (non-random attrition beyond 12m)."""
-    out = {"events": [e[0] for e in EVENTS], "labels": [e[2] for e in EVENTS], "by_group": {}}
+    out = {
+        "events": [e[0] for e in EVENTS],
+        "labels": [e[2] for e in EVENTS],
+        "by_group": {},
+    }
     for g in GROUPS:
         rates = []
         for i, (_, month, _) in enumerate(EVENTS):
@@ -167,15 +198,19 @@ def generate_data_quality() -> dict:
         base = rng.uniform(2.0, 18.0)
         if inst in {"hmet_recording_log", "behavioral_coding_log"}:
             base += 8.0  # more burden → more missingness
-        missingness.append({
-            "instrument": inst,
-            "pct_missing": round(base, 1),
-            "status": (
-                "High — MNAR risk" if base > 25 else
-                "Moderate — MAR candidate" if base > 10 else
-                "Low — MCAR likely"
-            ),
-        })
+        missingness.append(
+            {
+                "instrument": inst,
+                "pct_missing": round(base, 1),
+                "status": (
+                    "High — MNAR risk"
+                    if base > 25
+                    else (
+                        "Moderate — MAR candidate" if base > 10 else "Low — MCAR likely"
+                    )
+                ),
+            }
+        )
     qc_flags = {
         "total_records": 1840,
         "double_entry_discrepancies": 23,
@@ -197,36 +232,50 @@ def generate_ml_performance() -> dict:
         fpr = np.clip(fpr + rng.normal(0, 0.01, 50), 0, 1)
         fpr = np.minimum.accumulate(fpr[::-1])[::-1]
         # Bootstrap CI
-        ci_low, ci_high = round(max(0.0, auroc - 1.96 * auroc_sd), 3), round(min(1.0, auroc + 1.96 * auroc_sd), 3)
-        out["models"].append({
-            "name": name,
-            "slug": slug,
-            "auroc": round(auroc + rng.normal(0, 0.005), 3),
-            "auroc_ci": [ci_low, ci_high],
-            "auroc_sd": round(auroc_sd, 3),
-            "roc": {"fpr": [round(x, 3) for x in fpr.tolist()],
-                    "tpr": [round(x, 3) for x in tpr.tolist()]},
-            "sensitivity": round(0.70 + rng.uniform(0, 0.2), 3),
-            "specificity": round(0.72 + rng.uniform(0, 0.2), 3),
-            "f1": round(0.65 + rng.uniform(0, 0.2), 3),
-        })
+        ci_low, ci_high = round(max(0.0, auroc - 1.96 * auroc_sd), 3), round(
+            min(1.0, auroc + 1.96 * auroc_sd), 3
+        )
+        out["models"].append(
+            {
+                "name": name,
+                "slug": slug,
+                "auroc": round(auroc + rng.normal(0, 0.005), 3),
+                "auroc_ci": [ci_low, ci_high],
+                "auroc_sd": round(auroc_sd, 3),
+                "roc": {
+                    "fpr": [round(x, 3) for x in fpr.tolist()],
+                    "tpr": [round(x, 3) for x in tpr.tolist()],
+                },
+                "sensitivity": round(0.70 + rng.uniform(0, 0.2), 3),
+                "specificity": round(0.72 + rng.uniform(0, 0.2), 3),
+                "f1": round(0.65 + rng.uniform(0, 0.2), 3),
+            }
+        )
     # SHAP top features (shared across models for simplicity)
     for feat, label, base_imp in FEATURES:
-        out["shap"].append({
-            "feature": feat,
-            "label": label,
-            "importance": round(base_imp + rng.normal(0, 0.008), 3),
-        })
+        out["shap"].append(
+            {
+                "feature": feat,
+                "label": label,
+                "importance": round(base_imp + rng.normal(0, 0.008), 3),
+            }
+        )
     out["shap"].sort(key=lambda x: -x["importance"])
     # Confusion matrix for best model (cnn_lstm)
-    out["confusion"] = {"tp": 47, "fp": 13, "tn": 71, "fn": 9, "best_model": "1D-CNN + LSTM"}
+    out["confusion"] = {
+        "tp": 47,
+        "fp": 13,
+        "tn": 71,
+        "fn": 9,
+        "best_model": "1D-CNN + LSTM",
+    }
     # Subgroup sensitivity
     out["subgroup"] = [
-        {"subgroup": "24-26w GA", "n": 28,  "mean_auroc": 0.81, "sd": 0.06},
-        {"subgroup": "27-29w GA", "n": 52,  "mean_auroc": 0.87, "sd": 0.04},
-        {"subgroup": "30-32w GA", "n": 61,  "mean_auroc": 0.89, "sd": 0.03},
-        {"subgroup": "Male",       "n": 73, "mean_auroc": 0.86, "sd": 0.04},
-        {"subgroup": "Female",     "n": 68, "mean_auroc": 0.88, "sd": 0.04},
+        {"subgroup": "24-26w GA", "n": 28, "mean_auroc": 0.81, "sd": 0.06},
+        {"subgroup": "27-29w GA", "n": 52, "mean_auroc": 0.87, "sd": 0.04},
+        {"subgroup": "30-32w GA", "n": 61, "mean_auroc": 0.89, "sd": 0.03},
+        {"subgroup": "Male", "n": 73, "mean_auroc": 0.86, "sd": 0.04},
+        {"subgroup": "Female", "n": 68, "mean_auroc": 0.88, "sd": 0.04},
     ]
     return out
 
@@ -234,21 +283,30 @@ def generate_ml_performance() -> dict:
 def generate_trajectories() -> dict:
     """HRV biomarker trajectories by group across 0-36m."""
     months = [e[1] for e in EVENTS if e[1] <= 36]
-    out = {"months": months, "by_group": {}, "biomarkers": ["RSA", "RMSSD", "SDNN", "HDA_SA"]}
+    out = {
+        "months": months,
+        "by_group": {},
+        "biomarkers": ["RSA", "RMSSD", "SDNN", "HDA_SA"],
+    }
     # Real-world direction: RSA grows over infancy; ASIB group shows flatter slope
     for g in GROUPS:
         intercept = {"RSA": 3.2, "RMSSD": 28.0, "SDNN": 36.0, "HDA_SA": 450.0}
         slope = {
-            "RSA":    {"ASIB": 0.04, "PT": 0.08, "TD": 0.11}[g],
-            "RMSSD":  {"ASIB": 0.6,  "PT": 1.1,  "TD": 1.4}[g],
-            "SDNN":   {"ASIB": 0.7,  "PT": 1.2,  "TD": 1.5}[g],
+            "RSA": {"ASIB": 0.04, "PT": 0.08, "TD": 0.11}[g],
+            "RMSSD": {"ASIB": 0.6, "PT": 1.1, "TD": 1.4}[g],
+            "SDNN": {"ASIB": 0.7, "PT": 1.2, "TD": 1.5}[g],
             "HDA_SA": {"ASIB": -1.5, "PT": -4.0, "TD": -5.5}[g],
         }
         noise = {"RSA": 0.15, "RMSSD": 2.0, "SDNN": 2.5, "HDA_SA": 28.0}
         traj = {}
         ci = {}
         for bm in ["RSA", "RMSSD", "SDNN", "HDA_SA"]:
-            mean = [round(intercept[bm] + slope[bm] * m + rng.normal(0, noise[bm] * 0.25), 2) for m in months]
+            mean = [
+                round(
+                    intercept[bm] + slope[bm] * m + rng.normal(0, noise[bm] * 0.25), 2
+                )
+                for m in months
+            ]
             ci_low = [round(v - noise[bm] * 0.7, 2) for v in mean]
             ci_high = [round(v + noise[bm] * 0.7, 2) for v in mean]
             traj[bm] = mean
@@ -272,21 +330,254 @@ def generate_redcap_audit() -> dict:
             {"event": e[2], "open": int(rng.integers(2, 9))} for e in EVENTS
         ],
         "recent_activity": [
-            {"date": (datetime.now() - timedelta(days=d)).strftime("%Y-%m-%d"),
-             "action": a,
-             "record_id": f"NANO-{rng.integers(1000, 9999):04d}",
-             "user": u}
+            {
+                "date": (datetime.now() - timedelta(days=d)).strftime("%Y-%m-%d"),
+                "action": a,
+                "record_id": f"NANO-{rng.integers(1000, 9999):04d}",
+                "user": u,
+            }
             for d, a, u in [
-                (0, "QC pipeline run",     "pipeline_bot"),
-                (0, "Double-entry check",   "ra_emma"),
-                (1, "Imputation diagnostics","research_prog"),
+                (0, "QC pipeline run", "pipeline_bot"),
+                (0, "Double-entry check", "ra_emma"),
+                (1, "Imputation diagnostics", "research_prog"),
                 (1, "Field mapping update", "pi_bradshaw"),
                 (2, "Bayley-4 score entered", "ra_sam"),
-                (2, "ADOS-2 module coded",   "ra_julia"),
-                (3, "Temperature data pushed","pipeline_bot"),
-                (4, "ECG batch processed",   "research_prog"),
+                (2, "ADOS-2 module coded", "ra_julia"),
+                (3, "Temperature data pushed", "pipeline_bot"),
+                (4, "ECG batch processed", "research_prog"),
             ]
         ],
+    }
+
+
+def _payload_hash(*parts: object) -> str:
+    text = json.dumps(parts, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def generate_redcap_completion_stats() -> dict:
+    events = [
+        ("6_months_arm_1", "6m", 47, 4, 8, 12, 3),
+        ("9_months_arm_1", "9m", 42, 5, 10, 16, 2),
+        ("12_months_arm_1", "12m", 36, 7, 12, 19, 1),
+        ("24_months_arm_1", "24m", 22, 6, 14, 28, 4),
+    ]
+    return {
+        event: {
+            "label": label,
+            "complete": complete,
+            "unverified": unverified,
+            "incomplete": incomplete,
+            "not_started": not_started,
+            "skipped": skipped,
+            "total": complete + unverified + incomplete + not_started + skipped,
+        }
+        for event, label, complete, unverified, incomplete, not_started, skipped in events
+    }
+
+
+def generate_redcap_visit_health(n: int = 24) -> list[dict]:
+    status_cycle = ["complete", "unverified", "incomplete", "not_started", "skipped"]
+    rows: list[dict] = []
+    for idx in range(n):
+        flags: list[str] = []
+        six = status_cycle[idx % len(status_cycle)]
+        nine = status_cycle[(idx + 1) % len(status_cycle)]
+        twelve = status_cycle[(idx + 2) % len(status_cycle)]
+        tfour = status_cycle[(idx + 3) % len(status_cycle)]
+        if idx % 7 == 0:
+            six, nine, flags = "incomplete", "complete", ["R1"]
+        if idx % 11 == 0:
+            twelve, tfour, flags = "incomplete", "complete", sorted(set(flags + ["R5"]))
+
+        def point(event_name: str, month: int, status: str) -> dict:
+            visit_date = (
+                ""
+                if status == "not_started"
+                else f"2026-{min(month, 12):02d}-{(idx % 24) + 1:02d}"
+            )
+            return {
+                "eventName": event_name,
+                "visitDate": visit_date or None,
+                "csbsStatus": status,
+                "csbsTimestamp": (
+                    f"2026-{min(month, 12):02d}-{(idx % 24) + 1:02d}T09:00:00Z"
+                    if visit_date
+                    else None
+                ),
+            }
+
+        rows.append(
+            {
+                "recordId": f"NANO-{4100 + idx:04d}",
+                "sixMonth": point("6_months_arm_1", 6, six),
+                "nineMonth": point("9_months_arm_1", 9, nine),
+                "twelveMonth": point("12_months_arm_1", 12, twelve),
+                "twentyFourMonth": point("24_months_arm_1", 12, tfour),
+                "anomalyFlags": flags,
+                "hasCarryForwardRisk": bool(flags),
+            }
+        )
+    return sorted(
+        rows, key=lambda row: (not row["hasCarryForwardRisk"], row["recordId"])
+    )
+
+
+def generate_redcap_trackers(completion_stats: dict) -> dict:
+    event_order = [
+        ("consent_arm_1", "Consent", 80, 80, 78),
+        ("1_month_arm_1", "1m", 76, 74, 70),
+        ("2_months_arm_1", "2m", 74, 71, 68),
+        ("3_months_arm_1", "3m", 72, 69, 65),
+        (
+            "6_months_arm_1",
+            "6m",
+            74,
+            68,
+            completion_stats["6_months_arm_1"]["complete"],
+        ),
+        (
+            "9_months_arm_1",
+            "9m",
+            75,
+            64,
+            completion_stats["9_months_arm_1"]["complete"],
+        ),
+        (
+            "12_months_arm_1",
+            "12m",
+            75,
+            56,
+            completion_stats["12_months_arm_1"]["complete"],
+        ),
+        (
+            "24_months_arm_1",
+            "24m",
+            74,
+            42,
+            completion_stats["24_months_arm_1"]["complete"],
+        ),
+        ("36_months_arm_1", "36m", 70, 22, 16),
+    ]
+    instruments = [
+        "csbs_caregiver",
+        "epds_maternal_depression",
+        "medication",
+        "asq3_milestones",
+        "vineland",
+    ]
+    return {
+        "enrollment": [
+            {
+                "event": event,
+                "label": label,
+                "expected": expected,
+                "scheduled": scheduled,
+                "completed": completed,
+            }
+            for event, label, expected, scheduled, completed in event_order
+        ],
+        "instrument_completeness": [
+            {
+                "instrument": instrument,
+                "label": instrument.replace("_", " ")
+                .title()
+                .replace("Csbs", "CSBS")
+                .replace("Epds", "EPDS"),
+                "byEvent": {
+                    event: {
+                        "complete": max(0, completed - offset * 2),
+                        "total": max(scheduled, completed),
+                    }
+                    for event, _label, _expected, scheduled, completed in event_order
+                    if event.endswith("_arm_1")
+                },
+            }
+            for offset, instrument in enumerate(instruments)
+        ],
+        "queue_funnel": [
+            {"stage": "expected", "count": 298},
+            {"stage": "scheduled", "count": 230},
+            {"stage": "started", "count": 174},
+            {"stage": "complete", "count": 147},
+        ],
+        "thresholds": {
+            "completeness_warn_pct": DEFAULT_CONTROLS["anomaly_thresholds"][
+                "completeness_warn_pct"
+            ],
+            "stale_visit_days": DEFAULT_CONTROLS["anomaly_thresholds"][
+                "stale_visit_days"
+            ],
+            "freshness_sla_hours": DEFAULT_CONTROLS["anomaly_thresholds"][
+                "freshness_sla_hours"
+            ],
+            "small_cell_min": DEFAULT_CONTROLS["anomaly_thresholds"]["small_cell_min"],
+        },
+    }
+
+
+def generate_redcap_timeline(visit_rows: list[dict]) -> dict:
+    specs = [
+        ("sixMonth", "6_months_arm_1", "6m", 6),
+        ("nineMonth", "9_months_arm_1", "9m", 9),
+        ("twelveMonth", "12_months_arm_1", "12m", 12),
+        ("twentyFourMonth", "24_months_arm_1", "24m", 24),
+    ]
+    return {
+        "records": [
+            {
+                "recordId": row["recordId"],
+                "events": [
+                    {
+                        "event": event,
+                        "label": label,
+                        "month": month,
+                        "visitDate": (row[key] or {}).get("visitDate") or "",
+                        "status": (row[key] or {}).get("csbsStatus") or "not_started",
+                        "hasRisk": bool(row.get("hasCarryForwardRisk")),
+                    }
+                    for key, event, label, month in specs
+                ],
+            }
+            for row in visit_rows
+        ]
+    }
+
+
+def generate_redcap_ops(
+    *,
+    generated_at: str,
+    completion_stats: dict,
+    visit_rows: list[dict],
+    trackers: dict,
+    timeline: dict,
+) -> dict:
+    content_hash = _payload_hash(completion_stats, visit_rows, trackers, timeline)
+    anomaly_count = sum(1 for row in visit_rows if row.get("hasCarryForwardRisk"))
+    return {
+        "freshness": {
+            "generated_at": generated_at,
+            "age_hours": 0.0,
+            "source": "synthetic-fallback",
+            "status": "fresh",
+            "sla_hours": 48,
+        },
+        "runtime_parity": {
+            "pages": content_hash,
+            "docker": content_hash,
+            "k8s": content_hash,
+        },
+        "run_ledger": [
+            {
+                "run_id": f"redcap-{content_hash}",
+                "started_at": generated_at,
+                "status": "ok",
+                "records": len(visit_rows),
+                "anomalies": anomaly_count,
+                "duration_ms": 0,
+            }
+        ],
+        "controls_snapshot": DEFAULT_CONTROLS,
     }
 
 
@@ -298,16 +589,20 @@ def generate_cohort_table(n: int = 40) -> list[dict]:
         ga = int(rng.integers(24, 33) if g != "TD" else rng.integers(37, 41))
         enrolled_days = int(rng.integers(30, 900))
         last_event = EVENTS[min(len(EVENTS) - 1, int(enrolled_days / 90))][2]
-        rows.append({
-            "nano_id": f"NANO-{1000 + i:04d}",
-            "group": g,
-            "ga_weeks": ga,
-            "birth_weight_g": int(rng.normal(1600 if g != "TD" else 3300, 400)),
-            "sex": rng.choice(["M", "F"]),
-            "last_visit": last_event,
-            "completeness_pct": round(max(40, min(100, 90 + rng.normal(0, 10))), 1),
-            "qc_status": rng.choice(["OK", "Review", "OK", "OK"], p=[0.7, 0.1, 0.1, 0.1]),
-        })
+        rows.append(
+            {
+                "nano_id": f"NANO-{1000 + i:04d}",
+                "group": g,
+                "ga_weeks": ga,
+                "birth_weight_g": int(rng.normal(1600 if g != "TD" else 3300, 400)),
+                "sex": rng.choice(["M", "F"]),
+                "last_visit": last_event,
+                "completeness_pct": round(max(40, min(100, 90 + rng.normal(0, 10))), 1),
+                "qc_status": rng.choice(
+                    ["OK", "Review", "OK", "OK"], p=[0.7, 0.1, 0.1, 0.1]
+                ),
+            }
+        )
     return rows
 
 
@@ -321,9 +616,24 @@ def generate_matlab_integration() -> dict:
     rng = np.random.default_rng(SEED + 1)
     now = datetime.now()
     files = [
-        {"name": "hrv_dense.parquet",      "feature": "hrv",  "rows": int(rng.integers(11_000, 14_000)), "qa_pass_pct": round(float(rng.uniform(0.88, 0.96)), 3)},
-        {"name": "temp_gradients.parquet", "feature": "temp", "rows": int(rng.integers(28_000, 32_000)), "qa_pass_pct": round(float(rng.uniform(0.90, 0.97)), 3)},
-        {"name": "hda_phases.parquet",     "feature": "hda",  "rows": int(rng.integers(3_500, 4_500)),   "qa_pass_pct": round(float(rng.uniform(0.93, 0.99)), 3)},
+        {
+            "name": "hrv_dense.parquet",
+            "feature": "hrv",
+            "rows": int(rng.integers(11_000, 14_000)),
+            "qa_pass_pct": round(float(rng.uniform(0.88, 0.96)), 3),
+        },
+        {
+            "name": "temp_gradients.parquet",
+            "feature": "temp",
+            "rows": int(rng.integers(28_000, 32_000)),
+            "qa_pass_pct": round(float(rng.uniform(0.90, 0.97)), 3),
+        },
+        {
+            "name": "hda_phases.parquet",
+            "feature": "hda",
+            "rows": int(rng.integers(3_500, 4_500)),
+            "qa_pass_pct": round(float(rng.uniform(0.93, 0.99)), 3),
+        },
     ]
     hours = [(now - timedelta(hours=23 - i)).strftime("%H:00") for i in range(24)]
     throughput = [int(max(0, rng.normal(loc=420, scale=110))) for _ in range(24)]
@@ -332,17 +642,19 @@ def generate_matlab_integration() -> dict:
         return {
             "name": name,
             "feature": feature,
-            "last_run": (now - timedelta(minutes=int(rng.integers(2, 30)))).isoformat(timespec="seconds"),
+            "last_run": (now - timedelta(minutes=int(rng.integers(2, 30)))).isoformat(
+                timespec="seconds"
+            ),
             "status": "ok",
             "duration_s": round(float(rng.uniform(dur_lo, dur_hi)), 1),
             "lines": lines,
         }
 
     scripts = [
-        _script("export_hrv_features.m",         "hrv",          96, 8, 22),
-        _script("export_temperature_features.m", "temp",         64, 4, 11),
-        _script("export_hda_phases.m",           "hda",          48, 2, 6),
-        _script("run_all.m",                     "orchestrator", 22, 18, 42),
+        _script("export_hrv_features.m", "hrv", 96, 8, 22),
+        _script("export_temperature_features.m", "temp", 64, 4, 11),
+        _script("export_hda_phases.m", "hda", 48, 2, 6),
+        _script("run_all.m", "orchestrator", 22, 18, 42),
     ]
 
     return {
@@ -358,9 +670,30 @@ def generate_matlab_integration() -> dict:
         "scripts": scripts,
         "throughput_24h": {"hours": hours, "rows": throughput},
         "options": [
-            {"id": "file",   "title": "File handoff",            "tag": "Recommended", "coupling": "loose", "cost": "low",    "summary": "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh."},
-            {"id": "engine", "title": "MATLAB Engine for Python", "tag": "Real-time",   "coupling": "tight", "cost": "medium", "summary": "build_dashboard_data.py invokes .m functions via matlab.engine in a single process."},
-            {"id": "rest",   "title": "REST endpoint",            "tag": "On-demand",   "coupling": "loose", "cost": "medium", "summary": "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference."},
+            {
+                "id": "file",
+                "title": "File handoff",
+                "tag": "Recommended",
+                "coupling": "loose",
+                "cost": "low",
+                "summary": "MATLAB writes Parquet to data/interim/matlab/. Python merge picks it up on the next dashboard refresh.",
+            },
+            {
+                "id": "engine",
+                "title": "MATLAB Engine for Python",
+                "tag": "Real-time",
+                "coupling": "tight",
+                "cost": "medium",
+                "summary": "build_dashboard_data.py invokes .m functions via matlab.engine in a single process.",
+            },
+            {
+                "id": "rest",
+                "title": "REST endpoint",
+                "tag": "On-demand",
+                "coupling": "loose",
+                "cost": "medium",
+                "summary": "MATLAB Production Server or a Flask wrapper exposes /predict for click-time inference.",
+            },
         ],
     }
 
@@ -423,12 +756,29 @@ def generate_attrition_funnel() -> dict:
             "quarter": quarter,
             "stage_id": stage["id"],
             "n": max(0, round(stage["n"] * (0.36 + qi * 0.085) - si * 3)),
-            "retained_pct": round(min(100, stage["retained_pct"] * (0.72 + qi * 0.04)), 1),
+            "retained_pct": round(
+                min(100, stage["retained_pct"] * (0.72 + qi * 0.04)), 1
+            ),
         }
-        for qi, quarter in enumerate(["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
+        for qi, quarter in enumerate(
+            [
+                "2024-Q1",
+                "2024-Q2",
+                "2024-Q3",
+                "2024-Q4",
+                "2025-Q1",
+                "2025-Q2",
+                "2025-Q3",
+                "2025-Q4",
+            ]
+        )
         for si, stage in enumerate(stages)
     ]
-    return {"stages": stages, "reason_codes": reason_codes, "trend_by_quarter": trend_by_quarter}
+    return {
+        "stages": stages,
+        "reason_codes": reason_codes,
+        "trend_by_quarter": trend_by_quarter,
+    }
 
 
 def generate_county_profiles() -> list[dict]:
@@ -459,12 +809,21 @@ def build_payload() -> dict:
     from dashboard.pipelines import build_org_site_data
     from dashboard.pipelines.build_geo_data import generate_geo_data
 
+    generated_at = datetime.now().isoformat(timespec="seconds")
     enrollment = generate_enrollment()
     cohort_table = generate_cohort_table()
+    redcap_generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    redcap_completion_stats = generate_redcap_completion_stats()
+    redcap_visit_health = generate_redcap_visit_health()
+    redcap_trackers = generate_redcap_trackers(redcap_completion_stats)
+    redcap_timeline = generate_redcap_timeline(redcap_visit_health)
+    redcap_anomaly_count = sum(
+        1 for row in redcap_visit_health if row["hasCarryForwardRisk"]
+    )
 
     return {
         "meta": {
-            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "generated_at": generated_at,
             "data_source": "synthetic_demo",
             "seed": SEED,
             "study": {
@@ -491,6 +850,29 @@ def build_payload() -> dict:
         "hda_composition": generate_hda_composition(),
         "attrition_funnel": generate_attrition_funnel(),
         "county_profiles": generate_county_profiles(),
+        "redcap_meta": {
+            "generated_at": redcap_generated_at,
+            "pid": 5955,
+            "record_count": len(redcap_visit_health),
+            "anomaly_count": redcap_anomaly_count,
+            "source": "synthetic-fallback",
+            "contract_version": "2.0",
+            "payload_version": redcap_generated_at,
+        },
+        "redcap_completion_stats": redcap_completion_stats,
+        "redcap_visit_health": {
+            "anomaly_count": redcap_anomaly_count,
+            "data": redcap_visit_health,
+        },
+        "redcap_trackers": redcap_trackers,
+        "redcap_timeline": redcap_timeline,
+        "redcap_ops": generate_redcap_ops(
+            generated_at=redcap_generated_at,
+            completion_stats=redcap_completion_stats,
+            visit_rows=redcap_visit_health,
+            trackers=redcap_trackers,
+            timeline=redcap_timeline,
+        ),
     }
 
 

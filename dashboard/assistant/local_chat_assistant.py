@@ -53,6 +53,9 @@ SUMMARY_KEYS = (
     "redcap_meta",
     "redcap_completion_stats",
     "redcap_visit_health",
+    "redcap_trackers",
+    "redcap_timeline",
+    "redcap_ops",
     "matlab_integration",
     "cohort_table",
     "organization_site",
@@ -133,8 +136,75 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "sync",
         "visit_date",
     },
-    "redcap_meta": {"redcap", "freshness", "fresh", "synced", "sync", "source", "records", "anomalies"},
-    "redcap_completion_stats": {"redcap", "csbs", "completeness", "complete", "incomplete", "unverified", "skipped", "not", "started", "6", "9", "12", "24"},
+    "redcap_meta": {
+        "redcap",
+        "freshness",
+        "fresh",
+        "synced",
+        "sync",
+        "source",
+        "records",
+        "anomalies",
+    },
+    "redcap_completion_stats": {
+        "redcap",
+        "csbs",
+        "completeness",
+        "complete",
+        "incomplete",
+        "unverified",
+        "skipped",
+        "not",
+        "started",
+        "6",
+        "9",
+        "12",
+        "24",
+    },
+    "redcap_trackers": {
+        "redcap",
+        "tracker",
+        "trackers",
+        "target",
+        "behind",
+        "event",
+        "events",
+        "funnel",
+        "queue",
+        "instrument",
+        "heatwall",
+        "scheduled",
+        "expected",
+        "completed",
+    },
+    "redcap_timeline": {
+        "redcap",
+        "timeline",
+        "swimlane",
+        "swimlanes",
+        "event",
+        "events",
+        "visit",
+        "visits",
+        "record",
+        "records",
+    },
+    "redcap_ops": {
+        "redcap",
+        "runtime",
+        "parity",
+        "sync",
+        "synced",
+        "freshness",
+        "fresh",
+        "pages",
+        "docker",
+        "k8s",
+        "kubernetes",
+        "ledger",
+        "controls",
+        "knobs",
+    },
     "participant_operations": {
         "participant",
         "participants",
@@ -495,7 +565,11 @@ class AssistantConfig:
     @classmethod
     def from_env(cls) -> "AssistantConfig":
         llm_config = _select_llm_model_config(_read_llm_model_config())
-        resolved_model_path = Path(str(llm_config.get("resolved_path"))) if llm_config.get("resolved_path") else None
+        resolved_model_path = (
+            Path(str(llm_config.get("resolved_path")))
+            if llm_config.get("resolved_path")
+            else None
+        )
         config_model_dir = (
             resolved_model_path.parent
             if resolved_model_path is not None
@@ -519,7 +593,11 @@ class AssistantConfig:
             ),
             model_file=(
                 os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE")
-                or (resolved_model_path.name if resolved_model_path is not None else None)
+                or (
+                    resolved_model_path.name
+                    if resolved_model_path is not None
+                    else None
+                )
                 or llm_config.get("filename")
                 or DEFAULT_MODEL_FILE
             ),
@@ -1161,7 +1239,7 @@ class DashboardChatAssistant:
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
-                    "Browser REDCap writes are disabled; source corrections must use audited server-side REDCap scripts.\n\n"
+                    "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
             }
@@ -1226,6 +1304,8 @@ class DashboardChatAssistant:
         meta = payload.get("redcap_meta") or {}
         completion = payload.get("redcap_completion_stats") or {}
         visit_health = payload.get("redcap_visit_health") or {}
+        trackers = payload.get("redcap_trackers") or {}
+        ops = payload.get("redcap_ops") or {}
         records = visit_health.get("data") if isinstance(visit_health, dict) else []
         anomaly_codes = {
             "R1": "6m CSBS incomplete and 9m visit_date set",
@@ -1237,34 +1317,106 @@ class DashboardChatAssistant:
         fragments: list[tuple[str, str]] = []
 
         if meta:
-            fragments.append((
-                "redcap_meta",
-                "REDCap freshness: "
-                f"generated_at={meta.get('generated_at') or 'unknown'}, "
-                f"records={meta.get('record_count', 0)}, "
-                f"anomalies={meta.get('anomaly_count', 0)}, "
-                f"source={meta.get('source') or 'unknown'}",
-            ))
+            fragments.append(
+                (
+                    "redcap_meta",
+                    "REDCap freshness: "
+                    f"generated_at={meta.get('generated_at') or 'unknown'}, "
+                    f"records={meta.get('record_count', 0)}, "
+                    f"anomalies={meta.get('anomaly_count', 0)}, "
+                    f"source={meta.get('source') or 'unknown'}",
+                )
+            )
 
         for event_name, stats in completion.items():
             if not isinstance(stats, dict):
                 continue
-            fragments.append((
-                f"redcap_completion_stats.{event_name}",
-                "REDCap CSBS completeness "
-                f"{stats.get('label') or event_name}: "
-                f"{stats.get('complete', 0)} complete, "
-                f"{stats.get('unverified', 0)} unverified, "
-                f"{stats.get('incomplete', 0)} incomplete, "
-                f"{stats.get('not_started', 0)} not started, "
-                f"{stats.get('skipped', 0)} skipped of {stats.get('total', 0)}.",
-            ))
+            fragments.append(
+                (
+                    f"redcap_completion_stats.{event_name}",
+                    "REDCap CSBS completeness "
+                    f"{stats.get('label') or event_name}: "
+                    f"{stats.get('complete', 0)} complete, "
+                    f"{stats.get('unverified', 0)} unverified, "
+                    f"{stats.get('incomplete', 0)} incomplete, "
+                    f"{stats.get('not_started', 0)} not started, "
+                    f"{stats.get('skipped', 0)} skipped of {stats.get('total', 0)}.",
+                )
+            )
+
+        tracker_rows = (
+            (trackers.get("enrollment") or [])[:12]
+            if isinstance(trackers, dict)
+            else []
+        )
+        for row in tracker_rows:
+            if not isinstance(row, dict):
+                continue
+            expected = int(row.get("expected") or 0)
+            completed = int(row.get("completed") or 0)
+            pct = (completed / expected) * 100 if expected else 0
+            fragments.append(
+                (
+                    f"redcap_trackers.enrollment.{row.get('event')}",
+                    "REDCap enrollment tracker "
+                    f"{row.get('label') or row.get('event')}: "
+                    f"{completed}/{expected} completed ({pct:.1f}%), "
+                    f"scheduled={row.get('scheduled', 0)}.",
+                )
+            )
+
+        queue = trackers.get("queue_funnel") if isinstance(trackers, dict) else []
+        if isinstance(queue, list) and queue:
+            fragments.append(
+                (
+                    "redcap_trackers.queue_funnel",
+                    "REDCap queue funnel: "
+                    + ", ".join(
+                        f"{item.get('stage')}={item.get('count')}"
+                        for item in queue
+                        if isinstance(item, dict)
+                    ),
+                )
+            )
+
+        if isinstance(ops, dict):
+            freshness = (
+                ops.get("freshness") if isinstance(ops.get("freshness"), dict) else {}
+            )
+            parity = (
+                ops.get("runtime_parity")
+                if isinstance(ops.get("runtime_parity"), dict)
+                else {}
+            )
+            if freshness:
+                fragments.append(
+                    (
+                        "redcap_ops.freshness",
+                        "REDCap ops freshness: "
+                        f"generated_at={freshness.get('generated_at') or 'unknown'}, "
+                        f"age_hours={freshness.get('age_hours', 0)}, "
+                        f"source={freshness.get('source') or 'unknown'}.",
+                    )
+                )
+            if parity:
+                unique_hashes = sorted(
+                    {str(value) for value in parity.values() if value}
+                )
+                fragments.append(
+                    (
+                        "redcap_ops.runtime_parity",
+                        "REDCap runtime parity hashes: "
+                        + ", ".join(f"{key}={value}" for key, value in parity.items())
+                        + f"; in_sync={len(unique_hashes) <= 1}.",
+                    )
+                )
 
         if not isinstance(records, list):
             return fragments
 
         flagged = [
-            row for row in records
+            row
+            for row in records
             if isinstance(row, dict) and row.get("hasCarryForwardRisk")
         ][:25]
         for index, row in enumerate(flagged):
@@ -1272,21 +1424,25 @@ class DashboardChatAssistant:
             flag_text = ", ".join(
                 f"{flag} ({anomaly_codes.get(flag, 'unknown')})" for flag in flags
             )
-            fragments.append((
-                f"redcap_visit_health.data[{row.get('recordId') or index}]",
-                "REDCap carry-forward record "
-                f"{row.get('recordId')}: flags {flag_text or 'none'}; "
-                f"6m={_redcap_timepoint_text(row.get('sixMonth'))}; "
-                f"9m={_redcap_timepoint_text(row.get('nineMonth'))}; "
-                f"12m={_redcap_timepoint_text(row.get('twelveMonth'))}; "
-                f"24m={_redcap_timepoint_text(row.get('twentyFourMonth'))}.",
-            ))
+            fragments.append(
+                (
+                    f"redcap_visit_health.data[{row.get('recordId') or index}]",
+                    "REDCap carry-forward record "
+                    f"{row.get('recordId')}: flags {flag_text or 'none'}; "
+                    f"6m={_redcap_timepoint_text(row.get('sixMonth'))}; "
+                    f"9m={_redcap_timepoint_text(row.get('nineMonth'))}; "
+                    f"12m={_redcap_timepoint_text(row.get('twelveMonth'))}; "
+                    f"24m={_redcap_timepoint_text(row.get('twentyFourMonth'))}.",
+                )
+            )
 
         if len(records) > len(flagged):
-            fragments.append((
-                "redcap_visit_health.rollup",
-                f"REDCap visit-health records indexed: {len(records)}; flagged records included in context: {len(flagged)}.",
-            ))
+            fragments.append(
+                (
+                    "redcap_visit_health.rollup",
+                    f"REDCap visit-health records indexed: {len(records)}; flagged records included in context: {len(flagged)}.",
+                )
+            )
         return fragments
 
     def _build_summary_fragments(
@@ -1303,6 +1459,7 @@ class DashboardChatAssistant:
         redcap_audit_summary = payload.get("redcap_audit", {}).get("summary", {})
         redcap_meta = payload.get("redcap_meta") or {}
         redcap_visit_health = payload.get("redcap_visit_health") or {}
+        redcap_ops = payload.get("redcap_ops") or {}
         participant_operations = payload.get("participant_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
@@ -1374,6 +1531,37 @@ class DashboardChatAssistant:
                     f"REDCap visit-health anomaly count: {redcap_visit_health.get('anomaly_count', 0)}",
                 )
             )
+        if isinstance(redcap_ops, dict):
+            freshness = (
+                redcap_ops.get("freshness")
+                if isinstance(redcap_ops.get("freshness"), dict)
+                else {}
+            )
+            parity = (
+                redcap_ops.get("runtime_parity")
+                if isinstance(redcap_ops.get("runtime_parity"), dict)
+                else {}
+            )
+            if freshness:
+                fragments.append(
+                    (
+                        "redcap_ops.freshness",
+                        "REDCap ops freshness: "
+                        f"{freshness.get('generated_at') or 'unknown'}; "
+                        f"age_hours: {freshness.get('age_hours', 0)}; "
+                        f"source: {freshness.get('source') or 'unknown'}",
+                    )
+                )
+            if parity:
+                hashes = {str(value) for value in parity.values() if value}
+                fragments.append(
+                    (
+                        "redcap_ops.runtime_parity",
+                        "Runtime parity: "
+                        f"{'in sync' if len(hashes) <= 1 else 'drift detected'}; "
+                        + ", ".join(f"{key}={value}" for key, value in parity.items()),
+                    )
+                )
 
         fragments.append(
             (
@@ -1479,14 +1667,14 @@ class DashboardChatAssistant:
         )
         attrition_funnel = payload.get("attrition_funnel") or {}
         attrition_stages = (
-            attrition_funnel.get("stages")
-            if isinstance(attrition_funnel, dict)
-            else []
+            attrition_funnel.get("stages") if isinstance(attrition_funnel, dict) else []
         )
         county_profiles = payload.get("county_profiles") or []
         redcap_meta = payload.get("redcap_meta") or {}
         redcap_completion_stats = payload.get("redcap_completion_stats") or {}
         redcap_visit_health = payload.get("redcap_visit_health") or {}
+        redcap_trackers = payload.get("redcap_trackers") or {}
+        redcap_ops = payload.get("redcap_ops") or {}
         redcap_visit_records = (
             redcap_visit_health.get("data")
             if isinstance(redcap_visit_health, dict)
@@ -1598,10 +1786,12 @@ class DashboardChatAssistant:
                 if isinstance(redcap_completion_stats, dict)
                 else {}
             ),
+            "redcap_trackers": (
+                redcap_trackers if isinstance(redcap_trackers, dict) else {}
+            ),
+            "redcap_ops": redcap_ops if isinstance(redcap_ops, dict) else {},
             "redcap_visit_records": (
-                redcap_visit_records
-                if isinstance(redcap_visit_records, list)
-                else []
+                redcap_visit_records if isinstance(redcap_visit_records, list) else []
             ),
             "best_model": (
                 {
@@ -1640,7 +1830,23 @@ class DashboardChatAssistant:
 
     def _redcap_freshness_status(self) -> dict[str, Any]:
         payload = self._load_dashboard_payload()
+        ops = payload.get("redcap_ops") or {}
+        freshness = ops.get("freshness") if isinstance(ops, dict) else {}
         meta = payload.get("redcap_meta") or {}
+        if isinstance(freshness, dict) and freshness:
+            return {
+                "generated_at": freshness.get("generated_at"),
+                "record_count": (
+                    meta.get("record_count") if isinstance(meta, dict) else None
+                ),
+                "anomaly_count": (
+                    meta.get("anomaly_count") if isinstance(meta, dict) else None
+                ),
+                "source": freshness.get("source"),
+                "status": freshness.get("status"),
+                "age_hours": freshness.get("age_hours"),
+                "sla_hours": freshness.get("sla_hours"),
+            }
         if not isinstance(meta, dict):
             return {}
         return {
@@ -1648,6 +1854,7 @@ class DashboardChatAssistant:
             "record_count": meta.get("record_count"),
             "anomaly_count": meta.get("anomaly_count"),
             "source": meta.get("source"),
+            "status": meta.get("status"),
         }
 
     def _assistant_freshness_status(self) -> dict[str, Any]:
@@ -1805,13 +2012,19 @@ class DashboardChatAssistant:
                 f"Current indexed groups are {', '.join(groups) if groups else 'not listed'} across {month_count or 'the configured'} month points."
             )
 
-        if (
-            question_tokens & {"participant", "participants", "id", "legend", "numbering"}
-            and question_tokens & {"id", "legend", "numbering", "5", "9", "series"}
-        ):
+        if question_tokens & {
+            "participant",
+            "participants",
+            "id",
+            "legend",
+            "numbering",
+        } and question_tokens & {"id", "legend", "numbering", "5", "9", "series"}:
             legend = facts.get("participant_id_legend") or []
             summary = facts.get("participant_operations_summary") or {}
-            doc = facts.get("participant_operations_doc") or "docs/participant_operations_workflow.md"
+            doc = (
+                facts.get("participant_operations_doc")
+                or "docs/participant_operations_workflow.md"
+            )
             legend_text = "; ".join(
                 f"{item.get('code')}: {item.get('meaning')}"
                 for item in legend[:4]
@@ -1823,20 +2036,36 @@ class DashboardChatAssistant:
                 f"Current operations context lists {summary.get('dual', 0)} dual-enrolled participants. Source doc: {doc}."
             )
 
-        if question_tokens & {"dual", "aih", "eh", "form", "forms", "linking"} and question_tokens & {"dual", "aih", "eh", "form", "forms"}:
+        if question_tokens & {
+            "dual",
+            "aih",
+            "eh",
+            "form",
+            "forms",
+            "linking",
+        } and question_tokens & {"dual", "aih", "eh", "form", "forms"}:
             policies = facts.get("participant_form_policies") or []
             policy_text = "; ".join(
                 f"{item.get('label')}: {item.get('rule')}"
                 for item in policies[:3]
                 if isinstance(item, dict)
             )
-            doc = facts.get("participant_operations_doc") or "docs/participant_operations_workflow.md"
+            doc = (
+                facts.get("participant_operations_doc")
+                or "docs/participant_operations_workflow.md"
+            )
             return (
                 "For dual-enrolled participants, the dashboard policy defaults to one master AIH/EH unless a backend data-pull rule requires study-specific duplicates. "
                 f"{policy_text} Source doc: {doc}."
             )
 
-        if question_tokens & {"packet", "questionnaire", "questionnaires", "scheduling", "risk"}:
+        if question_tokens & {
+            "packet",
+            "questionnaire",
+            "questionnaires",
+            "scheduling",
+            "risk",
+        }:
             steps = facts.get("participant_workflow_steps") or []
             summary = facts.get("participant_operations_summary") or {}
             step_text = "; ".join(str(step) for step in steps[:5])
@@ -1863,7 +2092,8 @@ class DashboardChatAssistant:
             )
 
         if question_tokens & {"terrain", "contour"} or (
-            question_tokens & {"model", "confidence"} and question_tokens & {"terrain", "map", "surface"}
+            question_tokens & {"model", "confidence"}
+            and question_tokens & {"terrain", "map", "surface"}
         ):
             best = facts.get("best_model") or {}
             return (
@@ -1887,9 +2117,7 @@ class DashboardChatAssistant:
         if question_tokens & {"executive", "stakeholder", "stakeholders"}:
             last_stage = facts.get("attrition_last_stage") or {}
             retained = (
-                last_stage.get("retainedPct")
-                if isinstance(last_stage, dict)
-                else None
+                last_stage.get("retainedPct") if isinstance(last_stage, dict) else None
             )
             return (
                 "Executive Mode provides a compact stakeholder dashboard with enrollment, completion, model, SDOH, and retention KPIs plus a PPTX export. "
@@ -1900,9 +2128,7 @@ class DashboardChatAssistant:
             stage_count = facts.get("attrition_stage_count")
             last_stage = facts.get("attrition_last_stage") or {}
             retained = (
-                last_stage.get("retainedPct")
-                if isinstance(last_stage, dict)
-                else None
+                last_stage.get("retainedPct") if isinstance(last_stage, dict) else None
             )
             return (
                 "The Attrition Funnel v2 shows consent-to-analysis retention stages, coded dropout reasons, quarter trends, subgroup filters, and a copy-ready NIH report summary. "
@@ -1927,7 +2153,15 @@ class DashboardChatAssistant:
                 "The participant whitelist excludes DOB, MRN, caregiver IDs, address, and names."
             )
 
-        if question_tokens & {"publication", "publications", "pubmed", "orcid", "crossref", "citation", "bibtex"}:
+        if question_tokens & {
+            "publication",
+            "publications",
+            "pubmed",
+            "orcid",
+            "crossref",
+            "citation",
+            "bibtex",
+        }:
             return (
                 "The Publications route stores normalized PubMed/ORCID-style records in the Python runtime database, enriches DOI records with citation-count metadata when external sync is enabled, "
                 "adds deterministic research tags, formats APA citations, and exports the filtered set as BibTeX."
@@ -1939,14 +2173,24 @@ class DashboardChatAssistant:
                 "PHI fields are redacted before changed fields or snapshots reach the frontend."
             )
 
-        if question_tokens & {"coregulation", "co-regulation", "dyad", "dyadic", "synchrony"}:
+        if question_tokens & {
+            "coregulation",
+            "co-regulation",
+            "dyad",
+            "dyadic",
+            "synchrony",
+        }:
             return (
                 "The Co-Regulation route aligns caregiver and infant Actiheart-derived streams. "
                 "It summarizes synchrony index, signed caregiver/infant lead-lag, coupling stability, recovery concordance, "
                 "and a windowed cross-correlation lag surface. Caregiver streams stay NANOID-keyed and never named."
             )
 
-        if question_tokens & {"phase", "portrait", "arousal"} and question_tokens & {"attention", "orbit", "trajectory"}:
+        if question_tokens & {"phase", "portrait", "arousal"} and question_tokens & {
+            "attention",
+            "orbit",
+            "trajectory",
+        }:
             return (
                 "The Phase Portrait route plots arousal against attentional engagement so a session becomes an orbit through state space. "
                 "Adaptive occupancy, recovery time, entropy, and centroid drift are computed from the endpoint values."
@@ -2006,8 +2250,27 @@ class DashboardChatAssistant:
                 f"Current derived files include {', '.join(file_names) if file_names else 'no files listed'}, and artifact rate is derived from file QA pass percentages."
             )
 
-        redcap_tokens = {"redcap", "csbs", "carry", "forward", "anomaly", "anomalies", "r1", "r2", "r3", "r4", "r5"}
-        if question_tokens & redcap_tokens and question_tokens & {"freshness", "fresh", "synced", "sync", "last", "when"}:
+        redcap_tokens = {
+            "redcap",
+            "csbs",
+            "carry",
+            "forward",
+            "anomaly",
+            "anomalies",
+            "r1",
+            "r2",
+            "r3",
+            "r4",
+            "r5",
+        }
+        if question_tokens & redcap_tokens and question_tokens & {
+            "freshness",
+            "fresh",
+            "synced",
+            "sync",
+            "last",
+            "when",
+        }:
             redcap = facts.get("redcap_freshness") or {}
             if redcap:
                 return (
@@ -2018,14 +2281,80 @@ class DashboardChatAssistant:
                     f"{redcap.get('anomaly_count', 0)} carry-forward anomalies."
                 )
 
+        if question_tokens & {
+            "runtime",
+            "runtimes",
+            "parity",
+            "sync",
+            "synced",
+        } and question_tokens & {
+            "pages",
+            "docker",
+            "k8s",
+            "kubernetes",
+            "sync",
+            "synced",
+            "parity",
+        }:
+            ops = facts.get("redcap_ops") or {}
+            parity = ops.get("runtime_parity") if isinstance(ops, dict) else {}
+            if isinstance(parity, dict) and parity:
+                hashes = {str(value) for value in parity.values() if value}
+                detail = ", ".join(f"{key}={value}" for key, value in parity.items())
+                return (
+                    f"The REDCap runtime parity panel is {'in sync' if len(hashes) <= 1 else 'showing drift'}. "
+                    f"Current hashes: {detail}."
+                )
+
+        if question_tokens & {"event", "events"} and question_tokens & {
+            "target",
+            "behind",
+            "furthest",
+            "farthest",
+        }:
+            trackers = facts.get("redcap_trackers") or {}
+            rows = trackers.get("enrollment") if isinstance(trackers, dict) else []
+            if isinstance(rows, list) and rows:
+                ranked = sorted(
+                    [
+                        row
+                        for row in rows
+                        if isinstance(row, dict) and int(row.get("expected") or 0) > 0
+                    ],
+                    key=lambda row: (
+                        (int(row.get("expected") or 0) - int(row.get("completed") or 0))
+                        / max(int(row.get("expected") or 0), 1),
+                        int(row.get("expected") or 0) - int(row.get("completed") or 0),
+                    ),
+                    reverse=True,
+                )
+                if ranked:
+                    row = ranked[0]
+                    expected = int(row.get("expected") or 0)
+                    completed = int(row.get("completed") or 0)
+                    gap = expected - completed
+                    pct = (completed / expected) * 100 if expected else 0
+                    return (
+                        f"{row.get('label') or row.get('event')} is furthest behind target: "
+                        f"{completed}/{expected} complete ({pct:.1f}%), a gap of {gap}."
+                    )
+
         requested_codes = sorted(question_tokens & {"r1", "r2", "r3", "r4", "r5"})
-        if requested_codes and question_tokens & {"record", "records", "flagged", "which", "list"}:
+        if requested_codes and question_tokens & {
+            "record",
+            "records",
+            "flagged",
+            "which",
+            "list",
+        }:
             records = facts.get("redcap_visit_records") or []
             code = requested_codes[0].upper()
             matches = [
                 str(row.get("recordId"))
                 for row in records
-                if isinstance(row, dict) and code in {str(flag).upper() for flag in row.get("anomalyFlags") or []}
+                if isinstance(row, dict)
+                and code
+                in {str(flag).upper() for flag in row.get("anomalyFlags") or []}
             ]
             definitions = {
                 "R1": "6m CSBS incomplete and 9m visit_date set",
@@ -2040,28 +2369,45 @@ class DashboardChatAssistant:
                 f"{' +' + str(len(matches) - 20) + ' more' if len(matches) > 20 else ''}."
             )
 
-        if question_tokens & {"carry", "forward", "anomaly", "anomalies", "flags", "flagged"}:
+        if question_tokens & {
+            "carry",
+            "forward",
+            "anomaly",
+            "anomalies",
+            "flags",
+            "flagged",
+        }:
             redcap = facts.get("redcap_meta") or {}
             records = facts.get("redcap_visit_records") or []
             if isinstance(records, list):
                 flagged = [
-                    row for row in records
+                    row
+                    for row in records
                     if isinstance(row, dict) and row.get("hasCarryForwardRisk")
                 ]
                 code_counts: dict[str, int] = {}
                 for row in flagged:
                     for flag in row.get("anomalyFlags") or []:
                         code_counts[str(flag)] = code_counts.get(str(flag), 0) + 1
-                code_text = ", ".join(
-                    f"{code}={count}" for code, count in sorted(code_counts.items())
-                ) or "no R-code flags"
+                code_text = (
+                    ", ".join(
+                        f"{code}={count}" for code, count in sorted(code_counts.items())
+                    )
+                    or "no R-code flags"
+                )
                 return (
                     f"There are {redcap.get('anomaly_count', len(flagged))} active REDCap carry-forward anomalies "
                     f"across {redcap.get('record_count', len(records))} records. "
                     f"Flag mix: {code_text}."
                 )
 
-        if question_tokens & {"csbs", "completeness", "complete", "incomplete", "skipped"}:
+        if question_tokens & {
+            "csbs",
+            "completeness",
+            "complete",
+            "incomplete",
+            "skipped",
+        }:
             completion = facts.get("redcap_completion_stats") or {}
             event_lookup = [
                 ("24", "24_months_arm_1"),

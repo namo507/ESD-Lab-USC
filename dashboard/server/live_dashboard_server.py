@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -56,6 +57,12 @@ from src.utils.logging_utils import get_pipeline_logger
 DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
 AUDIT_LOG_PATH = DATA_DIR / "hipaa_access.log"
+CONTROLS_PATH = Path(
+    os.getenv(
+        "DASHBOARD_CONTROLS_PATH",
+        str(build_dashboard_data.DASHBOARD_CONTROLS_PATH),
+    )
+)
 SPA_BUILD_DIR = PROJECT_ROOT / "web" / "build"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
 SPA_ROUTE_PREFIXES = (
@@ -99,6 +106,7 @@ SPA_ROUTE_PREFIXES = (
     "/guided-explorer",
     "/public-insights",
     "/executive",
+    "/pipeline-health",
     "/data-explorer",
     "/publications",
     "/changelog",
@@ -290,6 +298,7 @@ def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
         readings_dir,
         config_path,
         PROJECT_ROOT / "config" / "study_parameters.yml",
+        CONTROLS_PATH,
         PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_dashboard_data.py",
         PROJECT_ROOT / "dashboard" / "pipelines" / "build_org_site_data.py",
@@ -386,6 +395,108 @@ def _dashboard_payload() -> dict[str, Any]:
     return read_json(DATA_DIR / "dashboard_data.json")
 
 
+def _dashboard_payload_hash(payload: dict[str, Any]) -> str:
+    visit_health = payload.get("redcap_visit_health")
+    visit_rows = (
+        visit_health.get("data")
+        if isinstance(visit_health, dict) and isinstance(visit_health.get("data"), list)
+        else visit_health
+    )
+    return build_dashboard_data._payload_hash(
+        payload.get("redcap_completion_stats"),
+        visit_rows,
+        payload.get("redcap_trackers"),
+        payload.get("redcap_timeline"),
+    )
+
+
+def _dashboard_controls_payload() -> dict[str, Any]:
+    return build_dashboard_data.load_dashboard_controls(CONTROLS_PATH)
+
+
+def _write_dashboard_controls(payload: dict[str, Any]) -> dict[str, Any]:
+    controls = build_dashboard_data.normalize_dashboard_controls(payload)
+    CONTROLS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = CONTROLS_PATH.with_suffix(CONTROLS_PATH.suffix + ".tmp")
+    temp_path.write_text(json.dumps(controls, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(CONTROLS_PATH)
+    return controls
+
+
+def _redcap_ops_payload() -> dict[str, Any]:
+    payload = _dashboard_payload()
+    controls = _dashboard_controls_payload()
+    ops = (
+        payload.get("redcap_ops") if isinstance(payload.get("redcap_ops"), dict) else {}
+    )
+    meta = (
+        payload.get("redcap_meta")
+        if isinstance(payload.get("redcap_meta"), dict)
+        else {}
+    )
+    generated_at = str(
+        (ops.get("freshness") or {}).get("generated_at")
+        or meta.get("generated_at")
+        or ""
+    )
+    age_hours = 0.0
+    if generated_at:
+        try:
+            parsed = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+            age_hours = max(
+                0.0, (datetime.now(parsed.tzinfo) - parsed).total_seconds() / 3600
+            )
+        except ValueError:
+            age_hours = float((ops.get("freshness") or {}).get("age_hours") or 0.0)
+    content_hash = _dashboard_payload_hash(payload)
+    runtime = os.getenv("DASHBOARD_RUNTIME", "docker")
+    runtime_parity = dict(ops.get("runtime_parity") or {})
+    runtime_parity[runtime] = content_hash
+    sla_hours = float(
+        (controls.get("anomaly_thresholds") or {}).get("freshness_sla_hours", 48)
+    )
+    freshness_status = (
+        str((ops.get("freshness") or {}).get("status") or "").strip().lower()
+    )
+    if freshness_status not in {"fresh", "stale"}:
+        freshness_status = "fresh" if age_hours <= sla_hours else "stale"
+    return {
+        "freshness": {
+            "generated_at": generated_at,
+            "age_hours": round(age_hours, 2),
+            "source": (ops.get("freshness") or {}).get("source")
+            or meta.get("source")
+            or "unknown",
+            "status": freshness_status,
+            "sla_hours": sla_hours,
+        },
+        "runtime_parity": runtime_parity,
+        "run_ledger": ops.get("run_ledger") or [],
+        "controls_snapshot": controls,
+        "content_hash": content_hash,
+        "runtime": runtime,
+    }
+
+
+def _operator_authorized(headers: Any) -> bool:
+    token = (
+        os.getenv("DASHBOARD_OPERATOR_TOKEN")
+        or os.getenv("REDCAP_WRITEBACK_OPERATOR_TOKEN")
+        or ""
+    ).strip()
+    if not token:
+        return False
+    supplied = str(headers.get("X-Operator-Token") or "").strip()
+    auth = str(headers.get("Authorization") or "").strip()
+    if auth.lower().startswith("bearer "):
+        supplied = auth.split(" ", 1)[1].strip()
+    return bool(supplied) and secrets_compare(supplied, token)
+
+
+def secrets_compare(left: str, right: str) -> bool:
+    return hmac.compare_digest(left, right)
+
+
 def _participant_count(payload: dict[str, Any]) -> int:
     enrollment = payload.get("enrollment") or {}
     by_group = enrollment.get("by_group") or {}
@@ -407,10 +518,9 @@ def _api_list(
     participant_count: int | None = None,
 ) -> dict[str, Any]:
     payload = payload or _dashboard_payload()
-    generated_at = (
-        payload.get("meta", {}).get("generated_at")
-        or datetime.now().isoformat(timespec="seconds")
-    )
+    generated_at = payload.get("meta", {}).get(
+        "generated_at"
+    ) or datetime.now().isoformat(timespec="seconds")
     return {
         "data": data,
         "meta": {
@@ -542,7 +652,9 @@ def _legacy_participants() -> list[dict[str, Any]]:
 
 
 def _legacy_participant_detail(nano_id: str) -> dict[str, Any] | None:
-    subject = next((row for row in _legacy_participants() if row["id"] == nano_id), None)
+    subject = next(
+        (row for row in _legacy_participants() if row["id"] == nano_id), None
+    )
     if subject is None:
         return None
     return {
@@ -575,13 +687,11 @@ def _make_legacy_epochs() -> list[dict[str, Any]]:
         sqi = (
             0.78 + (idx % 7) * 0.03
             if flag == "clean"
-            else 0.55 - (idx % 4) * 0.05
-            if flag == "ectopic"
-            else 0.32
-            if flag == "motion"
-            else 0.18
-            if flag == "noise"
-            else 0.04
+            else (
+                0.55 - (idx % 4) * 0.05
+                if flag == "ectopic"
+                else 0.32 if flag == "motion" else 0.18 if flag == "noise" else 0.04
+            )
         )
         rows.append(
             {
@@ -590,13 +700,11 @@ def _make_legacy_epochs() -> list[dict[str, Any]]:
                 "t1": t0 + 5,
                 "flag": flag,
                 "sqi": round(max(0.02, min(0.99, sqi)), 2),
-                "ibi_n": 8 + (idx % 3)
-                if flag == "clean"
-                else 6
-                if flag == "ectopic"
-                else 4
-                if flag == "motion"
-                else 2,
+                "ibi_n": (
+                    8 + (idx % 3)
+                    if flag == "clean"
+                    else 6 if flag == "ectopic" else 4 if flag == "motion" else 2
+                ),
                 "decision": "auto",
             }
         )
@@ -644,15 +752,27 @@ def _legacy_trajectory(metric: str) -> dict[str, Any]:
             "months": base_months,
             "series": {
                 "VPT": [
-                    {"x": month, "y": base + idx * step + (-1 if idx == 5 else 0), "n": max(4, groups["VPT"]["count"] - idx * 8)}
+                    {
+                        "x": month,
+                        "y": base + idx * step + (-1 if idx == 5 else 0),
+                        "n": max(4, groups["VPT"]["count"] - idx * 8),
+                    }
                     for idx, month in enumerate(base_months)
                 ],
                 "ASIB": [
-                    {"x": month, "y": base + 4 + idx * (step + 0.4), "n": max(4, round(groups["ASIB"]["count"] - idx * 1.5))}
+                    {
+                        "x": month,
+                        "y": base + 4 + idx * (step + 0.4),
+                        "n": max(4, round(groups["ASIB"]["count"] - idx * 1.5)),
+                    }
                     for idx, month in enumerate(base_months)
                 ],
                 "TD": [
-                    {"x": month, "y": base + 7 + idx * (step + 0.7), "n": max(4, groups["TD"]["count"] - idx)}
+                    {
+                        "x": month,
+                        "y": base + 7 + idx * (step + 0.7),
+                        "n": max(4, groups["TD"]["count"] - idx),
+                    }
                     for idx, month in enumerate(base_months)
                 ],
             },
@@ -684,11 +804,7 @@ def _legacy_trajectory(metric: str) -> dict[str, Any]:
         series[group] = points
 
     filtered_months = sorted(
-        {
-            int(point["x"])
-            for group_points in series.values()
-            for point in group_points
-        }
+        {int(point["x"]) for group_points in series.values() for point in group_points}
     )
     return {
         "months": filtered_months,
@@ -705,7 +821,9 @@ def _legacy_hda_distribution() -> dict[str, Any]:
         by_group = {}
     out: dict[str, dict[str, int]] = {}
     for group in ("VPT", "ASIB", "TD"):
-        points = by_group.get(group) or by_group.get("PT" if group == "VPT" else group) or []
+        points = (
+            by_group.get(group) or by_group.get("PT" if group == "VPT" else group) or []
+        )
         latest = next(
             (point for point in reversed(points) if isinstance(point, dict)),
             None,
@@ -748,13 +866,18 @@ def _v2_rsa_trajectories(age_basis: str) -> dict[str, Any]:
         ci = (block.get("ci") or {}).get("RSA") or {}
         lows = ci.get("low") or []
         highs = ci.get("high") or []
-        current_n = int((enrollment.get(raw_group) or enrollment.get(group) or {}).get("current") or 24)
+        current_n = int(
+            (enrollment.get(raw_group) or enrollment.get(group) or {}).get("current")
+            or 24
+        )
         for idx, month in enumerate(months):
             mean = means[idx] if idx < len(means) else None
             if mean is None:
                 continue
             adjusted = float(month)
-            chronological = adjusted + (2.0 if group == "VPT" else 0.8 if group == "ASIB" else 0.0)
+            chronological = adjusted + (
+                2.0 if group == "VPT" else 0.8 if group == "ASIB" else 0.0
+            )
             age = chronological if age_basis == "chronological" else adjusted
             band = 0.06
             rows.append(
@@ -764,8 +887,22 @@ def _v2_rsa_trajectories(age_basis: str) -> dict[str, Any]:
                     "adjustedAgeMonths": adjusted,
                     "chronologicalAgeMonths": chronological,
                     "mean": round(float(mean), 3),
-                    "ciLow": round(float(lows[idx] if idx < len(lows) and lows[idx] is not None else mean - band), 3),
-                    "ciHigh": round(float(highs[idx] if idx < len(highs) and highs[idx] is not None else mean + band), 3),
+                    "ciLow": round(
+                        float(
+                            lows[idx]
+                            if idx < len(lows) and lows[idx] is not None
+                            else mean - band
+                        ),
+                        3,
+                    ),
+                    "ciHigh": round(
+                        float(
+                            highs[idx]
+                            if idx < len(highs) and highs[idx] is not None
+                            else mean + band
+                        ),
+                        3,
+                    ),
                     "n": max(6, current_n - idx * (9 if group == "VPT" else 3)),
                 }
             )
@@ -784,7 +921,9 @@ def _v2_redcap_completeness() -> dict[str, Any]:
         ("caregiver_q_v3", False, 14),
         ("temperature_recording_log", False, 10),
     ]
-    deadline = os.getenv("VITE_NDA_DEADLINE") or os.getenv("NDA_DEADLINE") or "2026-08-01"
+    deadline = (
+        os.getenv("VITE_NDA_DEADLINE") or os.getenv("NDA_DEADLINE") or "2026-08-01"
+    )
     rows: list[dict[str, Any]] = []
     for p_idx, participant in enumerate(cohort[:24]):
         nano_id = str(participant.get("nano_id") or f"NANO-{p_idx + 1:04d}")
@@ -794,7 +933,9 @@ def _v2_redcap_completeness() -> dict[str, Any]:
         base = float(participant.get("completeness_pct") or 82)
         for f_idx, (instrument, nda_required, total_required) in enumerate(instruments):
             missing = max(0, int(round((100 - base) / 18)) + ((p_idx + f_idx) % 3) - 1)
-            completeness = max(0.0, min(100.0, ((total_required - missing) / total_required) * 100))
+            completeness = max(
+                0.0, min(100.0, ((total_required - missing) / total_required) * 100)
+            )
             workflow_state = None
             if isinstance(checklist, list) and checklist:
                 matched = checklist[f_idx % len(checklist)]
@@ -810,14 +951,37 @@ def _v2_redcap_completeness() -> dict[str, Any]:
                     "requiredTotal": total_required,
                     "ndaRequired": nda_required,
                     "dueDate": deadline if nda_required else None,
-                    "status": "complete" if missing == 0 else "watch" if missing <= 2 else "missing",
-                    "workflowState": workflow_state or ("complete" if missing == 0 else "missing"),
-                    "enrollmentType": ops.get("enrollment_type") if isinstance(ops, dict) else "single",
-                    "studies": ops.get("study_roles") if isinstance(ops, dict) else ["NANO"],
-                    "visitType": ops.get("visit_type") if isinstance(ops, dict) else "CGA longitudinal",
-                    "formPolicy": (ops.get("form_policy") or {}).get("mode") if isinstance(ops, dict) else "single_study",
-                    "schedulingRisk": ops.get("scheduling_risk") if isinstance(ops, dict) else "low",
-                    "linkingId": ops.get("linking_id") if isinstance(ops, dict) else None,
+                    "status": (
+                        "complete"
+                        if missing == 0
+                        else "watch" if missing <= 2 else "missing"
+                    ),
+                    "workflowState": workflow_state
+                    or ("complete" if missing == 0 else "missing"),
+                    "enrollmentType": (
+                        ops.get("enrollment_type")
+                        if isinstance(ops, dict)
+                        else "single"
+                    ),
+                    "studies": (
+                        ops.get("study_roles") if isinstance(ops, dict) else ["NANO"]
+                    ),
+                    "visitType": (
+                        ops.get("visit_type")
+                        if isinstance(ops, dict)
+                        else "CGA longitudinal"
+                    ),
+                    "formPolicy": (
+                        (ops.get("form_policy") or {}).get("mode")
+                        if isinstance(ops, dict)
+                        else "single_study"
+                    ),
+                    "schedulingRisk": (
+                        ops.get("scheduling_risk") if isinstance(ops, dict) else "low"
+                    ),
+                    "linkingId": (
+                        ops.get("linking_id") if isinstance(ops, dict) else None
+                    ),
                 }
             )
     return _api_list(rows, payload)
@@ -828,7 +992,9 @@ def _redcap_event_config() -> dict[str, str]:
         "SIX_MONTH": os.getenv("REDCAP_EVENT_6M", REDCAP_EVENTS["SIX_MONTH"]),
         "NINE_MONTH": os.getenv("REDCAP_EVENT_9M", REDCAP_EVENTS["NINE_MONTH"]),
         "TWELVE_MONTH": os.getenv("REDCAP_EVENT_12M", REDCAP_EVENTS["TWELVE_MONTH"]),
-        "TWENTY_FOUR_MONTH": os.getenv("REDCAP_EVENT_24M", REDCAP_EVENTS["TWENTY_FOUR_MONTH"]),
+        "TWENTY_FOUR_MONTH": os.getenv(
+            "REDCAP_EVENT_24M", REDCAP_EVENTS["TWENTY_FOUR_MONTH"]
+        ),
     }
 
 
@@ -879,7 +1045,11 @@ def _nullable_text(value: Any) -> str | None:
 
 
 def _redcap_surrogate_id(record_id: str) -> str:
-    salt = os.getenv("PARTICIPANT_ID_SALT") or os.getenv("NANO_ID_SALT") or "nano_default_salt"
+    salt = (
+        os.getenv("PARTICIPANT_ID_SALT")
+        or os.getenv("NANO_ID_SALT")
+        or "nano_default_salt"
+    )
     return build_dashboard_data._surrogate_id(record_id, salt)
 
 
@@ -889,7 +1059,9 @@ def _redcap_status(value: Any, *, skipped: bool = False) -> str:
     key = str(value or "").strip().upper()
     if key.endswith(".0") and key[:-2].isdigit():
         key = key[:-2]
-    return COMPLETE_STATUS_MAP.get(key, COMPLETE_STATUS_MAP.get(key.lower(), "not_started"))
+    return COMPLETE_STATUS_MAP.get(
+        key, COMPLETE_STATUS_MAP.get(key.lower(), "not_started")
+    )
 
 
 def _redcap_row_has_skip_code(row: dict[str, Any]) -> bool:
@@ -944,20 +1116,27 @@ def _detect_carry_forward_risk(record: dict[str, Any]) -> list[str]:
         flags.append("R1")
     if sequence[1][1]["csbsStatus"] == "incomplete" and sequence[2][1]["visitDate"]:
         flags.append("R2")
-    if sequence[0][1]["csbsStatus"] == "not_started" and sequence[1][1]["csbsStatus"] == "complete":
+    if (
+        sequence[0][1]["csbsStatus"] == "not_started"
+        and sequence[1][1]["csbsStatus"] == "complete"
+    ):
         flags.append("R3")
-    if sequence[1][1]["csbsStatus"] == "not_started" and sequence[2][1]["csbsStatus"] == "complete":
+    if (
+        sequence[1][1]["csbsStatus"] == "not_started"
+        and sequence[2][1]["csbsStatus"] == "complete"
+    ):
         flags.append("R4")
     if sequence[2][1]["csbsStatus"] == "incomplete" and sequence[3][1]["visitDate"]:
         flags.append("R5")
     return flags
 
 
-def _redcap_flat_records_to_visit_health(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _redcap_flat_records_to_visit_health(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     events = _redcap_event_config()
     event_to_key = {
-        events[event_key]: key
-        for key, event_key, _label in REDCAP_VISIT_KEYS
+        events[event_key]: key for key, event_key, _label in REDCAP_VISIT_KEYS
     }
     grouped: dict[str, dict[str, dict[str, Any]]] = {}
     for row in records:
@@ -977,10 +1156,18 @@ def _redcap_flat_records_to_visit_health(records: list[dict[str, Any]]) -> list[
     for record_id, rows_by_visit in grouped.items():
         record = {
             "recordId": record_id,
-            "sixMonth": _redcap_timepoint_from_row(rows_by_visit.get("sixMonth"), events["SIX_MONTH"]),
-            "nineMonth": _redcap_timepoint_from_row(rows_by_visit.get("nineMonth"), events["NINE_MONTH"]),
-            "twelveMonth": _redcap_timepoint_from_row(rows_by_visit.get("twelveMonth"), events["TWELVE_MONTH"]),
-            "twentyFourMonth": _redcap_timepoint_from_row(rows_by_visit.get("twentyFourMonth"), events["TWENTY_FOUR_MONTH"]),
+            "sixMonth": _redcap_timepoint_from_row(
+                rows_by_visit.get("sixMonth"), events["SIX_MONTH"]
+            ),
+            "nineMonth": _redcap_timepoint_from_row(
+                rows_by_visit.get("nineMonth"), events["NINE_MONTH"]
+            ),
+            "twelveMonth": _redcap_timepoint_from_row(
+                rows_by_visit.get("twelveMonth"), events["TWELVE_MONTH"]
+            ),
+            "twentyFourMonth": _redcap_timepoint_from_row(
+                rows_by_visit.get("twentyFourMonth"), events["TWENTY_FOUR_MONTH"]
+            ),
             "anomalyFlags": [],
             "hasCarryForwardRisk": False,
         }
@@ -1034,7 +1221,9 @@ def _v2_redcap_visit_health() -> dict[str, Any]:
             source="mock",
             error="REDCap API request failed; check backend logs and credentials.",
         )
-    return _redcap_visit_health_envelope(_redcap_flat_records_to_visit_health(raw_records))
+    return _redcap_visit_health_envelope(
+        _redcap_flat_records_to_visit_health(raw_records)
+    )
 
 
 def _v2_redcap_visit_detail(record_id: str) -> dict[str, Any] | None:
@@ -1107,6 +1296,114 @@ def _import_redcap_visit_date(
     }
 
 
+def _redcap_writeback_enabled() -> bool:
+    controls = _dashboard_controls_payload()
+    flags = (
+        controls.get("feature_flags")
+        if isinstance(controls.get("feature_flags"), dict)
+        else {}
+    )
+    return bool(flags.get("redcap.writeback"))
+
+
+def _allowed_redcap_writeback_fields() -> set[str]:
+    configured = {
+        item.strip()
+        for item in os.getenv("REDCAP_WRITEBACK_COMPLETE_FIELDS", "").split(",")
+        if item.strip()
+    }
+    return {
+        _redcap_visit_date_field(),
+        f"{_redcap_csbs_instrument()}_complete",
+        *configured,
+    }
+
+
+def _validate_redcap_writeback_value(field: str, value: str) -> bool:
+    if field == _redcap_visit_date_field():
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
+    if field.endswith("_complete"):
+        return value in {"", "0", "1", "2", "SKIP"}
+    return False
+
+
+def _append_redcap_writeback_audit(entry: dict[str, Any]) -> None:
+    audit_path = DATA_DIR / "redcap_writeback_audit.jsonl"
+    audit_path.parent.mkdir(parents=True, exist_ok=True)
+    with audit_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
+def _trigger_pages_deploy_hook(reason: str, audit_id: str) -> None:
+    hook_url = os.getenv("PAGES_DEPLOY_HOOK_URL", "").strip()
+    if not hook_url:
+        return
+    try:
+        requests.post(
+            hook_url,
+            json={
+                "event_type": reason,
+                "client_payload": {
+                    "audit_id": audit_id,
+                    "runtime": os.getenv("DASHBOARD_RUNTIME", "docker"),
+                },
+            },
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        logger.warning("Pages deploy hook failed after REDCap writeback: %s", exc)
+
+
+def _import_redcap_field_value(
+    *,
+    record_id: str,
+    event_name: str,
+    field: str,
+    value: str,
+) -> dict[str, Any]:
+    token = os.environ.get("REDCAP_API_TOKEN", "")
+    api_url = os.environ.get("REDCAP_API_URL", "")
+    if not token or not api_url:
+        raise EnvironmentError("REDCAP_API_TOKEN or REDCAP_API_URL not configured")
+
+    record = {
+        "record_id": record_id,
+        "redcap_event_name": event_name,
+        field: value,
+    }
+    response = requests.post(
+        api_url,
+        data={
+            "token": token,
+            "content": "record",
+            "format": "json",
+            "type": "flat",
+            "overwriteBehavior": "normal",
+            "returnContent": "count",
+            "returnFormat": "json",
+            "data": json.dumps([record]),
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    count = int(payload.get("count", 0)) if isinstance(payload, dict) else 0
+    errors = payload.get("errors", []) if isinstance(payload, dict) else []
+    return {
+        "success": not errors,
+        "count": count,
+        "errors": errors if isinstance(errors, list) else [str(errors)],
+        "recordId": record_id,
+        "eventName": event_name,
+        "field": field,
+        "newValue": value,
+    }
+
+
 def _redcap_app_url() -> str | None:
     app_url = os.getenv("REDCAP_APP_URL", "").strip()
     if app_url:
@@ -1168,8 +1465,14 @@ def _v2_thermal_heatmap(nano_id: str) -> dict[str, Any]:
                 "centralTemp": round(central, 2),
                 "peripheralTemp": round(peripheral, 2),
                 "gradient": round(central - peripheral, 2),
-                "hrc": round(4.4 + math.sin(idx / 9) * 1.2 + (0.6 if hour > 18 else 0), 2),
-                "medicalEvent": "care cluster" if day == 2 and hour == 7 else "feeding hold" if day == 5 and hour == 19 else None,
+                "hrc": round(
+                    4.4 + math.sin(idx / 9) * 1.2 + (0.6 if hour > 18 else 0), 2
+                ),
+                "medicalEvent": (
+                    "care cluster"
+                    if day == 2 and hour == 7
+                    else "feeding hold" if day == 5 and hour == 19 else None
+                ),
             }
         )
     return _api_list(rows, source="live", participant_count=1)
@@ -1196,7 +1499,14 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
             0,
             min(
                 len(visits) - 1,
-                next((i for i, (_, month) in enumerate(visits) if f"{month}" in last_label), 4),
+                next(
+                    (
+                        i
+                        for i, (_, month) in enumerate(visits)
+                        if f"{month}" in last_label
+                    ),
+                    4,
+                ),
             ),
         )
         rows.append(
@@ -1208,12 +1518,24 @@ def _v2_cohort_swimmer() -> dict[str, Any]:
                 "completedVisits": completed,
                 "expectedVisits": len(visits),
                 "completionPct": round((completed / len(visits)) * 100, 1),
-                "dropoutRisk": "high" if participant.get("qc_status") == "Review" else "watch" if idx % 5 == 0 else "low",
+                "dropoutRisk": (
+                    "high"
+                    if participant.get("qc_status") == "Review"
+                    else "watch" if idx % 5 == 0 else "low"
+                ),
                 "milestones": [
                     {
                         "visit": visit,
                         "month": month,
-                        "status": "complete" if i < completed else "missed" if i == completed and idx % 5 == 0 else "scheduled",
+                        "status": (
+                            "complete"
+                            if i < completed
+                            else (
+                                "missed"
+                                if i == completed and idx % 5 == 0
+                                else "scheduled"
+                            )
+                        ),
                     }
                     for i, (visit, month) in enumerate(visits)
                 ],
@@ -1271,7 +1593,9 @@ def _v2_hda_composition() -> dict[str, Any]:
             group: [
                 {
                     "month": month,
-                    **_normalize_composition([base[i] + slope[i] * idx for i in range(4)]),
+                    **_normalize_composition(
+                        [base[i] + slope[i] * idx for i in range(4)]
+                    ),
                 }
                 for idx, month in enumerate(months)
             ]
@@ -1292,9 +1616,24 @@ def _v2_attrition_funnel() -> dict[str, Any]:
         rows.extend(
             [
                 {"from": "enrolled", "to": "nicu_dc", "value": count, "group": group},
-                {"from": "nicu_dc", "to": "cga_6mo", "value": round(count * 0.84), "group": group},
-                {"from": "cga_6mo", "to": "cga_12mo", "value": round(count * 0.62), "group": group},
-                {"from": "cga_12mo", "to": "cga_24mo", "value": round(count * 0.28), "group": group},
+                {
+                    "from": "nicu_dc",
+                    "to": "cga_6mo",
+                    "value": round(count * 0.84),
+                    "group": group,
+                },
+                {
+                    "from": "cga_6mo",
+                    "to": "cga_12mo",
+                    "value": round(count * 0.62),
+                    "group": group,
+                },
+                {
+                    "from": "cga_12mo",
+                    "to": "cga_24mo",
+                    "value": round(count * 0.28),
+                    "group": group,
+                },
             ]
         )
     default_stages = [
@@ -1319,9 +1658,22 @@ def _v2_attrition_funnel() -> dict[str, Any]:
             "quarter": quarter,
             "stageId": stage["id"],
             "n": max(0, round(stage["n"] * (0.36 + qi * 0.085) - si * 3)),
-            "retainedPct": round(min(100, stage["retainedPct"] * (0.72 + qi * 0.04)), 1),
+            "retainedPct": round(
+                min(100, stage["retainedPct"] * (0.72 + qi * 0.04)), 1
+            ),
         }
-        for qi, quarter in enumerate(["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
+        for qi, quarter in enumerate(
+            [
+                "2024-Q1",
+                "2024-Q2",
+                "2024-Q3",
+                "2024-Q4",
+                "2025-Q1",
+                "2025-Q2",
+                "2025-Q3",
+                "2025-Q4",
+            ]
+        )
         for si, stage in enumerate(default_stages)
     ]
     envelope = _api_list(rows, payload)
@@ -1331,7 +1683,9 @@ def _v2_attrition_funnel() -> dict[str, Any]:
                 "id": str(stage.get("id") or ""),
                 "label": str(stage.get("label") or stage.get("id") or ""),
                 "n": int(stage.get("n") or 0),
-                "retainedPct": float(stage.get("retained_pct", stage.get("retainedPct", 0)) or 0),
+                "retainedPct": float(
+                    stage.get("retained_pct", stage.get("retainedPct", 0)) or 0
+                ),
             }
             for stage in attrition_block.get("stages", [])
             if isinstance(stage, dict)
@@ -1343,7 +1697,9 @@ def _v2_attrition_funnel() -> dict[str, Any]:
                 "n": int(reason.get("n") or 0),
                 "pct": float(reason.get("pct") or 0),
             }
-            for reason in attrition_block.get("reason_codes", attrition_block.get("reasonCodes", []))
+            for reason in attrition_block.get(
+                "reason_codes", attrition_block.get("reasonCodes", [])
+            )
             if isinstance(reason, dict)
         ] or default_reasons
         trends = [
@@ -1351,16 +1707,25 @@ def _v2_attrition_funnel() -> dict[str, Any]:
                 "quarter": str(point.get("quarter") or ""),
                 "stageId": str(point.get("stage_id", point.get("stageId", ""))),
                 "n": int(point.get("n") or 0),
-                "retainedPct": float(point.get("retained_pct", point.get("retainedPct", 0)) or 0),
+                "retainedPct": float(
+                    point.get("retained_pct", point.get("retainedPct", 0)) or 0
+                ),
             }
-            for point in attrition_block.get("trend_by_quarter", attrition_block.get("trendByQuarter", []))
+            for point in attrition_block.get(
+                "trend_by_quarter", attrition_block.get("trendByQuarter", [])
+            )
             if isinstance(point, dict)
         ] or trend
     else:
         stages = default_stages
         reasons = default_reasons
         trends = trend
-    return {**envelope, "stages": stages, "reasonCodes": reasons, "trendByQuarter": trends}
+    return {
+        **envelope,
+        "stages": stages,
+        "reasonCodes": reasons,
+        "trendByQuarter": trends,
+    }
 
 
 def _v2_sdoh_map() -> dict[str, Any]:
@@ -1398,9 +1763,16 @@ def _v2_county_profiles() -> dict[str, Any]:
                 "county": str(row.get("county") or ""),
                 "fips": str(row.get("fips") or ""),
                 "enrolled": int(row.get("enrolled") or 0),
-                "completionRate": float(row.get("completion_rate", row.get("completionRate", 0)) or 0),
+                "completionRate": float(
+                    row.get("completion_rate", row.get("completionRate", 0)) or 0
+                ),
                 "sdohScore": float(row.get("sdoh_score", row.get("sdohScore", 0)) or 0),
-                "medianIncomeBracket": str(row.get("median_income_bracket", row.get("medianIncomeBracket", "medium"))),
+                "medianIncomeBracket": str(
+                    row.get(
+                        "median_income_bracket",
+                        row.get("medianIncomeBracket", "medium"),
+                    )
+                ),
                 "cptdGapMean": row.get("cptd_gap_mean", row.get("cptdGapMean")),
             }
             for row in existing
@@ -1416,7 +1788,11 @@ def _v2_county_profiles() -> dict[str, Any]:
             "enrolled": row["participants"],
             "completionRate": round(row["meanCompletion"] / 100, 3),
             "sdohScore": row["deprivationIndex"],
-            "medianIncomeBracket": "low" if row["deprivationIndex"] > 0.48 else "medium" if row["deprivationIndex"] > 0.34 else "high",
+            "medianIncomeBracket": (
+                "low"
+                if row["deprivationIndex"] > 0.48
+                else "medium" if row["deprivationIndex"] > 0.34 else "high"
+            ),
             "cptdGapMean": round(1.5 + row["deprivationIndex"] * 1.4, 2),
         }
         for row in sdoh
@@ -1437,11 +1813,25 @@ def _v2_shap_values() -> dict[str, Any]:
         for f_idx, feature in enumerate(features[:8]):
             rows.append(
                 {
-                    "participantId": str(participant.get("nano_id") or f"NANO-{p_idx + 1:04d}"),
-                    "feature": str(feature.get("feature") or feature.get("label") or "feature"),
-                    "label": str(feature.get("label") or feature.get("feature") or "Feature"),
+                    "participantId": str(
+                        participant.get("nano_id") or f"NANO-{p_idx + 1:04d}"
+                    ),
+                    "feature": str(
+                        feature.get("feature") or feature.get("label") or "feature"
+                    ),
+                    "label": str(
+                        feature.get("label") or feature.get("feature") or "Feature"
+                    ),
                     "value": round(0.8 + p_idx * 0.08 + f_idx * 0.12, 2),
-                    "shap": round(math.sin(p_idx * 0.9 + f_idx) * 0.18 + (0.04 if _normalize_group(participant.get("group")) == "VPT" else -0.02), 3),
+                    "shap": round(
+                        math.sin(p_idx * 0.9 + f_idx) * 0.18
+                        + (
+                            0.04
+                            if _normalize_group(participant.get("group")) == "VPT"
+                            else -0.02
+                        ),
+                        3,
+                    ),
                     "modality": modalities[f_idx % len(modalities)],
                     "timeWindow": "0-12 mo" if f_idx % 2 else "6-24 mo",
                 }
@@ -1461,10 +1851,28 @@ def _v2_cluster_tsne() -> dict[str, Any]:
                     "nanoId": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
                     "group": group,
                     "x": round(math.cos(idx * 0.7 + t_idx) * 7 + t_idx * 2, 2),
-                    "y": round(math.sin(idx * 0.5 + t_idx) * 5 + (1.5 if group == "VPT" else -1), 2),
-                    "cluster": "regulated" if group == "TD" else "watchful" if participant.get("qc_status") == "Review" else "maturing",
+                    "y": round(
+                        math.sin(idx * 0.5 + t_idx) * 5
+                        + (1.5 if group == "VPT" else -1),
+                        2,
+                    ),
+                    "cluster": (
+                        "regulated"
+                        if group == "TD"
+                        else (
+                            "watchful"
+                            if participant.get("qc_status") == "Review"
+                            else "maturing"
+                        )
+                    ),
                     "timepoint": timepoint,
-                    "outcomeScore": round(62 + t_idx * 7 + (8 if group == "TD" else 0) - (5 if participant.get("qc_status") == "Review" else 0), 1),
+                    "outcomeScore": round(
+                        62
+                        + t_idx * 7
+                        + (8 if group == "TD" else 0)
+                        - (5 if participant.get("qc_status") == "Review" else 0),
+                        1,
+                    ),
                 }
             )
     return _api_list(rows, payload)
@@ -1475,7 +1883,9 @@ def _v2_model_leaderboard() -> dict[str, Any]:
     models = payload.get("ml_performance", {}).get("models") or []
     rows = [
         {
-            "modelId": str(model.get("slug") or model.get("name") or "model").replace(" ", "_").lower(),
+            "modelId": str(model.get("slug") or model.get("name") or "model")
+            .replace(" ", "_")
+            .lower(),
             "name": str(model.get("name") or "Model"),
             "auroc": float(model.get("auroc") or 0),
             "sensitivity": float(model.get("sensitivity") or 0),
@@ -1483,7 +1893,8 @@ def _v2_model_leaderboard() -> dict[str, Any]:
             "f1": float(model.get("f1") or 0),
             "calibration": round(0.04 + idx * 0.009, 3),
             "features": 24 + idx * 12,
-            "updatedAt": payload.get("meta", {}).get("generated_at") or datetime.now().isoformat(timespec="seconds"),
+            "updatedAt": payload.get("meta", {}).get("generated_at")
+            or datetime.now().isoformat(timespec="seconds"),
         }
         for idx, model in enumerate(models)
         if isinstance(model, dict)
@@ -1496,8 +1907,12 @@ def _v2_model_detail(model_id: str) -> dict[str, Any]:
         {
             "modelId": model_id,
             "epoch": idx + 1,
-            "trainAuroc": round(0.72 + idx * 0.025 + (0.04 if model_id == "cnn_lstm" else 0), 3),
-            "validationAuroc": round(0.70 + idx * 0.021 + (0.05 if model_id == "cnn_lstm" else 0), 3),
+            "trainAuroc": round(
+                0.72 + idx * 0.025 + (0.04 if model_id == "cnn_lstm" else 0), 3
+            ),
+            "validationAuroc": round(
+                0.70 + idx * 0.021 + (0.05 if model_id == "cnn_lstm" else 0), 3
+            ),
             "ablation": ["no HDA", "no ECG", "no REDCap", "no thermal"][idx % 4],
             "ablationDelta": round(-0.018 - (idx % 4) * 0.011, 3),
         }
@@ -1508,12 +1923,54 @@ def _v2_model_detail(model_id: str) -> dict[str, Any]:
 
 def _v2_cascade_dag() -> dict[str, Any]:
     rows = [
-        ("NICU stress physiology", "Autonomic regulation", "context", "physiology", 0.78, "HRC + RSA coupling"),
-        ("Autonomic regulation", "Sustained attention", "physiology", "attention", 0.72, "HDA phase stability"),
-        ("Caregiver co-regulation", "Sustained attention", "family", "attention", 0.54, "home-study linkage"),
-        ("Sustained attention", "Social communication", "attention", "behavior", 0.64, "CSBS + M-CHAT"),
-        ("Thermal stability", "Autonomic regulation", "physiology", "physiology", 0.48, "central-peripheral gradient"),
-        ("Social communication", "Adaptive outcome", "behavior", "outcome", 0.69, "Bayley + Vineland"),
+        (
+            "NICU stress physiology",
+            "Autonomic regulation",
+            "context",
+            "physiology",
+            0.78,
+            "HRC + RSA coupling",
+        ),
+        (
+            "Autonomic regulation",
+            "Sustained attention",
+            "physiology",
+            "attention",
+            0.72,
+            "HDA phase stability",
+        ),
+        (
+            "Caregiver co-regulation",
+            "Sustained attention",
+            "family",
+            "attention",
+            0.54,
+            "home-study linkage",
+        ),
+        (
+            "Sustained attention",
+            "Social communication",
+            "attention",
+            "behavior",
+            0.64,
+            "CSBS + M-CHAT",
+        ),
+        (
+            "Thermal stability",
+            "Autonomic regulation",
+            "physiology",
+            "physiology",
+            0.48,
+            "central-peripheral gradient",
+        ),
+        (
+            "Social communication",
+            "Adaptive outcome",
+            "behavior",
+            "outcome",
+            0.69,
+            "Bayley + Vineland",
+        ),
     ]
     return _api_list(
         [
@@ -1537,7 +1994,11 @@ def _v2_ecg_quality(nano_id: str) -> dict[str, Any]:
         hour = idx // 12
         minute = (idx % 12) * 5
         artifact = artifacts[(idx * 5) % len(artifacts)]
-        sqi = 0.78 + ((idx * 3) % 18) / 100 if artifact == "none" else 0.35 + ((idx * 7) % 27) / 100
+        sqi = (
+            0.78 + ((idx * 3) % 18) / 100
+            if artifact == "none"
+            else 0.35 + ((idx * 7) % 27) / 100
+        )
         rows.append(
             {
                 "nanoId": nano_id,
@@ -1556,14 +2017,26 @@ def _v2_ecg_quality_summary() -> dict[str, Any]:
     return _api_list(
         [
             {"label": "ECG QC pass rate", "value": 92.4, "target": 90, "status": "ok"},
-            {"label": "Artifact review queue", "value": 18, "target": 24, "status": "ok"},
+            {
+                "label": "Artifact review queue",
+                "value": 18,
+                "target": 24,
+                "status": "ok",
+            },
             {"label": "Late transfers", "value": 4, "target": 0, "status": "watch"},
-            {"label": "NDA-ready windows", "value": 88.6, "target": 95, "status": "watch"},
+            {
+                "label": "NDA-ready windows",
+                "value": 88.6,
+                "target": 95,
+                "status": "watch",
+            },
         ]
     )
 
 
-def _wave(length: int, base: float, amp: float, period: float, phase: float = 0.0) -> list[float]:
+def _wave(
+    length: int, base: float, amp: float, period: float, phase: float = 0.0
+) -> list[float]:
     return [
         round(
             base
@@ -1627,14 +2100,29 @@ def _v2_multimodal(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
             next_peak += 0.72 + math.sin(t / 13) * 0.05
         recent = r_peaks[-2:]
         peak_distance = min([abs(t - peak) for peak in recent], default=2)
-        qrs = 1.05 * math.exp(-((peak_distance / 0.035) ** 2)) if peak_distance < 0.08 else 0
+        qrs = (
+            1.05 * math.exp(-((peak_distance / 0.035) ** 2))
+            if peak_distance < 0.08
+            else 0
+        )
         ecg_t.append(t)
-        ecg_mv.append(round(math.sin(t * 8.5) * 0.08 + math.sin(t * 1.7) * 0.04 + qrs - 0.18, 3))
+        ecg_mv.append(
+            round(math.sin(t * 8.5) * 0.08 + math.sin(t * 1.7) * 0.04 + qrs - 0.18, 3)
+        )
     rsa_t = list(range(duration + 1))
     rsa_power = []
     for t in rsa_t:
         social_boost = 48 if 52 < t < 82 else 64 if 128 < t < 164 else 0
-        rsa_power.append(round(52 + visit_age * 1.7 + math.sin(t / 10) * 18 + math.cos(t / 23) * 9 + social_boost, 2))
+        rsa_power.append(
+            round(
+                52
+                + visit_age * 1.7
+                + math.sin(t / 10) * 18
+                + math.cos(t / 23) * 9
+                + social_boost,
+                2,
+            )
+        )
     return {
         "ecg": {"t": ecg_t, "mv": ecg_mv, "rPeaks": r_peaks},
         "rsa": {"t": rsa_t, "hfPower": rsa_power},
@@ -1668,11 +2156,17 @@ def _v2_phase_portrait(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     length = 240
     t = list(range(length))
     arousal = [
-        round(0.52 + math.sin(i / 18) * 0.24 + math.cos(i / 7) * 0.08 + visit_age * 0.003, 3)
+        round(
+            0.52 + math.sin(i / 18) * 0.24 + math.cos(i / 7) * 0.08 + visit_age * 0.003,
+            3,
+        )
         for i in t
     ]
     attention = [
-        round(0.54 + math.cos(i / 21) * 0.24 - math.sin(i / 9) * 0.07 + visit_age * 0.002, 3)
+        round(
+            0.54 + math.cos(i / 21) * 0.24 - math.sin(i / 9) * 0.07 + visit_age * 0.002,
+            3,
+        )
         for i in t
     ]
     return {
@@ -1685,8 +2179,12 @@ def _v2_phase_portrait(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
                 "group": group,
                 "points": [
                     {
-                        "arousal": round(0.48 + gi * 0.035 + math.sin(i / 9 + gi) * 0.16, 3),
-                        "attention": round(0.56 - gi * 0.018 + math.cos(i / 11 + gi) * 0.16, 3),
+                        "arousal": round(
+                            0.48 + gi * 0.035 + math.sin(i / 9 + gi) * 0.16, 3
+                        ),
+                        "attention": round(
+                            0.56 - gi * 0.018 + math.cos(i / 11 + gi) * 0.16, 3
+                        ),
                     }
                     for i in range(60)
                 ],
@@ -1699,7 +2197,16 @@ def _v2_phase_portrait(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
 def _v2_cva(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     del nano_id, visit_age_raw
     infant_targets = ["toy", "face", "toy", "away", "toy", "other", "face", "toy"]
-    caregiver_targets = ["toy", "infant_face", "toy", "toy", "toy", "other", "infant_face", "toy"]
+    caregiver_targets = [
+        "toy",
+        "infant_face",
+        "toy",
+        "toy",
+        "toy",
+        "other",
+        "infant_face",
+        "toy",
+    ]
     cursor = 0
     infant = []
     for idx, target in enumerate(infant_targets):
@@ -1758,8 +2265,10 @@ def _v2_hr_deceleration(group_filter: str, age_bin: str) -> dict[str, Any]:
             hr = []
             for sample in range(length):
                 t = (sample - pre_sec * fs) / fs
-                trough = -depth * math.exp(-((t - 3.2 - gi * 0.3) / 3.1) ** 2)
-                hr.append(round(132 + gi * 3 + math.sin(sample / 4 + idx) * 1.3 + trough, 2))
+                trough = -depth * math.exp(-(((t - 3.2 - gi * 0.3) / 3.1) ** 2))
+                hr.append(
+                    round(132 + gi * 3 + math.sin(sample / 4 + idx) * 1.3 + trough, 2)
+                )
             episodes.append(
                 {
                     "nanoid": f"NANO-{100 + gi * 30 + idx:04d}",
@@ -1782,9 +2291,15 @@ def _v2_stillface(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     ]
     rsa = []
     for i in range(216):
-        phase_shift = -0.42 if 105 <= i < 155 else 0.2 if i >= 155 else 0.16 if i >= 45 else 0
-        rsa.append(round(4.15 + visit_age * 0.018 + phase_shift + math.sin(i / 11) * 0.14, 3))
-    caregiver = [round(v + 0.28 + math.sin(i / 15) * 0.08, 3) for i, v in enumerate(rsa)]
+        phase_shift = (
+            -0.42 if 105 <= i < 155 else 0.2 if i >= 155 else 0.16 if i >= 45 else 0
+        )
+        rsa.append(
+            round(4.15 + visit_age * 0.018 + phase_shift + math.sin(i / 11) * 0.14, 3)
+        )
+    caregiver = [
+        round(v + 0.28 + math.sin(i / 15) * 0.08, 3) for i, v in enumerate(rsa)
+    ]
     return {"phases": phases, "rsa": rsa, "caregiverRsa": caregiver, "fs": 1}
 
 
@@ -1795,15 +2310,46 @@ def _v2_hda_transitions() -> dict[str, Any]:
         sustained = 0.62 if group == "TD" else 0.48 if group == "VPT" else 0.43
         transitions.extend(
             [
-                {"group": group, "ageBin": "6mo", "from": "orienting", "to": "sustained", "probability": sustained, "ci95": [round(sustained - 0.06, 2), round(sustained + 0.06, 2)]},
-                {"group": group, "ageBin": "6mo", "from": "orienting", "to": "termination", "probability": bypass, "ci95": [round(bypass - 0.05, 2), round(bypass + 0.05, 2)]},
-                {"group": group, "ageBin": "6mo", "from": "sustained", "to": "termination", "probability": 0.22, "ci95": [0.17, 0.27]},
-                {"group": group, "ageBin": "6mo", "from": "sustained", "to": "inattention", "probability": 0.16, "ci95": [0.11, 0.21]},
+                {
+                    "group": group,
+                    "ageBin": "6mo",
+                    "from": "orienting",
+                    "to": "sustained",
+                    "probability": sustained,
+                    "ci95": [round(sustained - 0.06, 2), round(sustained + 0.06, 2)],
+                },
+                {
+                    "group": group,
+                    "ageBin": "6mo",
+                    "from": "orienting",
+                    "to": "termination",
+                    "probability": bypass,
+                    "ci95": [round(bypass - 0.05, 2), round(bypass + 0.05, 2)],
+                },
+                {
+                    "group": group,
+                    "ageBin": "6mo",
+                    "from": "sustained",
+                    "to": "termination",
+                    "probability": 0.22,
+                    "ci95": [0.17, 0.27],
+                },
+                {
+                    "group": group,
+                    "ageBin": "6mo",
+                    "from": "sustained",
+                    "to": "inattention",
+                    "probability": 0.16,
+                    "ci95": [0.11, 0.21],
+                },
             ]
         )
     cohort = (_dashboard_payload().get("cohort_table") or [])[:20]
     if not cohort:
-        cohort = [{"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]} for i in range(20)]
+        cohort = [
+            {"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]}
+            for i in range(20)
+        ]
     per_participant = []
     for idx, participant in enumerate(cohort):
         group = _normalize_group(participant.get("group"))
@@ -1812,8 +2358,19 @@ def _v2_hda_transitions() -> dict[str, Any]:
                 "nanoid": str(participant.get("nano_id") or f"NANO-{idx + 1:04d}"),
                 "group": group,
                 "ageBin": f"{[3, 6, 9, 12][idx % 4]}mo",
-                "bypassIndex": round(0.35 + (-0.16 if group == "TD" else 0.12 if group == "ASIB" else 0.02) + math.sin(idx) * 0.07, 2),
-                "sustainedDwellSec": round(24 + (9 if group == "TD" else 0) - (3 if group == "ASIB" else 0) + math.cos(idx) * 4, 1),
+                "bypassIndex": round(
+                    0.35
+                    + (-0.16 if group == "TD" else 0.12 if group == "ASIB" else 0.02)
+                    + math.sin(idx) * 0.07,
+                    2,
+                ),
+                "sustainedDwellSec": round(
+                    24
+                    + (9 if group == "TD" else 0)
+                    - (3 if group == "ASIB" else 0)
+                    + math.cos(idx) * 4,
+                    1,
+                ),
             }
         )
     return {"transitions": transitions, "perParticipant": per_participant}
@@ -1833,24 +2390,48 @@ def _v2_passport(nano_id: str) -> dict[str, Any]:
                 {
                     "ageMonths": age,
                     "modality": modality,
-                    "metric": "model score" if modality == "Risk" else "sustained dwell" if modality == "HDA" else "summary z",
-                    "value": round(0.42 + mi * 0.08 + ai * 0.035 + math.sin(ai + mi) * 0.05, 3),
+                    "metric": (
+                        "model score"
+                        if modality == "Risk"
+                        else "sustained dwell" if modality == "HDA" else "summary z"
+                    ),
+                    "value": round(
+                        0.42 + mi * 0.08 + ai * 0.035 + math.sin(ai + mi) * 0.05, 3
+                    ),
                     "groupMean": round(0.5 + mi * 0.06 + ai * 0.025, 3),
                     "groupSd": 0.12,
                 }
             )
     return {
         "group": group,
-        "sex": str(participant.get("sex") or "F")[:1] if str(participant.get("sex") or "F")[:1] in {"F", "M", "X"} else "F",
-        "gestationalAge": float(participant.get("gestational_age") or participant.get("cga_wks") or 30.4),
+        "sex": (
+            str(participant.get("sex") or "F")[:1]
+            if str(participant.get("sex") or "F")[:1] in {"F", "M", "X"}
+            else "F"
+        ),
+        "gestationalAge": float(
+            participant.get("gestational_age") or participant.get("cga_wks") or 30.4
+        ),
         "timeline": timeline,
         "milestones": [
             {"ageMonths": 3, "label": "baseline physiology"},
             {"ageMonths": 12, "label": "midpoint review"},
             {"ageMonths": 24, "label": "outcome prep"},
         ],
-        **({"nicu": {"hrcSummary": "HRC summary available", "thermalSummary": "Thermal gradient stable"}} if group == "VPT" else {}),
-        "outcome": {"adosCSS": 2 if group == "TD" else 4 if group == "ASIB" else 3, "ageMonths": 36},
+        **(
+            {
+                "nicu": {
+                    "hrcSummary": "HRC summary available",
+                    "thermalSummary": "Thermal gradient stable",
+                }
+            }
+            if group == "VPT"
+            else {}
+        ),
+        "outcome": {
+            "adosCSS": 2 if group == "TD" else 4 if group == "ASIB" else 3,
+            "ageMonths": 36,
+        },
         "operations": operations,
     }
 
@@ -1866,19 +2447,31 @@ def _v2_archetypes(measure: str) -> dict[str, Any]:
                 "meanCurve": [
                     {
                         "ageMonths": age,
-                        "value": round(0.42 + idx * 0.16 + ai * (0.035 + idx * 0.008) + math.sin(ai + idx) * 0.03, 3),
+                        "value": round(
+                            0.42
+                            + idx * 0.16
+                            + ai * (0.035 + idx * 0.008)
+                            + math.sin(ai + idx) * 0.03,
+                            3,
+                        ),
                     }
                     for ai, age in enumerate([3, 6, 9, 12, 18, 24])
                 ],
                 "band": [
-                    {"lo": round(0.34 + idx * 0.16 + ai * 0.03, 3), "hi": round(0.52 + idx * 0.16 + ai * 0.04, 3)}
+                    {
+                        "lo": round(0.34 + idx * 0.16 + ai * 0.03, 3),
+                        "hi": round(0.52 + idx * 0.16 + ai * 0.04, 3),
+                    }
                     for ai in range(6)
                 ],
             }
         )
     cohort = (_dashboard_payload().get("cohort_table") or [])[:21]
     if not cohort:
-        cohort = [{"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]} for i in range(21)]
+        cohort = [
+            {"nano_id": f"NANO-{100 + i:04d}", "group": ["VPT", "ASIB", "TD"][i % 3]}
+            for i in range(21)
+        ]
     return {
         "measure": measure,
         "archetypes": archetypes,
@@ -1897,25 +2490,127 @@ def _v2_archetypes(measure: str) -> dict[str, Any]:
 def _v2_cascade_paths() -> dict[str, Any]:
     return {
         "nodes": [
-            {"id": "rsa_9mo", "label": "RSA at 9 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
-            {"id": "rsa_12mo", "label": "RSA at 12 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
-            {"id": "rmssd_3mo", "label": "RMSSD at 3 Months CGA", "domain": "physiology", "group": "physiology", "manipulable": True},
-            {"id": "hda_sustained_6mo", "label": "% Sustained Attention at 6mo", "domain": "attention", "group": "attention", "manipulable": True},
-            {"id": "hda_orienting_9mo", "label": "% Orienting at 9mo", "domain": "attention", "group": "attention", "manipulable": True},
-            {"id": "motor_sitting_6mo", "label": "Arms-Free Sitting by 6mo", "domain": "motor", "group": "motor", "manipulable": True},
-            {"id": "gaze_caregiver_9mo", "label": "% Gaze to Caregiver at 9mo", "domain": "social", "group": "social", "manipulable": True},
-            {"id": "language_csbs_12mo", "label": "CSBS Score at 12 Months", "domain": "language", "group": "language", "manipulable": True},
-            {"id": "outcome_36m", "label": "ASD Symptom Score at 36 Months", "domain": "outcome", "group": "outcome", "manipulable": False},
+            {
+                "id": "rsa_9mo",
+                "label": "RSA at 9 Months CGA",
+                "domain": "physiology",
+                "group": "physiology",
+                "manipulable": True,
+            },
+            {
+                "id": "rsa_12mo",
+                "label": "RSA at 12 Months CGA",
+                "domain": "physiology",
+                "group": "physiology",
+                "manipulable": True,
+            },
+            {
+                "id": "rmssd_3mo",
+                "label": "RMSSD at 3 Months CGA",
+                "domain": "physiology",
+                "group": "physiology",
+                "manipulable": True,
+            },
+            {
+                "id": "hda_sustained_6mo",
+                "label": "% Sustained Attention at 6mo",
+                "domain": "attention",
+                "group": "attention",
+                "manipulable": True,
+            },
+            {
+                "id": "hda_orienting_9mo",
+                "label": "% Orienting at 9mo",
+                "domain": "attention",
+                "group": "attention",
+                "manipulable": True,
+            },
+            {
+                "id": "motor_sitting_6mo",
+                "label": "Arms-Free Sitting by 6mo",
+                "domain": "motor",
+                "group": "motor",
+                "manipulable": True,
+            },
+            {
+                "id": "gaze_caregiver_9mo",
+                "label": "% Gaze to Caregiver at 9mo",
+                "domain": "social",
+                "group": "social",
+                "manipulable": True,
+            },
+            {
+                "id": "language_csbs_12mo",
+                "label": "CSBS Score at 12 Months",
+                "domain": "language",
+                "group": "language",
+                "manipulable": True,
+            },
+            {
+                "id": "outcome_36m",
+                "label": "ASD Symptom Score at 36 Months",
+                "domain": "outcome",
+                "group": "outcome",
+                "manipulable": False,
+            },
         ],
         "paths": [
-            {"from": "rmssd_3mo", "to": "hda_sustained_6mo", "beta": 0.31, "se": 0.07, "delta_beta": 0.08},
-            {"from": "rsa_9mo", "to": "gaze_caregiver_9mo", "beta": 0.29, "se": 0.08, "delta_beta": 0.18},
-            {"from": "hda_sustained_6mo", "to": "language_csbs_12mo", "beta": -0.24, "se": 0.09, "delta_beta": -0.17},
-            {"from": "hda_orienting_9mo", "to": "language_csbs_12mo", "beta": -0.18, "se": 0.07, "delta_beta": -0.04},
-            {"from": "motor_sitting_6mo", "to": "language_csbs_12mo", "beta": -0.16, "se": 0.06, "delta_beta": -0.05},
-            {"from": "gaze_caregiver_9mo", "to": "outcome_36m", "beta": -0.28, "se": 0.1, "delta_beta": -0.22},
-            {"from": "language_csbs_12mo", "to": "outcome_36m", "beta": -0.46, "se": 0.1, "delta_beta": -0.19},
-            {"from": "rsa_12mo", "to": "outcome_36m", "beta": 0.21, "se": 0.08, "delta_beta": 0.16},
+            {
+                "from": "rmssd_3mo",
+                "to": "hda_sustained_6mo",
+                "beta": 0.31,
+                "se": 0.07,
+                "delta_beta": 0.08,
+            },
+            {
+                "from": "rsa_9mo",
+                "to": "gaze_caregiver_9mo",
+                "beta": 0.29,
+                "se": 0.08,
+                "delta_beta": 0.18,
+            },
+            {
+                "from": "hda_sustained_6mo",
+                "to": "language_csbs_12mo",
+                "beta": -0.24,
+                "se": 0.09,
+                "delta_beta": -0.17,
+            },
+            {
+                "from": "hda_orienting_9mo",
+                "to": "language_csbs_12mo",
+                "beta": -0.18,
+                "se": 0.07,
+                "delta_beta": -0.04,
+            },
+            {
+                "from": "motor_sitting_6mo",
+                "to": "language_csbs_12mo",
+                "beta": -0.16,
+                "se": 0.06,
+                "delta_beta": -0.05,
+            },
+            {
+                "from": "gaze_caregiver_9mo",
+                "to": "outcome_36m",
+                "beta": -0.28,
+                "se": 0.1,
+                "delta_beta": -0.22,
+            },
+            {
+                "from": "language_csbs_12mo",
+                "to": "outcome_36m",
+                "beta": -0.46,
+                "se": 0.1,
+                "delta_beta": -0.19,
+            },
+            {
+                "from": "rsa_12mo",
+                "to": "outcome_36m",
+                "beta": 0.21,
+                "se": 0.08,
+                "delta_beta": 0.16,
+            },
         ],
         "baseline": [
             {"nodeId": "rsa_9mo", "value": 0},
@@ -1938,8 +2633,20 @@ def _v2_eco_validity() -> dict[str, Any]:
     return {
         "arms": ["lab", "home"],
         "behavior": [
-            {"metric": "negative reactivity", "lab": 0.58, "home": 0.49, "test": "Welch t", "p": 0.04},
-            {"metric": "engagement score", "lab": 0.62, "home": 0.71, "test": "Welch t", "p": 0.03},
+            {
+                "metric": "negative reactivity",
+                "lab": 0.58,
+                "home": 0.49,
+                "test": "Welch t",
+                "p": 0.04,
+            },
+            {
+                "metric": "engagement score",
+                "lab": 0.62,
+                "home": 0.71,
+                "test": "Welch t",
+                "p": 0.03,
+            },
         ],
         "quality": [
             {"metric": "valid ECG", "lab": 87.4, "home": 84.2},
@@ -1947,8 +2654,18 @@ def _v2_eco_validity() -> dict[str, Any]:
             {"metric": "complete forms", "lab": 95.3, "home": 93.8},
         ],
         "representation": [
-            {"metric": "BIPOC enrollment", "lab": 39.2, "home": 47.1, "localReference": 43.5},
-            {"metric": "rural households", "lab": 14.4, "home": 24.8, "localReference": 22.1},
+            {
+                "metric": "BIPOC enrollment",
+                "lab": 39.2,
+                "home": 47.1,
+                "localReference": 43.5,
+            },
+            {
+                "metric": "rural households",
+                "lab": 14.4,
+                "home": 24.8,
+                "localReference": 22.1,
+            },
             {"metric": "median round-trip miles", "lab": 42, "home": 18},
         ],
     }
@@ -1959,10 +2676,23 @@ def _v2_stream_coverage(nano_id: str, visit_age_raw: str) -> dict[str, Any]:
     return {
         "durationSec": 240,
         "streams": [
-            {"name": "ecg_infant", "valid": [{"start": 0, "end": 74}, {"start": 86, "end": 168}, {"start": 181, "end": 240}]},
-            {"name": "ecg_caregiver", "valid": [{"start": 0, "end": 112}, {"start": 120, "end": 240}]},
+            {
+                "name": "ecg_infant",
+                "valid": [
+                    {"start": 0, "end": 74},
+                    {"start": 86, "end": 168},
+                    {"start": 181, "end": 240},
+                ],
+            },
+            {
+                "name": "ecg_caregiver",
+                "valid": [{"start": 0, "end": 112}, {"start": 120, "end": 240}],
+            },
             {"name": "audio", "valid": [{"start": 4, "end": 240}]},
-            {"name": "video", "valid": [{"start": 0, "end": 92}, {"start": 101, "end": 240}]},
+            {
+                "name": "video",
+                "valid": [{"start": 0, "end": 92}, {"start": 101, "end": 240}],
+            },
             {"name": "markers", "valid": [{"start": 0, "end": 240}]},
         ],
         "syncOffsetsMs": [
@@ -2751,6 +3481,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(self._assistant_status_payload())
             return
 
+        if request_path == "/api/ops":
+            self._send_json(_redcap_ops_payload())
+            return
+
+        if request_path == "/api/controls":
+            self._send_json(_dashboard_controls_payload())
+            return
+
         if request_path == "/api/assistant/freshness":
             config = PipelineConfig.from_env()
             self._send_json(
@@ -2791,17 +3529,13 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         if request_path == "/api/publications":
             self._send_json(
-                data_features.list_publications(
-                    data_features.parse_query_params(query)
-                )
+                data_features.list_publications(data_features.parse_query_params(query))
             )
             return
 
         if request_path.startswith("/api/publications/"):
             identifier = request_path[len("/api/publications/") :].strip("/")
-            publication = data_features.get_publication(
-                unquote(identifier)
-            )
+            publication = data_features.get_publication(unquote(identifier))
             if publication is None:
                 self._send_json(
                     {"error": "Publication not found"},
@@ -2898,6 +3632,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._handle_create_snapshot()
             return
 
+        if request_path == "/api/controls":
+            self._handle_update_controls()
+            return
+
+        if request_path == "/api/redcap/writeback":
+            self._handle_redcap_writeback()
+            return
+
         if request_path == "/api/v2/redcap-visit-entry":
             self._handle_redcap_visit_entry()
             return
@@ -2966,16 +3708,14 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                         return
                     self._send_json(updated)
                 except ValueError as exc:
-                    self._send_json(
-                        {"error": str(exc)}, status=HTTPStatus.BAD_REQUEST
-                    )
+                    self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
                 return
         if request_path.startswith("/api/publications/") and request_path.endswith(
             "/tags"
         ):
-            identifier = request_path[
-                len("/api/publications/") : -len("/tags")
-            ].strip("/")
+            identifier = request_path[len("/api/publications/") : -len("/tags")].strip(
+                "/"
+            )
             self._handle_update_publication_tags(unquote(identifier))
             return
         self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
@@ -3085,27 +3825,39 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             visit_date = str(payload.get("visitDate") or "").strip()
             allowed_events = {item["eventName"] for item in _redcap_visit_options()}
             if not record_id:
-                self._send_json({"error": "recordId is required"}, status=HTTPStatus.BAD_REQUEST)
+                self._send_json(
+                    {"error": "recordId is required"}, status=HTTPStatus.BAD_REQUEST
+                )
                 return
             if event_name not in allowed_events:
-                self._send_json({"error": "eventName is not configured for visit entry"}, status=HTTPStatus.BAD_REQUEST)
+                self._send_json(
+                    {"error": "eventName is not configured for visit entry"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
                 return
             try:
                 datetime.strptime(visit_date, "%Y-%m-%d")
             except ValueError:
-                self._send_json({"error": "visitDate must use YYYY-MM-DD"}, status=HTTPStatus.BAD_REQUEST)
+                self._send_json(
+                    {"error": "visitDate must use YYYY-MM-DD"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
                 return
-            self._send_json(_import_redcap_visit_date(
-                record_id=record_id,
-                event_name=event_name,
-                visit_date=visit_date,
-            ))
+            self._send_json(
+                _import_redcap_visit_date(
+                    record_id=record_id,
+                    event_name=event_name,
+                    visit_date=visit_date,
+                )
+            )
         except EnvironmentError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.SERVICE_UNAVAILABLE)
         except requests.RequestException as exc:
             logger.warning("REDCap visit-date import failed: %s", exc)
             self._send_json(
-                {"error": "REDCap import failed; check backend logs and token import rights."},
+                {
+                    "error": "REDCap import failed; check backend logs and token import rights."
+                },
                 status=HTTPStatus.BAD_GATEWAY,
             )
         except ValueError as exc:
@@ -3114,6 +3866,132 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             logger.exception("REDCap visit-date entry failed")
             self._send_json(
                 {"error": f"Unexpected visit entry failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def _handle_update_controls(self) -> None:
+        try:
+            if not _operator_authorized(self.headers):
+                self._send_json(
+                    {"error": "Operator token required"}, status=HTTPStatus.FORBIDDEN
+                )
+                return
+            payload = self._read_json_body()
+            controls = _write_dashboard_controls(payload)
+            self._send_json({"ok": True, "controls": controls})
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("Dashboard controls update failed")
+            self._send_json(
+                {"error": f"Unexpected controls failure: {exc}"},
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+
+    def _handle_redcap_writeback(self) -> None:
+        try:
+            if not _redcap_writeback_enabled():
+                self._send_json(
+                    {"error": "REDCap writeback is disabled"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            if not _operator_authorized(self.headers):
+                self._send_json(
+                    {"error": "Operator token required"}, status=HTTPStatus.FORBIDDEN
+                )
+                return
+            payload = self._read_json_body()
+            record_id = str(payload.get("recordId") or "").strip()
+            event_name = str(
+                payload.get("event") or payload.get("eventName") or ""
+            ).strip()
+            field = str(payload.get("field") or "").strip()
+            value = str(payload.get("value") or "").strip()
+            reason = str(payload.get("reason") or "").strip()
+            confirmed = (
+                payload.get("confirm") is True
+                or str(payload.get("confirmToken") or "") == "WRITEBACK"
+            )
+            allowed_events = {item["eventName"] for item in _redcap_visit_options()}
+            allowed_fields = _allowed_redcap_writeback_fields()
+
+            if not confirmed:
+                self._send_json(
+                    {"error": "Explicit confirmation is required"},
+                    status=HTTPStatus.FORBIDDEN,
+                )
+                return
+            if not record_id:
+                self._send_json(
+                    {"error": "recordId is required"}, status=HTTPStatus.BAD_REQUEST
+                )
+                return
+            if event_name not in allowed_events:
+                self._send_json(
+                    {"error": "event is not configured for REDCap writeback"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+            if field not in allowed_fields:
+                self._send_json(
+                    {"error": "field is not allowlisted for REDCap writeback"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+            if not _validate_redcap_writeback_value(field, value):
+                self._send_json(
+                    {
+                        "error": "value is invalid for the requested REDCap writeback field"
+                    },
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+            if not reason:
+                self._send_json(
+                    {"error": "reason is required for the audit trail"},
+                    status=HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            result = _import_redcap_field_value(
+                record_id=record_id,
+                event_name=event_name,
+                field=field,
+                value=value,
+            )
+            audit_id = f"redcap-writeback-{uuid.uuid4().hex[:12]}"
+            audit_entry = {
+                "audit_id": audit_id,
+                "ts": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+                "recordId": record_id,
+                "event": event_name,
+                "field": field,
+                "newValue": value,
+                "reason": reason,
+                "success": bool(result.get("success")),
+            }
+            _append_redcap_writeback_audit(audit_entry)
+            _trigger_pages_deploy_hook("redcap-writeback", audit_id)
+            self._send_json(
+                {**result, "ok": bool(result.get("success")), "auditId": audit_id}
+            )
+        except EnvironmentError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.SERVICE_UNAVAILABLE)
+        except requests.RequestException as exc:
+            logger.warning("REDCap writeback failed: %s", exc)
+            self._send_json(
+                {
+                    "error": "REDCap writeback failed; check backend logs and import rights."
+                },
+                status=HTTPStatus.BAD_GATEWAY,
+            )
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+        except Exception as exc:  # pragma: no cover - defensive endpoint path
+            logger.exception("REDCap writeback failed")
+            self._send_json(
+                {"error": f"Unexpected writeback failure: {exc}"},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
@@ -3153,7 +4031,9 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             action = str(payload.get("action") or "")
             ts = str(payload.get("ts") or datetime.now().isoformat(timespec="seconds"))
             scope = str(payload.get("scope") or "")
-            detail = payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
+            detail = (
+                payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
+            )
             AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
             with AUDIT_LOG_PATH.open("a", encoding="utf-8") as handle:
                 handle.write(
@@ -3197,6 +4077,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 config,
                 assistant_status=payload,
             )
+            if isinstance(payload.get("freshness"), dict) and payload["freshness"].get(
+                "redcap"
+            ):
+                status_payload["freshness"]["redcap"] = payload["freshness"]["redcap"]
         return status_payload
 
     def _readings_library_payload(self) -> dict[str, Any]:
@@ -3258,7 +4142,9 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 self._send_json(_v2_redcap_visit_health())
                 return
             if request_path.startswith("/api/v2/redcap-visit-health/"):
-                record_id = request_path[len("/api/v2/redcap-visit-health/") :].strip("/")
+                record_id = request_path[len("/api/v2/redcap-visit-health/") :].strip(
+                    "/"
+                )
                 detail = _v2_redcap_visit_detail(record_id)
                 if detail is None:
                     self._send_json(
@@ -3342,12 +4228,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                     self._send_json(_v2_multimodal(parts[0], parts[1]))
                     return
             if request_path.startswith("/api/v2/dyad/coregulation/"):
-                parts = request_path[len("/api/v2/dyad/coregulation/") :].strip("/").split("/")
+                parts = (
+                    request_path[len("/api/v2/dyad/coregulation/") :]
+                    .strip("/")
+                    .split("/")
+                )
                 if len(parts) == 2:
                     self._send_json(_v2_dyad_coregulation(parts[0], parts[1]))
                     return
             if request_path.startswith("/api/v2/phase-portrait/"):
-                parts = request_path[len("/api/v2/phase-portrait/") :].strip("/").split("/")
+                parts = (
+                    request_path[len("/api/v2/phase-portrait/") :].strip("/").split("/")
+                )
                 if len(parts) == 2:
                     self._send_json(_v2_phase_portrait(parts[0], parts[1]))
                     return
@@ -3366,12 +4258,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 self._send_json(_v2_passport(nano_id))
                 return
             if request_path.startswith("/api/v2/stream-coverage/"):
-                parts = request_path[len("/api/v2/stream-coverage/") :].strip("/").split("/")
+                parts = (
+                    request_path[len("/api/v2/stream-coverage/") :]
+                    .strip("/")
+                    .split("/")
+                )
                 if len(parts) == 2:
                     self._send_json(_v2_stream_coverage(parts[0], parts[1]))
                     return
             if request_path.startswith("/api/v2/hda-session/"):
-                parts = request_path[len("/api/v2/hda-session/") :].strip("/").split("/")
+                parts = (
+                    request_path[len("/api/v2/hda-session/") :].strip("/").split("/")
+                )
                 if len(parts) == 2:
                     self._send_json(_v2_hda_session(parts[0], parts[1]))
                     return

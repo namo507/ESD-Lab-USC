@@ -35,6 +35,8 @@ jobs:
           : > probe.log
           python scripts/check_live_surfaces.py \
             --canonical-url "https://esd-lab-namo.pages.dev/" \
+            --canonical-route /redcap \
+            --canonical-route /pipeline-health \
             --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
             --timeout 25 \
             --max-stamp-age-hours 168 \
@@ -67,6 +69,8 @@ jobs:
           sleep 90
           python scripts/check_live_surfaces.py \
             --canonical-url "https://esd-lab-namo.pages.dev/" \
+            --canonical-route /redcap \
+            --canonical-route /pipeline-health \
             --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
             --timeout 25 \
             --max-stamp-age-hours 168 \

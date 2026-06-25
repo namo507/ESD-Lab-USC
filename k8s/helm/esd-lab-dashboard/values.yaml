@@ -81,6 +81,10 @@ pipeline:
 secret:
   create: false
   name: esd-lab-dashboard-secrets
+  redcapApiUrl: ""
+  redcapApiToken: ""
+  participantIdSalt: ""
+  dashboardOperatorToken: ""
   pagesDeployHookUrl: ""
 
 networkPolicy:

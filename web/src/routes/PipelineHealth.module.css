@@ -1,0 +1,164 @@
+.page { display: flex; flex-direction: column; gap: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.kpi {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 14px 16px;
+}
+.kpi span {
+  color: var(--slate-500);
+  font-size: 10px;
+  font-weight: var(--w-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.kpi strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: var(--w-semibold);
+  line-height: 1;
+}
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+}
+.cardHead > span {
+  color: var(--slate-500);
+  font-size: 11px;
+}
+.parityGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
+.parityCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 12px;
+}
+.parityCard div { display: grid; gap: 4px; min-width: 0; }
+.parityCard span {
+  color: var(--slate-500);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.parityCard strong {
+  color: var(--ink);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dag {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  padding: 18px;
+}
+.stage {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--slate-600);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stage:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: calc(50% + 20px);
+  width: calc(100% - 32px);
+  height: 1px;
+  background: var(--warm-border);
+}
+.stageDot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--warm-border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: var(--w-bold);
+}
+.stageOk {
+  border-color: var(--green);
+  background: var(--green-tint);
+  color: var(--on-ok);
+}
+.queueStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+  padding: 12px 18px 16px;
+}
+.queueStrip div, .controlsGrid div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 10px 12px;
+}
+.queueStrip span, .controlsGrid span {
+  color: var(--slate-500);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.queueStrip strong, .controlsGrid strong {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg-page);
+  color: var(--slate-500);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.table td { padding: 10px 14px; border-bottom: 1px solid var(--slate-100); }
+.empty {
+  color: var(--slate-500);
+  text-align: center;
+}
+.controlsGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
+
+@media (max-width: 1100px) {
+  .kpis, .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .parityGrid, .controlsGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .kpis, .grid, .queueStrip { grid-template-columns: 1fr; }
+  .dag { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stage::after { display: none; }
+}

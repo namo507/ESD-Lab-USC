@@ -13,6 +13,7 @@ import {
   useStages,
   useStudySummary,
   useParticipants,
+  useRedcapData,
   useRuns,
   useTrajectory,
   useReadingsLibrary,
@@ -53,6 +54,7 @@ export function Overview() {
   const { data: runs = [] } = useRuns(20);
   const { data: participants = [] } = useParticipants();
   const { data: traj } = useTrajectory("rmssd");
+  const { data: redcapPayload } = useRedcapData();
   const { data: pubSyncStatus } = usePublicationSyncStatus();
   const publicationsEnabled = useFeatureFlag("PUBLICATIONS_FEED");
   const readingsLibrary = useReadingsLibrary();
@@ -73,6 +75,11 @@ export function Overview() {
 
   const last3 = traj?.series.VPT.slice(-3).map((p) => p.y) ?? [];
   const rmssdDelta = last3.length >= 2 ? (last3[last3.length - 1]! - last3[0]!).toFixed(1) : "0";
+  const redcapEvents = redcapPayload?.redcap_trackers.enrollment ?? [];
+  const redcapCompletion = redcapEvents.length
+    ? redcapEvents.reduce((sum, row) => sum + row.completed / Math.max(row.expected, 1), 0) / redcapEvents.length * 100
+    : null;
+  const redcapFreshness = redcapPayload?.redcap_ops.freshness;
 
   const kpis: Array<{
     id: string;
@@ -138,9 +145,9 @@ export function Overview() {
       id: "redcap",
       insightId: "kpi-redcap",
       label: <Gloss term="RedCap">REDCap Health</Gloss>,
-      value: Math.max(0, 100 - totals.fail / Math.max(totals.done, 1) * 100) || 99.8,
+      value: redcapCompletion ?? (Math.max(0, 100 - totals.fail / Math.max(totals.done, 1) * 100) || 99.8),
       unit: "%",
-      sub: "sync rate · last 24 h · 0 PHI leaks",
+      sub: redcapFreshness ? `payload age ${redcapFreshness.age_hours.toFixed(1)} h · ${redcapPayload?.redcap_meta.anomaly_count ?? 0} flags` : "sync rate · last 24 h · 0 PHI leaks",
       delta: rmssdDelta !== "0" ? `Δ RMSSD ${rmssdDelta} ms` : "stable",
       deltaKind: rmssdDelta !== "0" ? "up" : "flat",
       spark: [99.4, 99.5, 99.7, 99.6, 99.8, 99.8, 99.9, 99.8],

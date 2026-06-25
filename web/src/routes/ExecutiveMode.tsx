@@ -6,7 +6,7 @@
  */
 import { Link } from "react-router-dom";
 import { Button, Card, SectionLabel } from "@/components/primitives";
-import { useAttritionFunnel, useModelLeaderboard, useRsaTrajectories, useStudySummary } from "@/api/hooks";
+import { useAttritionFunnel, useModelLeaderboard, useRedcapData, useRsaTrajectories, useStudySummary } from "@/api/hooks";
 import type { AttritionFunnelStage, ModelLeaderboardRow, RsaTrajectoryRow } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import shared from "./FeatureRoutes.module.css";
@@ -129,12 +129,26 @@ export function ExecutiveMode() {
   const models = useModelLeaderboard();
   const attrition = useAttritionFunnel();
   const rsa = useRsaTrajectories();
+  const redcap = useRedcapData();
   const enrolled = study.data?.enrolled ?? 0;
   const target = study.data?.target ?? 260;
   const best = (models.data?.data ?? []).slice().sort((a, b) => b.auroc - a.auroc)[0];
   const lastStage = attrition.data?.stages?.at(-1);
   const attritionLabel = lastStage ? `${lastStage.label}: N=${lastStage.n}, ${lastStage.retainedPct.toFixed(1)}% retained.` : "Retention funnel not available.";
   const latestRsa = rsa.data?.data.find((row) => row.group === "TD" && row.adjustedAgeMonths === 36)?.mean;
+  const redcapOps = redcap.data?.redcap_ops;
+  const redcapTrackers = redcap.data?.redcap_trackers;
+  const queue = redcapTrackers?.queue_funnel ?? [];
+  const parityHashes = new Set(Object.values(redcapOps?.runtime_parity ?? {}).filter(Boolean));
+  const parityOk = parityHashes.size <= 1 && parityHashes.size > 0;
+  const completionRows = redcapTrackers?.enrollment ?? [];
+  const avgVisitCompletion = completionRows.length
+    ? completionRows.reduce((sum, row) => sum + row.completed / Math.max(row.expected, 1), 0) / completionRows.length
+    : 0;
+  const furthestBehind = completionRows.slice().sort((a, b) => (
+    (b.expected - b.completed) / Math.max(b.expected, 1)
+    - (a.expected - a.completed) / Math.max(a.expected, 1)
+  ))[0];
 
   if (!enabled) return null;
 
@@ -174,6 +188,7 @@ export function ExecutiveMode() {
           ["Target N", target.toLocaleString()],
           ["Visit Completion", attrition.data?.stages?.[3]?.retainedPct ? `${attrition.data.stages[3].retainedPct.toFixed(1)}%` : "n/a"],
           ["AUROC Best Model", best ? best.auroc.toFixed(3) : "n/a"],
+          ["REDCap Freshness", redcapOps?.freshness?.age_hours !== undefined ? `${redcapOps.freshness.age_hours.toFixed(1)}h` : "n/a"],
         ].map(([label, value]) => (
           <div key={label} className={styles.kpi}>
             <div className={styles.kpiLabel}>{label}</div>
@@ -208,6 +223,24 @@ export function ExecutiveMode() {
           <SectionLabel>Retention</SectionLabel>
           <h2 className={shared.cardTitle}>{attritionLabel}</h2>
           <p className={shared.muted}>Reason-code detail is available in the Attrition Funnel route.</p>
+        </Card>
+        <Card pad={20}>
+          <SectionLabel>REDCap study health</SectionLabel>
+          <h2 className={shared.cardTitle}>{(avgVisitCompletion * 100).toFixed(1)}% event completion</h2>
+          <p className={shared.muted}>
+            Runtime parity is {parityOk ? "green" : "not fully matched"}; the furthest-behind REDCap event is {furthestBehind?.label ?? "n/a"}.
+          </p>
+        </Card>
+        <Card pad={20}>
+          <SectionLabel>Milestone queue</SectionLabel>
+          <table className={styles.table}>
+            <thead><tr><th>Stage</th><th>N</th></tr></thead>
+            <tbody>
+              {queue.map((stage) => (
+                <tr key={stage.stage}><td>{stage.stage}</td><td className="t-mono">{stage.count}</td></tr>
+              ))}
+            </tbody>
+          </table>
         </Card>
       </div>
     </div>

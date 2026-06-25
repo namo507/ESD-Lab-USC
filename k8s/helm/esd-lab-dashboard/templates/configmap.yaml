@@ -6,7 +6,9 @@ metadata:
     {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
 data:
   PIPELINE_ENVIRONMENT: {{ .Values.pipeline.environment | quote }}
+  DASHBOARD_RUNTIME: "k8s"
   K8S_MODE_ENABLED: "true"
+  DASHBOARD_CONTROLS_PATH: "/app/config/dashboard_controls.json"
   READINGS_WATCH_PATH: "/app/esd-lab-readings"
   DASHBOARD_DATA_DIR: "/app/dashboard/data"
   READINGS_DATA_OUTPUT: "/app/dashboard/data/readings_data.json"

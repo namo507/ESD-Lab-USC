@@ -502,6 +502,48 @@ const REDCAP_MISSING_DATA: RedcapMissingDataResponse = {
   meta: { generatedAt: V2_GENERATED_AT, participantCount: 1, source: "mock" },
 };
 
+const MOCK_REDCAP_CONTROLS = {
+  anomaly_thresholds: {
+    stale_visit_days: 30,
+    completeness_warn_pct: 0.8,
+    freshness_sla_hours: 48,
+    small_cell_min: 5,
+  },
+  sync: { cadence_cron: "0 8 * * *", chunk_size: 500 },
+  assistant: { model_tier: "balanced", max_fragments: 25 },
+  feature_flags: {
+    "redcap.visitHealth": true,
+    "redcap.whatif": true,
+    "redcap.writeback": false,
+    "redcap.pipelineHealth": true,
+  },
+};
+
+const MOCK_REDCAP_OPS = {
+  freshness: {
+    generated_at: V2_GENERATED_AT,
+    age_hours: 1.5,
+    source: "mock",
+    sla_hours: 48,
+  },
+  runtime_parity: {
+    pages: "mockhash1234",
+    docker: "mockhash1234",
+    k8s: "mockhash1234",
+  },
+  run_ledger: [
+    {
+      run_id: "redcap-mockhash1234",
+      started_at: V2_GENERATED_AT,
+      status: "ok",
+      records: REDCAP_VISIT_HEALTH.data.length,
+      anomalies: REDCAP_VISIT_HEALTH.anomalies.length,
+      duration_ms: 1240,
+    },
+  ],
+  controls_snapshot: MOCK_REDCAP_CONTROLS,
+};
+
 function visitAgeFromPath(raw: string): number {
   const n = Number(raw);
   if (Number.isFinite(n)) return n;
@@ -1354,6 +1396,14 @@ function mockAssistantReply(message: string): string {
     return "The REDCap completeness scorecard focuses on NDA-required instruments, shows participant-by-instrument completeness, and flags missing required fields before the configured VITE_NDA_DEADLINE.";
   }
 
+  if (q.includes("redcap") && (q.includes("furthest behind") || q.includes("behind target") || q.includes("gap"))) {
+    return "The REDCap milestone tracker currently shows 24 months as furthest behind target. Ask AI uses redcap_trackers.enrollment, so the answer stays aligned with the coordinator heatwall and Executive Mode.";
+  }
+
+  if (q.includes("runtime parity") || (q.includes("pages") && q.includes("docker") && q.includes("k8s"))) {
+    return "The REDCap runtime parity panel compares Pages, Docker, and K8s payload hashes from redcap_ops.runtime_parity. Matching hashes mean the three dashboard surfaces are serving the same REDCap payload.";
+  }
+
   if (q.includes("hda") && (q.includes("timeline") || q.includes("player") || q.includes("compare"))) {
     return "The HDA Timeline Player synchronizes phase blocks with RMSSD and SQI tracks. Play/pause, step, speed, and scrubber controls move through the session, and compare mode overlays a second de-identified participant stack.";
   }
@@ -1818,6 +1868,9 @@ export function installMockServer() {
     if (p === "/api/results/hda") return reply(HDA);
     if (p === "/api/redcap/events") return reply(REDCAP_EVENTS);
     if (p === "/api/matlab/integration") return reply(MATLAB_INTEGRATION);
+    if (p === "/api/ops") return reply(MOCK_REDCAP_OPS);
+    if (p === "/api/controls" && method === "GET") return reply(MOCK_REDCAP_CONTROLS);
+    if (p === "/api/controls" && method === "POST") return reply({ ok: true, controls: MOCK_REDCAP_CONTROLS });
     if (p === "/api/cluster/topology") return reply(MOCK_CLUSTER_TOPOLOGY);
     if (p === "/api/cluster/pipeline") return reply(MOCK_CLUSTER_PIPELINE);
     if (p === "/api/readings/freshness") return reply(MOCK_READINGS_FRESHNESS);
@@ -1838,6 +1891,7 @@ export function installMockServer() {
           last_event_id: "readings-mock",
           warnings: [],
         },
+        redcap: MOCK_REDCAP_OPS.freshness,
       });
     }
     if (p === "/api/assistant/status") {
@@ -1851,6 +1905,7 @@ export function installMockServer() {
             total_indexed: MOCK_READINGS_FRESHNESS.total_indexed,
           },
           pipeline: { state: MOCK_CLUSTER_PIPELINE.state, warnings: [] },
+          redcap: MOCK_REDCAP_OPS.freshness,
         },
       });
     }

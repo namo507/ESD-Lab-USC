@@ -47,6 +47,7 @@ only randomness is the ``hashlib`` salt used for ID surrogates, which
 lives in ``config/paths.yml → participant_id_salt`` so it is stable
 across runs.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -71,12 +72,32 @@ sys.path.insert(0, str(PROJECT_ROOT))
 UNRESOLVED_TEMPLATE_PATTERN = re.compile(r"\$\{[^}]+\}")
 DEFAULT_REDCAP_PATH = PROJECT_ROOT / "data" / "processed" / "redcap_latest.parquet"
 DEFAULT_FEATURE_PATH = PROJECT_ROOT / "data" / "processed" / "feature_matrix.parquet"
-DEFAULT_DD_PATH = PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv"
+DEFAULT_DD_PATH = (
+    PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv"
+)
 DEFAULT_METRICS_PATH = PROJECT_ROOT / "models" / "_metrics.json"
 REDCAP_CONFIG_PATH = PROJECT_ROOT / "config" / "redcap_config.yml"
+DASHBOARD_CONTROLS_PATH = PROJECT_ROOT / "config" / "dashboard_controls.json"
+DEFAULT_DASHBOARD_CONTROLS: dict[str, Any] = {
+    "anomaly_thresholds": {
+        "stale_visit_days": 30,
+        "completeness_warn_pct": 0.80,
+        "freshness_sla_hours": 48,
+        "small_cell_min": 5,
+    },
+    "sync": {"cadence_cron": "0 8 * * *", "chunk_size": 500},
+    "assistant": {"model_tier": "balanced", "max_fragments": 25},
+    "feature_flags": {
+        "redcap.visitHealth": True,
+        "redcap.whatif": True,
+        "redcap.writeback": False,
+        "redcap.pipelineHealth": True,
+    },
+}
 
 try:
     from src.utils.logging_utils import get_pipeline_logger
+
     logger = get_pipeline_logger(__name__)
 except Exception:  # pragma: no cover
     logging.basicConfig(
@@ -102,6 +123,98 @@ def load_redcap_contract() -> dict[str, Any]:
     return yaml.safe_load(REDCAP_CONFIG_PATH.read_text(encoding="utf-8")) or {}
 
 
+def _deep_merge_controls(
+    base: dict[str, Any], override: dict[str, Any]
+) -> dict[str, Any]:
+    merged = json.loads(json.dumps(base))
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_controls(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _clamp_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _clamp_float(
+    value: Any, *, default: float, minimum: float, maximum: float
+) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return round(max(minimum, min(maximum, parsed)), 3)
+
+
+def normalize_dashboard_controls(raw: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Merge and range-check Tier-1 dashboard controls."""
+    raw = raw or {}
+    controls = _deep_merge_controls(DEFAULT_DASHBOARD_CONTROLS, raw)
+    thresholds = controls.setdefault("anomaly_thresholds", {})
+    thresholds["stale_visit_days"] = _clamp_int(
+        thresholds.get("stale_visit_days"),
+        default=30,
+        minimum=1,
+        maximum=365,
+    )
+    thresholds["completeness_warn_pct"] = _clamp_float(
+        thresholds.get("completeness_warn_pct"),
+        default=0.80,
+        minimum=0.50,
+        maximum=0.99,
+    )
+    thresholds["freshness_sla_hours"] = _clamp_float(
+        thresholds.get("freshness_sla_hours"),
+        default=48.0,
+        minimum=1.0,
+        maximum=168.0,
+    )
+    thresholds["small_cell_min"] = _clamp_int(
+        thresholds.get("small_cell_min"),
+        default=5,
+        minimum=2,
+        maximum=20,
+    )
+    sync = controls.setdefault("sync", {})
+    sync["cadence_cron"] = str(sync.get("cadence_cron") or "0 8 * * *")
+    sync["chunk_size"] = _clamp_int(
+        sync.get("chunk_size"),
+        default=500,
+        minimum=1,
+        maximum=5000,
+    )
+    assistant = controls.setdefault("assistant", {})
+    assistant["model_tier"] = str(assistant.get("model_tier") or "balanced")
+    assistant["max_fragments"] = _clamp_int(
+        assistant.get("max_fragments"),
+        default=25,
+        minimum=5,
+        maximum=100,
+    )
+    flags = controls.setdefault("feature_flags", {})
+    for key, value in DEFAULT_DASHBOARD_CONTROLS["feature_flags"].items():
+        flags[key] = bool(flags.get(key, value))
+    return controls
+
+
+def load_dashboard_controls(path: Path = DASHBOARD_CONTROLS_PATH) -> dict[str, Any]:
+    """Load and range-check Tier-1 dashboard controls shared by all runtimes."""
+    raw: dict[str, Any] = {}
+    if path.exists():
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            logger.warning("Dashboard controls invalid JSON (%s); using defaults.", exc)
+    return normalize_dashboard_controls(raw)
+
+
 def _has_unresolved_template(value: str) -> bool:
     return bool(UNRESOLVED_TEMPLATE_PATTERN.search(value))
 
@@ -123,7 +236,9 @@ def _resolve_paths(cfg: dict) -> dict[str, Path]:
     return out
 
 
-def _pick_configured_path(paths: dict[str, Path], keys: tuple[str, ...], default: Path) -> Path:
+def _pick_configured_path(
+    paths: dict[str, Path], keys: tuple[str, ...], default: Path
+) -> Path:
     for key in keys:
         configured = paths.get(key)
         if configured is not None and not _has_unresolved_template(str(configured)):
@@ -272,8 +387,10 @@ def drop_phi(df: pd.DataFrame, dd: Optional[pd.DataFrame]) -> pd.DataFrame:
         df = df[[c for c in df.columns if c not in contract_phi]].copy()
     if dd is None or "phi_flag" not in dd.columns:
         return df
-    phi_cols = dd.loc[dd["phi_flag"].astype(str).str.lower().isin(["1", "true", "yes"]),
-                       "variable_name"].tolist()
+    phi_cols = dd.loc[
+        dd["phi_flag"].astype(str).str.lower().isin(["1", "true", "yes"]),
+        "variable_name",
+    ].tolist()
     keep = [c for c in df.columns if c not in phi_cols]
     dropped = [c for c in df.columns if c in phi_cols]
     if dropped:
@@ -283,9 +400,9 @@ def drop_phi(df: pd.DataFrame, dd: Optional[pd.DataFrame]) -> pd.DataFrame:
 
 # ─── Study constants (kept in sync with config/study_parameters.yml) ────────
 GROUPS = {
-    "ASIB": {"n_target": 65,  "color": "#C44E52", "label": "ASIB (VPT + ASD traits)"},
-    "PT":   {"n_target": 130, "color": "#4C72B0", "label": "PT (VPT typical)"},
-    "TD":   {"n_target": 65,  "color": "#55A868", "label": "TD (Term-born typical)"},
+    "ASIB": {"n_target": 65, "color": "#C44E52", "label": "ASIB (VPT + ASD traits)"},
+    "PT": {"n_target": 130, "color": "#4C72B0", "label": "PT (VPT typical)"},
+    "TD": {"n_target": 65, "color": "#55A868", "label": "TD (Term-born typical)"},
 }
 EVENTS = [
     ("nicu_admission", 0, "NICU Admission"),
@@ -308,7 +425,9 @@ def build_enrollment(redcap: pd.DataFrame) -> dict:
     months = [(start + timedelta(days=30 * i)).strftime("%Y-%m") for i in range(30)]
 
     # Filter to enrollment event
-    enroll_df = redcap[redcap["redcap_event_name"].str.contains("nicu_admission", na=False)].copy()
+    enroll_df = redcap[
+        redcap["redcap_event_name"].str.contains("nicu_admission", na=False)
+    ].copy()
     enroll_df["enrolled_month"] = pd.to_datetime(
         enroll_df["enrollment_date"], errors="coerce"
     ).dt.strftime("%Y-%m")
@@ -326,7 +445,9 @@ def build_enrollment(redcap: pd.DataFrame) -> dict:
         by_group[g] = {
             "target": meta["n_target"],
             "current": current,
-            "percent": round(100.0 * current / meta["n_target"], 1) if meta["n_target"] else 0,
+            "percent": (
+                round(100.0 * current / meta["n_target"], 1) if meta["n_target"] else 0
+            ),
             "monthly": monthly,
             "color": meta["color"],
             "label": meta["label"],
@@ -336,14 +457,20 @@ def build_enrollment(redcap: pd.DataFrame) -> dict:
 
 def build_visit_completion(redcap: pd.DataFrame) -> dict:
     """Per-event × group visit-completion percentage."""
-    out = {"events": [e[0] for e in EVENTS], "labels": [e[2] for e in EVENTS], "by_group": {}}
+    out = {
+        "events": [e[0] for e in EVENTS],
+        "labels": [e[2] for e in EVENTS],
+        "by_group": {},
+    }
     for g in GROUPS:
         g_df = redcap[redcap["group_assignment"] == g]
         participants = g_df["record_id"].nunique() or 1
         rates = []
         for event, _, _ in EVENTS:
-            completed = g_df[(g_df["redcap_event_name"] == event)
-                              & (g_df.get("visit_completed", 0) == 1)]["record_id"].nunique()
+            completed = g_df[
+                (g_df["redcap_event_name"] == event)
+                & (g_df.get("visit_completed", 0) == 1)
+            ]["record_id"].nunique()
             rates.append(round(100.0 * completed / participants, 1))
         out["by_group"][g] = rates
     return out
@@ -355,7 +482,9 @@ def build_data_quality(redcap: pd.DataFrame, dd: Optional[pd.DataFrame]) -> dict
     if dd is not None and "form_name" in dd.columns:
         instruments = sorted(dd["form_name"].dropna().unique().tolist())
     else:
-        instruments = [c.split("_complete")[0] for c in redcap.columns if c.endswith("_complete")]
+        instruments = [
+            c.split("_complete")[0] for c in redcap.columns if c.endswith("_complete")
+        ]
 
     missingness = []
     for inst in instruments:
@@ -366,30 +495,49 @@ def build_data_quality(redcap: pd.DataFrame, dd: Optional[pd.DataFrame]) -> dict
         if n == 0:
             continue
         pct_missing = 100.0 * (redcap[complete_col] != 2).sum() / n
-        missingness.append({
-            "instrument": inst,
-            "pct_missing": round(float(pct_missing), 1),
-            "status": (
-                "High — MNAR risk" if pct_missing > 25 else
-                "Moderate — MAR candidate" if pct_missing > 10 else
-                "Low — MCAR likely"
-            ),
-        })
+        missingness.append(
+            {
+                "instrument": inst,
+                "pct_missing": round(float(pct_missing), 1),
+                "status": (
+                    "High — MNAR risk"
+                    if pct_missing > 25
+                    else (
+                        "Moderate — MAR candidate"
+                        if pct_missing > 10
+                        else "Low — MCAR likely"
+                    )
+                ),
+            }
+        )
 
     qc_flags = {
         "total_records": int(len(redcap)),
-        "double_entry_discrepancies": int((redcap.get("double_entry_mismatch", 0) == 1).sum()),
+        "double_entry_discrepancies": int(
+            (redcap.get("double_entry_mismatch", 0) == 1).sum()
+        ),
         "out_of_range_values": int((redcap.get("value_out_of_range", 0) == 1).sum()),
-        "missing_required_fields": int(
-            redcap[[c for c in redcap.columns if c.endswith("_required")]].isna().sum().sum()
-        ) if any(c.endswith("_required") for c in redcap.columns) else 0,
+        "missing_required_fields": (
+            int(
+                redcap[[c for c in redcap.columns if c.endswith("_required")]]
+                .isna()
+                .sum()
+                .sum()
+            )
+            if any(c.endswith("_required") for c in redcap.columns)
+            else 0
+        ),
         "ecg_transfer_late": int((redcap.get("ecg_transfer_late", 0) == 1).sum()),
-        "temp_quality_rejected": int((redcap.get("temp_quality_rejected", 0) == 1).sum()),
+        "temp_quality_rejected": int(
+            (redcap.get("temp_quality_rejected", 0) == 1).sum()
+        ),
     }
     return {"missingness": missingness, "qc_flags": qc_flags}
 
 
-def _redcap_contract_parts() -> tuple[dict[str, Any], dict[str, Any], str, str, list[str]]:
+def _redcap_contract_parts() -> (
+    tuple[dict[str, Any], dict[str, Any], str, str, list[str]]
+):
     contract = load_redcap_contract()
     carry_forward = contract["instruments"]["carry_forward"]
     visit_field = contract["instruments"]["visit_date_field"]
@@ -400,12 +548,10 @@ def _redcap_contract_parts() -> tuple[dict[str, Any], dict[str, Any], str, str, 
 
 
 def _redcap_event_label(contract: dict[str, Any], event_name: str) -> str:
-    label = str((contract.get("events", {}).get("labels") or {}).get(event_name) or event_name)
-    return (
-        label.replace(" Months", "m")
-        .replace(" Month", "m")
-        .replace(" ", "")
+    label = str(
+        (contract.get("events", {}).get("labels") or {}).get(event_name) or event_name
     )
+    return label.replace(" Months", "m").replace(" Month", "m").replace(" ", "")
 
 
 def _status_code(value: Any) -> str:
@@ -422,13 +568,21 @@ def _status_code(value: Any) -> str:
 def _status_slug(value: Any, contract: dict[str, Any]) -> str:
     status = contract.get("status_codes", {}).get(_status_code(value))
     if isinstance(status, dict):
-        return str(status.get("normalized") or status.get("label") or "not_started").lower().replace(" ", "_")
+        return (
+            str(status.get("normalized") or status.get("label") or "not_started")
+            .lower()
+            .replace(" ", "_")
+        )
     return "not_started"
 
 
-def build_redcap_completion_stats(redcap: pd.DataFrame) -> dict[str, dict[str, int | str]]:
+def build_redcap_completion_stats(
+    redcap: pd.DataFrame,
+) -> dict[str, dict[str, int | str]]:
     """CSBS completion status counts for the verified carry-forward events."""
-    contract, _carry_forward, _visit_field, csbs_field, csbs_events = _redcap_contract_parts()
+    contract, _carry_forward, _visit_field, csbs_field, csbs_events = (
+        _redcap_contract_parts()
+    )
     stats: dict[str, dict[str, int | str]] = {}
     event_col = (
         redcap["redcap_event_name"].astype(str)
@@ -437,10 +591,18 @@ def build_redcap_completion_stats(redcap: pd.DataFrame) -> dict[str, dict[str, i
     )
     for event_name in csbs_events:
         sub = redcap[event_col == event_name]
-        counts = {"complete": 0, "unverified": 0, "incomplete": 0, "not_started": 0, "skipped": 0}
+        counts = {
+            "complete": 0,
+            "unverified": 0,
+            "incomplete": 0,
+            "not_started": 0,
+            "skipped": 0,
+        }
         if csbs_field in sub.columns:
             for value in sub[csbs_field].tolist():
-                counts[_status_slug(value, contract)] = counts.get(_status_slug(value, contract), 0) + 1
+                counts[_status_slug(value, contract)] = (
+                    counts.get(_status_slug(value, contract), 0) + 1
+                )
         else:
             counts["not_started"] = int(len(sub))
         stats[event_name] = {
@@ -460,7 +622,9 @@ def _has_text(value: Any) -> bool:
 
 
 def _redcap_anomaly_flags(events: dict[str, dict[str, Any]]) -> list[str]:
-    contract, _carry_forward, visit_field, csbs_field, _csbs_events = _redcap_contract_parts()
+    contract, _carry_forward, visit_field, csbs_field, _csbs_events = (
+        _redcap_contract_parts()
+    )
     six = _row_for_event(events, "6_months_arm_1")
     nine = _row_for_event(events, "9_months_arm_1")
     twelve = _row_for_event(events, "12_months_arm_1")
@@ -484,7 +648,9 @@ def _redcap_anomaly_flags(events: dict[str, dict[str, Any]]) -> list[str]:
 
 def build_redcap_visit_health(redcap: pd.DataFrame, salt: str) -> list[dict[str, Any]]:
     """Participant-level CSBS carry-forward monitor with de-identified IDs."""
-    contract, _carry_forward, visit_field, csbs_field, _csbs_events = _redcap_contract_parts()
+    contract, _carry_forward, visit_field, csbs_field, _csbs_events = (
+        _redcap_contract_parts()
+    )
     if "record_id" not in redcap.columns:
         return []
 
@@ -508,21 +674,256 @@ def build_redcap_visit_health(redcap: pd.DataFrame, salt: str) -> list[dict[str,
                 "eventName": event_name,
                 "visitDate": str(row.get(visit_field) or "").strip() or None,
                 "csbsStatus": _status_slug(row.get(csbs_field), contract),
-                "csbsTimestamp": str(row.get(f"{contract['instruments']['carry_forward']['instrument']}_timestamp") or "").strip() or None,
+                "csbsTimestamp": str(
+                    row.get(
+                        f"{contract['instruments']['carry_forward']['instrument']}_timestamp"
+                    )
+                    or ""
+                ).strip()
+                or None,
             }
 
         flags = _redcap_anomaly_flags(event_rows)
-        rows.append({
-            "recordId": _surrogate_id(str(rid), salt),
-            "sixMonth": timepoint(event_names["sixMonth"]),
-            "nineMonth": timepoint(event_names["nineMonth"]),
-            "twelveMonth": timepoint(event_names["twelveMonth"]),
-            "twentyFourMonth": timepoint(event_names["twentyFourMonth"]),
-            "anomalyFlags": flags,
-            "hasCarryForwardRisk": bool(flags),
-        })
+        rows.append(
+            {
+                "recordId": _surrogate_id(str(rid), salt),
+                "sixMonth": timepoint(event_names["sixMonth"]),
+                "nineMonth": timepoint(event_names["nineMonth"]),
+                "twelveMonth": timepoint(event_names["twelveMonth"]),
+                "twentyFourMonth": timepoint(event_names["twentyFourMonth"]),
+                "anomalyFlags": flags,
+                "hasCarryForwardRisk": bool(flags),
+            }
+        )
 
-    return sorted(rows, key=lambda row: (not row["hasCarryForwardRisk"], row["recordId"]))
+    return sorted(
+        rows, key=lambda row: (not row["hasCarryForwardRisk"], row["recordId"])
+    )
+
+
+def _event_month(event_name: str) -> int:
+    match = re.search(r"(\d+)", event_name)
+    return int(match.group(1)) if match else 0
+
+
+def _humanize_field_name(value: str) -> str:
+    return (
+        value.replace("_", " ").replace("csbs", "CSBS").replace("epds", "EPDS").title()
+    )
+
+
+def _payload_hash(*parts: Any) -> str:
+    text = json.dumps(_make_json_safe(parts), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def build_redcap_trackers(
+    redcap: pd.DataFrame,
+    *,
+    completion_stats: dict[str, dict[str, Any]],
+    controls: dict[str, Any],
+) -> dict[str, Any]:
+    """Aggregate REDCap tracker blocks used by coordinator, exec, and public surfaces."""
+    contract, _carry_forward, visit_field, _csbs_field, csbs_events = (
+        _redcap_contract_parts()
+    )
+    event_order = list((contract.get("events", {}) or {}).get("order") or csbs_events)
+    labels = (contract.get("events", {}) or {}).get("labels") or {}
+    event_col = (
+        redcap["redcap_event_name"].astype(str)
+        if "redcap_event_name" in redcap.columns
+        else pd.Series("", index=redcap.index)
+    )
+    total_records = (
+        int(redcap["record_id"].nunique())
+        if "record_id" in redcap.columns
+        else int(len(redcap))
+    )
+
+    enrollment: list[dict[str, Any]] = []
+    for event_name in event_order:
+        sub = redcap[event_col == event_name]
+        expected = (
+            total_records
+            if event_name not in {"consent_arm_1"}
+            else (
+                int(sub["record_id"].nunique())
+                if "record_id" in sub.columns
+                else int(len(sub))
+            )
+        )
+        scheduled = (
+            int(
+                sub.loc[
+                    sub.get(visit_field, pd.Series("", index=sub.index))
+                    .astype(str)
+                    .str.strip()
+                    .ne(""),
+                    "record_id",
+                ].nunique()
+            )
+            if "record_id" in sub.columns and visit_field in sub.columns
+            else int(len(sub))
+        )
+        if event_name in completion_stats:
+            completed = int(completion_stats[event_name].get("complete", 0))
+        elif "visit_completed" in sub.columns and "record_id" in sub.columns:
+            completed = int(sub.loc[sub["visit_completed"] == 1, "record_id"].nunique())
+        else:
+            completed = scheduled
+        enrollment.append(
+            {
+                "event": event_name,
+                "label": (
+                    _redcap_event_label(contract, event_name)
+                    if event_name in csbs_events
+                    else str(labels.get(event_name) or event_name)
+                ),
+                "expected": int(expected),
+                "scheduled": int(scheduled),
+                "completed": int(completed),
+            }
+        )
+
+    complete_cols = [col for col in redcap.columns if str(col).endswith("_complete")]
+    preferred = [
+        "csbs_caregiver_complete",
+        "epds_maternal_depression_complete",
+        "medication_complete",
+        "asq3_milestones_complete",
+        "vineland_complete",
+    ]
+    ordered_cols = [col for col in preferred if col in complete_cols] + [
+        col for col in complete_cols if col not in preferred
+    ]
+    instrument_completeness: list[dict[str, Any]] = []
+    for complete_col in ordered_cols[:10]:
+        instrument = complete_col.removesuffix("_complete")
+        by_event: dict[str, dict[str, int]] = {}
+        for event_name in event_order:
+            sub = redcap[event_col == event_name]
+            total = int(len(sub))
+            if total == 0:
+                by_event[event_name] = {"complete": 0, "total": 0}
+                continue
+            complete = int(
+                sub[complete_col]
+                .map(lambda value: _status_slug(value, contract) == "complete")
+                .sum()
+            )
+            by_event[event_name] = {"complete": complete, "total": total}
+        instrument_completeness.append(
+            {
+                "instrument": instrument,
+                "label": _humanize_field_name(instrument),
+                "byEvent": by_event,
+            }
+        )
+
+    queue_total = sum(
+        int(row.get("expected", 0)) for row in enrollment if row["event"] in csbs_events
+    )
+    queue_scheduled = sum(
+        int(row.get("scheduled", 0))
+        for row in enrollment
+        if row["event"] in csbs_events
+    )
+    queue_complete = sum(
+        int(stats.get("complete", 0)) for stats in completion_stats.values()
+    )
+    queue_started = sum(
+        int(stats.get("complete", 0))
+        + int(stats.get("unverified", 0))
+        + int(stats.get("incomplete", 0))
+        + int(stats.get("skipped", 0))
+        for stats in completion_stats.values()
+    )
+    thresholds = controls.get("anomaly_thresholds") or {}
+    warn_pct = float(thresholds.get("completeness_warn_pct", 0.8))
+    return {
+        "enrollment": enrollment,
+        "instrument_completeness": instrument_completeness,
+        "queue_funnel": [
+            {"stage": "expected", "count": int(queue_total)},
+            {"stage": "scheduled", "count": int(queue_scheduled)},
+            {"stage": "started", "count": int(queue_started)},
+            {"stage": "complete", "count": int(queue_complete)},
+        ],
+        "thresholds": {
+            "completeness_warn_pct": warn_pct,
+            "stale_visit_days": int(thresholds.get("stale_visit_days", 30)),
+            "freshness_sla_hours": float(thresholds.get("freshness_sla_hours", 48)),
+            "small_cell_min": int(thresholds.get("small_cell_min", 5)),
+        },
+    }
+
+
+def build_redcap_timeline(redcap_visit_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a PHI-free visit swimlane timeline from de-identified REDCap rows."""
+    event_specs = [
+        ("sixMonth", "6_months_arm_1", "6m", 6),
+        ("nineMonth", "9_months_arm_1", "9m", 9),
+        ("twelveMonth", "12_months_arm_1", "12m", 12),
+        ("twentyFourMonth", "24_months_arm_1", "24m", 24),
+    ]
+    records: list[dict[str, Any]] = []
+    for row in redcap_visit_rows:
+        events: list[dict[str, Any]] = []
+        for key, event_name, label, month in event_specs:
+            point = row.get(key) if isinstance(row.get(key), dict) else {}
+            events.append(
+                {
+                    "event": event_name,
+                    "label": label,
+                    "month": month,
+                    "visitDate": point.get("visitDate") or "",
+                    "status": point.get("csbsStatus") or "not_started",
+                    "hasRisk": bool(row.get("hasCarryForwardRisk")),
+                }
+            )
+        records.append({"recordId": row.get("recordId"), "events": events})
+    return {"records": records}
+
+
+def build_redcap_ops(
+    *,
+    generated_at: str,
+    record_count: int,
+    anomaly_count: int,
+    source: str,
+    content_hash: str,
+    controls: dict[str, Any],
+) -> dict[str, Any]:
+    """Runtime ops block shared by Pages, Docker, and Kubernetes surfaces."""
+    return {
+        "freshness": {
+            "generated_at": generated_at,
+            "age_hours": 0.0,
+            "source": source,
+            "status": "fresh",
+            "sla_hours": float(
+                (controls.get("anomaly_thresholds") or {}).get(
+                    "freshness_sla_hours", 48
+                )
+            ),
+        },
+        "runtime_parity": {
+            "pages": content_hash,
+            "docker": content_hash,
+            "k8s": content_hash,
+        },
+        "run_ledger": [
+            {
+                "run_id": f"redcap-{content_hash}",
+                "started_at": generated_at,
+                "status": "ok",
+                "records": int(record_count),
+                "anomalies": int(anomaly_count),
+                "duration_ms": 0,
+            }
+        ],
+        "controls_snapshot": controls,
+    }
 
 
 def build_ml_performance(metrics: Optional[dict]) -> dict:
@@ -544,7 +945,9 @@ def build_ml_performance(metrics: Optional[dict]) -> dict:
         }
     """
     if metrics is None:
-        logger.warning("No model metrics available — emitting empty ml_performance block.")
+        logger.warning(
+            "No model metrics available — emitting empty ml_performance block."
+        )
         return {"models": [], "shap": [], "subgroup": [], "confusion": {}}
     return metrics
 
@@ -557,9 +960,18 @@ def build_trajectories(features: pd.DataFrame) -> dict:
     Missing biomarkers are simply skipped.
     """
     months_int = sorted({e[1] for e in EVENTS if e[1] <= 36})
-    out = {"months": months_int, "by_group": {}, "biomarkers": ["RSA", "RMSSD", "SDNN", "HDA_SA"]}
+    out = {
+        "months": months_int,
+        "by_group": {},
+        "biomarkers": ["RSA", "RMSSD", "SDNN", "HDA_SA"],
+    }
 
-    bm_col_map = {"RSA": "rsa", "RMSSD": "rmssd", "SDNN": "sdnn", "HDA_SA": "hda_sa_pct"}
+    bm_col_map = {
+        "RSA": "rsa",
+        "RMSSD": "rmssd",
+        "SDNN": "sdnn",
+        "HDA_SA": "hda_sa_pct",
+    }
 
     for g in GROUPS:
         gf = features[features.get("group") == g]
@@ -597,11 +1009,16 @@ def build_redcap_audit(redcap: pd.DataFrame) -> dict:
     queries_by_event = []
     for _, _, label in EVENTS:
         if "open_query" in redcap.columns and "redcap_event_name" in redcap.columns:
-            opened = int((
-                (redcap["redcap_event_name"].str.contains(label.lower().replace(" ", "_"),
-                                                           na=False))
-                & (redcap["open_query"] == 1)
-            ).sum())
+            opened = int(
+                (
+                    (
+                        redcap["redcap_event_name"].str.contains(
+                            label.lower().replace(" ", "_"), na=False
+                        )
+                    )
+                    & (redcap["open_query"] == 1)
+                ).sum()
+            )
         else:
             opened = 0
         queries_by_event.append({"event": label, "open": opened})
@@ -612,8 +1029,12 @@ def build_redcap_audit(redcap: pd.DataFrame) -> dict:
             "active_participants": total_enrolled - withdrawn,
             "withdrawn": withdrawn,
             "open_queries": int((redcap.get("open_query", 0) == 1).sum()),
-            "records_pending_pi_review": int((redcap.get("pi_review_needed", 0) == 1).sum()),
-            "double_entry_pending": int((redcap.get("double_entry_pending", 0) == 1).sum()),
+            "records_pending_pi_review": int(
+                (redcap.get("pi_review_needed", 0) == 1).sum()
+            ),
+            "double_entry_pending": int(
+                (redcap.get("double_entry_pending", 0) == 1).sum()
+            ),
         },
         "queries_by_event": queries_by_event,
         "recent_activity": [],  # Populated by redcap_audit.py in production
@@ -624,20 +1045,32 @@ def build_cohort_table(redcap: pd.DataFrame, salt: str, n: int = 60) -> list[dic
     """Per-participant summary rows with surrogate IDs (no PHI)."""
     if "record_id" not in redcap.columns:
         return []
-    enroll = redcap[redcap["redcap_event_name"].str.contains("nicu_admission", na=False)].copy()
+    enroll = redcap[
+        redcap["redcap_event_name"].str.contains("nicu_admission", na=False)
+    ].copy()
     rows: list[dict] = []
     for _, r in enroll.head(n).iterrows():
         rid = str(r["record_id"])
-        rows.append({
-            "nano_id": _surrogate_id(rid, salt),
-            "group": r.get("group_assignment", "unknown"),
-            "ga_weeks": int(r.get("ga_weeks", 0)) if pd.notna(r.get("ga_weeks")) else None,
-            "birth_weight_g": int(r.get("birth_weight_g", 0)) if pd.notna(r.get("birth_weight_g")) else None,
-            "sex": r.get("sex", ""),
-            "last_visit": r.get("last_completed_event", "unknown"),
-            "completeness_pct": round(float(r.get("record_completeness_pct", 0.0)), 1),
-            "qc_status": r.get("qc_status", "OK"),
-        })
+        rows.append(
+            {
+                "nano_id": _surrogate_id(rid, salt),
+                "group": r.get("group_assignment", "unknown"),
+                "ga_weeks": (
+                    int(r.get("ga_weeks", 0)) if pd.notna(r.get("ga_weeks")) else None
+                ),
+                "birth_weight_g": (
+                    int(r.get("birth_weight_g", 0))
+                    if pd.notna(r.get("birth_weight_g"))
+                    else None
+                ),
+                "sex": r.get("sex", ""),
+                "last_visit": r.get("last_completed_event", "unknown"),
+                "completeness_pct": round(
+                    float(r.get("record_completeness_pct", 0.0)), 1
+                ),
+                "qc_status": r.get("qc_status", "OK"),
+            }
+        )
     return rows
 
 
@@ -656,18 +1089,24 @@ def build_hda_stream(features: pd.DataFrame) -> dict:
             gf = features[features["group"] == group]
             for _, month, _ in EVENTS:
                 mf = gf[gf["month"] == month]
-                counts = mf["hda_phase"].astype(str).str.lower().value_counts(normalize=True)
-                group_rows.append({
-                    "month": month,
-                    "orienting": round(float(counts.get("orienting", 0.0)), 3),
-                    "sustained": round(float(counts.get("sustained", 0.0)), 3),
-                    "inattention": round(float(counts.get("inattention", 0.0)), 3),
-                    "termination": round(float(counts.get("termination", 0.0)), 3),
-                })
+                counts = (
+                    mf["hda_phase"].astype(str).str.lower().value_counts(normalize=True)
+                )
+                group_rows.append(
+                    {
+                        "month": month,
+                        "orienting": round(float(counts.get("orienting", 0.0)), 3),
+                        "sustained": round(float(counts.get("sustained", 0.0)), 3),
+                        "inattention": round(float(counts.get("inattention", 0.0)), 3),
+                        "termination": round(float(counts.get("termination", 0.0)), 3),
+                    }
+                )
             by_group["VPT" if group == "PT" else group] = group_rows
         return {"by_group": by_group}
 
-    from dashboard.pipelines.generate_synthetic_dashboard_data import generate_hda_composition
+    from dashboard.pipelines.generate_synthetic_dashboard_data import (
+        generate_hda_composition,
+    )
 
     return generate_hda_composition()
 
@@ -678,7 +1117,9 @@ def build_attrition_funnel(redcap: pd.DataFrame) -> dict:
     TODO: replace fallback reason codes with REDCap withdrawal and missed-visit
     reason fields once those columns are standardized in the mirror.
     """
-    total_enrolled = int(redcap["record_id"].nunique()) if "record_id" in redcap.columns else 260
+    total_enrolled = (
+        int(redcap["record_id"].nunique()) if "record_id" in redcap.columns else 260
+    )
     stage_specs = [
         ("screened", "Screened", max(total_enrolled + 120, 1)),
         ("consented", "Consented", max(total_enrolled + 42, 1)),
@@ -711,12 +1152,29 @@ def build_attrition_funnel(redcap: pd.DataFrame) -> dict:
             "quarter": quarter,
             "stage_id": stage["id"],
             "n": max(0, round(stage["n"] * (0.36 + qi * 0.085) - si * 3)),
-            "retained_pct": round(min(100, stage["retained_pct"] * (0.72 + qi * 0.04)), 1),
+            "retained_pct": round(
+                min(100, stage["retained_pct"] * (0.72 + qi * 0.04)), 1
+            ),
         }
-        for qi, quarter in enumerate(["2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4", "2025-Q1", "2025-Q2", "2025-Q3", "2025-Q4"])
+        for qi, quarter in enumerate(
+            [
+                "2024-Q1",
+                "2024-Q2",
+                "2024-Q3",
+                "2024-Q4",
+                "2025-Q1",
+                "2025-Q2",
+                "2025-Q3",
+                "2025-Q4",
+            ]
+        )
         for si, stage in enumerate(stages)
     ]
-    return {"stages": stages, "reason_codes": reason_codes, "trend_by_quarter": trend_by_quarter}
+    return {
+        "stages": stages,
+        "reason_codes": reason_codes,
+        "trend_by_quarter": trend_by_quarter,
+    }
 
 
 def build_county_profiles(redcap: pd.DataFrame, features: pd.DataFrame) -> list[dict]:
@@ -726,7 +1184,9 @@ def build_county_profiles(redcap: pd.DataFrame, features: pd.DataFrame) -> list[
     aggregates once the secure REDCap mirror includes those public-safe fields.
     """
     del redcap, features
-    from dashboard.pipelines.generate_synthetic_dashboard_data import generate_county_profiles
+    from dashboard.pipelines.generate_synthetic_dashboard_data import (
+        generate_county_profiles,
+    )
 
     return generate_county_profiles()
 
@@ -750,9 +1210,31 @@ def build_payload(
     redcap = drop_phi(redcap, dd)
 
     cohort_table = build_cohort_table(redcap, salt)
+    controls = load_dashboard_controls()
     redcap_completion_stats = build_redcap_completion_stats(redcap)
     redcap_visit_rows = build_redcap_visit_health(redcap, salt)
     redcap_generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    redcap_trackers = build_redcap_trackers(
+        redcap,
+        completion_stats=redcap_completion_stats,
+        controls=controls,
+    )
+    redcap_timeline = build_redcap_timeline(redcap_visit_rows)
+    anomaly_count = int(
+        sum(1 for row in redcap_visit_rows if row["hasCarryForwardRisk"])
+    )
+    record_count = (
+        int(redcap["record_id"].nunique()) if "record_id" in redcap.columns else 0
+    )
+    redcap_source = (
+        "redcap-api" if "redcap" in str(data_source).lower() else "synthetic-fallback"
+    )
+    parity_hash = _payload_hash(
+        redcap_completion_stats,
+        redcap_visit_rows,
+        redcap_trackers,
+        redcap_timeline,
+    )
 
     payload = {
         "meta": {
@@ -769,33 +1251,43 @@ def build_payload(
                 "n_target": 260,
             },
         },
-        "enrollment":       build_enrollment(redcap),
+        "enrollment": build_enrollment(redcap),
         "visit_completion": build_visit_completion(redcap),
-        "data_quality":     build_data_quality(redcap, dd),
-        "ml_performance":   build_ml_performance(metrics),
-        "trajectories":     build_trajectories(features),
-        "redcap_audit":     build_redcap_audit(redcap),
-        "cohort_table":     cohort_table,
+        "data_quality": build_data_quality(redcap, dd),
+        "ml_performance": build_ml_performance(metrics),
+        "trajectories": build_trajectories(features),
+        "redcap_audit": build_redcap_audit(redcap),
+        "cohort_table": cohort_table,
         "participant_operations": build_participant_operations(cohort_table),
         "organization_site": organization_site or {},
         "matlab_integration": build_matlab_integration(),
-        "hda_composition":  build_hda_stream(features),
+        "hda_composition": build_hda_stream(features),
         "attrition_funnel": build_attrition_funnel(redcap),
-        "county_profiles":  build_county_profiles(redcap, features),
+        "county_profiles": build_county_profiles(redcap, features),
         "redcap_meta": {
             "generated_at": redcap_generated_at,
             "pid": int(load_redcap_contract().get("project", {}).get("pid", 5955)),
-            "record_count": int(redcap["record_id"].nunique()) if "record_id" in redcap.columns else 0,
-            "anomaly_count": int(sum(1 for row in redcap_visit_rows if row["hasCarryForwardRisk"])),
-            "source": "redcap-api" if "redcap" in str(data_source).lower() else "synthetic-fallback",
+            "record_count": record_count,
+            "anomaly_count": anomaly_count,
+            "source": redcap_source,
             "contract_version": "2.0",
             "payload_version": redcap_generated_at,
         },
         "redcap_completion_stats": redcap_completion_stats,
         "redcap_visit_health": {
-            "anomaly_count": int(sum(1 for row in redcap_visit_rows if row["hasCarryForwardRisk"])),
+            "anomaly_count": anomaly_count,
             "data": redcap_visit_rows,
         },
+        "redcap_trackers": redcap_trackers,
+        "redcap_timeline": redcap_timeline,
+        "redcap_ops": build_redcap_ops(
+            generated_at=redcap_generated_at,
+            record_count=record_count,
+            anomaly_count=anomaly_count,
+            source=redcap_source,
+            content_hash=parity_hash,
+            controls=controls,
+        ),
     }
     return _make_json_safe(payload)
 
@@ -817,15 +1309,19 @@ def build_matlab_integration() -> dict:
         from dashboard.pipelines.generate_synthetic_dashboard_data import (
             generate_matlab_integration,
         )
+
         return generate_matlab_integration()
 
     try:
         raw = json.loads(manifest_path.read_text())
     except Exception as exc:  # noqa: BLE001
-        logger.warning("MATLAB manifest unreadable (%s) — falling back to synthetic.", exc)
+        logger.warning(
+            "MATLAB manifest unreadable (%s) — falling back to synthetic.", exc
+        )
         from dashboard.pipelines.generate_synthetic_dashboard_data import (
             generate_matlab_integration,
         )
+
         return generate_matlab_integration()
 
     files = [
@@ -833,7 +1329,9 @@ def build_matlab_integration() -> dict:
             "name": f.get("name"),
             "feature": f.get("feature"),
             "rows": int(f.get("rows", 0) or 0),
-            "qa_pass_pct": round(float(f.get("qaPassPct", f.get("qa_pass_pct", 0.0)) or 0.0), 3),
+            "qa_pass_pct": round(
+                float(f.get("qaPassPct", f.get("qa_pass_pct", 0.0)) or 0.0), 3
+            ),
         }
         for f in raw.get("files", [])
     ]
@@ -855,18 +1353,23 @@ def build_matlab_integration() -> dict:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the NANO dashboard JSON payload.")
+    parser = argparse.ArgumentParser(
+        description="Build the NANO dashboard JSON payload."
+    )
     parser.add_argument(
-        "--config", type=Path,
+        "--config",
+        type=Path,
         default=PROJECT_ROOT / "config" / "paths.yml",
         help="Path to paths.yml (default: config/paths.yml).",
     )
     parser.add_argument(
-        "--output", type=Path,
+        "--output",
+        type=Path,
         default=PROJECT_ROOT / "dashboard" / "data" / "dashboard_data.json",
     )
     parser.add_argument(
-        "--fallback-synthetic", action="store_true",
+        "--fallback-synthetic",
+        action="store_true",
         help="If inputs are missing, fall back to the synthetic generator.",
     )
     parser.add_argument(
@@ -874,7 +1377,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="Materialize repo-local demo REDCap/features/metrics inputs when secure inputs are unavailable.",
     )
-    parser.add_argument("--salt", default=os.getenv("NANO_ID_SALT", "nano_default_salt"))
+    parser.add_argument(
+        "--salt", default=os.getenv("NANO_ID_SALT", "nano_default_salt")
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -884,17 +1389,31 @@ def main(argv: Optional[list[str]] = None) -> int:
         cfg = {}
     paths = _resolve_paths(cfg)
 
-    redcap_path = _pick_configured_path(paths, ("processed.redcap_latest", "deidentified.redcap_latest"), DEFAULT_REDCAP_PATH)
-    features_path = _pick_configured_path(paths, ("processed.feature_matrix",), DEFAULT_FEATURE_PATH)
+    redcap_path = _pick_configured_path(
+        paths,
+        ("processed.redcap_latest", "deidentified.redcap_latest"),
+        DEFAULT_REDCAP_PATH,
+    )
+    features_path = _pick_configured_path(
+        paths, ("processed.feature_matrix",), DEFAULT_FEATURE_PATH
+    )
     dd_path = _pick_configured_path(paths, ("data_dictionary",), DEFAULT_DD_PATH)
-    metrics_path = _pick_configured_path(paths, ("models.metrics",), DEFAULT_METRICS_PATH)
+    metrics_path = _pick_configured_path(
+        paths, ("models.metrics",), DEFAULT_METRICS_PATH
+    )
 
     if args.bootstrap_demo_inputs:
-        redcap_missing = all(not candidate.exists() for candidate in _tabular_candidates(redcap_path))
-        feature_missing = all(not candidate.exists() for candidate in _tabular_candidates(features_path))
+        redcap_missing = all(
+            not candidate.exists() for candidate in _tabular_candidates(redcap_path)
+        )
+        feature_missing = all(
+            not candidate.exists() for candidate in _tabular_candidates(features_path)
+        )
         metrics_missing = not metrics_path.exists()
         if redcap_missing or feature_missing or metrics_missing:
-            from dashboard.pipelines import bootstrap_dashboard_demo_inputs as demo_inputs
+            from dashboard.pipelines import (
+                bootstrap_dashboard_demo_inputs as demo_inputs,
+            )
 
             demo_paths = demo_inputs.materialize_demo_inputs()
             if redcap_missing:
@@ -903,7 +1422,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 features_path = demo_paths["feature_matrix"]
             if metrics_missing:
                 metrics_path = demo_paths["metrics"]
-            logger.info("Bootstrapped repo-local dashboard inputs for local development.")
+            logger.info(
+                "Bootstrapped repo-local dashboard inputs for local development."
+            )
 
     redcap = load_redcap_mirror(redcap_path)
     features = load_feature_matrix(features_path)
@@ -927,6 +1448,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         if args.fallback_synthetic:
             logger.warning("%s — falling back to synthetic generator.", exc)
             from dashboard.pipelines import generate_synthetic_dashboard_data as syn
+
             payload = syn.build_payload()
             payload["organization_site"] = organization_site
         else:

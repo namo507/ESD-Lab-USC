@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel, Segmented, type BadgeKind } from "@/components/primitives";
 import {
+  useRedcapData,
   useRedcapCompleteness,
   useRedcapEvents,
   useRedcapMissingData,
@@ -16,7 +17,10 @@ import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitOption, RedcapVisitRecord } from "@/api/schemas";
+import type { RedcapPayload as RedcapDashboardPayload } from "@/api/redcapSchemas";
 import { callREDCap } from "@/api/redcapClient";
+import { SwimLane } from "@/components/timeline/SwimLane";
+import type { TimelineEvent } from "@/components/timeline/EventMark";
 import { ANOMALY_CODES, PROJECT_TITLE } from "@/constants/redcapConfig";
 import { formPolicyLabel, questionnaireKind, questionnaireLabel, riskKind } from "@/lib/participantOperations";
 import styles from "./Redcap.module.css";
@@ -37,7 +41,7 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Freshness check",         prompt: "When was REDCap last synced, how many records are in the payload, and how many carry-forward anomalies are active?" },
 ];
 
-type RedcapTab = "sync" | "visit-health" | "coverage";
+type RedcapTab = "ops" | "sync" | "visit-health" | "coverage";
 type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth";
 
 const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
@@ -173,6 +177,7 @@ export function Redcap() {
   const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
   const liveProxyEnabled = useFeatureFlag("REDCAP_LIVE_PROXY");
   const visitHealth = useRedcapVisitHealth(visitHealthEnabled);
+  const redcapPayload = useRedcapData(visitHealthEnabled);
   const visitRecords = visitHealth.data?.data ?? [];
   const visitSummary = useMemo(() => summarizeVisitHealth(visitRecords), [visitRecords]);
   const queryClient = useQueryClient();
@@ -182,7 +187,7 @@ export function Redcap() {
   const lastSyncAt = useUi((s) => s.lastSyncAt);
   const setLastSyncAt = useUi((s) => s.setLastSyncAt);
   const fastPathTone = resolveTheme(theme);
-  const [activeTab, setActiveTab] = useState<RedcapTab>("sync");
+  const [activeTab, setActiveTab] = useState<RedcapTab>("ops");
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [liveFreshness, setLiveFreshness] = useState<string | null>(null);
   const [liveError, setLiveError] = useState<string | null>(null);
@@ -191,6 +196,7 @@ export function Redcap() {
     () =>
       visitHealthEnabled
         ? [
+            { value: "ops" as const, label: "Ops Monitor" },
             { value: "sync" as const, label: "Sync & Completeness" },
             { value: "visit-health" as const, label: "Visit Health" },
             { value: "coverage" as const, label: "Coverage" },
@@ -317,6 +323,10 @@ export function Redcap() {
         />
       </section>
 
+      {visitHealthEnabled && activeTab === "ops" && redcapPayload.data && (
+        <CoordinatorOpsMonitor payload={redcapPayload.data} records={visitRecords} />
+      )}
+
       {activeTab === "sync" && (
         <>
           <RedcapCompletenessScorecard />
@@ -401,6 +411,189 @@ function RedcapSyncPanel({ events }: { events: Array<{ ts: string; form: string;
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function pctText(complete: number, total: number): string {
+  if (!total) return "0%";
+  return `${((complete / total) * 100).toFixed(0)}%`;
+}
+
+function CoordinatorOpsMonitor({
+  payload,
+  records,
+}: {
+  payload: RedcapDashboardPayload;
+  records: RedcapVisitRecord[];
+}) {
+  const baseWarnPct = payload.redcap_trackers.thresholds?.completeness_warn_pct ?? 0.8;
+  const [warnPct, setWarnPct] = useState(baseWarnPct);
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const activeRisk = records.filter((record) =>
+    record.anomalyFlags.some((flag) => ["R1", "R2", "R5"].includes(flag)),
+  );
+  const historicalRisk = records.filter((record) =>
+    record.anomalyFlags.some((flag) => ["R3", "R4"].includes(flag)),
+  );
+  const cleared = records.filter((record) => !record.hasCarryForwardRisk).slice(0, 8);
+  const timelineRows = payload.redcap_timeline.records.slice(0, 8);
+  const width = 840;
+  const yStep = 42;
+  const x = (month: number) => 170 + (month / 24) * (width - 210);
+  const heatRows = payload.redcap_trackers.instrument_completeness.slice(0, 6);
+  const heatEvents = payload.redcap_trackers.enrollment.slice(0, 12);
+  const lowCells = heatRows.reduce((sum, row) => {
+    return sum + heatEvents.filter((event) => {
+      const cell = row.byEvent[event.event];
+      return cell && cell.total > 0 && cell.complete / cell.total < warnPct;
+    }).length;
+  }, 0);
+  const missingDates = records.reduce((sum, record) => (
+    sum + VISIT_COLUMNS.filter(({ key }) => record[key].csbsStatus !== "not_started" && !record[key].visitDate).length
+  ), 0);
+  const completionGap = payload.redcap_trackers.enrollment.reduce((max, event) => {
+    const expected = Math.max(event.expected, 1);
+    const gap = (event.expected - event.completed) / expected;
+    return gap > max.gap ? { label: event.label, gap, count: event.expected - event.completed } : max;
+  }, { label: "n/a", gap: 0, count: 0 });
+
+  function laneEvents(row: RedcapDashboardPayload["redcap_timeline"]["records"][number]): TimelineEvent[] {
+    return row.events.map((event) => ({
+      id: `${row.recordId}-${event.event}`,
+      type: event.status === "incomplete" ? "failed" : "redcap",
+      month: event.month ?? 0,
+      label: event.label,
+      date: event.visitDate || "not started",
+      cga: event.month ?? 0,
+      status: event.status,
+    }));
+  }
+
+  return (
+    <div className={styles.opsStack}>
+      <Card pad={0}>
+        <div className={styles.listHead}>
+          <SectionLabel>Coordinator Ops Monitor</SectionLabel>
+          <Badge kind="neutral" size="sm">what-if local</Badge>
+        </div>
+        <div className={styles.whatIfBar} data-insight="redcap-whatif-controls">
+          <label>
+            <span>Completeness warning</span>
+            <input
+              type="range"
+              min="0.5"
+              max="0.95"
+              step="0.05"
+              value={warnPct}
+              onChange={(event) => setWarnPct(Number(event.target.value))}
+            />
+            <strong className="t-mono">{pctText(warnPct, 1)}</strong>
+          </label>
+          <Badge kind={lowCells ? "warn" : "ok"} size="sm">{lowCells} heatwall cells below threshold</Badge>
+        </div>
+        <div className={styles.matrixKpis}>
+          <KPI label="Anomalies now" value={payload.redcap_meta.anomaly_count} sub="R1-R5 active" insightId="redcap-action-strip" />
+          <KPI label="Missing dates" value={missingDates} sub="status without visit date" />
+          <KPI label="Heatwall alerts" value={lowCells} sub={`below ${pctText(warnPct, 1)}`} />
+          <KPI label="Behind target" value={completionGap.count} sub={completionGap.label} deltaKind={completionGap.count ? "down" : "up"} />
+        </div>
+      </Card>
+
+      <div className={styles.opsGrid}>
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-anomaly-board">
+            <SectionLabel>Carry-forward anomaly board</SectionLabel>
+            <Badge kind={activeRisk.length ? "fail" : "ok"} size="sm">{activeRisk.length} active</Badge>
+          </div>
+          <div className={styles.boardColumns}>
+            <RiskColumn title="Active risk" records={activeRisk} empty="No active R1/R2/R5 records" />
+            <RiskColumn title="Historical shift" records={historicalRisk} empty="No R3/R4 shift records" />
+            <RiskColumn title="Cleared" records={cleared} empty="No cleared records" />
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-heatwall">
+            <SectionLabel>Instrument completeness heatwall</SectionLabel>
+            <Badge kind="neutral" size="sm">{heatRows.length} instruments</Badge>
+          </div>
+          <div className={styles.heatwall}>
+            <div className={styles.heatHeader} />
+            {heatEvents.map((event) => <div key={event.event} className={styles.heatHeader}>{event.label}</div>)}
+            {heatRows.map((row) => (
+              <Fragment key={row.instrument}>
+                <div className={styles.heatInstrument}>{row.label}</div>
+                {heatEvents.map((event) => {
+                  const cell = row.byEvent[event.event] ?? { complete: 0, total: 0 };
+                  const ratio = cell.total ? cell.complete / cell.total : 0;
+                  const state = ratio >= warnPct ? styles.heatOk : ratio >= warnPct - 0.15 ? styles.heatWarn : styles.heatFail;
+                  return (
+                    <div key={`${row.instrument}-${event.event}`} className={`${styles.heatCell} ${state}`} title={`${cell.complete}/${cell.total}`}>
+                      {pctText(cell.complete, cell.total)}
+                    </div>
+                  );
+                })}
+              </Fragment>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      <Card pad={0}>
+        <div className={styles.listHead} data-insight="redcap-swimlane">
+          <SectionLabel>Visit swimlane timeline</SectionLabel>
+          {selectedEvent && <Badge kind="info" size="sm">{selectedEvent.label} · {selectedEvent.status}</Badge>}
+        </div>
+        <div className={styles.swimlaneWrap}>
+          <svg viewBox={`0 0 ${width} ${Math.max(90, timelineRows.length * yStep + 40)}`} className={styles.swimlaneSvg} role="img" aria-label="REDCap visit swimlane timeline">
+            <line x1={x(0)} x2={x(24)} y1={20} y2={20} stroke="var(--warm-border)" />
+            {[6, 9, 12, 24].map((month) => (
+              <g key={month}>
+                <line x1={x(month)} x2={x(month)} y1={14} y2={timelineRows.length * yStep + 26} stroke="var(--slate-100)" />
+                <text x={x(month)} y={12} textAnchor="middle" className="t-mono" style={{ fontSize: 10, fill: "var(--slate-500)" }}>{month}m</text>
+              </g>
+            ))}
+            {timelineRows.map((row, index) => (
+              <SwimLane
+                key={row.recordId}
+                id={row.recordId}
+                group="REDCap"
+                qa={row.events.some((event) => event.hasRisk) ? "risk" : "clean"}
+                y={48 + index * yStep}
+                width={width}
+                events={laneEvents(row)}
+                x={x}
+                selectedEventId={selectedEvent?.id}
+                onSelectEvent={setSelectedEvent}
+                onSelectRow={() => undefined}
+              />
+            ))}
+          </svg>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function RiskColumn({
+  title,
+  records,
+  empty,
+}: {
+  title: string;
+  records: RedcapVisitRecord[];
+  empty: string;
+}) {
+  return (
+    <div className={styles.riskColumn}>
+      <div className={styles.riskColumnTitle}>{title}</div>
+      {records.length ? records.slice(0, 8).map((record) => (
+        <div key={`${title}-${record.recordId}`} className={styles.riskMiniCard}>
+          <strong className="t-mono">{record.recordId}</strong>
+          <span>{record.anomalyFlags.length ? record.anomalyFlags.join(", ") : "clean"}</span>
+        </div>
+      )) : <div className={styles.emptyMini}>{empty}</div>}
     </div>
   );
 }

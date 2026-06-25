@@ -44,6 +44,11 @@ def test_synthetic_payload_contains_next_wave_aggregate_blocks():
     assert {"county", "fips", "enrolled", "sdoh_score"}.issubset(
         payload["county_profiles"][0]
     )
+    assert payload["redcap_trackers"]["enrollment"]
+    assert payload["redcap_trackers"]["queue_funnel"]
+    assert payload["redcap_timeline"]
+    assert payload["redcap_ops"]["freshness"]["status"] in {"fresh", "stale"}
+    assert payload["redcap_ops"]["runtime_parity"]
     json.loads(json.dumps(payload, allow_nan=False))
 
 
@@ -66,9 +71,9 @@ def test_org_site_live_payload_tolerates_missing_optional_page(monkeypatch):
     assert not any(error.startswith("partners:") for error in payload["meta"]["errors"])
     assert payload["partners"]
     assert payload["summary"]["partner_count"] == len(payload["partners"])
-    assert {
-        item["source_page"] for item in payload["partners"]
-    } == {build_org_site_data.PAGE_URLS["about"]}
+    assert {item["source_page"] for item in payload["partners"]} == {
+        build_org_site_data.PAGE_URLS["about"]
+    }
     json.loads(json.dumps(payload, allow_nan=False))
 
 
@@ -138,6 +143,13 @@ def test_production_payload_includes_organization_site_block(tmp_path):
     assert "redcap_visit_health" in payload
     assert payload["redcap_visit_health"]["data"]
     assert "twentyFourMonth" in payload["redcap_visit_health"]["data"][0]
+    assert payload["redcap_trackers"]["instrument_completeness"]
+    assert payload["redcap_trackers"]["thresholds"]["small_cell_min"] >= 2
+    assert payload["redcap_timeline"]
+    assert payload["redcap_ops"]["controls_snapshot"]["feature_flags"][
+        "redcap.pipelineHealth"
+    ]
+    assert payload["redcap_ops"]["runtime_parity"]["pages"]
     json.loads(json.dumps(payload, allow_nan=False))
 
 
@@ -159,7 +171,10 @@ def test_redcap_contract_contains_verified_pid_5955_structure():
         "24_months_arm_1",
         "36_months_arm_1",
     ]
-    assert contract["instruments"]["carry_forward"]["complete_field"] == "csbs_caregiver_complete"
+    assert (
+        contract["instruments"]["carry_forward"]["complete_field"]
+        == "csbs_caregiver_complete"
+    )
     assert contract["instruments"]["carry_forward"]["events"][-1] == "24_months_arm_1"
     assert "R5" in contract["anomaly_codes"]
 
@@ -178,11 +193,46 @@ def test_generated_redcap_constants_are_current():
 def test_committed_dashboard_redcap_payload_excludes_configured_phi_fields():
     contract = yaml.safe_load(Path("config/redcap_config.yml").read_text())
     payload = json.loads(Path("dashboard/data/dashboard_data.json").read_text())
-    redcap_text = json.dumps({
-        "redcap_meta": payload.get("redcap_meta"),
-        "redcap_completion_stats": payload.get("redcap_completion_stats"),
-        "redcap_visit_health": payload.get("redcap_visit_health"),
-    })
+    redcap_text = json.dumps(
+        {
+            "redcap_meta": payload.get("redcap_meta"),
+            "redcap_completion_stats": payload.get("redcap_completion_stats"),
+            "redcap_visit_health": payload.get("redcap_visit_health"),
+            "redcap_trackers": payload.get("redcap_trackers"),
+            "redcap_timeline": payload.get("redcap_timeline"),
+            "redcap_ops": payload.get("redcap_ops"),
+        }
+    )
 
     for field in contract["phi_fields"]:
         assert field not in redcap_text
+
+
+def test_dashboard_controls_are_normalized_and_clamped():
+    controls = build_dashboard_data.normalize_dashboard_controls(
+        {
+            "anomaly_thresholds": {
+                "stale_visit_days": -7,
+                "completeness_warn_pct": 1.5,
+                "freshness_sla_hours": 500,
+                "small_cell_min": 1,
+            },
+            "sync": {"cadence_cron": "*/15 * * * *", "chunk_size": 99999},
+            "assistant": {"model_tier": "fast", "max_fragments": 2},
+            "feature_flags": {
+                "redcap.writeback": True,
+                "redcap.pipelineHealth": False,
+            },
+        }
+    )
+
+    assert controls["anomaly_thresholds"] == {
+        "stale_visit_days": 1,
+        "completeness_warn_pct": 0.99,
+        "freshness_sla_hours": 168,
+        "small_cell_min": 2,
+    }
+    assert controls["sync"]["chunk_size"] == 5000
+    assert controls["assistant"]["max_fragments"] == 5
+    assert controls["feature_flags"]["redcap.writeback"] is True
+    assert controls["feature_flags"]["redcap.pipelineHealth"] is False

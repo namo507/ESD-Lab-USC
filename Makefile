@@ -14,7 +14,7 @@ DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
 
-.PHONY: help install test lint clean redcap-sync run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -98,6 +98,18 @@ dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
 	$(PYTHON) scripts/build_lab_readings_index.py
 	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
 	@echo "✓ Dashboard JSON refreshed."
+
+redcap-publish:  ## Pull REDCap, rebuild payload/context, reindex assistant, and fan out to Pages/Docker/K8s checks
+	@echo "Publishing REDCap dashboard payload across Pages, Docker, and Kubernetes surfaces..."
+	@$(MAKE) redcap-sync
+	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+	node scripts/gen_redcap_constants.mjs
+	$(PYTHON) dashboard/context_skill/extract_context.py --emit
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --reindex || true
+	@$(MAKE) pages-build
+	@$(MAKE) docker-health || true
+	@$(MAKE) k8s-helm-lint
+	@echo "✓ REDCap publish fan-out complete."
 
 dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
 	$(PYTHON) dashboard/pipelines/bootstrap_dashboard_demo_inputs.py
