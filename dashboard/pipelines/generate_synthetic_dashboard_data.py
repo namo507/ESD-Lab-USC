@@ -120,6 +120,15 @@ DEFAULT_CONTROLS = {
         "freshness_sla_hours": 48,
         "small_cell_min": 5,
     },
+    "clinical_cutoffs": {
+        "epds_positive": 10,
+        "epds_high": 13,
+        "epds_self_harm_item_min": 1,
+        "asq_monitor": 35,
+        "asq_refer": 25,
+        "visit_window_days": 30,
+        "dp_epsilon": 1,
+    },
     "sync": {"cadence_cron": "0 8 * * *", "chunk_size": 500},
     "assistant": {"model_tier": "clinical", "max_fragments": 25},
     "feature_flags": {
@@ -551,8 +560,9 @@ def generate_redcap_ops(
     visit_rows: list[dict],
     trackers: dict,
     timeline: dict,
+    next_wave: dict | None = None,
 ) -> dict:
-    content_hash = _payload_hash(completion_stats, visit_rows, trackers, timeline)
+    content_hash = _payload_hash(completion_stats, visit_rows, trackers, timeline, next_wave or {})
     anomaly_count = sum(1 for row in visit_rows if row.get("hasCarryForwardRisk"))
     return {
         "freshness": {
@@ -578,6 +588,243 @@ def generate_redcap_ops(
             }
         ],
         "controls_snapshot": DEFAULT_CONTROLS,
+    }
+
+
+def generate_redcap_next_wave(visit_rows: list[dict], completion_stats: dict) -> dict:
+    """Synthetic v3 REDCap next-wave payload, aggregate and PHI-free."""
+    months = [6, 9, 12, 24, 36]
+    epds = [
+        {
+            "event": f"{month}_months_arm_1" if month != 6 else "6_months_arm_1",
+            "label": f"{month} Months",
+            "month": month,
+            "n": int(42 + rng.integers(-6, 8)),
+            "mean_total": round(float(rng.normal(8.2, 1.1)), 2),
+            "screen_positive": int(rng.integers(5, 13)),
+            "high_concern": int(rng.integers(2, 7)),
+            "self_harm_flags": int(rng.integers(0, 3)),
+            "total_field": "epds_total",
+            "total_field_verified": True,
+            "self_harm_field": "epds_si_item",
+            "self_harm_field_verified": True,
+        }
+        for month in months[:-1]
+    ]
+    developmental_grid = [
+        {
+            "instrument": instrument,
+            "domain": domain,
+            "field": field,
+            "field_verified": True,
+            "event": f"{month}_months_arm_1" if month != 6 else "6_months_arm_1",
+            "label": f"{month} Months",
+            "month": month,
+            "n": int(36 + rng.integers(-5, 8)),
+            "mean_score": round(float(rng.normal(mean, 5.2)), 2),
+            "zone": zone,
+        }
+        for month in [6, 12, 24, 36]
+        for instrument, domain, field, mean, zone in [
+            ("asq3_milestones", "ASQ communication", "asq3_communication", 42, "pass"),
+            ("asq3_milestones", "ASQ gross motor", "asq3_gross_motor", 36, "monitor"),
+            ("csbs_social_communication", "CSBS social", "csbs_social", 70, "pass"),
+            ("bayley4_scores", "Bayley cognition", "bayley4_cog_composite", 96, "context"),
+            ("mchat_r_tf", "M-CHAT total", "mchat_total", 2.4, "context"),
+        ]
+    ]
+    family_risk = [
+        {"axis": axis, "score": score, "max_score": max_score, "source_fields": fields, "field_verified": verified, "note": note}
+        for axis, score, max_score, fields, verified, note in [
+            ("Sibling SCQ", 0, 40, ["scq_lifetime", "scq_current_sibling"], False, "TODO(verify): field absent from local REDCap metadata"),
+            ("Sibling SRS", 0, 90, ["srs_total", "srs_t_score"], False, "TODO(verify): field absent from local REDCap metadata"),
+            ("Caregiver BAPQ", 0, 6, ["bapq_caregiver_1", "bapq_caregiver_2"], False, "TODO(verify): field absent from local REDCap metadata"),
+            ("M-CHAT", 2.3, 20, ["mchat_total"], True, "metadata verified"),
+        ]
+    ]
+    cascade_edges = [
+        {"source": "nnns_attention", "target": "bayley_cog", "label": "Attention to Bayley cognition", "weight": 0.32, "direction": "positive", "n": 180},
+        {"source": "rmssd", "target": "mchat_total", "label": "Autonomic regulation to M-CHAT", "weight": 0.22, "direction": "negative", "n": 168},
+        {"source": "hda_sa_pct", "target": "bayley_cog", "label": "HDA sustained attention to Bayley", "weight": 0.28, "direction": "negative", "n": 172},
+    ]
+    ados_flow = [
+        {
+            "event": "24_months_arm_1",
+            "label": "24 Months",
+            "month": 24,
+            "screened": 74,
+            "assessed": 38,
+            "classified": 9,
+            "module_counts": {"T": 18, "1": 16, "2": 4},
+            "score_field": "ados2_css_total",
+            "score_field_verified": True,
+        },
+        {
+            "event": "36_months_arm_1",
+            "label": "36 Months",
+            "month": 36,
+            "screened": 70,
+            "assessed": 30,
+            "classified": 8,
+            "module_counts": {"T": 10, "1": 16, "2": 4},
+            "score_field": "ados2_css_total",
+            "score_field_verified": True,
+        },
+    ]
+
+    event_rows = [
+        ("6_months_arm_1", "6m", 6),
+        ("9_months_arm_1", "9m", 9),
+        ("12_months_arm_1", "12m", 12),
+        ("24_months_arm_1", "24m", 24),
+    ]
+    integrity_matrix = [
+        {
+            "instrument": instrument,
+            "event": event,
+            "label": label,
+            "missing_fraction": round(float(rng.uniform(0.05, 0.28)), 3),
+            "expected_fields": expected,
+            "present_fields": int(expected - rng.integers(0, 3)),
+        }
+        for instrument, expected in [
+            ("epds_maternal_depression", 2),
+            ("asq3_milestones", 5),
+            ("csbs_social_communication", 3),
+            ("ados2_scores", 7),
+        ]
+        for event, label, _month in event_rows
+    ]
+    window_adherence = [
+        {
+            "event": event,
+            "label": label,
+            "month": month,
+            "target_days": round(month * 30.4375, 1),
+            "window_days": DEFAULT_CONTROLS["clinical_cutoffs"]["visit_window_days"],
+            "n": 48,
+            "mean_delta_days": round(float(rng.normal(3, 7)), 1),
+            "late": int(rng.integers(3, 9)),
+            "early": int(rng.integers(1, 6)),
+            "points": [
+                {"recordId": row["recordId"], "delta_days": round(float(rng.normal(0, 18)), 1)}
+                for row in visit_rows[:18]
+            ],
+        }
+        for event, label, month in event_rows
+    ]
+    retention_survival = [
+        {
+            "event": event,
+            "label": label,
+            "month": month,
+            "at_risk": 210,
+            "completed": max(0, 190 - month * 4),
+            "censored": int(month / 3),
+            "retained_pct": round(100 * max(0, 190 - month * 4) / 210, 1),
+        }
+        for event, label, month in event_rows
+    ]
+    upcoming_visits = [
+        {
+            "recordId": row["recordId"],
+            "event": event_rows[idx % len(event_rows)][0],
+            "label": event_rows[idx % len(event_rows)][1],
+            "due_in_days": int(rng.integers(-12, 31)),
+            "urgency": "overdue" if idx % 4 == 0 else "approaching",
+        }
+        for idx, row in enumerate(visit_rows[:18])
+    ]
+    risks = [
+        {
+            "recordId": row["recordId"],
+            "risk_score": round(float(0.22 + (idx % 8) * 0.08), 3),
+            "risk_band": "high" if idx % 8 >= 6 else "medium" if idx % 8 >= 3 else "low",
+            "drivers": ["questionnaire backlog", "visit-window drift"] if idx % 3 == 0 else ["stable engagement"],
+        }
+        for idx, row in enumerate(visit_rows[:24])
+    ]
+
+    return {
+        "redcap_clinical": {
+            "epds_trajectory": epds,
+            "developmental_grid": developmental_grid,
+            "family_risk": family_risk,
+            "cascade_edges": cascade_edges,
+            "ados_flow": ados_flow,
+        },
+        "redcap_integrity": {
+            "nullity_matrix": integrity_matrix,
+            "field_presence": [
+                {"instrument": row["instrument"], "expected_fields": row["expected_fields"], "present_fields": row["present_fields"]}
+                for row in integrity_matrix[:4]
+            ],
+            "double_entry_diffs": [
+                {"recordId": row["recordId"], "event": "12_months_arm_1", "instrument": "asq3_milestones", "field": "double_entry_mismatch", "firstEntry": "present", "secondEntry": "review", "severity": "review"}
+                for row in visit_rows[:4]
+            ],
+            "mismatch_trend": [
+                {"event": event, "label": label, "mismatch_rate": round(float(rng.uniform(0.01, 0.06)), 3)}
+                for event, label, _month in event_rows
+            ],
+            "response_quality": [
+                {"instrument": instrument, "submissions": int(rng.integers(24, 52)), "flagged": int(rng.integers(0, 5)), "mean_quality_score": round(float(rng.uniform(0.88, 0.99)), 3), "note": "server-side sentinel ready"}
+                for instrument in ["srs", "bapq", "caars", "epds_maternal_depression"]
+            ],
+            "branching_violations": [
+                {"instrument": "metadata", "field": "branching_logic", "violations": 0, "examples": [], "verified": False, "note": "TODO(verify): branching_logic metadata not present in local dictionary"}
+            ],
+            "validation_radar": [
+                {"instrument": instrument, "validated_fields": int(rng.integers(2, 8)), "violations": int(rng.integers(0, 6))}
+                for instrument in ["epds_maternal_depression", "asq3_milestones", "csbs_social_communication", "ados2_scores"]
+            ],
+        },
+        "redcap_schedule": {
+            "window_adherence": window_adherence,
+            "retention_survival": retention_survival,
+            "collection_calendar": [
+                {"date": (datetime.now() - timedelta(days=day)).strftime("%Y-%m-%d"), "count": int(rng.integers(0, 9))}
+                for day in range(70, -1, -1)
+            ],
+            "upcoming_visits": sorted(upcoming_visits, key=lambda row: row["due_in_days"]),
+            "entry_lag": [
+                {"event": event, "label": label, "mean_lag_days": round(float(rng.uniform(1.5, 5.8)), 1), "ucl": 8.5, "lcl": 0, "n": 42}
+                for event, label, _month in event_rows
+            ],
+        },
+        "redcap_respondent": {
+            "caregiver_burden": [
+                {"respondent": "caregiver_1", "label": "Caregiver 1", "assigned": 156, "started": 132, "completed": 118, "fatigue_index": 0.244},
+                {"respondent": "caregiver_2", "label": "Caregiver 2", "assigned": 122, "started": 88, "completed": 74, "fatigue_index": 0.393},
+            ],
+            "respondent_concordance": [
+                {"instrument": "BAPQ", "caregiver_1_field": "bapq_caregiver_1", "caregiver_2_field": "bapq_caregiver_2", "n_pairs": 0, "concordance": 0, "note": "TODO(verify): parallel caregiver fields absent from local metadata"},
+                {"instrument": "SRS adult", "caregiver_1_field": "srs_adult_caregiver_1", "caregiver_2_field": "srs_adult_caregiver_2", "n_pairs": 0, "concordance": 0, "note": "TODO(verify): parallel caregiver fields absent from local metadata"},
+            ],
+        },
+        "redcap_platform": {
+            "audit_log": [
+                {"ts": (datetime.now() - timedelta(hours=idx)).isoformat(timespec="seconds"), "recordId": row["recordId"], "event": "12_months_arm_1", "action": "field_update", "actor_hash": f"u{idx:03d}"}
+                for idx, row in enumerate(visit_rows[:10])
+            ],
+            "reports": [{"report_id": "TODO(configure)", "title": "PI-defined REDCap report bridge", "rows": 0, "status": "server-side schedule ready"}],
+            "file_repository": [{"name": "Allowlisted non-PHI repository sync", "folder": "protocols", "status": "awaiting REDCap folder allowlist", "download_url": ""}],
+            "users": [{"role": "coordinator", "active_users": 0, "stale_accounts": 0, "status": "content=user pull runs server-side when token scope is enabled"}],
+        },
+        "redcap_predictive": {
+            "attrition_risk": risks,
+            "nl_query_enabled": True,
+            "weekly_memo": {
+                "title": "Auto-generated weekly REDCap study memo",
+                "status": "ready",
+                "source_keys": ["redcap_clinical", "redcap_integrity", "redcap_schedule", "redcap_platform"],
+                "highlights": [
+                    f"{sum(row['screen_positive'] for row in epds)} EPDS screen-positive summaries",
+                    f"{len(upcoming_visits)} visit windows due or overdue",
+                ],
+            },
+        },
+        "clinical_cutoffs": DEFAULT_CONTROLS["clinical_cutoffs"],
     }
 
 
@@ -817,6 +1064,10 @@ def build_payload() -> dict:
     redcap_visit_health = generate_redcap_visit_health()
     redcap_trackers = generate_redcap_trackers(redcap_completion_stats)
     redcap_timeline = generate_redcap_timeline(redcap_visit_health)
+    redcap_next_wave = generate_redcap_next_wave(
+        redcap_visit_health,
+        redcap_completion_stats,
+    )
     redcap_anomaly_count = sum(
         1 for row in redcap_visit_health if row["hasCarryForwardRisk"]
     )
@@ -866,12 +1117,14 @@ def build_payload() -> dict:
         },
         "redcap_trackers": redcap_trackers,
         "redcap_timeline": redcap_timeline,
+        **redcap_next_wave,
         "redcap_ops": generate_redcap_ops(
             generated_at=redcap_generated_at,
             completion_stats=redcap_completion_stats,
             visit_rows=redcap_visit_health,
             trackers=redcap_trackers,
             timeline=redcap_timeline,
+            next_wave=redcap_next_wave,
         ),
     }
 

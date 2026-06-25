@@ -311,3 +311,54 @@ def test_assistant_answers_redcap_furthest_behind_from_trackers(tmp_path):
     assert response is not None
     assert "24 months is furthest behind target" in response
     assert "20/40 complete" in response
+
+
+def test_assistant_answers_redcap_epds_next_wave_from_clinical_payload(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "clinical_cutoffs": {"epds_positive": 10, "epds_high": 13},
+                "redcap_clinical": {
+                    "epds_trajectory": [
+                        {
+                            "event": "24_months_arm_1",
+                            "label": "24 Months",
+                            "screen_positive": 7,
+                            "high_concern": 3,
+                            "self_harm_flags": 1,
+                        },
+                        {
+                            "event": "36_months_arm_1",
+                            "label": "36 Months",
+                            "screen_positive": 5,
+                            "high_concern": 2,
+                            "self_harm_flags": 0,
+                        },
+                    ]
+                },
+                "redcap_schedule": {"upcoming_visits": []},
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("How many mothers are EPDS screen-positive?")
+    response = assistant._maybe_short_circuit_response(
+        "How many mothers are EPDS screen-positive?",
+        context,
+    )
+
+    assert response is not None
+    assert "12 screen-positive" in response
+    assert "cutoff >= 10" in response

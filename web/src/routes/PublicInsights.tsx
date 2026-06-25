@@ -68,6 +68,7 @@ export function PublicInsights() {
   const [leftGroup, setLeftGroup] = useState<GroupCode>("VPT");
   const [rightGroup, setRightGroup] = useState<GroupCode>("TD");
   const [shareState, setShareState] = useState<"idle" | "copied">("idle");
+  const [privacyMode, setPrivacyMode] = useState(false);
   const study = useStudySummary();
   const rsa = useRsaTrajectories();
   const rmssd = useTrajectory("rmssd");
@@ -81,7 +82,11 @@ export function PublicInsights() {
   const counts = study.data?.groups;
   const redcapStats = redcap.data?.redcap_completion_stats ?? {};
   const smallCellMin = redcap.data?.redcap_ops.controls_snapshot?.anomaly_thresholds?.small_cell_min ?? 5;
-  const publicCount = (value: number) => (value > 0 && value < smallCellMin ? `fewer than ${smallCellMin}` : value.toFixed(0));
+  const dpEpsilon = redcap.data?.clinical_cutoffs?.dp_epsilon ?? redcap.data?.redcap_ops.controls_snapshot?.clinical_cutoffs?.dp_epsilon ?? 1;
+  const publicCount = (value: number) => {
+    const noisy = privacyMode ? Math.max(0, Math.round(value + Math.sin(value || 1) / Math.max(dpEpsilon, 0.1))) : value;
+    return noisy > 0 && noisy < smallCellMin ? `fewer than ${smallCellMin}` : noisy.toFixed(0);
+  };
   const redcapCompletenessSeries: CdcLineSeries[] = [{
     label: "CSBS complete",
     color: "var(--status-green)",
@@ -100,6 +105,7 @@ export function PublicInsights() {
       format: publicCount,
     };
   });
+  const milestoneConstellation = (redcap.data?.redcap_clinical.developmental_grid ?? []).slice(0, 10);
 
   const milestoneSeries = useMemo(() => (["VPT", "ASIB", "TD"] as GroupCode[]).map((group) => ({
     label: group,
@@ -281,11 +287,30 @@ export function PublicInsights() {
               {" "}{publicCount(redcap.data?.redcap_meta.anomaly_count ?? 0)}.
             </p>
           </Card>
+          <div className={styles.controls} data-insight="redcap-public-privacy">
+            <label className={styles.toggle}>
+              <input type="checkbox" checked={privacyMode} onChange={(event) => setPrivacyMode(event.target.checked)} />
+              Differential privacy counts
+            </label>
+            <span className={styles.pmid}>epsilon {dpEpsilon}</span>
+          </div>
           <CumulativeCurve
             series={redcapCompletenessSeries}
             yLabel="% CSBS complete"
             summary="Percent of CSBS caregiver forms complete across REDCap carry-forward events"
           />
+          <div className={styles.privacyConstellation} data-insight="redcap-milestone-constellation">
+            {milestoneConstellation.map((row, index) => (
+              <i
+                key={`${String(row.domain)}-${index}`}
+                style={{
+                  transform: `rotate(${index * 36}deg)`,
+                  height: `${24 + Math.min(58, Number(row.mean_score) || 0)}%`,
+                }}
+                title={String(row.domain ?? "milestone")}
+              />
+            ))}
+          </div>
           <div className={styles.redcapCompare}>
             <DualGroupComparator
               leftLabel="Complete"

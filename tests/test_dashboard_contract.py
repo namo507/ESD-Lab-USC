@@ -49,6 +49,13 @@ def test_synthetic_payload_contains_next_wave_aggregate_blocks():
     assert payload["redcap_timeline"]
     assert payload["redcap_ops"]["freshness"]["status"] in {"fresh", "stale"}
     assert payload["redcap_ops"]["runtime_parity"]
+    assert payload["redcap_clinical"]["epds_trajectory"]
+    assert payload["redcap_integrity"]["nullity_matrix"]
+    assert payload["redcap_schedule"]["upcoming_visits"]
+    assert payload["redcap_respondent"]["caregiver_burden"]
+    assert payload["redcap_platform"]["reports"]
+    assert payload["redcap_predictive"]["nl_query_enabled"] is True
+    assert payload["clinical_cutoffs"]["epds_positive"] == 10
     json.loads(json.dumps(payload, allow_nan=False))
 
 
@@ -146,6 +153,14 @@ def test_production_payload_includes_organization_site_block(tmp_path):
     assert payload["redcap_trackers"]["instrument_completeness"]
     assert payload["redcap_trackers"]["thresholds"]["small_cell_min"] >= 2
     assert payload["redcap_timeline"]
+    assert payload["redcap_clinical"]["epds_trajectory"]
+    assert payload["redcap_clinical"]["developmental_grid"]
+    assert payload["redcap_integrity"]["nullity_matrix"]
+    assert payload["redcap_schedule"]["retention_survival"]
+    assert payload["redcap_respondent"]["caregiver_burden"]
+    assert payload["redcap_platform"]["reports"]
+    assert payload["redcap_predictive"]["attrition_risk"]
+    assert payload["clinical_cutoffs"]["visit_window_days"] == 30
     assert payload["redcap_ops"]["controls_snapshot"]["feature_flags"][
         "redcap.pipelineHealth"
     ]
@@ -200,6 +215,13 @@ def test_committed_dashboard_redcap_payload_excludes_configured_phi_fields():
             "redcap_visit_health": payload.get("redcap_visit_health"),
             "redcap_trackers": payload.get("redcap_trackers"),
             "redcap_timeline": payload.get("redcap_timeline"),
+            "redcap_clinical": payload.get("redcap_clinical"),
+            "redcap_integrity": payload.get("redcap_integrity"),
+            "redcap_schedule": payload.get("redcap_schedule"),
+            "redcap_respondent": payload.get("redcap_respondent"),
+            "redcap_platform": payload.get("redcap_platform"),
+            "redcap_predictive": payload.get("redcap_predictive"),
+            "clinical_cutoffs": payload.get("clinical_cutoffs"),
             "redcap_ops": payload.get("redcap_ops"),
         }
     )
@@ -216,6 +238,12 @@ def test_dashboard_controls_are_normalized_and_clamped():
                 "completeness_warn_pct": 1.5,
                 "freshness_sla_hours": 500,
                 "small_cell_min": 1,
+            },
+            "clinical_cutoffs": {
+                "epds_positive": -2,
+                "epds_high": 99,
+                "visit_window_days": 4,
+                "dp_epsilon": 42,
             },
             "sync": {"cadence_cron": "*/15 * * * *", "chunk_size": 99999},
             "assistant": {"model_tier": "fast", "max_fragments": 2},
@@ -234,5 +262,9 @@ def test_dashboard_controls_are_normalized_and_clamped():
     }
     assert controls["sync"]["chunk_size"] == 5000
     assert controls["assistant"]["max_fragments"] == 5
+    assert controls["clinical_cutoffs"]["epds_positive"] == 0
+    assert controls["clinical_cutoffs"]["epds_high"] == 30
+    assert controls["clinical_cutoffs"]["visit_window_days"] == 7
+    assert controls["clinical_cutoffs"]["dp_epsilon"] == 10
     assert controls["feature_flags"]["redcap.writeback"] is True
     assert controls["feature_flags"]["redcap.pipelineHealth"] is False

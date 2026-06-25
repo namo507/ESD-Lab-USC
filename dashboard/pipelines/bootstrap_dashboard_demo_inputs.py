@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -24,10 +25,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 from dashboard.pipelines import generate_synthetic_dashboard_data as synthetic
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REDCAP_OUTPUT = PROJECT_ROOT / "data" / "processed" / "redcap_latest.csv"
 DEFAULT_FEATURE_OUTPUT = PROJECT_ROOT / "data" / "processed" / "feature_matrix.csv"
 DEFAULT_METRICS_OUTPUT = PROJECT_ROOT / "models" / "_metrics.json"
@@ -151,6 +154,11 @@ def _build_redcap_records(participants: list[dict[str, Any]], rng: np.random.Gen
                 "group_assignment": participant["group"],
                 "dashboard_input_source": SOURCE_LABEL,
                 "enrollment_date": participant["enrollment_date"].isoformat() if event_name == "nicu_admission" else None,
+                "collection_date_shifted": (
+                    participant["enrollment_date"] + timedelta(days=int(event_month * 30.4375) + int(rng.integers(-6, 7)))
+                ).isoformat(),
+                "age_in_days": int(event_month * 30.4375 + rng.normal(0, 9)),
+                "entry_lag_days": int(max(0, rng.normal(2 + event_month / 10, 2))),
                 "visit_completed": visit_completed,
                 "withdrawn": int(event_name == "nicu_admission" and participant["withdrawn"]),
                 "open_query": int(rng.random() < (0.06 if visit_completed else 0.02)),
@@ -179,6 +187,55 @@ def _build_redcap_records(participants: list[dict[str, Any]], rng: np.random.Gen
                     row[complete_col] = 2 if rng.random() < completion_probability else 1
                 else:
                     row[complete_col] = 0
+
+            row["csbs_caregiver_complete"] = row["csbs_social_communication_complete"]
+            if visit_completed and row["epds_maternal_depression_complete"] == 2:
+                epds_mean = 7.8 if participant["group"] != "TD" else 6.2
+                row["epds_total"] = int(np.clip(rng.normal(epds_mean, 4.4), 0, 30))
+                row["epds_si_item"] = int(1 if rng.random() < 0.04 else 0)
+            else:
+                row["epds_total"] = None
+                row["epds_si_item"] = None
+
+            if visit_completed and row["asq3_milestones_complete"] == 2:
+                asq_base = 45 if participant["group"] == "TD" else 39
+                row["asq3_communication"] = int(np.clip(rng.normal(asq_base, 9), 0, 60))
+                row["asq3_gross_motor"] = int(np.clip(rng.normal(asq_base - 3, 10), 0, 60))
+                row["asq3_fine_motor"] = int(np.clip(rng.normal(asq_base - 1, 8), 0, 60))
+                row["asq3_problem_solving"] = int(np.clip(rng.normal(asq_base, 8), 0, 60))
+                row["asq3_personal_social"] = int(np.clip(rng.normal(asq_base - 2, 9), 0, 60))
+            else:
+                row["asq3_communication"] = None
+                row["asq3_gross_motor"] = None
+                row["asq3_fine_motor"] = None
+                row["asq3_problem_solving"] = None
+                row["asq3_personal_social"] = None
+
+            if visit_completed and row["csbs_social_communication_complete"] == 2:
+                row["csbs_social"] = int(np.clip(rng.normal(72 if participant["group"] == "TD" else 64, 13), 0, 100))
+                row["csbs_speech"] = int(np.clip(rng.normal(68 if participant["group"] == "TD" else 59, 14), 0, 100))
+                row["csbs_symbolic"] = int(np.clip(rng.normal(70 if participant["group"] == "TD" else 61, 14), 0, 100))
+            else:
+                row["csbs_social"] = None
+                row["csbs_speech"] = None
+                row["csbs_symbolic"] = None
+
+            if visit_completed and row["bayley4_scores_complete"] == 2:
+                row["bayley4_cog_composite"] = int(np.clip(rng.normal(102 if participant["group"] == "TD" else 94, 12), 40, 160))
+            else:
+                row["bayley4_cog_composite"] = None
+
+            if visit_completed and row["mchat_r_tf_complete"] == 2:
+                row["mchat_total"] = int(np.clip(rng.normal(2.8 if participant["group"] == "ASIB" else 1.5, 1.4), 0, 20))
+            else:
+                row["mchat_total"] = None
+
+            if visit_completed and row["ados2_scores_complete"] == 2:
+                row["ados2_module"] = str(rng.choice(["T", "1", "2"], p=[0.45, 0.45, 0.10]))
+                row["ados2_css_total"] = int(np.clip(rng.normal(5.2 if participant["group"] == "ASIB" else 3.7, 1.8), 1, 10))
+            else:
+                row["ados2_module"] = None
+                row["ados2_css_total"] = None
 
             if visit_completed:
                 completed_events.append((event_name, event_label))

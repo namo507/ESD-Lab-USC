@@ -5,6 +5,15 @@
     "freshness_sla_hours": 48,
     "small_cell_min": 5
   },
+  "clinical_cutoffs": {
+    "epds_positive": 10,
+    "epds_high": 13,
+    "epds_self_harm_item_min": 1,
+    "asq_monitor": 35,
+    "asq_refer": 25,
+    "visit_window_days": 30,
+    "dp_epsilon": 1
+  },
   "sync": {
     "cadence_cron": "0 8 * * *",
     "chunk_size": 500

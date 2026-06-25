@@ -86,6 +86,32 @@
   border-top: 1px solid var(--warm-border);
   padding-top: 16px;
 }
+.privacyConstellation {
+  position: relative;
+  width: min(220px, 62vw);
+  aspect-ratio: 1;
+  margin: 18px auto 6px;
+  border: 1px solid var(--warm-border);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, transparent 0 30%, var(--warm-border) 30% 31%, transparent 31% 58%, var(--warm-border) 58% 59%, transparent 59%),
+    var(--warm-card);
+}
+.privacyConstellation::before {
+  content: "";
+  position: absolute;
+  inset: 48%;
+  border-radius: 999px;
+  background: var(--usc-garnet);
+}
+.privacyConstellation i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  transform-origin: top center;
+  border-left: 2px solid color-mix(in srgb, var(--status-green) 60%, var(--usc-garnet));
+}
 .about { border: 1px solid var(--border); border-radius: var(--r-2); background: var(--bg-surface); padding: 16px 18px; }
 .about summary { cursor: pointer; font-weight: var(--w-bold); color: var(--ink); }
 .about p { color: var(--slate-500); line-height: 1.6; }

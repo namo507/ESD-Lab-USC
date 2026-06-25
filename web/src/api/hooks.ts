@@ -406,6 +406,52 @@ function legacyVisitHealthToPayload(health: S.RedcapVisitHealthResponse): Redcap
         ],
       })),
     },
+    redcap_clinical: {
+      epds_trajectory: [],
+      developmental_grid: [],
+      family_risk: [],
+      cascade_edges: [],
+      ados_flow: [],
+    },
+    redcap_integrity: {
+      nullity_matrix: [],
+      field_presence: [],
+      double_entry_diffs: [],
+      mismatch_trend: [],
+      response_quality: [],
+      branching_violations: [],
+      validation_radar: [],
+    },
+    redcap_schedule: {
+      window_adherence: [],
+      retention_survival: [],
+      collection_calendar: [],
+      upcoming_visits: [],
+      entry_lag: [],
+    },
+    redcap_respondent: {
+      caregiver_burden: [],
+      respondent_concordance: [],
+    },
+    redcap_platform: {
+      audit_log: [],
+      reports: [],
+      file_repository: [],
+      users: [],
+    },
+    redcap_predictive: {
+      attrition_risk: [],
+      nl_query_enabled: false,
+    },
+    clinical_cutoffs: {
+      epds_positive: 10,
+      epds_high: 13,
+      epds_self_harm_item_min: 1,
+      asq_monitor: 35,
+      asq_refer: 25,
+      visit_window_days: 30,
+      dp_epsilon: 1,
+    },
     redcap_ops: {
       freshness: {
         generated_at: generatedAt,
@@ -529,6 +575,7 @@ export function useRedcapVisitEntry() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
       void qc.invalidateQueries({ queryKey: ["v2", "redcap-missing-data"] });
+      void qc.invalidateQueries({ queryKey: ["redcap", "dashboard-data"] });
     },
   });
 }

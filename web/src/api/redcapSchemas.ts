@@ -123,6 +123,15 @@ export const DashboardControls = z.object({
     freshness_sla_hours: z.number().optional(),
     small_cell_min: z.number().optional(),
   }).partial().default({}),
+  clinical_cutoffs: z.object({
+    epds_positive: z.number().default(10),
+    epds_high: z.number().default(13),
+    epds_self_harm_item_min: z.number().default(1),
+    asq_monitor: z.number().default(35),
+    asq_refer: z.number().default(25),
+    visit_window_days: z.number().default(30),
+    dp_epsilon: z.number().default(1),
+  }).partial().default({}),
   sync: z.object({
     cadence_cron: z.string(),
     chunk_size: z.number(),
@@ -134,6 +143,7 @@ export const DashboardControls = z.object({
   feature_flags: z.record(z.boolean()).default({}),
 }).partial({
   anomaly_thresholds: true,
+  clinical_cutoffs: true,
   sync: true,
   assistant: true,
   feature_flags: true,
@@ -160,6 +170,89 @@ export const RedcapOps = z.object({
 });
 export type RedcapOps = z.infer<typeof RedcapOps>;
 
+const LooseRow = z.record(z.unknown());
+
+export const RedcapClinical = z.object({
+  epds_trajectory: z.array(LooseRow).default([]),
+  developmental_grid: z.array(LooseRow).default([]),
+  family_risk: z.array(LooseRow).default([]),
+  cascade_edges: z.array(LooseRow).default([]),
+  ados_flow: z.array(LooseRow).default([]),
+}).default({
+  epds_trajectory: [],
+  developmental_grid: [],
+  family_risk: [],
+  cascade_edges: [],
+  ados_flow: [],
+});
+export type RedcapClinical = z.infer<typeof RedcapClinical>;
+
+export const RedcapIntegrity = z.object({
+  nullity_matrix: z.array(LooseRow).default([]),
+  field_presence: z.array(LooseRow).default([]),
+  double_entry_diffs: z.array(LooseRow).default([]),
+  mismatch_trend: z.array(LooseRow).default([]),
+  response_quality: z.array(LooseRow).default([]),
+  branching_violations: z.array(LooseRow).default([]),
+  validation_radar: z.array(LooseRow).default([]),
+}).default({
+  nullity_matrix: [],
+  field_presence: [],
+  double_entry_diffs: [],
+  mismatch_trend: [],
+  response_quality: [],
+  branching_violations: [],
+  validation_radar: [],
+});
+export type RedcapIntegrity = z.infer<typeof RedcapIntegrity>;
+
+export const RedcapSchedule = z.object({
+  window_adherence: z.array(LooseRow).default([]),
+  retention_survival: z.array(LooseRow).default([]),
+  collection_calendar: z.array(LooseRow).default([]),
+  upcoming_visits: z.array(LooseRow).default([]),
+  entry_lag: z.array(LooseRow).default([]),
+}).default({
+  window_adherence: [],
+  retention_survival: [],
+  collection_calendar: [],
+  upcoming_visits: [],
+  entry_lag: [],
+});
+export type RedcapSchedule = z.infer<typeof RedcapSchedule>;
+
+export const RedcapRespondent = z.object({
+  caregiver_burden: z.array(LooseRow).default([]),
+  respondent_concordance: z.array(LooseRow).default([]),
+}).default({
+  caregiver_burden: [],
+  respondent_concordance: [],
+});
+export type RedcapRespondent = z.infer<typeof RedcapRespondent>;
+
+export const RedcapPlatform = z.object({
+  audit_log: z.array(LooseRow).default([]),
+  reports: z.array(LooseRow).default([]),
+  file_repository: z.array(LooseRow).default([]),
+  users: z.array(LooseRow).default([]),
+}).default({
+  audit_log: [],
+  reports: [],
+  file_repository: [],
+  users: [],
+});
+export type RedcapPlatform = z.infer<typeof RedcapPlatform>;
+
+export const RedcapPredictive = z.object({
+  attrition_risk: z.array(LooseRow).default([]),
+  nl_query_enabled: z.boolean().default(false),
+  weekly_memo: LooseRow.optional(),
+}).default({
+  attrition_risk: [],
+  nl_query_enabled: false,
+});
+export type RedcapPredictive = z.infer<typeof RedcapPredictive>;
+
 export const RedcapPayload = z.object({
   redcap_meta: RedcapMeta,
   redcap_completion_stats: z.record(RedcapCompletionStat),
@@ -173,6 +266,13 @@ export const RedcapPayload = z.object({
     queue_funnel: [],
   }),
   redcap_timeline: RedcapTimeline.default({ records: [] }),
+  redcap_clinical: RedcapClinical,
+  redcap_integrity: RedcapIntegrity,
+  redcap_schedule: RedcapSchedule,
+  redcap_respondent: RedcapRespondent,
+  redcap_platform: RedcapPlatform,
+  redcap_predictive: RedcapPredictive,
+  clinical_cutoffs: DashboardControls.shape.clinical_cutoffs.default({}),
   redcap_ops: RedcapOps.default({
     freshness: {},
     runtime_parity: {},

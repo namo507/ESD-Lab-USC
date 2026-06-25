@@ -55,6 +55,13 @@ SUMMARY_KEYS = (
     "redcap_visit_health",
     "redcap_trackers",
     "redcap_timeline",
+    "redcap_clinical",
+    "redcap_integrity",
+    "redcap_schedule",
+    "redcap_respondent",
+    "redcap_platform",
+    "redcap_predictive",
+    "clinical_cutoffs",
     "redcap_ops",
     "matlab_integration",
     "cohort_table",
@@ -204,6 +211,102 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "ledger",
         "controls",
         "knobs",
+    },
+    "redcap_clinical": {
+        "redcap",
+        "clinical",
+        "epds",
+        "depression",
+        "maternal",
+        "screen",
+        "positive",
+        "developmental",
+        "asq",
+        "mcdi",
+        "csbs",
+        "ados",
+        "autism",
+        "risk",
+        "constellation",
+        "cascade",
+    },
+    "redcap_integrity": {
+        "redcap",
+        "integrity",
+        "nullity",
+        "missingness",
+        "double",
+        "entry",
+        "diff",
+        "response",
+        "quality",
+        "branching",
+        "validation",
+        "radar",
+    },
+    "redcap_schedule": {
+        "redcap",
+        "schedule",
+        "scheduling",
+        "forecast",
+        "upcoming",
+        "overdue",
+        "visit",
+        "window",
+        "adherence",
+        "beeswarm",
+        "retention",
+        "survival",
+        "calendar",
+        "lag",
+    },
+    "redcap_respondent": {
+        "redcap",
+        "respondent",
+        "caregiver",
+        "burden",
+        "fatigue",
+        "concordance",
+    },
+    "redcap_platform": {
+        "redcap",
+        "platform",
+        "api",
+        "logging",
+        "log",
+        "audit",
+        "report",
+        "reports",
+        "file",
+        "repository",
+        "user",
+        "users",
+        "dag",
+    },
+    "redcap_predictive": {
+        "redcap",
+        "predictive",
+        "prediction",
+        "attrition",
+        "risk",
+        "incompletion",
+        "early",
+        "warning",
+        "memo",
+        "weekly",
+        "natural",
+        "language",
+        "query",
+    },
+    "clinical_cutoffs": {
+        "epds",
+        "cutoff",
+        "cutoffs",
+        "threshold",
+        "thresholds",
+        "epsilon",
+        "privacy",
+        "window",
     },
     "participant_operations": {
         "participant",
@@ -1061,6 +1164,17 @@ class DashboardChatAssistant:
             if value:
                 if key == "redcap_visit_health":
                     fragments.extend(self._build_redcap_visit_health_fragments(payload))
+                elif key == "redcap_clinical":
+                    fragments.extend(self._build_redcap_next_wave_fragments(payload))
+                elif key in {
+                    "redcap_integrity",
+                    "redcap_schedule",
+                    "redcap_respondent",
+                    "redcap_platform",
+                    "redcap_predictive",
+                    "clinical_cutoffs",
+                }:
+                    continue
                 else:
                     fragments.extend(_flatten_context(value, prefix=key))
 
@@ -1243,6 +1357,7 @@ class DashboardChatAssistant:
                     f"the model license is {self.config.model_license or 'unspecified'}. "
                     "If asked about model choice, explain that the dashboard uses the configured local GGUF model when present and has smaller local fallbacks for constrained hosts.\n\n"
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
+                    "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
@@ -1449,6 +1564,185 @@ class DashboardChatAssistant:
             )
         return fragments
 
+    def _build_redcap_next_wave_fragments(
+        self,
+        payload: dict[str, Any],
+    ) -> list[tuple[str, str]]:
+        clinical = payload.get("redcap_clinical") or {}
+        integrity = payload.get("redcap_integrity") or {}
+        schedule = payload.get("redcap_schedule") or {}
+        respondent = payload.get("redcap_respondent") or {}
+        platform = payload.get("redcap_platform") or {}
+        predictive = payload.get("redcap_predictive") or {}
+        cutoffs = payload.get("clinical_cutoffs") or (
+            (payload.get("redcap_ops") or {})
+            .get("controls_snapshot", {})
+            .get("clinical_cutoffs", {})
+            if isinstance(payload.get("redcap_ops"), dict)
+            else {}
+        )
+
+        def num(value: Any, default: float = 0.0) -> float:
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                return default
+            return parsed if parsed == parsed else default
+
+        fragments: list[tuple[str, str]] = []
+        epds = clinical.get("epds_trajectory") if isinstance(clinical, dict) else []
+        if isinstance(epds, list) and epds:
+            positive = sum(num(row.get("screen_positive")) for row in epds if isinstance(row, dict))
+            high = sum(num(row.get("high_concern")) for row in epds if isinstance(row, dict))
+            self_harm = sum(num(row.get("self_harm_flags")) for row in epds if isinstance(row, dict))
+            fragments.append(
+                (
+                    "redcap_clinical.epds_trajectory",
+                    "REDCap EPDS trajectory: "
+                    f"{int(positive)} screen-positive (cutoff >= {cutoffs.get('epds_positive', 10)}), "
+                    f"{int(high)} high-concern (cutoff >= {cutoffs.get('epds_high', 13)}), "
+                    f"{int(self_harm)} self-harm item flags across {len(epds)} event summaries.",
+                )
+            )
+
+        dev = clinical.get("developmental_grid") if isinstance(clinical, dict) else []
+        if isinstance(dev, list) and dev:
+            zone_counts: dict[str, int] = {}
+            for row in dev:
+                if not isinstance(row, dict):
+                    continue
+                zone = str(row.get("zone") or "context")
+                zone_counts[zone] = zone_counts.get(zone, 0) + 1
+            fragments.append(
+                (
+                    "redcap_clinical.developmental_grid",
+                    "REDCap developmental grid domains: "
+                    + ", ".join(f"{key}={value}" for key, value in sorted(zone_counts.items()))
+                    + f" across {len(dev)} aggregate domain rows.",
+                )
+            )
+
+        family_risk = clinical.get("family_risk") if isinstance(clinical, dict) else []
+        if isinstance(family_risk, list) and family_risk:
+            verify_needed = sum(
+                1
+                for row in family_risk
+                if isinstance(row, dict) and not row.get("field_verified")
+            )
+            fragments.append(
+                (
+                    "redcap_clinical.family_risk",
+                    f"REDCap family-risk constellation axes indexed: {len(family_risk)}; {verify_needed} axes still need metadata verification.",
+                )
+            )
+
+        upcoming = schedule.get("upcoming_visits") if isinstance(schedule, dict) else []
+        if isinstance(upcoming, list):
+            overdue = sum(
+                1
+                for row in upcoming
+                if isinstance(row, dict) and num(row.get("due_in_days")) < 0
+            )
+            fragments.append(
+                (
+                    "redcap_schedule.upcoming_visits",
+                    f"REDCap next-30-days visit forecast: {len(upcoming)} hashed records due or approaching, {overdue} overdue.",
+                )
+            )
+
+        adherence = schedule.get("window_adherence") if isinstance(schedule, dict) else []
+        if isinstance(adherence, list) and adherence:
+            latest = adherence[-1] if isinstance(adherence[-1], dict) else {}
+            fragments.append(
+                (
+                    "redcap_schedule.window_adherence",
+                    "REDCap visit-window adherence: "
+                    f"{len(adherence)} event summaries; latest {latest.get('label') or latest.get('event') or 'event'} "
+                    f"mean delta {latest.get('mean_delta_days', 0)} days.",
+                )
+            )
+
+        nullity = integrity.get("nullity_matrix") if isinstance(integrity, dict) else []
+        diffs = integrity.get("double_entry_diffs") if isinstance(integrity, dict) else []
+        if isinstance(nullity, list) or isinstance(diffs, list):
+            mean_nullity = (
+                sum(num(row.get("missing_fraction")) for row in nullity if isinstance(row, dict))
+                / max(1, len(nullity))
+                if isinstance(nullity, list)
+                else 0
+            )
+            fragments.append(
+                (
+                    "redcap_integrity",
+                    f"REDCap integrity sentinels: mean nullity {mean_nullity:.3f} across {len(nullity) if isinstance(nullity, list) else 0} matrix cells; "
+                    f"{len(diffs) if isinstance(diffs, list) else 0} double-entry diffs.",
+                )
+            )
+
+        burden = respondent.get("caregiver_burden") if isinstance(respondent, dict) else []
+        if isinstance(burden, list) and burden:
+            burden_text = "; ".join(
+                f"{row.get('label') or row.get('respondent')}: {row.get('completed', 0)}/{row.get('assigned', 0)} completed"
+                for row in burden
+                if isinstance(row, dict)
+            )
+            fragments.append(("redcap_respondent.caregiver_burden", f"REDCap caregiver burden: {burden_text}."))
+
+        audit_log = platform.get("audit_log") if isinstance(platform, dict) else []
+        reports = platform.get("reports") if isinstance(platform, dict) else []
+        files = platform.get("file_repository") if isinstance(platform, dict) else []
+        users = platform.get("users") if isinstance(platform, dict) else []
+        if any(isinstance(item, list) for item in [audit_log, reports, files, users]):
+            fragments.append(
+                (
+                    "redcap_platform",
+                    f"REDCap platform API surfaces: audit_log={len(audit_log) if isinstance(audit_log, list) else 0}, "
+                    f"reports={len(reports) if isinstance(reports, list) else 0}, "
+                    f"file_repository={len(files) if isinstance(files, list) else 0}, "
+                    f"users={len(users) if isinstance(users, list) else 0}. Browser token exposure remains disabled.",
+                )
+            )
+
+        risk = predictive.get("attrition_risk") if isinstance(predictive, dict) else []
+        if isinstance(risk, list):
+            high = [
+                row
+                for row in risk
+                if isinstance(row, dict) and str(row.get("risk_band")) == "high"
+            ]
+            top = risk[0] if risk and isinstance(risk[0], dict) else {}
+            fragments.append(
+                (
+                    "redcap_predictive.attrition_risk",
+                    f"REDCap attrition early-warning: {len(risk)} hashed risk scores, {len(high)} high risk; "
+                    f"top record {top.get('recordId') or 'n/a'} score {top.get('risk_score', 'n/a')}.",
+                )
+            )
+
+        memo = predictive.get("weekly_memo") if isinstance(predictive, dict) else {}
+        if isinstance(memo, dict) and memo:
+            highlights = memo.get("highlights") if isinstance(memo.get("highlights"), list) else []
+            fragments.append(
+                (
+                    "redcap_predictive.weekly_memo",
+                    f"REDCap weekly study memo status: {memo.get('status') or 'unknown'}; "
+                    + "; ".join(str(item) for item in highlights[:3]),
+                )
+            )
+
+        if cutoffs:
+            fragments.append(
+                (
+                    "clinical_cutoffs",
+                    "Clinical controls snapshot: "
+                    f"epds_positive={cutoffs.get('epds_positive', 10)}, "
+                    f"epds_high={cutoffs.get('epds_high', 13)}, "
+                    f"visit_window_days={cutoffs.get('visit_window_days', 30)}, "
+                    f"dp_epsilon={cutoffs.get('dp_epsilon', 1)}.",
+                )
+            )
+        return fragments
+
     def _build_summary_fragments(
         self,
         payload: dict[str, Any],
@@ -1464,6 +1758,9 @@ class DashboardChatAssistant:
         redcap_meta = payload.get("redcap_meta") or {}
         redcap_visit_health = payload.get("redcap_visit_health") or {}
         redcap_ops = payload.get("redcap_ops") or {}
+        redcap_clinical = payload.get("redcap_clinical") or {}
+        redcap_schedule = payload.get("redcap_schedule") or {}
+        redcap_predictive = payload.get("redcap_predictive") or {}
         participant_operations = payload.get("participant_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
@@ -1564,6 +1861,53 @@ class DashboardChatAssistant:
                         "Runtime parity: "
                         f"{'in sync' if len(hashes) <= 1 else 'drift detected'}; "
                         + ", ".join(f"{key}={value}" for key, value in parity.items()),
+                    )
+                )
+        if isinstance(redcap_clinical, dict):
+            epds = redcap_clinical.get("epds_trajectory")
+            if isinstance(epds, list) and epds:
+                positive = sum(
+                    int(row.get("screen_positive") or 0)
+                    for row in epds
+                    if isinstance(row, dict)
+                )
+                high = sum(
+                    int(row.get("high_concern") or 0)
+                    for row in epds
+                    if isinstance(row, dict)
+                )
+                fragments.append(
+                    (
+                        "redcap_clinical.epds_trajectory",
+                        f"EPDS screen-positive needing review: {positive}; high-concern: {high}",
+                    )
+                )
+        if isinstance(redcap_schedule, dict):
+            upcoming = redcap_schedule.get("upcoming_visits")
+            if isinstance(upcoming, list):
+                overdue = sum(
+                    1
+                    for row in upcoming
+                    if isinstance(row, dict) and int(row.get("due_in_days") or 0) < 0
+                )
+                fragments.append(
+                    (
+                        "redcap_schedule.upcoming_visits",
+                        f"Next-30-days REDCap visit forecast: {len(upcoming)} due or approaching; {overdue} overdue",
+                    )
+                )
+        if isinstance(redcap_predictive, dict):
+            risk = redcap_predictive.get("attrition_risk")
+            if isinstance(risk, list):
+                high = sum(
+                    1
+                    for row in risk
+                    if isinstance(row, dict) and row.get("risk_band") == "high"
+                )
+                fragments.append(
+                    (
+                        "redcap_predictive.attrition_risk",
+                        f"REDCap attrition early-warning scores: {len(risk)} hashed records; {high} high risk",
                     )
                 )
 
@@ -1679,6 +2023,13 @@ class DashboardChatAssistant:
         redcap_visit_health = payload.get("redcap_visit_health") or {}
         redcap_trackers = payload.get("redcap_trackers") or {}
         redcap_ops = payload.get("redcap_ops") or {}
+        redcap_clinical = payload.get("redcap_clinical") or {}
+        redcap_integrity = payload.get("redcap_integrity") or {}
+        redcap_schedule = payload.get("redcap_schedule") or {}
+        redcap_respondent = payload.get("redcap_respondent") or {}
+        redcap_platform = payload.get("redcap_platform") or {}
+        redcap_predictive = payload.get("redcap_predictive") or {}
+        clinical_cutoffs = payload.get("clinical_cutoffs") or {}
         redcap_visit_records = (
             redcap_visit_health.get("data")
             if isinstance(redcap_visit_health, dict)
@@ -1794,6 +2145,27 @@ class DashboardChatAssistant:
                 redcap_trackers if isinstance(redcap_trackers, dict) else {}
             ),
             "redcap_ops": redcap_ops if isinstance(redcap_ops, dict) else {},
+            "redcap_clinical": (
+                redcap_clinical if isinstance(redcap_clinical, dict) else {}
+            ),
+            "redcap_integrity": (
+                redcap_integrity if isinstance(redcap_integrity, dict) else {}
+            ),
+            "redcap_schedule": (
+                redcap_schedule if isinstance(redcap_schedule, dict) else {}
+            ),
+            "redcap_respondent": (
+                redcap_respondent if isinstance(redcap_respondent, dict) else {}
+            ),
+            "redcap_platform": (
+                redcap_platform if isinstance(redcap_platform, dict) else {}
+            ),
+            "redcap_predictive": (
+                redcap_predictive if isinstance(redcap_predictive, dict) else {}
+            ),
+            "clinical_cutoffs": (
+                clinical_cutoffs if isinstance(clinical_cutoffs, dict) else {}
+            ),
             "redcap_visit_records": (
                 redcap_visit_records if isinstance(redcap_visit_records, list) else []
             ),
@@ -1920,6 +2292,13 @@ class DashboardChatAssistant:
         question_tokens = set(_tokenize(question))
         reading_matches = context.get("reading_matches") or []
         facts = context.get("facts") or {}
+
+        def as_number(value: Any, default: float = 0.0) -> float:
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                return default
+            return parsed if parsed == parsed else default
 
         if question_tokens & {"reading", "readings"} and question_tokens & {
             "count",
@@ -2253,6 +2632,103 @@ class DashboardChatAssistant:
                 f"The MATLAB queue enrichment reads the existing MATLAB integration block, including MATLAB {version}. "
                 f"Current derived files include {', '.join(file_names) if file_names else 'no files listed'}, and artifact rate is derived from file QA pass percentages."
             )
+
+        if question_tokens & {"epds", "depression", "maternal"}:
+            clinical = facts.get("redcap_clinical") or {}
+            cutoffs = facts.get("clinical_cutoffs") or {}
+            epds = clinical.get("epds_trajectory") if isinstance(clinical, dict) else []
+            if isinstance(epds, list) and epds:
+                positive = sum(as_number(row.get("screen_positive")) for row in epds if isinstance(row, dict))
+                high = sum(as_number(row.get("high_concern")) for row in epds if isinstance(row, dict))
+                self_harm = sum(as_number(row.get("self_harm_flags")) for row in epds if isinstance(row, dict))
+                return (
+                    f"EPDS has {int(positive)} screen-positive summaries at cutoff >= {cutoffs.get('epds_positive', 10)}, "
+                    f"{int(high)} high-concern summaries at cutoff >= {cutoffs.get('epds_high', 13)}, "
+                    f"and {int(self_harm)} self-harm item flags. Coordinator review should start with high-concern and self-harm flags, then cross-check upcoming visit burden."
+                )
+
+        if question_tokens & {"forecast", "upcoming", "overdue", "next"} and question_tokens & {"visit", "visits", "days", "30"}:
+            schedule = facts.get("redcap_schedule") or {}
+            upcoming = schedule.get("upcoming_visits") if isinstance(schedule, dict) else []
+            if isinstance(upcoming, list):
+                overdue = [
+                    row
+                    for row in upcoming
+                    if isinstance(row, dict) and as_number(row.get("due_in_days")) < 0
+                ]
+                approaching = len(upcoming) - len(overdue)
+                first = upcoming[0] if upcoming and isinstance(upcoming[0], dict) else {}
+                return (
+                    f"The next-30-days REDCap forecast has {len(upcoming)} hashed records: {len(overdue)} overdue and {approaching} approaching. "
+                    f"The first listed window is {first.get('recordId', 'n/a')} at {first.get('label') or first.get('event') or 'unknown visit'} with due_in_days={first.get('due_in_days', 'n/a')}."
+                )
+
+        if question_tokens & {"integrity", "nullity", "diff", "double", "branching", "validation", "sentinel"}:
+            integrity = facts.get("redcap_integrity") or {}
+            nullity = integrity.get("nullity_matrix") if isinstance(integrity, dict) else []
+            diffs = integrity.get("double_entry_diffs") if isinstance(integrity, dict) else []
+            quality = integrity.get("response_quality") if isinstance(integrity, dict) else []
+            branching = integrity.get("branching_violations") if isinstance(integrity, dict) else []
+            radar = integrity.get("validation_radar") if isinstance(integrity, dict) else []
+            if any(isinstance(item, list) for item in [nullity, diffs, quality, branching, radar]):
+                mean_nullity = (
+                    sum(as_number(row.get("missing_fraction")) for row in nullity if isinstance(row, dict))
+                    / max(1, len(nullity))
+                    if isinstance(nullity, list)
+                    else 0
+                )
+                return (
+                    f"Integrity sentinels show mean nullity {mean_nullity:.1%} across {len(nullity) if isinstance(nullity, list) else 0} cells, "
+                    f"{len(diffs) if isinstance(diffs, list) else 0} double-entry diffs, "
+                    f"{len(quality) if isinstance(quality, list) else 0} response-quality rows, "
+                    f"{len(branching) if isinstance(branching, list) else 0} branching checks, and "
+                    f"{len(radar) if isinstance(radar, list) else 0} validation radar rows."
+                )
+
+        if question_tokens & {"caregiver", "respondent", "burden", "fatigue"}:
+            respondent = facts.get("redcap_respondent") or {}
+            burden = respondent.get("caregiver_burden") if isinstance(respondent, dict) else []
+            if isinstance(burden, list) and burden:
+                text = "; ".join(
+                    f"{row.get('label') or row.get('respondent')}: {row.get('completed', 0)}/{row.get('assigned', 0)} completed, fatigue_index={row.get('fatigue_index', 0)}"
+                    for row in burden
+                    if isinstance(row, dict)
+                )
+                return f"Caregiver burden summary: {text}."
+
+        if question_tokens & {"platform", "logging", "log", "report", "reports", "repository", "users", "dag"}:
+            platform = facts.get("redcap_platform") or {}
+            if isinstance(platform, dict):
+                audit = platform.get("audit_log") if isinstance(platform.get("audit_log"), list) else []
+                reports = platform.get("reports") if isinstance(platform.get("reports"), list) else []
+                files = platform.get("file_repository") if isinstance(platform.get("file_repository"), list) else []
+                users = platform.get("users") if isinstance(platform.get("users"), list) else []
+                return (
+                    f"REDCap platform surfaces indexed: audit_log={len(audit)}, reports={len(reports)}, file_repository={len(files)}, users={len(users)}. "
+                    "These are designed for server-side scheduled pulls; the browser proxy still blocks token-backed platform access."
+                )
+
+        if question_tokens & {"attrition", "incompletion", "risk", "early", "warning", "predictive"} and question_tokens & {"redcap", "risk", "attrition", "incompletion"}:
+            predictive = facts.get("redcap_predictive") or {}
+            risks = predictive.get("attrition_risk") if isinstance(predictive, dict) else []
+            if isinstance(risks, list):
+                high = [row for row in risks if isinstance(row, dict) and row.get("risk_band") == "high"]
+                top = risks[0] if risks and isinstance(risks[0], dict) else {}
+                drivers = top.get("drivers") if isinstance(top.get("drivers"), list) else []
+                return (
+                    f"Attrition early-warning has {len(risks)} hashed risk scores and {len(high)} high-risk records. "
+                    f"The top listed record is {top.get('recordId', 'n/a')} with score {top.get('risk_score', 'n/a')} and drivers {', '.join(map(str, drivers)) or 'not listed'}."
+                )
+
+        if question_tokens & {"memo", "weekly", "narrative"} and question_tokens & {"redcap", "study", "status"}:
+            predictive = facts.get("redcap_predictive") or {}
+            memo = predictive.get("weekly_memo") if isinstance(predictive, dict) else {}
+            if isinstance(memo, dict) and memo:
+                highlights = memo.get("highlights") if isinstance(memo.get("highlights"), list) else []
+                return (
+                    f"{memo.get('title') or 'Weekly REDCap study memo'} is {memo.get('status') or 'available'}. "
+                    + (" Highlights: " + "; ".join(str(item) for item in highlights[:4]) if highlights else "")
+                )
 
         redcap_tokens = {
             "redcap",

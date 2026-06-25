@@ -493,6 +493,255 @@
   height: auto;
 }
 
+.nextWaveStack {
+  display: grid;
+  gap: 14px;
+}
+.nextWaveGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.epdsBands {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 18px 0;
+}
+.epdsBands div {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 9px 10px;
+}
+.epdsBands span {
+  color: var(--slate-500);
+  font: 10px var(--font-mono);
+}
+.epdsBands strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+.metricRows,
+.edgeList,
+.diffList,
+.riskList,
+.auditRiver,
+.swarmRows {
+  display: grid;
+  gap: 8px;
+  padding: 14px 18px 18px;
+}
+.metricRow,
+.edgeRow,
+.diffRow,
+.swarmRow {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.9fr) minmax(120px, 1.4fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 34px;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.barTrack {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--slate-100);
+  overflow: hidden;
+}
+.barTrack span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  border-radius: inherit;
+}
+.barOk { background: var(--status-green); }
+.barWarn { background: var(--status-amber); }
+.barFail { background: var(--status-red); }
+.domainGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 18px 18px;
+}
+.domainTile {
+  display: grid;
+  gap: 6px;
+  min-height: 92px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 10px;
+}
+.domainTile span {
+  color: var(--slate-600);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.domainTile strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+.riskConstellation,
+.constellation {
+  position: relative;
+  width: min(270px, 72vw);
+  aspect-ratio: 1;
+  margin: 18px auto 12px;
+  border: 1px solid var(--warm-border);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, transparent 0 26%, var(--warm-border) 26% 27%, transparent 27% 52%, var(--warm-border) 52% 53%, transparent 53%),
+    var(--bg-subtle);
+}
+.riskConstellation::before,
+.constellation::before {
+  content: "";
+  position: absolute;
+  inset: 48%;
+  border-radius: 999px;
+  background: var(--usc-garnet);
+}
+.riskAxis,
+.constellation i {
+  --axis-angle: 0deg;
+  --axis-size: 48%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: var(--axis-size);
+  transform: rotate(var(--axis-angle));
+  transform-origin: top center;
+  border-left: 2px solid color-mix(in srgb, var(--usc-garnet) 62%, var(--slate-300));
+}
+.riskAxis span {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -44px;
+  width: 88px;
+  color: var(--slate-600);
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  transform: rotate(calc(var(--axis-angle) * -1));
+}
+.verificationList {
+  display: grid;
+  gap: 6px;
+  padding: 0 18px 18px;
+}
+.verificationList div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--slate-100);
+  padding-top: 7px;
+  color: var(--slate-700);
+  font-size: 11px;
+}
+.edgeRow {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 9px 10px;
+}
+.swarmRow {
+  grid-template-columns: 80px minmax(180px, 1fr) 52px;
+}
+.swarmTrack {
+  position: relative;
+  height: 28px;
+  border: 1px solid var(--warm-border);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+.windowBand {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 34%;
+  width: 32%;
+  background: color-mix(in srgb, var(--green-tint) 70%, transparent);
+}
+.swarmPoint {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--bg-surface);
+  border-radius: 999px;
+  background: var(--usc-garnet);
+  transform: translate(-50%, -50%);
+}
+.nullityGrid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(18px, 1fr));
+  gap: 5px;
+  padding: 14px 18px;
+}
+.nullityCell {
+  aspect-ratio: 1;
+  border: 1px solid var(--warm-border);
+  border-radius: 4px;
+  background: var(--usc-garnet);
+}
+.diffRow {
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-surface);
+  padding: 9px 10px;
+}
+.auditRiver div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) minmax(96px, auto);
+  gap: 10px;
+  align-items: baseline;
+  border-left: 2px solid var(--usc-garnet);
+  padding: 7px 0 7px 10px;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.auditRiver small,
+.riskMiniCard small {
+  color: var(--slate-500);
+  font-size: 10px;
+}
+.privacyPanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px 18px 18px;
+}
+.constellation {
+  width: min(220px, 62vw);
+  margin-block: 6px;
+}
+.constellation i {
+  border-left-color: color-mix(in srgb, var(--status-green) 62%, var(--usc-garnet));
+}
+.memoBox {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 10px;
+  color: var(--slate-700);
+  font-size: 12px;
+}
+.memoBox strong {
+  color: var(--ink);
+}
+
 @keyframes shimmer {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
@@ -636,10 +885,14 @@
   .alertActions { justify-content: flex-start; }
   .hero, .split, .opsGrid { align-items: flex-start; grid-template-columns: 1fr; flex-direction: column; }
   .boardColumns { grid-template-columns: 1fr; }
+  .nextWaveGrid { grid-template-columns: 1fr; }
+  .domainGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
   .matrixKpis, .kpis { grid-template-columns: 1fr; }
+  .domainGrid, .epdsBands { grid-template-columns: 1fr; }
+  .metricRow, .swarmRow, .diffRow, .auditRiver div { grid-template-columns: 1fr; }
   .entryForm, .timeline { grid-template-columns: 1fr; }
   .timeline::before { display: none; }
   .alertDetails li { grid-template-columns: 1fr; }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel, Segmented, type BadgeKind } from "@/components/primitives";
@@ -39,9 +39,13 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "CSBS gap analysis",       prompt: "Show which participants have incomplete CSBS at 6m or 9m while their next visit has already started. What's the coordinator action for each?" },
   { lane: "redcap", label: "Coverage report",         prompt: "Generate a data coverage report across all four CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
   { lane: "redcap", label: "Freshness check",         prompt: "When was REDCap last synced, how many records are in the payload, and how many carry-forward anomalies are active?" },
+  { lane: "redcap", label: "EPDS review queue",       prompt: "How many mothers are EPDS screen-positive, how many are high-concern, and which aggregate timing or respondent burden signals should coordinators review next?" },
+  { lane: "redcap", label: "Next 30 days",            prompt: "Show the REDCap upcoming visit forecast for the next 30 days. Group overdue and approaching windows and summarize the operational risk." },
+  { lane: "redcap", label: "Integrity sentinels",     prompt: "Summarize the REDCap nullity matrix, double-entry diffs, response-quality sentinels, branching violations, and validation radar from the next-wave integrity payload." },
+  { lane: "redcap", label: "Weekly study memo",       prompt: "Draft this week's REDCap study memo using redcap_clinical, redcap_schedule, redcap_integrity, redcap_platform, and redcap_predictive." },
 ];
 
-type RedcapTab = "ops" | "sync" | "visit-health" | "coverage";
+type RedcapTab = "ops" | "sync" | "visit-health" | "coverage" | "next-wave";
 type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth";
 
 const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
@@ -147,6 +151,19 @@ function formatSyncTime(value: string | null): string {
   });
 }
 
+function asNumber(value: unknown, fallback = 0): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asString(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function sumRows(rows: Array<Record<string, unknown>>, key: string): number {
+  return rows.reduce((sum, row) => sum + asNumber(row[key]), 0);
+}
+
 function VisitStatusBadge({ status }: { status: CsbsVisitStatus }) {
   const meta = STATUS_META[status];
   return <Badge kind={meta.badge} size="sm">{meta.label}</Badge>;
@@ -200,6 +217,7 @@ export function Redcap() {
             { value: "sync" as const, label: "Sync & Completeness" },
             { value: "visit-health" as const, label: "Visit Health" },
             { value: "coverage" as const, label: "Coverage" },
+            { value: "next-wave" as const, label: "Next-Wave Intelligence" },
           ]
         : [{ value: "sync" as const, label: "Sync & Completeness" }],
     [visitHealthEnabled],
@@ -346,6 +364,10 @@ export function Redcap() {
       {visitHealthEnabled && activeTab === "coverage" && (
         <CoveragePanel records={visitRecords} summary={visitSummary} />
       )}
+
+      {visitHealthEnabled && activeTab === "next-wave" && redcapPayload.data && (
+        <NextWavePanel payload={redcapPayload.data} onAsk={fastPath} />
+      )}
     </div>
   );
 }
@@ -452,6 +474,10 @@ function CoordinatorOpsMonitor({
   const missingDates = records.reduce((sum, record) => (
     sum + VISIT_COLUMNS.filter(({ key }) => record[key].csbsStatus !== "not_started" && !record[key].visitDate).length
   ), 0);
+  const epdsReviewCount = (payload.redcap_clinical?.epds_trajectory ?? []).reduce(
+    (sum, row) => sum + asNumber(row.screen_positive),
+    0,
+  );
   const completionGap = payload.redcap_trackers.enrollment.reduce((max, event) => {
     const expected = Math.max(event.expected, 1);
     const gap = (event.expected - event.completed) / expected;
@@ -494,6 +520,7 @@ function CoordinatorOpsMonitor({
         </div>
         <div className={styles.matrixKpis}>
           <KPI label="Anomalies now" value={payload.redcap_meta.anomaly_count} sub="R1-R5 active" insightId="redcap-action-strip" />
+          <KPI label="EPDS review" value={epdsReviewCount} sub="screen-positive" insightId="redcap-epds-trajectory" deltaKind={epdsReviewCount ? "down" : "up"} />
           <KPI label="Missing dates" value={missingDates} sub="status without visit date" />
           <KPI label="Heatwall alerts" value={lowCells} sub={`below ${pctText(warnPct, 1)}`} />
           <KPI label="Behind target" value={completionGap.count} sub={completionGap.label} deltaKind={completionGap.count ? "down" : "up"} />
@@ -594,6 +621,352 @@ function RiskColumn({
           <span>{record.anomalyFlags.length ? record.anomalyFlags.join(", ") : "clean"}</span>
         </div>
       )) : <div className={styles.emptyMini}>{empty}</div>}
+    </div>
+  );
+}
+
+function NextWavePanel({
+  payload,
+  onAsk,
+}: {
+  payload: RedcapDashboardPayload;
+  onAsk: (prompt: string) => void;
+}) {
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const clinical = payload.redcap_clinical;
+  const integrity = payload.redcap_integrity;
+  const schedule = payload.redcap_schedule;
+  const respondent = payload.redcap_respondent;
+  const platform = payload.redcap_platform;
+  const predictive = payload.redcap_predictive;
+  const cutoffs = payload.clinical_cutoffs ?? payload.redcap_ops.controls_snapshot?.clinical_cutoffs ?? {};
+  const epdsRows = clinical.epds_trajectory;
+  const epdsPositive = sumRows(epdsRows, "screen_positive");
+  const epdsHigh = sumRows(epdsRows, "high_concern");
+  const selfHarm = sumRows(epdsRows, "self_harm_flags");
+  const epsilon = asNumber(cutoffs.dp_epsilon, 1);
+  const publicEpdsPositive = privacyMode
+    ? Math.max(0, Math.round(epdsPositive + Math.sin(epdsPositive || 1) / Math.max(epsilon, 0.1)))
+    : epdsPositive;
+  const upcoming = schedule.upcoming_visits;
+  const overdue = upcoming.filter((row) => asNumber(row.due_in_days) < 0).length;
+  const highRisk = predictive.attrition_risk.filter((row) => asString(row.risk_band) === "high").length;
+  const avgNullity = integrity.nullity_matrix.length
+    ? integrity.nullity_matrix.reduce((sum, row) => sum + asNumber(row.missing_fraction), 0) / integrity.nullity_matrix.length
+    : 0;
+  const latestMemo = predictive.weekly_memo as Record<string, unknown> | undefined;
+  const memoHighlights = Array.isArray(latestMemo?.highlights)
+    ? latestMemo.highlights.map((item) => String(item))
+    : [];
+  const devByDomain = clinical.developmental_grid.slice(0, 12);
+  const riskAxes = clinical.family_risk.slice(0, 8);
+  const maxRiskScore = Math.max(...riskAxes.map((row) => asNumber(row.max_score, 1)), 1);
+
+  return (
+    <div className={styles.nextWaveStack}>
+      <Card pad={0}>
+        <div className={styles.listHead} data-insight="redcap-nextwave">
+          <SectionLabel>Next-Wave REDCap Intelligence</SectionLabel>
+          <div className={styles.alertMain}>
+            <Badge kind={predictive.nl_query_enabled ? "ok" : "neutral"} size="sm">
+              NL table query {predictive.nl_query_enabled ? "ready" : "off"}
+            </Badge>
+            <Button
+              size="sm"
+              icon="sparkles"
+              onClick={() => onAsk("Draft this week's REDCap study memo from the next-wave payload and include EPDS, schedule, integrity, platform, and predictive highlights.")}
+            >
+              Ask AI
+            </Button>
+          </div>
+        </div>
+        <div className={styles.matrixKpis}>
+          <KPI label="EPDS review" value={publicEpdsPositive} sub={`positive >= ${asNumber(cutoffs.epds_positive, 10)}`} insightId="redcap-epds-trajectory" deltaKind={epdsPositive ? "down" : "up"} />
+          <KPI label="High concern" value={epdsHigh} sub={`total >= ${asNumber(cutoffs.epds_high, 13)}`} insightId="redcap-epds-trajectory" deltaKind={epdsHigh ? "down" : "up"} />
+          <KPI label="Self-harm flags" value={selfHarm} sub="item 10 > 0" insightId="redcap-epds-trajectory" deltaKind={selfHarm ? "down" : "up"} />
+          <KPI label="Due soon" value={upcoming.length} sub={`${overdue} overdue`} insightId="redcap-visit-forecast" deltaKind={overdue ? "down" : "flat"} />
+          <KPI label="High risk" value={highRisk} sub="attrition model" insightId="redcap-predictive-risk" deltaKind={highRisk ? "down" : "up"} />
+          <KPI label="Nullity" value={`${(avgNullity * 100).toFixed(0)}%`} sub="mean missing" insightId="redcap-nullity-matrix" />
+        </div>
+      </Card>
+
+      <div className={styles.nextWaveGrid}>
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-epds-trajectory">
+            <SectionLabel>Maternal mental health trajectory</SectionLabel>
+            <Badge kind={epdsPositive ? "warn" : "ok"} size="sm">{epdsRows.length} events</Badge>
+          </div>
+          <div className={styles.epdsBands}>
+            <div><span>0-9</span><strong>below cutoff</strong></div>
+            <div><span>10-12</span><strong>screen-positive</strong></div>
+            <div><span>13+</span><strong>higher concern</strong></div>
+          </div>
+          <div className={styles.metricRows}>
+            {epdsRows.length ? epdsRows.map((row) => {
+              const total = Math.max(asNumber(row.n), 1);
+              const positive = asNumber(row.screen_positive);
+              const high = asNumber(row.high_concern);
+              return (
+                <div key={asString(row.event, asString(row.label))} className={styles.metricRow}>
+                  <span>{asString(row.label, asString(row.event))}</span>
+                  <span className={styles.barTrack}>
+                    <span className={styles.barWarn} style={{ width: `${Math.min(100, (positive / total) * 100)}%` }} />
+                    <span className={styles.barFail} style={{ width: `${Math.min(100, (high / total) * 100)}%` }} />
+                  </span>
+                  <strong className="t-mono">{positive}/{total}</strong>
+                </div>
+              );
+            }) : <div className={styles.emptyMini}>EPDS score fields are not present in this payload yet.</div>}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-development-grid">
+            <SectionLabel>Developmental surveillance grid</SectionLabel>
+            <Badge kind="neutral" size="sm">{devByDomain.length} domains</Badge>
+          </div>
+          <div className={styles.domainGrid}>
+            {devByDomain.length ? devByDomain.map((row) => (
+              <div key={`${asString(row.field)}-${asString(row.event)}`} className={styles.domainTile}>
+                <span>{asString(row.domain, asString(row.field))}</span>
+                <strong className="t-mono">{asNumber(row.mean_score).toFixed(1)}</strong>
+                <Badge kind={asString(row.zone) === "refer" ? "fail" : asString(row.zone) === "monitor" ? "warn" : "ok"} size="sm">
+                  {asString(row.zone, "context")}
+                </Badge>
+              </div>
+            )) : <div className={styles.emptyMini}>No developmental score fields verified yet.</div>}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-family-risk">
+            <SectionLabel>Family autism-risk constellation</SectionLabel>
+            <Badge kind="neutral" size="sm">aggregate only</Badge>
+          </div>
+          <div className={styles.riskConstellation}>
+            {riskAxes.map((row, index) => {
+              const score = asNumber(row.score);
+              const max = Math.max(asNumber(row.max_score, maxRiskScore), 1);
+              return (
+                <div
+                  key={asString(row.axis, `axis-${index}`)}
+                  className={styles.riskAxis}
+                  style={{ "--axis-angle": `${index * (360 / Math.max(riskAxes.length, 1))}deg`, "--axis-size": `${28 + (score / max) * 42}%` } as CSSProperties}
+                  title={asString(row.note)}
+                >
+                  <span>{asString(row.axis)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className={styles.verificationList}>
+            {riskAxes.slice(0, 4).map((row) => (
+              <div key={asString(row.axis)}>
+                <span>{asString(row.axis)}</span>
+                <Badge kind={row.field_verified ? "ok" : "warn"} size="sm">{row.field_verified ? "verified" : "verify"}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-cascade-explorer">
+            <SectionLabel>Cascade explorer</SectionLabel>
+            <Badge kind="neutral" size="sm">{clinical.cascade_edges.length} edges</Badge>
+          </div>
+          <div className={styles.edgeList}>
+            {clinical.cascade_edges.length ? clinical.cascade_edges.map((edge) => (
+              <div key={`${asString(edge.source)}-${asString(edge.target)}`} className={styles.edgeRow}>
+                <span>{asString(edge.label, `${asString(edge.source)} to ${asString(edge.target)}`)}</span>
+                <strong className="t-mono">{asNumber(edge.weight).toFixed(2)}</strong>
+                <Badge kind={asString(edge.direction) === "negative" ? "info" : "ok"} size="sm">{asString(edge.direction, "link")}</Badge>
+              </div>
+            )) : <div className={styles.emptyMini}>Cascade correlations appear when matched feature and outcome columns exist.</div>}
+          </div>
+        </Card>
+      </div>
+
+      <div className={styles.nextWaveGrid}>
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-window-adherence">
+            <SectionLabel>Visit-window adherence beeswarm</SectionLabel>
+            <Badge kind="neutral" size="sm">+/- {asNumber(cutoffs.visit_window_days, 30)}d</Badge>
+          </div>
+          <div className={styles.swarmRows}>
+            {schedule.window_adherence.length ? schedule.window_adherence.map((row) => {
+              const points = Array.isArray(row.points) ? row.points as Array<Record<string, unknown>> : [];
+              return (
+                <div key={asString(row.event)} className={styles.swarmRow}>
+                  <span>{asString(row.label, asString(row.event))}</span>
+                  <div className={styles.swarmTrack}>
+                    <span className={styles.windowBand} />
+                    {points.slice(0, 48).map((point, index) => {
+                      const delta = asNumber(point.delta_days);
+                      const left = Math.max(0, Math.min(100, ((delta + 70) / 140) * 100));
+                      return <i key={`${asString(point.recordId)}-${index}`} className={styles.swarmPoint} style={{ left: `${left}%` }} />;
+                    })}
+                  </div>
+                  <strong className="t-mono">{asNumber(row.mean_delta_days).toFixed(1)}d</strong>
+                </div>
+              );
+            }) : <div className={styles.emptyMini}>Age-at-visit fields are not available yet.</div>}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-visit-forecast">
+            <SectionLabel>Next-30-days visit forecast</SectionLabel>
+            <Badge kind={overdue ? "warn" : "ok"} size="sm">{overdue} overdue</Badge>
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <caption className="sr-only">Upcoming REDCap visit windows.</caption>
+              <thead>
+                <tr>{["Record", "Visit", "Due", "Urgency"].map((h) => <th key={h} className={styles.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {upcoming.length ? upcoming.slice(0, 8).map((row) => (
+                  <tr key={`${asString(row.recordId)}-${asString(row.event)}`}>
+                    <td className={`${styles.td} t-mono`}>{asString(row.recordId)}</td>
+                    <td className={styles.td}>{asString(row.label, asString(row.event))}</td>
+                    <td className={`${styles.td} t-mono`}>{asNumber(row.due_in_days)}d</td>
+                    <td className={styles.td}><Badge kind={asString(row.urgency) === "overdue" ? "fail" : "warn"} size="sm">{asString(row.urgency)}</Badge></td>
+                  </tr>
+                )) : <tr><td className={styles.stateCell} colSpan={4}>No upcoming visit windows in the next 30 days.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-nullity-matrix">
+            <SectionLabel>Nullity matrix</SectionLabel>
+            <Badge kind={avgNullity > 0.2 ? "warn" : "ok"} size="sm">{(avgNullity * 100).toFixed(0)}% mean</Badge>
+          </div>
+          <div className={styles.nullityGrid}>
+            {integrity.nullity_matrix.slice(0, 40).map((row) => (
+              <div
+                key={`${asString(row.instrument)}-${asString(row.event)}`}
+                className={styles.nullityCell}
+                style={{ opacity: 0.28 + Math.min(0.72, asNumber(row.missing_fraction)) }}
+                title={`${asString(row.instrument)} ${asString(row.label)} ${(asNumber(row.missing_fraction) * 100).toFixed(0)}% missing`}
+              />
+            ))}
+          </div>
+          <div className={styles.verificationList}>
+            {integrity.field_presence.slice(0, 4).map((row) => (
+              <div key={asString(row.instrument)}>
+                <span>{asString(row.instrument)}</span>
+                <strong className="t-mono">{asNumber(row.present_fields)}/{asNumber(row.expected_fields)}</strong>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-integrity-diff">
+            <SectionLabel>Double-entry reconciliation diff</SectionLabel>
+            <Badge kind={integrity.double_entry_diffs.length ? "warn" : "ok"} size="sm">{integrity.double_entry_diffs.length} diffs</Badge>
+          </div>
+          <div className={styles.diffList}>
+            {integrity.double_entry_diffs.length ? integrity.double_entry_diffs.slice(0, 8).map((row) => (
+              <div key={`${asString(row.recordId)}-${asString(row.field)}`} className={styles.diffRow}>
+                <strong className="t-mono">{asString(row.recordId)}</strong>
+                <span>{asString(row.instrument)} · {asString(row.field)}</span>
+                <Badge kind="warn" size="sm">{asString(row.severity, "review")}</Badge>
+              </div>
+            )) : <div className={styles.emptyMini}>No double-entry mismatches in the current payload.</div>}
+          </div>
+        </Card>
+      </div>
+
+      <div className={styles.nextWaveGrid}>
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-platform-audit">
+            <SectionLabel>Audit-trail river</SectionLabel>
+            <Badge kind="neutral" size="sm">{platform.audit_log.length} events</Badge>
+          </div>
+          <div className={styles.auditRiver}>
+            {platform.audit_log.length ? platform.audit_log.slice(0, 10).map((row, index) => (
+              <div key={`${asString(row.recordId)}-${index}`}>
+                <span className="t-mono">{asString(row.recordId)}</span>
+                <strong>{asString(row.action)}</strong>
+                <small>{asString(row.event)}</small>
+              </div>
+            )) : <div className={styles.emptyMini}>Logging API rows appear after the server-side content=log sync is enabled.</div>}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-caregiver-burden">
+            <SectionLabel>Caregiver burden meter</SectionLabel>
+            <Badge kind="neutral" size="sm">{respondent.caregiver_burden.length} respondents</Badge>
+          </div>
+          <div className={styles.metricRows}>
+            {respondent.caregiver_burden.map((row) => {
+              const assigned = Math.max(asNumber(row.assigned), 1);
+              const completed = asNumber(row.completed);
+              return (
+                <div key={asString(row.respondent)} className={styles.metricRow}>
+                  <span>{asString(row.label, asString(row.respondent))}</span>
+                  <span className={styles.barTrack}><span className={styles.barOk} style={{ width: `${Math.min(100, (completed / assigned) * 100)}%` }} /></span>
+                  <strong className="t-mono">{completed}/{assigned}</strong>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-predictive-risk">
+            <SectionLabel>Attrition early-warning</SectionLabel>
+            <Badge kind={highRisk ? "warn" : "ok"} size="sm">{highRisk} high</Badge>
+          </div>
+          <div className={styles.riskList}>
+            {predictive.attrition_risk.slice(0, 8).map((row) => {
+              const drivers = Array.isArray(row.drivers) ? row.drivers.map((item) => String(item)).join(", ") : asString(row.drivers);
+              return (
+                <div key={asString(row.recordId)} className={styles.riskMiniCard}>
+                  <strong className="t-mono">{asString(row.recordId)}</strong>
+                  <span>{(asNumber(row.risk_score) * 100).toFixed(0)}% · {asString(row.risk_band)}</span>
+                  <small>{drivers}</small>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card pad={0}>
+          <div className={styles.listHead} data-insight="redcap-public-privacy">
+            <SectionLabel>Public privacy mode</SectionLabel>
+            <Badge kind="ok" size="sm">epsilon {epsilon}</Badge>
+          </div>
+          <div className={styles.privacyPanel}>
+            <label className={styles.stateItem}>
+              <input type="checkbox" checked={privacyMode} onChange={(event) => setPrivacyMode(event.target.checked)} />
+              <span>Differential privacy counts</span>
+              <Badge kind={privacyMode ? "ok" : "neutral"} size="sm">{privacyMode ? "on" : "off"}</Badge>
+            </label>
+            <div className={styles.constellation} data-insight="redcap-milestone-constellation">
+              {devByDomain.slice(0, 10).map((row, index) => (
+                <i
+                  key={`${asString(row.domain)}-${index}`}
+                  style={{ "--axis-angle": `${index * 36}deg`, "--axis-size": `${24 + Math.min(60, asNumber(row.mean_score))}%` } as CSSProperties}
+                  title={asString(row.domain)}
+                />
+              ))}
+            </div>
+            <div className={styles.memoBox}>
+              <strong>{asString(latestMemo?.title, "Weekly study memo")}</strong>
+              {memoHighlights.slice(0, 2).map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className={styles.hipaaReminder}>
+        IRB #Pro00115234 · Next-wave panels use aggregate counts or hashed record IDs. REDCap token use stays server-side, and public counts honor the current small-cell and differential-privacy controls.
+      </div>
     </div>
   );
 }
