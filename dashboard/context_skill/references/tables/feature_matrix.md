@@ -18,6 +18,7 @@ left for downstream modeling.
 | `rmssd`         | float | Trajectories + ML | `compute_time_domain_hrv` |
 | `sdnn`          | float | Trajectories + ML | `compute_time_domain_hrv` |
 | `hda_sa_pct`    | float | Trajectories (HDA_SA) | `identify_hda_phases` → percent of window in SA |
+| `hda_phase`     | str   | HDA composition stream | accepted epoch-level phase label when available |
 | `cptd_mean`     | float | ML (`cptd_nicu`) | `src/preprocessing/temperature_pipeline.py` |
 | `sample_entropy`| float | ML | `compute_sample_entropy` |
 | `sd1`, `sd2`    | float | ML | `compute_poincare_features` |

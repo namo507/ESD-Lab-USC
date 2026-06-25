@@ -27,6 +27,8 @@ DEFAULT_CANONICAL_ROUTES = (
     "/runs",
     "/qa",
     "/results",
+    "/redcap",
+    "/public-insights",
 )
 
 
@@ -102,6 +104,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Require only a 200 assistant status response, not ready=true.",
     )
+    parser.add_argument(
+        "--probe-api-origin",
+        action="store_true",
+        help=(
+            "Also probe the optional backend origin declared in the Pages meta tag. "
+            "By default the public Pages fallback worker is enough for surface health."
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="Print JSON summary.")
     return parser
 
@@ -122,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_stamp_age_hours=args.max_stamp_age_hours,
                 probe_assistant=True,
                 require_assistant_ready=not args.allow_assistant_unready,
-                probe_api_origin=True,
+                probe_api_origin=args.probe_api_origin,
             )
         )
 

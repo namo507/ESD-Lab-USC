@@ -20,8 +20,11 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Data Explorer",               prompt: "Walk me through the Data Explorer tables, filters, pagination, column visibility, and CSV export guardrails." },
   { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
   { lane: "redcap", label: "NDA completeness",            prompt: "How should I use the REDCap completeness scorecard before an NDA deadline?" },
-  { lane: "redcap", label: "Carry-forward risk",          prompt: "Explain how the carry-forward risk detection works for CSBS surveys across 6m, 9m, and 12m visits. What conditions trigger a warning, and what should the coordinator do?" },
-  { lane: "redcap", label: "Visit date entry",             prompt: "Walk me through the visit date entry workflow and how it triggers Form Display Logic to disable prior timepoint surveys." },
+  { lane: "redcap", label: "Carry-forward anomalies",     prompt: "How many carry-forward anomalies are active right now, and which R1-R5 codes are present?" },
+  { lane: "redcap", label: "R1 flagged records",          prompt: "Which de-identified records are flagged R1, and what does R1 mean?" },
+  { lane: "redcap", label: "9m CSBS completeness",        prompt: "Show 9-month CSBS completeness with complete, unverified, incomplete, not-started, skipped, and total counts." },
+  { lane: "redcap", label: "REDCap freshness",            prompt: "When was REDCap last synced, how many records were loaded, and was the source redcap-api or synthetic-fallback?" },
+  { lane: "redcap", label: "Carry-forward risk",          prompt: "Explain how the carry-forward risk detection works for CSBS surveys across 6m, 9m, 12m, and 24m visits. What R1-R5 conditions trigger a warning, and what should the coordinator do?" },
   { lane: "redcap", label: "Coverage vs completeness",     prompt: "What's the difference between the NDA completeness scorecard and the visit health coverage metric? How should I use each one?" },
   { lane: "redcap", label: "Anomaly triage",               prompt: "A participant has a carry-forward risk flag. Walk me through the triage steps: what to check in the dashboard, what to fix in REDCap, and how to confirm the fix worked." },
   { lane: "qa",     label: "ECG quality monitor",         prompt: "How do I interpret the ECG Quality Monitor grid, SQI colors, and artifact markers?" },
@@ -230,6 +233,10 @@ export function ChatDrawer() {
       : status?.status === "unloaded"
         ? "model unavailable"
         : "offline";
+  const redcapFreshness = status?.freshness?.redcap;
+  const redcapFreshnessLabel = redcapFreshness?.generated_at
+    ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags`
+    : null;
 
   return (
     <>
@@ -254,6 +261,12 @@ export function ChatDrawer() {
               <span className={`${styles.statusDot} ${styles[statusTone]}`} aria-hidden />
               <span>{statusLabel}</span>
             </div>
+            {redcapFreshnessLabel && (
+              <div className={styles.statusPill}>
+                <span className={`${styles.statusDot} ${styles.ready}`} aria-hidden />
+                <span>{redcapFreshnessLabel}</span>
+              </div>
+            )}
           </div>
 
           <button

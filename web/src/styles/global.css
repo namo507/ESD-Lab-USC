@@ -45,6 +45,11 @@
   --mint:      #3d9068;
   --mint-tint: #e4f2ea;
   --mint-ring: #7dc59a;
+  --status-red: var(--red);
+  --status-amber: var(--amber-warn);
+  --status-green: var(--green);
+  --status-grey: var(--slate-400);
+  --status-blue: var(--blue);
 
   --warm-bg:    #fafaf8;
   --warm-card:  #ffffff;
@@ -145,6 +150,11 @@
   --warn-fg:    #ffd97a;
   --amber:      #f3a23a;
   --amber-warn: #ffc266;
+  --status-red: var(--red);
+  --status-amber: var(--amber-warn);
+  --status-green: var(--green);
+  --status-grey: var(--warm-fg4);
+  --status-blue: var(--blue);
 
   --tile-accept-bg: #173021;
   --tile-accept-border: #2e6044;

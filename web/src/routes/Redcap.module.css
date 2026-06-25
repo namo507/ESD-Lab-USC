@@ -17,6 +17,18 @@
   max-width: 620px;
 }
 .actions { display: flex; gap: 8px; }
+.liveFreshness {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--warm-pill);
+  color: var(--warm-fg3);
+  padding: 8px 10px;
+  font-size: 11px;
+}
+.liveFreshness span { color: var(--red); }
 
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
@@ -170,7 +182,7 @@
 }
 .matrixKpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--warm-border);
@@ -186,7 +198,7 @@
 }
 .chartLoading {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   align-items: end;
   gap: 18px;
   height: 220px;
@@ -201,6 +213,7 @@
 .skeletonBar:nth-child(1) { height: 62%; }
 .skeletonBar:nth-child(2) { height: 82%; }
 .skeletonBar:nth-child(3) { height: 48%; }
+.skeletonBar:nth-child(4) { height: 68%; }
 .skeletonLine {
   width: 100%;
   height: 18px;
@@ -270,7 +283,7 @@
 .timeline {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 8px;
   padding: 18px 0 4px;
 }
@@ -299,11 +312,11 @@
   border-radius: 999px;
   box-shadow: 0 0 0 1px var(--warm-border);
 }
-.status-complete { background: var(--green); }
-.status-unverified { background: var(--usc-gold); }
-.status-incomplete { background: var(--red); }
-.status-not_started { background: var(--slate-300); }
-.status-skipped { background: var(--blue); }
+.status-complete { background: var(--status-green); }
+.status-unverified { background: var(--status-amber); }
+.status-incomplete { background: var(--status-red); }
+.status-not_started { background: var(--status-grey); }
+.status-skipped { background: var(--status-blue); }
 .entryForm {
   display: grid;
   grid-template-columns: 1.1fr 1fr 0.8fr auto;

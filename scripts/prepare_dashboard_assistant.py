@@ -234,6 +234,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--write-config", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--validate-ready", action="store_true")
+    parser.add_argument("--reindex", action="store_true",
+                        help="Reload dashboard payload context so the next assistant answer sees fresh data.")
     parser.add_argument("--model-id")
     parser.add_argument("--model-dir", type=Path)
     parser.add_argument("--model-file")
@@ -282,6 +284,15 @@ def main(argv: list[str] | None = None) -> int:
         _install_dependencies(dry_run=args.dry_run)
 
     _print_status(selected, use_runtime_config=manual_model is None)
+
+    if args.reindex:
+        if args.dry_run:
+            print("would_reindex_assistant: dashboard/data/dashboard_data.json")
+        else:
+            assistant = DashboardChatAssistant()
+            context = assistant.build_context("When was REDCap last synced and how many carry-forward anomalies are active?")
+            citations = ", ".join(context.get("citations") or [])
+            print(f"reindexed_assistant_context: citations={citations or 'none'}")
 
     if args.download:
         for model in _models_to_download(

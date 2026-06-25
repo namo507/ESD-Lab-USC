@@ -105,6 +105,48 @@ async function readJson(request) {
   }
 }
 
+async function redcapProxy(request, env) {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "access-control-allow-methods": "POST, OPTIONS",
+        "access-control-allow-headers": "Content-Type",
+      },
+    });
+  }
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Use POST for REDCap proxy calls." }, 405);
+  }
+  const token = env.REDCAP_API_TOKEN;
+  const apiUrl = env.REDCAP_API_URL;
+  if (!token || !apiUrl) {
+    return jsonResponse({ error: "REDCap env vars not set in Cloudflare Pages." }, 500);
+  }
+  const body = await readJson(request);
+  const allowed = new Set(["project", "metadata", "event", "formEventMapping", "record"]);
+  if (body.content && !allowed.has(body.content)) {
+    return jsonResponse({ error: `content '${body.content}' not permitted via proxy.` }, 403);
+  }
+  if (body.action === "import" || body.action === "delete") {
+    return jsonResponse({ error: "Write actions are not allowed through the browser proxy." }, 403);
+  }
+  const form = new URLSearchParams({ token, format: "json", returnFormat: "json", ...body });
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    return new Response(await response.text(), {
+      status: response.status,
+      headers: { "content-type": "application/json", "cache-control": "no-store" },
+    });
+  } catch (error) {
+    return jsonResponse({ error: `Cannot reach REDCap: ${String(error?.message || error)}` }, 502);
+  }
+}
+
 function assistantStatus(reason = "upstream-unavailable") {
   return {
     status: "ready",
@@ -118,6 +160,7 @@ function assistantStatus(reason = "upstream-unavailable") {
     freshness: {
       readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
       pipeline: { state: "pages-fallback", warnings: [] },
+      redcap: { generated_at: null, record_count: null, anomaly_count: null, source: "pages-fallback" },
     },
   };
 }
@@ -125,10 +168,10 @@ function assistantStatus(reason = "upstream-unavailable") {
 function assistantReply(message) {
   const text = String(message || "").toLowerCase();
   if (text.includes("carry-forward") || text.includes("visit health") || text.includes("csbs")) {
-    return "The Visit Health Monitor checks CSBS CG completion status across 6m, 9m, and 12m timepoints. It flags carry-forward risks when an earlier incomplete survey persists while a later visit has started. The fix is to enter the visit date, which triggers Form Display Logic to disable the prior timepoint's form.";
+    return "The Visit Health Monitor checks CSBS caregiver completion across 6m, 9m, 12m, and 24m REDCap events. It emits R1-R5 carry-forward anomaly codes when an earlier incomplete or blank CSBS state conflicts with a later visit date or completion state.";
   }
   if (text.includes("visit entry") || text.includes("visit date")) {
-    return "The Visit Date Entry panel lets coordinators record when a visit starts without navigating to REDCap. This triggers Form Display Logic to disable the previous timepoint's CSBS survey, preventing carry-forward.";
+    return "Visit dates come from the REDCap visit_occurred.visit_date anchor at visit events only. Browser REDCap writes are disabled; any source correction should run through the audited server-side REDCap scripts.";
   }
   if (text.includes("coverage") && text.includes("skip")) {
     return "Coverage = (Complete + Skipped) / Total expected. The SKIP missing data code marks intentionally skipped visits so the team can distinguish workflow errors from planned study design decisions.";
@@ -282,6 +325,7 @@ async function fallbackApiResponse(url, request, reason) {
       assistant: assistantStatus(reason),
       readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
       pipeline: { state: "pages-fallback", warnings: [] },
+      redcap: { generated_at: null, record_count: null, anomaly_count: null, source: "pages-fallback" },
     });
   }
   if (path === "/api/v2/redcap-visit-health" || path === "/api/v2/redcap-missing-data") {
@@ -290,9 +334,10 @@ async function fallbackApiResponse(url, request, reason) {
       meta: { generatedAt: new Date().toISOString(), participantCount: 0, source: "mock" },
       anomalies: [],
       visitOptions: [
-        { key: "sixMonth", label: "6m", eventName: "visit_6m_arm_1" },
-        { key: "nineMonth", label: "9m", eventName: "visit_9m_arm_1" },
-        { key: "twelveMonth", label: "12m", eventName: "visit_12m_arm_1" },
+        { key: "sixMonth", label: "6m", eventName: "6_months_arm_1" },
+        { key: "nineMonth", label: "9m", eventName: "9_months_arm_1" },
+        { key: "twelveMonth", label: "12m", eventName: "12_months_arm_1" },
+        { key: "twentyFourMonth", label: "24m", eventName: "24_months_arm_1" },
       ],
       error: "Backend offline - live REDCap data unavailable",
     });
@@ -370,6 +415,10 @@ export default {
       return Response.redirect(target.toString(), 308);
     }
 
+    if (url.pathname === "/api/redcap") {
+      return redcapProxy(request, env);
+    }
+
     if (url.pathname.startsWith("/api/")) {
       return proxyApi(request, url);
     }
@@ -433,6 +482,12 @@ def build(
     if out_dir.exists():
         shutil.rmtree(out_dir)
     shutil.copytree(build_dir, out_dir)
+    dashboard_data_out = out_dir / "dashboard" / "data"
+    dashboard_data_out.mkdir(parents=True, exist_ok=True)
+    for name in ("dashboard_data.json", "readings_data.json", "runtime_status.json"):
+        source = REPO_ROOT / "dashboard" / "data" / name
+        if source.exists():
+            shutil.copy2(source, dashboard_data_out / name)
 
     out_index = out_dir / "index.html"
     html = _read(out_index)

@@ -21,6 +21,12 @@ export interface AssistantStatus {
       last_event_id?: string | null;
       warnings?: unknown[];
     };
+    redcap?: {
+      generated_at?: string | null;
+      record_count?: number | null;
+      anomaly_count?: number | null;
+      source?: string | null;
+    };
   };
 }
 

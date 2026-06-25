@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+import subprocess
+from pathlib import Path
+
+import yaml
 
 from dashboard.pipelines import (
     build_dashboard_data,
@@ -123,4 +127,62 @@ def test_production_payload_includes_organization_site_block(tmp_path):
     assert payload["hda_composition"]["by_group"]
     assert payload["attrition_funnel"]["stages"]
     assert payload["county_profiles"]
+    assert payload["redcap_meta"]["pid"] == 5955
+    assert payload["redcap_meta"]["contract_version"] == "2.0"
+    assert set(payload["redcap_completion_stats"]) == {
+        "6_months_arm_1",
+        "9_months_arm_1",
+        "12_months_arm_1",
+        "24_months_arm_1",
+    }
+    assert "redcap_visit_health" in payload
+    assert payload["redcap_visit_health"]["data"]
+    assert "twentyFourMonth" in payload["redcap_visit_health"]["data"][0]
     json.loads(json.dumps(payload, allow_nan=False))
+
+
+def test_redcap_contract_contains_verified_pid_5955_structure():
+    contract = yaml.safe_load(Path("config/redcap_config.yml").read_text())
+
+    assert contract["project"]["pid"] == 5955
+    assert contract["events"]["order"] == [
+        "consent_arm_1",
+        "caregiver_1_arm_1",
+        "caregiver_2_arm_1",
+        "sibling_arm_1",
+        "1_month_arm_1",
+        "2_months_arm_1",
+        "3_months_arm_1",
+        "6_months_arm_1",
+        "9_months_arm_1",
+        "12_months_arm_1",
+        "24_months_arm_1",
+        "36_months_arm_1",
+    ]
+    assert contract["instruments"]["carry_forward"]["complete_field"] == "csbs_caregiver_complete"
+    assert contract["instruments"]["carry_forward"]["events"][-1] == "24_months_arm_1"
+    assert "R5" in contract["anomaly_codes"]
+
+
+def test_generated_redcap_constants_are_current():
+    subprocess.run(["node", "scripts/gen_redcap_constants.mjs"], check=True)
+    result = subprocess.run(
+        ["git", "diff", "--exit-code", "web/src/constants/redcapConfig.ts"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_committed_dashboard_redcap_payload_excludes_configured_phi_fields():
+    contract = yaml.safe_load(Path("config/redcap_config.yml").read_text())
+    payload = json.loads(Path("dashboard/data/dashboard_data.json").read_text())
+    redcap_text = json.dumps({
+        "redcap_meta": payload.get("redcap_meta"),
+        "redcap_completion_stats": payload.get("redcap_completion_stats"),
+        "redcap_visit_health": payload.get("redcap_visit_health"),
+    })
+
+    for field in contract["phi_fields"]:
+        assert field not in redcap_text

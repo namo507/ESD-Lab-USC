@@ -98,6 +98,28 @@ def test_pull_records_contains_expected_columns(mock_redcap_records):
     assert "redcap_event_name" in result.columns
 
 
+def test_export_to_path_refreshes_dashboard_latest(tmp_path):
+    """REDCap export must update the dashboard mirror consumed by the builder."""
+    from redcap.api.redcap_pull import export_to_path
+
+    df = _make_redcap_df()
+    export_dir = tmp_path / "redcap_exports"
+    dashboard_latest = tmp_path / "processed" / "redcap_latest.parquet"
+
+    out_path = export_to_path(
+        df,
+        export_dir,
+        dashboard_latest_path=dashboard_latest,
+    )
+
+    assert out_path.exists()
+    assert (export_dir / "latest.parquet").exists()
+    assert dashboard_latest.exists()
+    round_tripped = pd.read_parquet(dashboard_latest)
+    assert len(round_tripped) == len(df)
+    assert {"record_id", "redcap_event_name"}.issubset(round_tripped.columns)
+
+
 # ---------------------------------------------------------------------------
 # validate_records_for_push
 # ---------------------------------------------------------------------------

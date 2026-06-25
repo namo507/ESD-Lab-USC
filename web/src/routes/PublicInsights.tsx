@@ -12,9 +12,10 @@ import { InsightSection } from "@/components/insights/InsightSection";
 import { CdcStyleLine, type CdcLineSeries } from "@/components/insights/CdcStyleLine";
 import { CumulativeCurve } from "@/components/insights/CumulativeCurve";
 import { DualGroupComparator } from "@/components/insights/DualGroupComparator";
-import { useHdaComposition, useRsaTrajectories, useSdohMap, useStudySummary, useTrajectory } from "@/api/hooks";
+import { useHdaComposition, useRedcapData, useRsaTrajectories, useSdohMap, useStudySummary, useTrajectory } from "@/api/hooks";
 import type { GroupCode, HdaDist, RsaTrajectoryResponse, Trajectory } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { CARRY_FORWARD } from "@/constants/redcapConfig";
 import { CountyMap } from "./SdohMap";
 import shared from "./FeatureRoutes.module.css";
 import styles from "./PublicInsights.module.css";
@@ -25,6 +26,12 @@ const GROUP_COLOR: Record<GroupCode, string> = {
   VPT: "var(--usc-garnet)",
   ASIB: "var(--purple)",
   TD: "var(--green)",
+};
+const REDCAP_EVENT_MONTH: Record<string, number> = {
+  "6_months_arm_1": 6,
+  "9_months_arm_1": 9,
+  "12_months_arm_1": 12,
+  "24_months_arm_1": 24,
 };
 
 function trajectoryToSeries(metric: Metric, trajectory: Trajectory | undefined, rsaRows: RsaTrajectoryResponse | undefined): CdcLineSeries[] {
@@ -67,9 +74,30 @@ export function PublicInsights() {
   const sdnn = useTrajectory("sdnn");
   const sdoh = useSdohMap();
   const hda = useHdaComposition();
+  const redcapEnabled = useFeatureFlag("REDCAP_COMPLETENESS");
+  const redcap = useRedcapData(redcapEnabled);
   const trajectory = metric === "RMSSD" ? rmssd.data : metric === "SDNN" ? sdnn.data : undefined;
   const lineSeries = trajectoryToSeries(metric, trajectory, rsa.data);
   const counts = study.data?.groups;
+  const redcapStats = redcap.data?.redcap_completion_stats ?? {};
+  const redcapCompletenessSeries: CdcLineSeries[] = [{
+    label: "CSBS complete",
+    color: "var(--status-green)",
+    points: CARRY_FORWARD.events.map((eventName) => {
+      const row = redcapStats[eventName];
+      const total = Math.max(row?.total ?? 0, 1);
+      return { x: REDCAP_EVENT_MONTH[eventName] ?? 0, y: ((row?.complete ?? 0) / total) * 100 };
+    }),
+  }];
+  const redcapCompareMetrics = CARRY_FORWARD.events.map((eventName) => {
+    const row = redcapStats[eventName];
+    return {
+      label: row?.label ?? eventName,
+      left: row?.complete ?? 0,
+      right: (row?.incomplete ?? 0) + (row?.not_started ?? 0) + (row?.unverified ?? 0),
+      format: (v: number) => v.toFixed(0),
+    };
+  });
 
   const milestoneSeries = useMemo(() => (["VPT", "ASIB", "TD"] as GroupCode[]).map((group) => ({
     label: group,
@@ -233,6 +261,39 @@ export function PublicInsights() {
       >
         <CumulativeCurve series={milestoneSeries} />
       </InsightSection>
+
+      {redcapEnabled && (
+        <InsightSection
+          label="Section 4b"
+          title="How CSBS survey completeness is moving"
+          description="REDCap CSBS caregiver completeness is summarized across the monitored 6m, 9m, 12m, and 24m visit events."
+          learnMoreTo="/redcap"
+        >
+          <Card pad={16} className={styles.callout} style={{ borderLeftColor: "var(--status-amber)" }}>
+            <div className={styles.calloutTitle}>
+              REDCap visit-health signal
+              <span className={styles.pmid}>{redcap.data?.redcap_meta.source ?? "loading"}</span>
+            </div>
+            <p>
+              The public view shows aggregate counts only. Current carry-forward anomaly count:
+              {" "}{redcap.data?.redcap_meta.anomaly_count ?? 0}.
+            </p>
+          </Card>
+          <CumulativeCurve
+            series={redcapCompletenessSeries}
+            yLabel="% CSBS complete"
+            summary="Percent of CSBS caregiver forms complete across REDCap carry-forward events"
+          />
+          <div className={styles.redcapCompare}>
+            <DualGroupComparator
+              leftLabel="Complete"
+              rightLabel="Needs follow-up"
+              metrics={redcapCompareMetrics}
+              summary="Complete versus follow-up-needed CSBS records by REDCap event"
+            />
+          </div>
+        </InsightSection>
+      )}
 
       <InsightSection
         label="Section 5"

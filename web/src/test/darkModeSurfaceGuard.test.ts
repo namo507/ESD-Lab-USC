@@ -44,4 +44,12 @@ describe("dark mode surface guard", () => {
     const css = read("src/styles/global.css");
     expect(css).toContain("--terminal-bg:");
   });
+
+  it("defines REDCap status color tokens for light and dark themes", () => {
+    const css = read("src/styles/global.css");
+    for (const token of ["--status-red:", "--status-amber:", "--status-green:", "--status-grey:", "--status-blue:"]) {
+      expect(css.match(new RegExp(token, "g"))?.length ?? 0).toBeGreaterThanOrEqual(2);
+    }
+    expect(read("src/routes/Redcap.tsx")).toContain("var(--status-green)");
+  });
 });

@@ -1,139 +1,112 @@
 # ============================================================
-# NANO Study — REDCap Configuration
-# API token is in .env (NEVER in this file).
+# NANO Study — REDCap Canonical Contract
+# Edit this file first. Python, R, TypeScript, schemas, context docs,
+# assistant grounding, and REDCap visualizations derive from this contract.
+# Tokens must live only in environment variables or encrypted secrets.
 # ============================================================
 
 api:
   base_url: "${REDCAP_API_URL}"
-  # Token loaded from environment: REDCAP_API_TOKEN
   format: "json"
   type: "flat"
-  chunk_size: 500  # records per API request (pagination)
+  chunk_size: 500
   timeout_seconds: 120
+  verify_ssl: true
 
-# ─── Project IDs ────────────────────────────────────────────
-projects:
-  main:
-    project_id: "${REDCAP_PROJECT_ID_MAIN}"
-    description: "NANO Study main longitudinal database"
-    arms:
-      - arm_num: 1
-        name: "asib_arm"
-        label: "ASIB (ASD + Biomarkers)"
-      - arm_num: 2
-        name: "pt_arm"
-        label: "Preterm Typical"
-      - arm_num: 3
-        name: "td_arm"
-        label: "Term-born Typical Development"
-  questionnaires:
-    project_id: "${REDCAP_PROJECT_ID_QUESTIONNAIRES}"
-    description: "NANO Study parent questionnaires (PRAPARE, EPDS)"
+project:
+  pid: 5955
+  title: "Namit - NANO Study Surveys"
+  is_longitudinal: true
+  missing_data_codes: ["SKIP"]
 
-# ─── Longitudinal Events ────────────────────────────────────
 events:
-  - event_name: "nicu_admission_arm_1"
-    label: "NICU Admission"
-    month_offset: 0
-    arms: [1, 2]
-    required_instruments:
-      - demographics
-      - nicu_morbidity
-      - ecg_recording_log
-  - event_name: "month_1_arm_1"
-    label: "1 Month CGA"
-    month_offset: 1
-    arms: [1, 2, 3]
-    required_instruments:
-      - nnns_attention_1_3m
-      - ecg_recording_log
-      - temperature_recording_log
-  - event_name: "month_2_arm_1"
-    label: "2 Months CGA"
-    month_offset: 2
-    arms: [1, 2, 3]
-    required_instruments:
-      - nnns_attention_1_3m
-      - ecg_recording_log
-      - temperature_recording_log
-      - behavioral_coding_log
-  - event_name: "month_3_arm_1"
-    label: "3 Months CGA"
-    month_offset: 3
-    arms: [1, 2, 3]
-    required_instruments:
-      - nnns_attention_1_3m
-      - ecg_recording_log
-      - temperature_recording_log
-      - csbs_social_communication
-  - event_name: "month_6_arm_1"
-    label: "6 Months"
-    month_offset: 6
-    arms: [1, 2, 3]
-    required_instruments:
-      - ecg_recording_log
-      - temperature_recording_log
-      - bayley4_scores
-      - asq3_milestones
-  - event_name: "month_9_arm_1"
-    label: "9 Months"
-    month_offset: 9
-    arms: [1, 2, 3]
-    required_instruments:
-      - ecg_recording_log
-      - temperature_recording_log
-      - mchat_r_tf
-      - csbs_social_communication
-  - event_name: "month_12_arm_1"
-    label: "12 Months"
-    month_offset: 12
-    arms: [1, 2, 3]
-    required_instruments:
-      - ecg_recording_log
-      - temperature_recording_log
-      - bayley4_scores
-      - ados2_scores
-  - event_name: "month_24_arm_1"
-    label: "24 Months (Questionnaire Only)"
-    month_offset: 24
-    arms: [1, 2, 3]
-    required_instruments:
-      - prapare_sdoh
-      - epds_maternal_depression
-      - asq3_milestones
-  - event_name: "month_36_arm_1"
-    label: "36 Months"
-    month_offset: 36
-    arms: [1, 2, 3]
-    required_instruments:
-      - ados2_scores
-      - bayley4_scores
-      - ecg_recording_log
-      - hmet_recording_log
+  order:
+    - consent_arm_1
+    - caregiver_1_arm_1
+    - caregiver_2_arm_1
+    - sibling_arm_1
+    - 1_month_arm_1
+    - 2_months_arm_1
+    - 3_months_arm_1
+    - 6_months_arm_1
+    - 9_months_arm_1
+    - 12_months_arm_1
+    - 24_months_arm_1
+    - 36_months_arm_1
+  labels:
+    consent_arm_1: Consent
+    caregiver_1_arm_1: Caregiver 1
+    caregiver_2_arm_1: Caregiver 2
+    sibling_arm_1: Sibling
+    1_month_arm_1: 1 Month
+    2_months_arm_1: 2 Months
+    3_months_arm_1: 3 Months
+    6_months_arm_1: 6 Months
+    9_months_arm_1: 9 Months
+    12_months_arm_1: 12 Months
+    24_months_arm_1: 24 Months
+    36_months_arm_1: 36 Months
+  visit_events:
+    - 1_month_arm_1
+    - 2_months_arm_1
+    - 3_months_arm_1
+    - 6_months_arm_1
+    - 9_months_arm_1
+    - 12_months_arm_1
+    - 24_months_arm_1
+    - 36_months_arm_1
 
-# ─── Key Field Names ─────────────────────────────────────────
-fields:
-  participant_id: "nano_id"
-  dob: "dob"
-  visit_date: "visit_date"
-  gestational_age_weeks: "ga_weeks"
-  gestational_age_days: "ga_days"
-  group_assignment: "group_code"  # 1=ASIB, 2=PT, 3=TD
-  sex: "sex"  # 1=Male, 2=Female
-  race_ethnicity: "race_eth"
-  ecg_file_transferred: "ecg_transfer_confirmed"
-  primary_dv_ados_css: "ados2_css_total"
-  primary_dv_bayley_cog: "bayley4_cog_composite"
+instruments:
+  visit_anchor: visit_occurred
+  visit_date_field: visit_date
+  carry_forward:
+    instrument: csbs_caregiver
+    complete_field: csbs_caregiver_complete
+    events:
+      - 6_months_arm_1
+      - 9_months_arm_1
+      - 12_months_arm_1
+      - 24_months_arm_1
+  auto_continue_anchor: medication_questionnaire
 
-# ─── Completeness Thresholds ─────────────────────────────────
-quality:
-  min_completeness_pct: 80  # flag participant if < 80% fields complete
-  ecg_transfer_window_hours: 48  # flag if ECG not transferred within 48h
+status_codes:
+  "0": { label: Incomplete, token: status-red, normalized: incomplete }
+  "1": { label: Unverified, token: status-amber, normalized: unverified }
+  "2": { label: Complete, token: status-green, normalized: complete }
+  "": { label: Not started, token: status-grey, normalized: not_started }
+  "SKIP": { label: Skipped, token: status-blue, normalized: skipped }
 
-# ─── Export Settings ─────────────────────────────────────────
-export:
-  include_survey_fields: true
-  include_dag: true
-  include_form_complete_field: true
-  date_format: "YMD"
-  decimal_character: "."
+anomaly_codes:
+  R1: "6m CSBS incomplete and 9m visit_date set"
+  R2: "9m CSBS incomplete and 12m visit_date set"
+  R3: "6m CSBS blank but 9m CSBS complete"
+  R4: "9m CSBS blank but 12m CSBS complete"
+  R5: "12m CSBS incomplete and 24m visit_date set"
+
+phi_fields:
+  - first_name
+  - last_name
+  - child_dob
+  - caregiver_name
+  - caregiver_phone
+  - street_address
+  - email
+  - mrn
+  - record_id_original
+
+# Legacy operational labels used by older aggregate pipeline sections.
+# REDCap PID 5955 no longer uses these as canonical event names or arms.
+legacy:
+  groups:
+    ASIB:
+      n_target: 65
+      color: "#C44E52"
+      label: "ASIB (VPT + ASD traits)"
+    PT:
+      n_target: 130
+      color: "#4C72B0"
+      label: "PT (VPT typical)"
+    TD:
+      n_target: 65
+      color: "#55A868"
+      label: "TD (Term-born typical)"

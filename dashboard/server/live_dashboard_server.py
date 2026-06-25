@@ -108,13 +108,15 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
 
+REDCAP_CONTRACT = build_dashboard_data.load_redcap_contract()
 REDCAP_EVENTS = {
-    "SIX_MONTH": "visit_6m_arm_1",
-    "NINE_MONTH": "visit_9m_arm_1",
-    "TWELVE_MONTH": "visit_12m_arm_1",
+    "SIX_MONTH": "6_months_arm_1",
+    "NINE_MONTH": "9_months_arm_1",
+    "TWELVE_MONTH": "12_months_arm_1",
+    "TWENTY_FOUR_MONTH": "24_months_arm_1",
 }
-REDCAP_CSBS_INSTRUMENT = "csbs_cg"
-REDCAP_VISIT_DATE_FIELD = "visit_date"
+REDCAP_CSBS_INSTRUMENT = REDCAP_CONTRACT["instruments"]["carry_forward"]["instrument"]
+REDCAP_VISIT_DATE_FIELD = REDCAP_CONTRACT["instruments"]["visit_date_field"]
 COMPLETE_STATUS_MAP = {
     "0": "incomplete",
     "1": "unverified",
@@ -126,6 +128,7 @@ REDCAP_VISIT_KEYS = (
     ("sixMonth", "SIX_MONTH", "6m"),
     ("nineMonth", "NINE_MONTH", "9m"),
     ("twelveMonth", "TWELVE_MONTH", "12m"),
+    ("twentyFourMonth", "TWENTY_FOUR_MONTH", "24m"),
 )
 
 LEGACY_STUDY_TARGETS = {"VPT": 130, "ASIB": 65, "TD": 65}
@@ -825,6 +828,7 @@ def _redcap_event_config() -> dict[str, str]:
         "SIX_MONTH": os.getenv("REDCAP_EVENT_6M", REDCAP_EVENTS["SIX_MONTH"]),
         "NINE_MONTH": os.getenv("REDCAP_EVENT_9M", REDCAP_EVENTS["NINE_MONTH"]),
         "TWELVE_MONTH": os.getenv("REDCAP_EVENT_12M", REDCAP_EVENTS["TWELVE_MONTH"]),
+        "TWENTY_FOUR_MONTH": os.getenv("REDCAP_EVENT_24M", REDCAP_EVENTS["TWENTY_FOUR_MONTH"]),
     }
 
 
@@ -874,10 +878,17 @@ def _nullable_text(value: Any) -> str | None:
     return text or None
 
 
+def _redcap_surrogate_id(record_id: str) -> str:
+    salt = os.getenv("PARTICIPANT_ID_SALT") or os.getenv("NANO_ID_SALT") or "nano_default_salt"
+    return build_dashboard_data._surrogate_id(record_id, salt)
+
+
 def _redcap_status(value: Any, *, skipped: bool = False) -> str:
     if skipped:
         return "skipped"
     key = str(value or "").strip().upper()
+    if key.endswith(".0") and key[:-2].isdigit():
+        key = key[:-2]
     return COMPLETE_STATUS_MAP.get(key, COMPLETE_STATUS_MAP.get(key.lower(), "not_started"))
 
 
@@ -926,21 +937,19 @@ def _detect_carry_forward_risk(record: dict[str, Any]) -> list[str]:
         ("6m", record["sixMonth"]),
         ("9m", record["nineMonth"]),
         ("12m", record["twelveMonth"]),
+        ("24m", record["twentyFourMonth"]),
     ]
 
     if sequence[0][1]["csbsStatus"] == "incomplete" and sequence[1][1]["visitDate"]:
-        flags.append("6m CSBS incomplete while 9m visit has started")
+        flags.append("R1")
     if sequence[1][1]["csbsStatus"] == "incomplete" and sequence[2][1]["visitDate"]:
-        flags.append("9m CSBS incomplete while 12m visit has started")
+        flags.append("R2")
     if sequence[0][1]["csbsStatus"] == "not_started" and sequence[1][1]["csbsStatus"] == "complete":
-        flags.append("6m CSBS blank while 9m CSBS is complete")
-
-    for idx in range(len(sequence) - 1):
-        label, current = sequence[idx]
-        next_label, next_visit = sequence[idx + 1]
-        risk = f"{label} CSBS incomplete while {next_label} visit has started"
-        if current["csbsStatus"] == "incomplete" and next_visit["visitDate"] and risk not in flags:
-            flags.append(risk)
+        flags.append("R3")
+    if sequence[1][1]["csbsStatus"] == "not_started" and sequence[2][1]["csbsStatus"] == "complete":
+        flags.append("R4")
+    if sequence[2][1]["csbsStatus"] == "incomplete" and sequence[3][1]["visitDate"]:
+        flags.append("R5")
     return flags
 
 
@@ -971,10 +980,12 @@ def _redcap_flat_records_to_visit_health(records: list[dict[str, Any]]) -> list[
             "sixMonth": _redcap_timepoint_from_row(rows_by_visit.get("sixMonth"), events["SIX_MONTH"]),
             "nineMonth": _redcap_timepoint_from_row(rows_by_visit.get("nineMonth"), events["NINE_MONTH"]),
             "twelveMonth": _redcap_timepoint_from_row(rows_by_visit.get("twelveMonth"), events["TWELVE_MONTH"]),
+            "twentyFourMonth": _redcap_timepoint_from_row(rows_by_visit.get("twentyFourMonth"), events["TWENTY_FOUR_MONTH"]),
             "anomalyFlags": [],
             "hasCarryForwardRisk": False,
         }
         flags = _detect_carry_forward_risk(record)
+        record["recordId"] = _redcap_surrogate_id(record_id)
         record["anomalyFlags"] = flags
         record["hasCarryForwardRisk"] = bool(flags)
         visit_records.append(record)

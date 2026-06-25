@@ -82,6 +82,10 @@ load_config <- function(path) {
   yaml::yaml.load(raw)
 }
 
+load_redcap_contract <- function() {
+  load_config("config/redcap_config.yml")
+}
+
 has_unresolved_template <- function(path) {
   is.character(path) && grepl("\\$\\{[^}]+\\}", path)
 }
@@ -226,6 +230,113 @@ build_data_quality <- function(redcap, dd) {
     temp_quality_rejected      = sum(redcap$temp_quality_rejected %||% 0, na.rm = TRUE)
   )
   list(missingness = miss, qc_flags = qc)
+}
+
+redcap_status_slug <- function(value, contract) {
+  text <- trimws(as.character(value %||% ""))
+  if (is.na(text) || text == "NA") text <- ""
+  if (grepl("\\.0$", text)) text <- sub("\\.0$", "", text)
+  if (toupper(text) == "SKIP") text <- "SKIP"
+  status <- contract$status_codes[[text]]
+  if (is.null(status$normalized)) return("not_started")
+  status$normalized
+}
+
+redcap_event_label <- function(contract, event_name) {
+  label <- contract$events$labels[[event_name]] %||% event_name
+  gsub(" ", "", gsub(" Months", "m", gsub(" Month", "m", label)))
+}
+
+build_redcap_completion_stats <- function(redcap) {
+  contract <- load_redcap_contract()
+  # Contract guard: csbs_caregiver_complete is the canonical CSBS status field.
+  csbs_field <- contract$instruments$carry_forward$complete_field
+  csbs_events <- contract$instruments$carry_forward$events
+  out <- list()
+  event_col <- if ("redcap_event_name" %in% names(redcap)) as.character(redcap$redcap_event_name) else rep("", nrow(redcap))
+  for (event_name in csbs_events) {
+    sub <- redcap[event_col == event_name]
+    counts <- list(complete = 0L, unverified = 0L, incomplete = 0L, not_started = 0L, skipped = 0L)
+    if (csbs_field %in% names(sub)) {
+      for (value in sub[[csbs_field]]) {
+        slug <- redcap_status_slug(value, contract)
+        if (is.null(counts[[slug]])) slug <- "not_started"
+        counts[[slug]] <- counts[[slug]] + 1L
+      }
+    } else {
+      counts$not_started <- nrow(sub)
+    }
+    out[[event_name]] <- c(list(label = redcap_event_label(contract, event_name)), counts, list(total = nrow(sub)))
+  }
+  out
+}
+
+redcap_has_text <- function(value) {
+  text <- trimws(as.character(value %||% ""))
+  !(is.na(text) || text == "" || text == "NA")
+}
+
+redcap_row_for_event <- function(events, event_name) {
+  row <- events[[event_name]]
+  if (is.null(row)) list() else row
+}
+
+redcap_anomaly_flags <- function(events) {
+  contract <- load_redcap_contract()
+  visit_field <- contract$instruments$visit_date_field
+  csbs_field <- contract$instruments$carry_forward$complete_field
+  six <- redcap_row_for_event(events, "6_months_arm_1")
+  nine <- redcap_row_for_event(events, "9_months_arm_1")
+  twelve <- redcap_row_for_event(events, "12_months_arm_1")
+  tfour <- redcap_row_for_event(events, "24_months_arm_1")
+  six_status <- redcap_status_slug(six[[csbs_field]], contract)
+  nine_status <- redcap_status_slug(nine[[csbs_field]], contract)
+  twelve_status <- redcap_status_slug(twelve[[csbs_field]], contract)
+  flags <- c()
+  if (six_status == "incomplete" && redcap_has_text(nine[[visit_field]])) flags <- c(flags, "R1")
+  if (nine_status == "incomplete" && redcap_has_text(twelve[[visit_field]])) flags <- c(flags, "R2")
+  if (six_status == "not_started" && nine_status == "complete") flags <- c(flags, "R3")
+  if (nine_status == "not_started" && twelve_status == "complete") flags <- c(flags, "R4")
+  if (twelve_status == "incomplete" && redcap_has_text(tfour[[visit_field]])) flags <- c(flags, "R5")
+  flags
+}
+
+build_redcap_visit_health <- function(redcap, salt) {
+  contract <- load_redcap_contract()
+  visit_field <- contract$instruments$visit_date_field
+  csbs_field <- contract$instruments$carry_forward$complete_field
+  instrument <- contract$instruments$carry_forward$instrument
+  timestamp_field <- paste0(instrument, "_timestamp")
+  if (!"record_id" %in% names(redcap)) return(list())
+
+  timepoint <- function(row, event_name) {
+    list(
+      eventName = event_name,
+      visitDate = if (redcap_has_text(row[[visit_field]])) as.character(row[[visit_field]]) else NULL,
+      csbsStatus = redcap_status_slug(row[[csbs_field]], contract),
+      csbsTimestamp = if (redcap_has_text(row[[timestamp_field]])) as.character(row[[timestamp_field]]) else NULL
+    )
+  }
+
+  rows <- lapply(unique(redcap$record_id), function(rid) {
+    grp <- redcap[record_id == rid]
+    events <- list()
+    for (i in seq_len(nrow(grp))) {
+      row <- as.list(grp[i])
+      events[[as.character(row$redcap_event_name %||% "")]] <- row
+    }
+    flags <- redcap_anomaly_flags(events)
+    list(
+      recordId = surrogate_id(as.character(rid), salt),
+      sixMonth = timepoint(redcap_row_for_event(events, "6_months_arm_1"), "6_months_arm_1"),
+      nineMonth = timepoint(redcap_row_for_event(events, "9_months_arm_1"), "9_months_arm_1"),
+      twelveMonth = timepoint(redcap_row_for_event(events, "12_months_arm_1"), "12_months_arm_1"),
+      twentyFourMonth = timepoint(redcap_row_for_event(events, "24_months_arm_1"), "24_months_arm_1"),
+      anomalyFlags = as.list(flags),
+      hasCarryForwardRisk = length(flags) > 0
+    )
+  })
+  rows[order(vapply(rows, function(row) !row$hasCarryForwardRisk, logical(1)), vapply(rows, `[[`, character(1), "recordId"))]
 }
 
 build_ml_performance <- function(metrics) {
@@ -393,6 +504,11 @@ build_payload <- function(redcap, features, dd, metrics, salt, organization_site
     stop("Missing REDCap mirror or feature matrix.")
 
   redcap <- drop_phi(redcap, dd)
+  redcap_stats <- build_redcap_completion_stats(redcap)
+  redcap_rows <- build_redcap_visit_health(redcap, salt)
+  redcap_anomaly_count <- sum(vapply(redcap_rows, function(row) isTRUE(row$hasCarryForwardRisk), logical(1)))
+  redcap_generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  redcap_contract <- load_redcap_contract()
 
   list(
     meta = list(
@@ -416,7 +532,21 @@ build_payload <- function(redcap, features, dd, metrics, salt, organization_site
     trajectories     = build_trajectories(features),
     redcap_audit     = build_redcap_audit(redcap),
     cohort_table     = build_cohort_table(redcap, salt),
-    organization_site = organization_site
+    organization_site = organization_site,
+    redcap_meta = list(
+      generated_at = redcap_generated_at,
+      pid = as.integer(redcap_contract$project$pid %||% 5955L),
+      record_count = if ("record_id" %in% names(redcap)) uniqueN(redcap$record_id) else 0L,
+      anomaly_count = as.integer(redcap_anomaly_count),
+      source = "redcap-api",
+      contract_version = "2.0",
+      payload_version = redcap_generated_at
+    ),
+    redcap_completion_stats = redcap_stats,
+    redcap_visit_health = list(
+      anomaly_count = as.integer(redcap_anomaly_count),
+      data = redcap_rows
+    )
   )
 }
 

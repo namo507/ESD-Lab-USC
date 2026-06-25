@@ -16,6 +16,8 @@ import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitOption, RedcapVisitRecord } from "@/api/schemas";
+import { callREDCap } from "@/api/redcapClient";
+import { ANOMALY_CODES, PROJECT_TITLE } from "@/constants/redcapConfig";
 import { formPolicyLabel, questionnaireKind, questionnaireLabel, riskKind } from "@/lib/participantOperations";
 import styles from "./Redcap.module.css";
 
@@ -31,27 +33,28 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "Cohort drift on sync gap", prompt: "Quantify how a 24 h REDCap sync gap shifts the VPT vs TD cohort feature distributions." },
   { lane: "redcap", label: "Carry-forward triage",    prompt: "List every participant with an active carry-forward risk flag. Group by timepoint and surface the specific condition that triggered each flag." },
   { lane: "redcap", label: "CSBS gap analysis",       prompt: "Show which participants have incomplete CSBS at 6m or 9m while their next visit has already started. What's the coordinator action for each?" },
-  { lane: "redcap", label: "Coverage report",         prompt: "Generate a data coverage report across all three CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
-  { lane: "redcap", label: "Visit entry log",         prompt: "List the visit dates entered via the dashboard in the last 7 days and confirm whether Form Display Logic has disabled the prior surveys." },
+  { lane: "redcap", label: "Coverage report",         prompt: "Generate a data coverage report across all four CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
+  { lane: "redcap", label: "Freshness check",         prompt: "When was REDCap last synced, how many records are in the payload, and how many carry-forward anomalies are active?" },
 ];
 
-type RedcapTab = "sync" | "visit-health" | "visit-entry" | "coverage";
-type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth";
+type RedcapTab = "sync" | "visit-health" | "coverage";
+type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth";
 
 const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
   { key: "sixMonth", label: "6m" },
   { key: "nineMonth", label: "9m" },
   { key: "twelveMonth", label: "12m" },
+  { key: "twentyFourMonth", label: "24m" },
 ];
 
 const STATUS_ORDER: CsbsVisitStatus[] = ["complete", "unverified", "incomplete", "not_started", "skipped"];
 
 const STATUS_META: Record<CsbsVisitStatus, { label: string; badge: BadgeKind; chart: string }> = {
-  complete: { label: "Complete", badge: "ok", chart: "var(--green)" },
-  unverified: { label: "Unverified", badge: "warn", chart: "var(--usc-gold)" },
-  incomplete: { label: "Incomplete", badge: "fail", chart: "var(--red)" },
-  not_started: { label: "Not Started", badge: "neutral", chart: "var(--slate-300)" },
-  skipped: { label: "Skipped", badge: "info", chart: "var(--blue)" },
+  complete: { label: "Complete", badge: "ok", chart: "var(--status-green)" },
+  unverified: { label: "Unverified", badge: "warn", chart: "var(--status-amber)" },
+  incomplete: { label: "Incomplete", badge: "fail", chart: "var(--status-red)" },
+  not_started: { label: "Not Started", badge: "neutral", chart: "var(--status-grey)" },
+  skipped: { label: "Skipped", badge: "info", chart: "var(--status-blue)" },
 };
 
 interface VisitChartRow {
@@ -87,6 +90,7 @@ function summarizeVisitHealth(records: RedcapVisitRecord[]): VisitSummary {
     sixMonth: 0,
     nineMonth: 0,
     twelveMonth: 0,
+    twentyFourMonth: 0,
   };
   const chartRows = VISIT_COLUMNS.map(({ key, label }) => {
     const counts = emptyStatusCounts();
@@ -115,7 +119,7 @@ function formatDate(value: string | null): string {
   return value || "—";
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null | undefined): string {
   if (!value) return "not recorded";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -167,6 +171,7 @@ export function Redcap() {
   const warnN = events.filter((e) => e.status === "warn").length;
   const failN = events.filter((e) => e.status === "fail").length;
   const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
+  const liveProxyEnabled = useFeatureFlag("REDCAP_LIVE_PROXY");
   const visitHealth = useRedcapVisitHealth(visitHealthEnabled);
   const visitRecords = visitHealth.data?.data ?? [];
   const visitSummary = useMemo(() => summarizeVisitHealth(visitRecords), [visitRecords]);
@@ -179,6 +184,8 @@ export function Redcap() {
   const fastPathTone = resolveTheme(theme);
   const [activeTab, setActiveTab] = useState<RedcapTab>("sync");
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const [liveFreshness, setLiveFreshness] = useState<string | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
 
   const tabOptions = useMemo(
     () =>
@@ -186,7 +193,6 @@ export function Redcap() {
         ? [
             { value: "sync" as const, label: "Sync & Completeness" },
             { value: "visit-health" as const, label: "Visit Health" },
-            { value: "visit-entry" as const, label: "Visit Entry" },
             { value: "coverage" as const, label: "Coverage" },
           ]
         : [{ value: "sync" as const, label: "Sync & Completeness" }],
@@ -211,13 +217,26 @@ export function Redcap() {
 
   function refreshVisitHealth() {
     void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
+    void queryClient.invalidateQueries({ queryKey: ["redcap", "dashboard-data"] });
     void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-missing-data"] });
     setLastSyncAt(new Date().toISOString());
+  }
+
+  async function refreshLiveProject() {
+    setLiveError(null);
+    try {
+      const project = await callREDCap<Array<{ project_title?: string }>>({ content: "project" });
+      const title = project[0]?.project_title ?? PROJECT_TITLE;
+      setLiveFreshness(`${title} · checked ${formatSyncTime(new Date().toISOString())}`);
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "REDCap proxy unavailable.");
+    }
   }
 
   function syncNow() {
     void eventsQuery.refetch();
     if (visitHealthEnabled) refreshVisitHealth();
+    if (liveProxyEnabled) void refreshLiveProject();
     void logAudit({ action: "run.trigger", scope: "/redcap/sync" });
   }
 
@@ -248,10 +267,16 @@ export function Redcap() {
           </p>
         </div>
         <div className={styles.actions}>
-          <Button variant="secondary" icon="key">Rotate token</Button>
+          {liveProxyEnabled && <Button variant="secondary" icon="refresh-cw" onClick={() => void refreshLiveProject()}>Refresh live</Button>}
           <Button icon="refresh-cw" onClick={syncNow}>Sync now</Button>
         </div>
       </header>
+      {(liveFreshness || liveError) && (
+        <div className={`${styles.liveFreshness} t-mono`}>
+          {liveFreshness}
+          {liveError && <span>{liveError}</span>}
+        </div>
+      )}
 
       <section className={styles.fastRow} aria-label="REDCap fast-paths">
         <div className={styles.fastRowInner}>
@@ -306,10 +331,6 @@ export function Redcap() {
           isLoading={visitHealth.isLoading}
           error={visitHealthError}
         />
-      )}
-
-      {visitHealthEnabled && activeTab === "visit-entry" && (
-        <VisitEntryPanel records={visitRecords} visitOptions={visitHealth.data?.visitOptions ?? []} />
       )}
 
       {visitHealthEnabled && activeTab === "coverage" && (
@@ -492,7 +513,7 @@ function VisitCompletionChart({ summary, isLoading }: { summary: VisitSummary; i
     <div className={styles.chartPanel} data-insight="redcap-visit-chart">
       {isLoading ? (
         <div className={styles.chartLoading}>
-          {Array.from({ length: 3 }).map((_, idx) => (
+            {Array.from({ length: 4 }).map((_, idx) => (
             <span key={idx} className={styles.skeletonBar} />
           ))}
         </div>
@@ -562,10 +583,10 @@ function VisitStatusGrid({
   return (
     <div className={styles.tableWrap}>
       <table className={styles.table}>
-        <caption className="sr-only">CSBS visit completion status across 6, 9, and 12 month REDCap events.</caption>
+        <caption className="sr-only">CSBS visit completion status across 6, 9, 12, and 24 month REDCap events.</caption>
         <thead>
           <tr>
-            {["Record ID", "6m Visit Date", "6m CSBS Status", "9m Visit Date", "9m CSBS Status", "12m Visit Date", "12m CSBS Status", "Anomaly Flag"].map((h) => (
+            {["Record ID", "6m Visit Date", "6m CSBS Status", "9m Visit Date", "9m CSBS Status", "12m Visit Date", "12m CSBS Status", "24m Visit Date", "24m CSBS Status", "Anomaly Flag"].map((h) => (
               <th key={h} scope="col" className={styles.th}>{h}</th>
             ))}
           </tr>
@@ -574,7 +595,7 @@ function VisitStatusGrid({
           {isLoading ? (
             Array.from({ length: 5 }).map((_, idx) => (
               <tr key={idx}>
-                <td className={styles.td} colSpan={8}><span className={styles.skeletonLine} /></td>
+                <td className={styles.td} colSpan={10}><span className={styles.skeletonLine} /></td>
               </tr>
             ))
           ) : records.length ? (
@@ -597,14 +618,14 @@ function VisitStatusGrid({
                 ))}
                 <td className={styles.td}>
                   {record.hasCarryForwardRisk
-                    ? <Badge kind="fail" size="sm">Carry-Forward Risk</Badge>
+                    ? <Badge kind="fail" size="sm">{record.anomalyFlags.join(", ")}</Badge>
                     : <Badge kind="ok" size="sm">Clean</Badge>}
                 </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td className={styles.stateCell} colSpan={8}>No REDCap visit-health records are available yet.</td>
+              <td className={styles.stateCell} colSpan={10}>No REDCap visit-health records are available yet.</td>
             </tr>
           )}
         </tbody>
@@ -636,9 +657,9 @@ function VisitRecordDrawer({ record, onClose }: { record: RedcapVisitRecord; onC
         {detail.hasCarryForwardRisk && (
           <div className={styles.riskCard}>
             <strong>Coordinator action</strong>
-            <p>Close or resolve the earlier CSBS survey before later-event data lands in the wrong REDCap column. Confirm Form Display Logic after visit-date entry.</p>
+            <p>Resolve the earlier CSBS state before later-event data lands in the wrong REDCap column. Confirm the source event and the visit_occurred.visit_date anchor in REDCap.</p>
             <ul>
-              {detail.anomalyFlags.map((flag) => <li key={flag}>{flag}</li>)}
+              {detail.anomalyFlags.map((flag) => <li key={flag}>{flag}: {ANOMALY_CODES[flag]}</li>)}
             </ul>
           </div>
         )}
@@ -680,7 +701,7 @@ function VisitEntryPanel({
     if (visitOptions.length) return visitOptions;
     const first = records[0];
     if (!first) return [];
-    return VISIT_COLUMNS.map(({ key, label }) => ({ key, label, eventName: first[key].eventName }));
+    return VISIT_COLUMNS.map(({ key, label }) => ({ key, label, eventName: first[key].eventName ?? "" }));
   }, [records, visitOptions]);
   const [recordId, setRecordId] = useState("");
   const [eventName, setEventName] = useState("");
@@ -693,7 +714,8 @@ function VisitEntryPanel({
   }, [recordId, records]);
 
   useEffect(() => {
-    if (!eventName && options[0]) setEventName(options[0].eventName);
+    const firstOption = options[0];
+    if (!eventName && firstOption) setEventName(firstOption.eventName);
   }, [eventName, options]);
 
   async function submitVisitEntry(event: FormEvent<HTMLFormElement>) {
@@ -778,6 +800,7 @@ function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; sum
           <KPI label="6m skipped" value={summary.skippedByVisit.sixMonth} sub="intentional SKIP" insightId="redcap-missing-data" />
           <KPI label="9m skipped" value={summary.skippedByVisit.nineMonth} sub="intentional SKIP" />
           <KPI label="12m skipped" value={summary.skippedByVisit.twelveMonth} sub="intentional SKIP" />
+          <KPI label="24m skipped" value={summary.skippedByVisit.twentyFourMonth} sub="intentional SKIP" />
           <KPI label="Coverage" value={`${summary.coveragePct.toFixed(1)}%`} sub="complete + skipped" insightId="redcap-coverage-metric" />
           <KPI label="Active risks" value={anomalyCount} sub="carry-forward flags" deltaKind={anomalyCount ? "down" : "up"} />
         </div>
@@ -786,7 +809,7 @@ function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; sum
             <caption className="sr-only">Records with CSBS missing data code SKIP.</caption>
             <thead>
               <tr>
-                {["Record ID", "Skipped visits", "6m", "9m", "12m"].map((h) => (
+                {["Record ID", "Skipped visits", "6m", "9m", "12m", "24m"].map((h) => (
                   <th key={h} scope="col" className={styles.th}>{h}</th>
                 ))}
               </tr>
@@ -805,7 +828,7 @@ function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; sum
                 );
               }) : (
                 <tr>
-                  <td className={styles.stateCell} colSpan={5}>No SKIP-coded CSBS records found in the current payload.</td>
+                  <td className={styles.stateCell} colSpan={6}>No SKIP-coded CSBS records found in the current payload.</td>
                 </tr>
               )}
             </tbody>

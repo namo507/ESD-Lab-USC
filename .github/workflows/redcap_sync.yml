@@ -1,0 +1,67 @@
+name: REDCap Sync and Propagate
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: redcap-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Pull REDCap and build dashboard payload
+        env:
+          NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
+          REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
+          REDCAP_API_TOKEN: ${{ secrets.REDCAP_API_KEY }}
+          REDCAP_API_KEY: ${{ secrets.REDCAP_API_KEY }}
+          PARTICIPANT_ID_SALT: ${{ secrets.PARTICIPANT_ID_SALT }}
+          NANO_ID_SALT: ${{ secrets.PARTICIPANT_ID_SALT }}
+        run: |
+          mkdir -p "$NANO_DATA_ROOT/processed" "$NANO_DATA_ROOT/redcap_exports"
+          python redcap/api/redcap_pull.py
+          test -s "$NANO_DATA_ROOT/processed/redcap_latest.parquet"
+          python dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+
+      - name: Regenerate REDCap constants and context
+        env:
+          NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
+          REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
+          REDCAP_API_KEY: ${{ secrets.REDCAP_API_KEY }}
+        run: |
+          node scripts/gen_redcap_constants.mjs
+          python dashboard/context_skill/extract_context.py --verify-redcap
+          python dashboard/context_skill/extract_context.py --emit
+
+      - name: Re-index assistant grounding
+        run: python scripts/prepare_dashboard_assistant.py --reindex || true
+
+      - name: Commit propagated data and context
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard/data/dashboard_data.json dashboard/context_skill/references/tables/redcap.md dashboard/context_skill/references/dashboard_schema.md web/src/constants/redcapConfig.ts
+          git diff --cached --quiet || git commit -m "Auto: REDCap sync + context regen [skip ci]"
+          git push || true

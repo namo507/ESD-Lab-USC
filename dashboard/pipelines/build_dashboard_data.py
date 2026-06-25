@@ -73,6 +73,7 @@ DEFAULT_REDCAP_PATH = PROJECT_ROOT / "data" / "processed" / "redcap_latest.parqu
 DEFAULT_FEATURE_PATH = PROJECT_ROOT / "data" / "processed" / "feature_matrix.parquet"
 DEFAULT_DD_PATH = PROJECT_ROOT / "data" / "data_dictionary" / "NANO_master_data_dictionary.csv"
 DEFAULT_METRICS_PATH = PROJECT_ROOT / "models" / "_metrics.json"
+REDCAP_CONFIG_PATH = PROJECT_ROOT / "config" / "redcap_config.yml"
 
 try:
     from src.utils.logging_utils import get_pipeline_logger
@@ -94,6 +95,11 @@ def load_config(config_path: Path) -> dict:
     for key, val in os.environ.items():
         raw = raw.replace(f"${{{key}}}", val)
     return yaml.safe_load(raw) or {}
+
+
+def load_redcap_contract() -> dict[str, Any]:
+    """Load the canonical REDCap contract shared by Python, R, TS, and docs."""
+    return yaml.safe_load(REDCAP_CONFIG_PATH.read_text(encoding="utf-8")) or {}
 
 
 def _has_unresolved_template(value: str) -> bool:
@@ -261,6 +267,9 @@ def load_model_metrics(metrics_json: Path) -> Optional[dict]:
 # ─── PHI scrubbing ─────────────────────────────────────────────────────────
 def drop_phi(df: pd.DataFrame, dd: Optional[pd.DataFrame]) -> pd.DataFrame:
     """Remove any column flagged as PHI in the data dictionary."""
+    contract_phi = set(load_redcap_contract().get("phi_fields") or [])
+    if contract_phi:
+        df = df[[c for c in df.columns if c not in contract_phi]].copy()
     if dd is None or "phi_flag" not in dd.columns:
         return df
     phi_cols = dd.loc[dd["phi_flag"].astype(str).str.lower().isin(["1", "true", "yes"]),
@@ -378,6 +387,142 @@ def build_data_quality(redcap: pd.DataFrame, dd: Optional[pd.DataFrame]) -> dict
         "temp_quality_rejected": int((redcap.get("temp_quality_rejected", 0) == 1).sum()),
     }
     return {"missingness": missingness, "qc_flags": qc_flags}
+
+
+def _redcap_contract_parts() -> tuple[dict[str, Any], dict[str, Any], str, str, list[str]]:
+    contract = load_redcap_contract()
+    carry_forward = contract["instruments"]["carry_forward"]
+    visit_field = contract["instruments"]["visit_date_field"]
+    # Contract guard: csbs_caregiver_complete is the canonical CSBS status field.
+    csbs_field = carry_forward["complete_field"]
+    csbs_events = list(carry_forward["events"])
+    return contract, carry_forward, visit_field, csbs_field, csbs_events
+
+
+def _redcap_event_label(contract: dict[str, Any], event_name: str) -> str:
+    label = str((contract.get("events", {}).get("labels") or {}).get(event_name) or event_name)
+    return (
+        label.replace(" Months", "m")
+        .replace(" Month", "m")
+        .replace(" ", "")
+    )
+
+
+def _status_code(value: Any) -> str:
+    if value is None or value is pd.NA:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    text = str(value).strip()
+    if text.endswith(".0") and text[:-2].isdigit():
+        text = text[:-2]
+    return text.upper() if text.upper() == "SKIP" else text
+
+
+def _status_slug(value: Any, contract: dict[str, Any]) -> str:
+    status = contract.get("status_codes", {}).get(_status_code(value))
+    if isinstance(status, dict):
+        return str(status.get("normalized") or status.get("label") or "not_started").lower().replace(" ", "_")
+    return "not_started"
+
+
+def build_redcap_completion_stats(redcap: pd.DataFrame) -> dict[str, dict[str, int | str]]:
+    """CSBS completion status counts for the verified carry-forward events."""
+    contract, _carry_forward, _visit_field, csbs_field, csbs_events = _redcap_contract_parts()
+    stats: dict[str, dict[str, int | str]] = {}
+    event_col = (
+        redcap["redcap_event_name"].astype(str)
+        if "redcap_event_name" in redcap.columns
+        else pd.Series("", index=redcap.index)
+    )
+    for event_name in csbs_events:
+        sub = redcap[event_col == event_name]
+        counts = {"complete": 0, "unverified": 0, "incomplete": 0, "not_started": 0, "skipped": 0}
+        if csbs_field in sub.columns:
+            for value in sub[csbs_field].tolist():
+                counts[_status_slug(value, contract)] = counts.get(_status_slug(value, contract), 0) + 1
+        else:
+            counts["not_started"] = int(len(sub))
+        stats[event_name] = {
+            "label": _redcap_event_label(contract, event_name),
+            **{key: int(value) for key, value in counts.items()},
+            "total": int(len(sub)),
+        }
+    return stats
+
+
+def _row_for_event(events: dict[str, dict[str, Any]], name: str) -> dict[str, Any]:
+    return events.get(name, {})
+
+
+def _has_text(value: Any) -> bool:
+    return bool(str(value or "").strip())
+
+
+def _redcap_anomaly_flags(events: dict[str, dict[str, Any]]) -> list[str]:
+    contract, _carry_forward, visit_field, csbs_field, _csbs_events = _redcap_contract_parts()
+    six = _row_for_event(events, "6_months_arm_1")
+    nine = _row_for_event(events, "9_months_arm_1")
+    twelve = _row_for_event(events, "12_months_arm_1")
+    tfour = _row_for_event(events, "24_months_arm_1")
+    six_status = _status_slug(six.get(csbs_field), contract)
+    nine_status = _status_slug(nine.get(csbs_field), contract)
+    twelve_status = _status_slug(twelve.get(csbs_field), contract)
+    flags: list[str] = []
+    if six_status == "incomplete" and _has_text(nine.get(visit_field)):
+        flags.append("R1")
+    if nine_status == "incomplete" and _has_text(twelve.get(visit_field)):
+        flags.append("R2")
+    if six_status == "not_started" and nine_status == "complete":
+        flags.append("R3")
+    if nine_status == "not_started" and twelve_status == "complete":
+        flags.append("R4")
+    if twelve_status == "incomplete" and _has_text(tfour.get(visit_field)):
+        flags.append("R5")
+    return flags
+
+
+def build_redcap_visit_health(redcap: pd.DataFrame, salt: str) -> list[dict[str, Any]]:
+    """Participant-level CSBS carry-forward monitor with de-identified IDs."""
+    contract, _carry_forward, visit_field, csbs_field, _csbs_events = _redcap_contract_parts()
+    if "record_id" not in redcap.columns:
+        return []
+
+    event_names = {
+        "sixMonth": "6_months_arm_1",
+        "nineMonth": "9_months_arm_1",
+        "twelveMonth": "12_months_arm_1",
+        "twentyFourMonth": "24_months_arm_1",
+    }
+
+    rows: list[dict[str, Any]] = []
+    for rid, grp in redcap.groupby("record_id", dropna=True):
+        event_rows = {
+            str(row.get("redcap_event_name") or ""): row.to_dict()
+            for _, row in grp.iterrows()
+        }
+
+        def timepoint(event_name: str) -> dict[str, Any]:
+            row = event_rows.get(event_name, {})
+            return {
+                "eventName": event_name,
+                "visitDate": str(row.get(visit_field) or "").strip() or None,
+                "csbsStatus": _status_slug(row.get(csbs_field), contract),
+                "csbsTimestamp": str(row.get(f"{contract['instruments']['carry_forward']['instrument']}_timestamp") or "").strip() or None,
+            }
+
+        flags = _redcap_anomaly_flags(event_rows)
+        rows.append({
+            "recordId": _surrogate_id(str(rid), salt),
+            "sixMonth": timepoint(event_names["sixMonth"]),
+            "nineMonth": timepoint(event_names["nineMonth"]),
+            "twelveMonth": timepoint(event_names["twelveMonth"]),
+            "twentyFourMonth": timepoint(event_names["twentyFourMonth"]),
+            "anomalyFlags": flags,
+            "hasCarryForwardRisk": bool(flags),
+        })
+
+    return sorted(rows, key=lambda row: (not row["hasCarryForwardRisk"], row["recordId"]))
 
 
 def build_ml_performance(metrics: Optional[dict]) -> dict:
@@ -605,6 +750,9 @@ def build_payload(
     redcap = drop_phi(redcap, dd)
 
     cohort_table = build_cohort_table(redcap, salt)
+    redcap_completion_stats = build_redcap_completion_stats(redcap)
+    redcap_visit_rows = build_redcap_visit_health(redcap, salt)
+    redcap_generated_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
     payload = {
         "meta": {
@@ -634,6 +782,20 @@ def build_payload(
         "hda_composition":  build_hda_stream(features),
         "attrition_funnel": build_attrition_funnel(redcap),
         "county_profiles":  build_county_profiles(redcap, features),
+        "redcap_meta": {
+            "generated_at": redcap_generated_at,
+            "pid": int(load_redcap_contract().get("project", {}).get("pid", 5955)),
+            "record_count": int(redcap["record_id"].nunique()) if "record_id" in redcap.columns else 0,
+            "anomaly_count": int(sum(1 for row in redcap_visit_rows if row["hasCarryForwardRisk"])),
+            "source": "redcap-api" if "redcap" in str(data_source).lower() else "synthetic-fallback",
+            "contract_version": "2.0",
+            "payload_version": redcap_generated_at,
+        },
+        "redcap_completion_stats": redcap_completion_stats,
+        "redcap_visit_health": {
+            "anomaly_count": int(sum(1 for row in redcap_visit_rows if row["hasCarryForwardRisk"])),
+            "data": redcap_visit_rows,
+        },
     }
     return _make_json_safe(payload)
 
@@ -735,9 +897,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             from dashboard.pipelines import bootstrap_dashboard_demo_inputs as demo_inputs
 
             demo_paths = demo_inputs.materialize_demo_inputs()
-            redcap_path = demo_paths["redcap"]
-            features_path = demo_paths["feature_matrix"]
-            metrics_path = demo_paths["metrics"]
+            if redcap_missing:
+                redcap_path = demo_paths["redcap"]
+            if feature_missing:
+                features_path = demo_paths["feature_matrix"]
+            if metrics_missing:
+                metrics_path = demo_paths["metrics"]
             logger.info("Bootstrapped repo-local dashboard inputs for local development.")
 
     redcap = load_redcap_mirror(redcap_path)

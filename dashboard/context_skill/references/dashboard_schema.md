@@ -28,13 +28,14 @@ populates it in the production pipeline.
 | `organization_site.summary / mission / studies / impact_feed[]` | ESD Lab organization + impact sections | `build_org_site_data.build_payload()` | same schema target via R wrapper | yes |
 | `research_questions.meta / questions[] / rollups / matrix[]` | Research Questions section (KPIs, heatmap, card grid, filters) | `build_research_questions_data.py` over `research_questions.json` | — (Python only) | yes (static catalog) |
 
-## Visit Health Monitor (v2)
+## REDCap Contract (v2)
 
-| JSON Key | API Endpoint | Source | Computation |
-|----------|--------------|--------|-------------|
-| `redcap-visit-health` | `/api/v2/redcap-visit-health` | REDCap API (live) | POST to REDCap with `exportSurveyFields: true`, flat export grouped by `record_id`, anomaly detection on `csbs_cg_complete` and `visit_date` pairs |
-| `anomalies[].risks[]` | computed server-side | Cross-timepoint logic | Flags carry-forward conditions: incomplete to next-started, and blank to next-complete |
-| `coverage` | computed client-side | Visit Health response aggregation | `(complete + skipped) / total_expected` per timepoint |
+| JSON Key | UI / Assistant Consumer | Source | Computation |
+|----------|-------------------------|--------|-------------|
+| `redcap_meta` | `/redcap` freshness, Ask AI freshness answers, Buddy status | `build_redcap_*` builders | Generated from the canonical YAML and current REDCap mirror |
+| `redcap_completion_stats` | `/redcap` stacked bars, `/public-insights` REDCap section | Python/R dashboard builders | Counts `csbs_caregiver_complete` by 6m, 9m, 12m, and 24m events |
+| `redcap_visit_health.data` | `/redcap` visit grid, Buddy R-code answers | Python/R dashboard builders | Groups de-identified records by event and applies R1-R5 carry-forward logic |
+| `redcap_visit_health.anomaly_count` | Anomaly KPI and public aggregate tile | Same | Count of rows with any R1-R5 flag |
 
 ## Invariants the UI assumes
 

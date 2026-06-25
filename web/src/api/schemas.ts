@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  AnomalyCode,
+  CsbsStatus as CsbsVisitStatusSchema,
+  RedcapTimepoint as RedcapVisitTimepointSchema,
+  RedcapVisitRecord as RedcapVisitRecordSchema,
+} from "./redcapSchemas";
 
 /** Core enums — match prototype's controlled vocabulary exactly. */
 export const GroupCode = z.preprocess(
@@ -438,7 +444,7 @@ export type AdminCapabilities = z.infer<typeof AdminCapabilities>;
 export const ApiListMeta = z.object({
   generatedAt: z.string(),
   participantCount: z.number().int(),
-  source: z.enum(["mock", "live", "aggregate"]).optional(),
+  source: z.string().optional(),
 });
 export type ApiListMeta = z.infer<typeof ApiListMeta>;
 
@@ -485,35 +491,23 @@ export type RedcapCompletenessRow = z.infer<typeof RedcapCompletenessRow>;
 export const RedcapCompletenessResponse = ApiListResponse(RedcapCompletenessRow);
 export type RedcapCompletenessResponse = z.infer<typeof RedcapCompletenessResponse>;
 
-export const CsbsVisitStatus = z.enum(["incomplete", "unverified", "complete", "not_started", "skipped"]);
+export const CsbsVisitStatus = CsbsVisitStatusSchema;
 export type CsbsVisitStatus = z.infer<typeof CsbsVisitStatus>;
 
-export const RedcapVisitTimepoint = z.object({
-  eventName: z.string(),
-  visitDate: z.string().nullable(),
-  csbsStatus: CsbsVisitStatus,
-  csbsTimestamp: z.string().nullable(),
-});
+export const RedcapVisitTimepoint = RedcapVisitTimepointSchema;
 export type RedcapVisitTimepoint = z.infer<typeof RedcapVisitTimepoint>;
 
-export const RedcapVisitRecord = z.object({
-  recordId: z.string(),
-  sixMonth: RedcapVisitTimepoint,
-  nineMonth: RedcapVisitTimepoint,
-  twelveMonth: RedcapVisitTimepoint,
-  anomalyFlags: z.array(z.string()),
-  hasCarryForwardRisk: z.boolean(),
-});
+export const RedcapVisitRecord = RedcapVisitRecordSchema;
 export type RedcapVisitRecord = z.infer<typeof RedcapVisitRecord>;
 
 export const RedcapVisitAnomaly = z.object({
   recordId: z.string(),
-  risks: z.array(z.string()),
+  risks: z.array(AnomalyCode),
 });
 export type RedcapVisitAnomaly = z.infer<typeof RedcapVisitAnomaly>;
 
 export const RedcapVisitOption = z.object({
-  key: z.enum(["sixMonth", "nineMonth", "twelveMonth"]),
+  key: z.enum(["sixMonth", "nineMonth", "twelveMonth", "twentyFourMonth"]),
   label: z.string(),
   eventName: z.string(),
 });

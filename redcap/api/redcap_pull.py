@@ -128,12 +128,18 @@ def pull_records(
     return df
 
 
-def export_to_path(df: pd.DataFrame, export_dir: Path, dry_run: bool = False) -> Path:
+def export_to_path(
+    df: pd.DataFrame,
+    export_dir: Path,
+    dashboard_latest_path: Path | None = None,
+    dry_run: bool = False,
+) -> Path:
     """Export DataFrame to the configured secure data path as parquet.
 
     Args:
         df: DataFrame of REDCap records to export.
         export_dir: Directory path for export (from config/paths.yml).
+        dashboard_latest_path: Optional dashboard mirror path to refresh.
         dry_run: If True, log export details but do not write file.
 
     Returns:
@@ -144,19 +150,38 @@ def export_to_path(df: pd.DataFrame, export_dir: Path, dry_run: bool = False) ->
 
     if dry_run:
         logger.info("[DRY RUN] Would export %d records to: %s", len(df), out_path)
+        if dashboard_latest_path is not None:
+            logger.info("[DRY RUN] Would update dashboard REDCap mirror: %s", dashboard_latest_path)
         return out_path
 
     export_dir.mkdir(parents=True, exist_ok=True)
     df.to_parquet(out_path, index=False, engine="pyarrow")
 
     # Also update latest symlink
-    latest_path = export_dir / "latest.parquet"
-    if latest_path.exists() or latest_path.is_symlink():
-        latest_path.unlink()
-    latest_path.symlink_to(out_path.name)
+    export_latest_path = export_dir / "latest.parquet"
+    if export_latest_path.exists() or export_latest_path.is_symlink():
+        export_latest_path.unlink()
+    export_latest_path.symlink_to(out_path.name)
+
+    if dashboard_latest_path is not None:
+        dashboard_latest_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(dashboard_latest_path, index=False, engine="pyarrow")
+        logger.info("Updated dashboard REDCap mirror: %s", dashboard_latest_path)
 
     logger.info("Exported %d records to: %s", len(df), out_path)
     return out_path
+
+
+def _configured_processed_latest(config: dict[str, Any]) -> Path | None:
+    try:
+        raw = config["paths"]["processed"]["redcap_latest"]
+    except KeyError:
+        return None
+    path_text = str(raw)
+    if "${" in path_text:
+        logger.warning("processed.redcap_latest is unresolved; set NANO_DATA_ROOT to update dashboard mirror.")
+        return None
+    return Path(path_text)
 
 
 def main() -> None:
@@ -183,17 +208,26 @@ def main() -> None:
 
     config = load_config()
     export_dir = Path(config["paths"]["redcap"]["export_dir"])
+    latest_path = _configured_processed_latest(config)
 
     events = [args.event] if args.event else None
 
     project = get_redcap_project()
+    if args.dry_run:
+        try:
+            info = project.export_project_info()
+            title = info.get("project_title") if isinstance(info, dict) else None
+            project_id = info.get("project_id") if isinstance(info, dict) else None
+            logger.info("[DRY RUN] Connected to %s (PID %s)", title or "REDCap project", project_id or "unknown")
+        except Exception as exc:
+            logger.info("[DRY RUN] Connected to REDCap; project info unavailable: %s", exc)
     df = pull_records(project, events=events, chunk_size=args.chunk_size)
 
     if df.empty:
         logger.warning("Empty export — check REDCap API token and project settings.")
         sys.exit(1)
 
-    out_path = export_to_path(df, export_dir, dry_run=args.dry_run)
+    out_path = export_to_path(df, export_dir, dashboard_latest_path=latest_path, dry_run=args.dry_run)
     if not args.dry_run:
         logger.info("REDCap pull complete: %s", out_path)
 

@@ -50,6 +50,9 @@ SUMMARY_KEYS = (
     "county_profiles",
     "participant_operations",
     "redcap_audit",
+    "redcap_meta",
+    "redcap_completion_stats",
+    "redcap_visit_health",
     "matlab_integration",
     "cohort_table",
     "organization_site",
@@ -98,6 +101,40 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "withdrawn",
         "review",
     },
+    "redcap_visit_health": {
+        "redcap",
+        "csbs",
+        "visit",
+        "visits",
+        "carry",
+        "forward",
+        "carry-forward",
+        "anomaly",
+        "anomalies",
+        "completeness",
+        "complete",
+        "incomplete",
+        "unverified",
+        "skipped",
+        "skip",
+        "not",
+        "started",
+        "6",
+        "9",
+        "12",
+        "24",
+        "r1",
+        "r2",
+        "r3",
+        "r4",
+        "r5",
+        "freshness",
+        "synced",
+        "sync",
+        "visit_date",
+    },
+    "redcap_meta": {"redcap", "freshness", "fresh", "synced", "sync", "source", "records", "anomalies"},
+    "redcap_completion_stats": {"redcap", "csbs", "completeness", "complete", "incomplete", "unverified", "skipped", "not", "started", "6", "9", "12", "24"},
     "participant_operations": {
         "participant",
         "participants",
@@ -944,7 +981,10 @@ class DashboardChatAssistant:
                 continue
             value = payload.get(key)
             if value:
-                fragments.extend(_flatten_context(value, prefix=key))
+                if key == "redcap_visit_health":
+                    fragments.extend(self._build_redcap_visit_health_fragments(payload))
+                else:
+                    fragments.extend(_flatten_context(value, prefix=key))
 
         if readings:
             fragments.extend(
@@ -1120,8 +1160,8 @@ class DashboardChatAssistant:
                     "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
-                    "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, and 12m timepoints and detects carry-forward risk when incomplete surveys persist into later events. "
-                    "The fix uses Form Display Logic triggered by visit_date entry.\n\n"
+                    "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
+                    "Browser REDCap writes are disabled; source corrections must use audited server-side REDCap scripts.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
             }
@@ -1179,6 +1219,76 @@ class DashboardChatAssistant:
             f"- {text}" for _, text in self._build_summary_fragments(payload, readings)
         )
 
+    def _build_redcap_visit_health_fragments(
+        self,
+        payload: dict[str, Any],
+    ) -> list[tuple[str, str]]:
+        meta = payload.get("redcap_meta") or {}
+        completion = payload.get("redcap_completion_stats") or {}
+        visit_health = payload.get("redcap_visit_health") or {}
+        records = visit_health.get("data") if isinstance(visit_health, dict) else []
+        anomaly_codes = {
+            "R1": "6m CSBS incomplete and 9m visit_date set",
+            "R2": "9m CSBS incomplete and 12m visit_date set",
+            "R3": "6m CSBS blank but 9m CSBS complete",
+            "R4": "9m CSBS blank but 12m CSBS complete",
+            "R5": "12m CSBS incomplete and 24m visit_date set",
+        }
+        fragments: list[tuple[str, str]] = []
+
+        if meta:
+            fragments.append((
+                "redcap_meta",
+                "REDCap freshness: "
+                f"generated_at={meta.get('generated_at') or 'unknown'}, "
+                f"records={meta.get('record_count', 0)}, "
+                f"anomalies={meta.get('anomaly_count', 0)}, "
+                f"source={meta.get('source') or 'unknown'}",
+            ))
+
+        for event_name, stats in completion.items():
+            if not isinstance(stats, dict):
+                continue
+            fragments.append((
+                f"redcap_completion_stats.{event_name}",
+                "REDCap CSBS completeness "
+                f"{stats.get('label') or event_name}: "
+                f"{stats.get('complete', 0)} complete, "
+                f"{stats.get('unverified', 0)} unverified, "
+                f"{stats.get('incomplete', 0)} incomplete, "
+                f"{stats.get('not_started', 0)} not started, "
+                f"{stats.get('skipped', 0)} skipped of {stats.get('total', 0)}.",
+            ))
+
+        if not isinstance(records, list):
+            return fragments
+
+        flagged = [
+            row for row in records
+            if isinstance(row, dict) and row.get("hasCarryForwardRisk")
+        ][:25]
+        for index, row in enumerate(flagged):
+            flags = [str(flag) for flag in row.get("anomalyFlags") or []]
+            flag_text = ", ".join(
+                f"{flag} ({anomaly_codes.get(flag, 'unknown')})" for flag in flags
+            )
+            fragments.append((
+                f"redcap_visit_health.data[{row.get('recordId') or index}]",
+                "REDCap carry-forward record "
+                f"{row.get('recordId')}: flags {flag_text or 'none'}; "
+                f"6m={_redcap_timepoint_text(row.get('sixMonth'))}; "
+                f"9m={_redcap_timepoint_text(row.get('nineMonth'))}; "
+                f"12m={_redcap_timepoint_text(row.get('twelveMonth'))}; "
+                f"24m={_redcap_timepoint_text(row.get('twentyFourMonth'))}.",
+            ))
+
+        if len(records) > len(flagged):
+            fragments.append((
+                "redcap_visit_health.rollup",
+                f"REDCap visit-health records indexed: {len(records)}; flagged records included in context: {len(flagged)}.",
+            ))
+        return fragments
+
     def _build_summary_fragments(
         self,
         payload: dict[str, Any],
@@ -1191,6 +1301,8 @@ class DashboardChatAssistant:
         by_group = enrollment.get("by_group", {})
         data_quality = payload.get("data_quality", {})
         redcap_audit_summary = payload.get("redcap_audit", {}).get("summary", {})
+        redcap_meta = payload.get("redcap_meta") or {}
+        redcap_visit_health = payload.get("redcap_visit_health") or {}
         participant_operations = payload.get("participant_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
@@ -1243,6 +1355,25 @@ class DashboardChatAssistant:
                 f"Open REDCap queries: {open_queries if open_queries is not None else 'unknown'}",
             )
         )
+
+        if redcap_meta:
+            fragments.append(
+                (
+                    "redcap_meta.generated_at",
+                    "REDCap synced: "
+                    f"{redcap_meta.get('generated_at') or 'unknown'}; "
+                    f"records: {redcap_meta.get('record_count', 0)}; "
+                    f"carry-forward anomalies: {redcap_meta.get('anomaly_count', 0)}; "
+                    f"source: {redcap_meta.get('source') or 'unknown'}",
+                )
+            )
+        if isinstance(redcap_visit_health, dict):
+            fragments.append(
+                (
+                    "redcap_visit_health.anomaly_count",
+                    f"REDCap visit-health anomaly count: {redcap_visit_health.get('anomaly_count', 0)}",
+                )
+            )
 
         fragments.append(
             (
@@ -1353,6 +1484,14 @@ class DashboardChatAssistant:
             else []
         )
         county_profiles = payload.get("county_profiles") or []
+        redcap_meta = payload.get("redcap_meta") or {}
+        redcap_completion_stats = payload.get("redcap_completion_stats") or {}
+        redcap_visit_health = payload.get("redcap_visit_health") or {}
+        redcap_visit_records = (
+            redcap_visit_health.get("data")
+            if isinstance(redcap_visit_health, dict)
+            else []
+        )
         best_index, best_model = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
         )
@@ -1452,6 +1591,18 @@ class DashboardChatAssistant:
             "county_profile_count": (
                 len(county_profiles) if isinstance(county_profiles, list) else 0
             ),
+            "redcap_meta": redcap_meta if isinstance(redcap_meta, dict) else {},
+            "redcap_freshness": self._redcap_freshness_status(),
+            "redcap_completion_stats": (
+                redcap_completion_stats
+                if isinstance(redcap_completion_stats, dict)
+                else {}
+            ),
+            "redcap_visit_records": (
+                redcap_visit_records
+                if isinstance(redcap_visit_records, list)
+                else []
+            ),
             "best_model": (
                 {
                     "index": best_index,
@@ -1487,17 +1638,33 @@ class DashboardChatAssistant:
         except Exception:
             return {}
 
+    def _redcap_freshness_status(self) -> dict[str, Any]:
+        payload = self._load_dashboard_payload()
+        meta = payload.get("redcap_meta") or {}
+        if not isinstance(meta, dict):
+            return {}
+        return {
+            "generated_at": meta.get("generated_at"),
+            "record_count": meta.get("record_count"),
+            "anomaly_count": meta.get("anomaly_count"),
+            "source": meta.get("source"),
+        }
+
     def _assistant_freshness_status(self) -> dict[str, Any]:
+        freshness: dict[str, Any] = {}
         try:
             from k8s.pipeline import PipelineConfig
             from k8s.pipeline import assistant_freshness_payload
 
             config = PipelineConfig.from_env()
-            if not config.assistant_cluster_context_enabled:
-                return {}
-            return assistant_freshness_payload(config, assistant_status={})
+            if config.assistant_cluster_context_enabled:
+                freshness = assistant_freshness_payload(config, assistant_status={})
         except Exception:
-            return {}
+            freshness = {}
+        redcap = self._redcap_freshness_status()
+        if redcap:
+            freshness["redcap"] = redcap
+        return freshness
 
     def _probe_dependencies(self) -> dict[str, Any]:
         missing: list[str] = []
@@ -1839,6 +2006,85 @@ class DashboardChatAssistant:
                 f"Current derived files include {', '.join(file_names) if file_names else 'no files listed'}, and artifact rate is derived from file QA pass percentages."
             )
 
+        redcap_tokens = {"redcap", "csbs", "carry", "forward", "anomaly", "anomalies", "r1", "r2", "r3", "r4", "r5"}
+        if question_tokens & redcap_tokens and question_tokens & {"freshness", "fresh", "synced", "sync", "last", "when"}:
+            redcap = facts.get("redcap_freshness") or {}
+            if redcap:
+                return (
+                    "REDCap last synced at "
+                    f"{redcap.get('generated_at') or 'unknown'} from "
+                    f"{redcap.get('source') or 'unknown source'} with "
+                    f"{redcap.get('record_count', 0)} records and "
+                    f"{redcap.get('anomaly_count', 0)} carry-forward anomalies."
+                )
+
+        requested_codes = sorted(question_tokens & {"r1", "r2", "r3", "r4", "r5"})
+        if requested_codes and question_tokens & {"record", "records", "flagged", "which", "list"}:
+            records = facts.get("redcap_visit_records") or []
+            code = requested_codes[0].upper()
+            matches = [
+                str(row.get("recordId"))
+                for row in records
+                if isinstance(row, dict) and code in {str(flag).upper() for flag in row.get("anomalyFlags") or []}
+            ]
+            definitions = {
+                "R1": "6m CSBS incomplete and 9m visit_date set",
+                "R2": "9m CSBS incomplete and 12m visit_date set",
+                "R3": "6m CSBS blank but 9m CSBS complete",
+                "R4": "9m CSBS blank but 12m CSBS complete",
+                "R5": "12m CSBS incomplete and 24m visit_date set",
+            }
+            return (
+                f"{code} means {definitions.get(code, 'the requested REDCap anomaly code')}. "
+                f"Flagged de-identified records: {', '.join(matches[:20]) if matches else 'none in the current payload'}"
+                f"{' +' + str(len(matches) - 20) + ' more' if len(matches) > 20 else ''}."
+            )
+
+        if question_tokens & {"carry", "forward", "anomaly", "anomalies", "flags", "flagged"}:
+            redcap = facts.get("redcap_meta") or {}
+            records = facts.get("redcap_visit_records") or []
+            if isinstance(records, list):
+                flagged = [
+                    row for row in records
+                    if isinstance(row, dict) and row.get("hasCarryForwardRisk")
+                ]
+                code_counts: dict[str, int] = {}
+                for row in flagged:
+                    for flag in row.get("anomalyFlags") or []:
+                        code_counts[str(flag)] = code_counts.get(str(flag), 0) + 1
+                code_text = ", ".join(
+                    f"{code}={count}" for code, count in sorted(code_counts.items())
+                ) or "no R-code flags"
+                return (
+                    f"There are {redcap.get('anomaly_count', len(flagged))} active REDCap carry-forward anomalies "
+                    f"across {redcap.get('record_count', len(records))} records. "
+                    f"Flag mix: {code_text}."
+                )
+
+        if question_tokens & {"csbs", "completeness", "complete", "incomplete", "skipped"}:
+            completion = facts.get("redcap_completion_stats") or {}
+            event_lookup = [
+                ("24", "24_months_arm_1"),
+                ("12", "12_months_arm_1"),
+                ("9", "9_months_arm_1"),
+                ("6", "6_months_arm_1"),
+            ]
+            event_name = next(
+                (event for token, event in event_lookup if token in question_tokens),
+                None,
+            )
+            if event_name and isinstance(completion, dict):
+                stats = completion.get(event_name) or {}
+                if isinstance(stats, dict):
+                    return (
+                        f"{stats.get('label') or event_name} CSBS completeness: "
+                        f"{stats.get('complete', 0)} complete, "
+                        f"{stats.get('unverified', 0)} unverified, "
+                        f"{stats.get('incomplete', 0)} incomplete, "
+                        f"{stats.get('not_started', 0)} not started, "
+                        f"{stats.get('skipped', 0)} skipped of {stats.get('total', 0)} total."
+                    )
+
         if question_tokens & {"redcap", "nda", "completeness", "missingness"}:
             dq = facts.get("data_quality") or {}
             flags = dq.get("qc_flags") or {}
@@ -1992,6 +2238,9 @@ def _score_fragment(
             "enrollment",
             "ml_performance",
             "redcap_audit",
+            "redcap_meta",
+            "redcap_completion_stats",
+            "redcap_visit_health",
             "data_quality",
             "visit_completion",
             "readings",
@@ -2182,6 +2431,14 @@ def _reading_match_context_text(item: dict[str, Any]) -> str:
     if item.get("excerpt"):
         detail_parts.append(f"excerpt: {item['excerpt']}")
     return "; ".join(detail_parts)
+
+
+def _redcap_timepoint_text(value: Any) -> str:
+    if not isinstance(value, dict):
+        return "not started"
+    status = value.get("csbsStatus") or "not_started"
+    visit_date = value.get("visitDate") or "no visit date"
+    return f"{status}, {visit_date}"
 
 
 def _flatten_context(value: Any, *, prefix: str) -> list[tuple[str, str]]:

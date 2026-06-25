@@ -13,6 +13,8 @@ import { api } from "./client";
 import * as S from "./schemas";
 import { z, type ZodType } from "zod";
 import { fetchAssistantStatus } from "./chatApi";
+import { CARRY_FORWARD, EVENT_LABELS, REDCAP_DASHBOARD_DATA_URL } from "@/constants/redcapConfig";
+import { RedcapPayload, type RedcapCompletionStat, type RedcapPayload as RedcapPayloadType } from "./redcapSchemas";
 import {
   planPresentation,
   createPresentationJob,
@@ -302,11 +304,110 @@ export function useRedcapCompleteness() {
   });
 }
 
+const VISIT_EVENT_KEY: Record<string, "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth"> = {
+  "6_months_arm_1": "sixMonth",
+  "9_months_arm_1": "nineMonth",
+  "12_months_arm_1": "twelveMonth",
+  "24_months_arm_1": "twentyFourMonth",
+};
+
+function emptyCompletionStat(eventName: string): RedcapCompletionStat {
+  return {
+    label: EVENT_LABELS[eventName as keyof typeof EVENT_LABELS]?.replace(" Months", "m").replace(" Month", "m") ?? eventName,
+    complete: 0,
+    unverified: 0,
+    incomplete: 0,
+    not_started: 0,
+    skipped: 0,
+    total: 0,
+  };
+}
+
+function completionStatsFromRecords(records: S.RedcapVisitRecord[]): Record<string, RedcapCompletionStat> {
+  const stats = Object.fromEntries(
+    CARRY_FORWARD.events.map((eventName) => [eventName, emptyCompletionStat(eventName)]),
+  ) as Record<string, RedcapCompletionStat>;
+  for (const eventName of CARRY_FORWARD.events) {
+    const key = VISIT_EVENT_KEY[eventName];
+    if (!key) continue;
+    for (const record of records) {
+      const stat = stats[eventName];
+      if (!stat) continue;
+      const status = record[key].csbsStatus;
+      stat[status] += 1;
+      stat.total += 1;
+    }
+  }
+  return stats;
+}
+
+function legacyVisitHealthToPayload(health: S.RedcapVisitHealthResponse): RedcapPayloadType {
+  const anomalyCount = health.data.filter((row) => row.hasCarryForwardRisk).length;
+  return {
+    redcap_meta: {
+      generated_at: health.meta.generatedAt,
+      pid: 5955,
+      record_count: health.data.length,
+      anomaly_count: anomalyCount,
+      source: health.meta.source ?? "legacy-api",
+      contract_version: "2.0",
+      payload_version: health.meta.generatedAt,
+    },
+    redcap_completion_stats: completionStatsFromRecords(health.data),
+    redcap_visit_health: {
+      anomaly_count: anomalyCount,
+      data: health.data,
+    },
+  };
+}
+
+async function fetchRedcapDashboardPayload(): Promise<RedcapPayloadType> {
+  try {
+    const response = await fetch(REDCAP_DASHBOARD_DATA_URL, {
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const json = (await response.json()) as unknown;
+    return RedcapPayload.parse(json);
+  } catch {
+    const health = await api.get("/api/v2/redcap-visit-health", S.RedcapVisitHealthResponse);
+    return legacyVisitHealthToPayload(health);
+  }
+}
+
+export function useRedcapData(enabled = true): UseQueryResult<RedcapPayloadType> {
+  return useQuery({
+    enabled,
+    queryKey: ["redcap", "dashboard-data"],
+    queryFn: fetchRedcapDashboardPayload,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  });
+}
+
 export function useRedcapVisitHealth(enabled = true) {
   return useQuery({
     enabled,
     queryKey: ["v2", "redcap-visit-health"],
-    queryFn: () => api.get("/api/v2/redcap-visit-health", S.RedcapVisitHealthResponse),
+    queryFn: async () => {
+      const payload = await fetchRedcapDashboardPayload();
+      return S.RedcapVisitHealthResponse.parse({
+        data: payload.redcap_visit_health.data,
+        meta: {
+          generatedAt: payload.redcap_meta.generated_at,
+          participantCount: payload.redcap_meta.record_count,
+          source: payload.redcap_meta.source,
+        },
+        anomalies: payload.redcap_visit_health.data
+          .filter((row) => row.hasCarryForwardRisk)
+          .map((row) => ({ recordId: row.recordId, risks: row.anomalyFlags })),
+        visitOptions: CARRY_FORWARD.events.map((eventName) => ({
+          key: VISIT_EVENT_KEY[eventName],
+          label: payload.redcap_completion_stats[eventName]?.label ?? eventName,
+          eventName,
+        })).filter((item) => Boolean(item.key)),
+      });
+    },
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchInterval: 5 * 60_000,

@@ -13,12 +13,18 @@ on:
       - "web/tsconfig.json"
       - "web/tailwind.config.ts"
       - "web/postcss.config.js"
+      - "config/redcap_config.yml"
+      - "functions/**"
       - "dashboard/assistant/local_chat_assistant.py"
+      - "dashboard/context_skill/extract_context.py"
       - "dashboard/context_skill/references/dashboard_schema.md"
+      - "dashboard/context_skill/references/tables/redcap.md"
       - "dashboard/data/dashboard_data.json"
       - "dashboard/pipelines/build_dashboard_data.py"
+      - "dashboard/pipelines/build_dashboard_data.R"
       - "dashboard/pipelines/generate_synthetic_dashboard_data.py"
       - "dashboard/server/live_dashboard_server.py"
+      - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"
       - "scripts/check_site_health.py"
@@ -61,6 +67,11 @@ jobs:
       - name: Install frontend deps
         working-directory: web
         run: npm ci
+
+      - name: Generate REDCap TS constants
+        run: |
+          node scripts/gen_redcap_constants.mjs
+          git diff --exit-code web/src/constants/redcapConfig.ts
 
       - name: Build React SPA
         working-directory: web
