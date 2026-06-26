@@ -52,4 +52,70 @@ describe("dark mode surface guard", () => {
     }
     expect(read("src/routes/Redcap.tsx")).toContain("var(--status-green)");
   });
+
+  /**
+   * Core theme-inverting dashboard surfaces must resolve their background from
+   * the warm-card token (directly or via the shared `.surface-card` variant),
+   * NOT from a literal `bg-white` utility that only flips because of the global
+   * `:root[data-theme="dark"] .bg-white` override. Relying on that override is
+   * the exact drift this audit removed: a tile that "looks fine" only because a
+   * global rule patches it, while genuinely white-alpha siblings (which the
+   * override never matches) silently stay light. Alpha glass overlays
+   * (`bg-white/[0.0x]`) are allowed ONLY on the permanently-dark agentic panel,
+   * which is excluded here.
+   */
+  it("keeps shared dashboard surfaces on the warm-card token, not literal bg-white", () => {
+    const surfaces = [
+      "src/components/warm/MetricCard.tsx",
+      "src/components/warm/ParticipantFlow.tsx",
+      "src/components/warm/AnimatedDAG.tsx",
+      "src/components/warm/ReadingsGeoMap.tsx",
+      "src/components/shell/Sidebar.tsx",
+      "src/components/shell/TopNav.tsx",
+      "src/routes/Overview.tsx",
+    ];
+    for (const file of surfaces) {
+      const src = read(file);
+      expect(src, `${file} still ships a literal bg-white surface`).not.toMatch(/\bbg-white\b/);
+      expect(
+        /surface-card|bg-\[color:var\(--warm-card\)\]/.test(src),
+        `${file} must reference the warm-card surface token`,
+      ).toBe(true);
+    }
+  });
+
+  it("defines the shared .surface-card variant on the warm-card token", () => {
+    const css = read("src/styles/global.css");
+    expect(css).toMatch(/\.surface-card\s*\{[^}]*background:\s*var\(--warm-card\)/);
+    expect(css).toMatch(/\.surface-card\s*\{[^}]*border:\s*1px solid var\(--warm-border\)/);
+  });
+
+  it("keeps the light-tone FastPaths chips on theme-aware glass tokens, not raw white alpha", () => {
+    const src = read("src/components/warm/FastPaths.tsx");
+    // The light tone renders on inverting glass surfaces (chat drawer); raw
+    // bg-white/NN never flips and would glare in dark mode.
+    expect(src).not.toMatch(/bg-white\/(60|70)\b/);
+    expect(src).not.toMatch(/hover:bg-white\b(?!\/)/);
+    for (const token of ["var(--glass-200)", "var(--glass-300)", "var(--glass-400)"]) {
+      expect(src, `FastPaths light tone should use ${token}`).toContain(token);
+    }
+  });
+
+  it("renders the AnimatedDAG edges and dot-grid from theme tokens", () => {
+    const src = read("src/components/warm/AnimatedDAG.tsx");
+    expect(src).not.toContain("#e6e4e0");
+    expect(src).toContain('stroke="var(--warm-border)"');
+    expect(src).toContain("var(--dot-grid)");
+  });
+
+  it("defines the --dot-grid texture token for light and dark themes", () => {
+    const css = read("src/styles/global.css");
+    expect(css.match(/--dot-grid:/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
+  it("gives the landing hero + dynamics surfaces dark-mode overrides instead of an opaque white sheen", () => {
+    const css = read("src/routes/Landing.module.css");
+    expect(css).toMatch(/\[data-theme="dark"\]\)\s*\.heroSignalCard/);
+    expect(css).toMatch(/\[data-theme="dark"\]\)\s*\.dynamicsPanel/);
+  });
 });

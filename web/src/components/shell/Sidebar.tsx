@@ -145,7 +145,7 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
 
   return (
     <aside
-      className="w-60 flex-shrink-0 bg-white border-r border-[color:var(--warm-border)] py-5 px-3.5 flex flex-col gap-6 sticky top-0 self-start h-screen overflow-y-auto"
+      className="w-60 flex-shrink-0 bg-[color:var(--warm-card)] border-r border-[color:var(--warm-border)] py-5 px-3.5 flex flex-col gap-6 sticky top-0 self-start h-screen overflow-y-auto"
       aria-label="Primary navigation"
     >
       <div className="px-2">

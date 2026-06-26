@@ -51,7 +51,7 @@ function curve(x1: number, y1: number, x2: number, y2: number): string {
 
 export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncTick = 0 }: Props) {
   if (!stages.length) {
-    return <div className="rounded-2xl border border-[color:var(--warm-border)] bg-white p-8 text-[color:var(--warm-fg3)]">No pipeline stages.</div>;
+    return <div className="rounded-2xl surface-card p-8 text-[color:var(--warm-fg3)]">No pipeline stages.</div>;
   }
   const padX = 70;
   const colW = stages.length > 1 ? (W - padX * 2) / (stages.length - 1) : 0;
@@ -74,7 +74,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: "radial-gradient(circle at 1px 1px, rgba(28,26,24,0.04) 1px, transparent 0)",
+          backgroundImage: "radial-gradient(circle at 1px 1px, var(--dot-grid) 1px, transparent 0)",
           backgroundSize: "20px 20px",
         }}
         aria-hidden
@@ -125,7 +125,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
           const flowing = n.inflight > 0 || next.inflight > 0;
           return (
             <g key={`edge-${i}`}>
-              <path d={curve(n.x + 38, n.y, next.x - 38, next.y)} fill="none" stroke="#e6e4e0" strokeWidth={5} strokeLinecap="round" />
+              <path d={curve(n.x + 38, n.y, next.x - 38, next.y)} fill="none" stroke="var(--warm-border)" strokeWidth={5} strokeLinecap="round" />
               {flowing && (
                 <path
                   d={curve(n.x + 38, n.y, next.x - 38, next.y)}

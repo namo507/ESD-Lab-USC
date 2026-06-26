@@ -103,7 +103,7 @@ export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, densi
   const dark = tone === "dark";
   const baseChip = dark
     ? "bg-white/[0.04] border-white/[0.08] text-[color:#d8d4cc] hover:bg-white/[0.08] hover:border-gold/40 hover:text-gold"
-    : "bg-white/70 border-[color:var(--glass-stroke-soft)] text-[color:var(--warm-700)] hover:bg-white hover:text-[color:var(--ink)] hover:border-[color:var(--usc-garnet)]";
+    : "bg-[color:var(--glass-300)] border-[color:var(--glass-stroke-soft)] text-[color:var(--warm-700)] hover:bg-[color:var(--glass-400)] hover:text-[color:var(--ink)] hover:border-[color:var(--usc-garnet)]";
   const baseLabel = dark
     ? "text-[10px] font-mono uppercase tracking-[0.12em] text-[color:#9c9893]"
     : "text-[10px] font-mono uppercase tracking-[0.12em] text-[color:var(--warm-500)]";
@@ -122,7 +122,7 @@ export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, densi
               : "bg-[color:var(--usc-garnet)] border border-[color:var(--usc-garnet)] text-[color:var(--cream)]"
             : dark
               ? "bg-white/[0.04] border border-white/[0.08] text-[color:#9c9893] hover:text-[color:#e8e6e2]"
-              : "bg-white/60 border border-[color:var(--glass-stroke-soft)] text-[color:var(--warm-600)] hover:text-[color:var(--ink)]"
+              : "bg-[color:var(--glass-200)] border border-[color:var(--glass-stroke-soft)] text-[color:var(--warm-600)] hover:text-[color:var(--ink)]"
         }`}
         aria-pressed={on}
       >

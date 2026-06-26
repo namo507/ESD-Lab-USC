@@ -72,7 +72,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
           placeholder="Ask the lab · NANO-0173 RMSSD trend?"
           className="flex-1 bg-transparent border-none outline-none text-[13px] text-[color:var(--warm-fg1)]"
         />
-        <span className="text-[9px] font-mono text-[color:var(--warm-fg4)] bg-white border border-[color:var(--warm-border)] px-1.5 py-px rounded">
+        <span className="text-[9px] font-mono text-[color:var(--warm-fg4)] bg-[color:var(--warm-card)] border border-[color:var(--warm-border)] px-1.5 py-px rounded">
           ⌘K
         </span>
       </label>

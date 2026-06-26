@@ -148,7 +148,7 @@ function MapSummaryCard({
 }) {
   return (
     <div
-      className="rounded-2xl border border-[color:var(--warm-border)] bg-white px-4 py-3"
+      className="rounded-2xl surface-card px-4 py-3"
       {...createInsightAttrs(insight)}
     >
       <div className="text-[10px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">{label}</div>
@@ -413,7 +413,7 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
                 <select
                   value={String(yearFilter)}
                   onChange={(event) => setYearFilter(event.target.value === "all" ? "all" : Number(event.target.value))}
-                  className="rounded-xl border border-[color:var(--warm-border)] bg-white px-3 py-2 text-[12px] text-[color:var(--warm-fg2)] outline-none transition focus:border-[color:var(--usc-garnet)]"
+                  className="rounded-xl border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] px-3 py-2 text-[12px] text-[color:var(--warm-fg2)] outline-none transition focus:border-[color:var(--usc-garnet)]"
                 >
                   {baseGeo.yearOptions.map((option) => (
                     <option key={String(option)} value={String(option)}>
@@ -428,7 +428,7 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
                 <select
                   value={categoryFilter}
                   onChange={(event) => setCategoryFilter(event.target.value)}
-                  className="rounded-xl border border-[color:var(--warm-border)] bg-white px-3 py-2 text-[12px] text-[color:var(--warm-fg2)] outline-none transition focus:border-[color:var(--usc-garnet)]"
+                  className="rounded-xl border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] px-3 py-2 text-[12px] text-[color:var(--warm-fg2)] outline-none transition focus:border-[color:var(--usc-garnet)]"
                 >
                   {baseGeo.categoryOptions.map((option) => (
                     <option key={option} value={option}>
@@ -500,7 +500,7 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
       </section>
 
       <aside
-        className="overflow-hidden rounded-2xl border border-[color:var(--warm-border)] bg-white shadow-card"
+        className="overflow-hidden rounded-2xl surface-card shadow-card"
         {...createInsightAttrs(activeInsight)}
       >
         <div className="border-b border-[color:var(--warm-rule)] px-6 py-5">

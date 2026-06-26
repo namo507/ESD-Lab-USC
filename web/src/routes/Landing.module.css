@@ -39,6 +39,23 @@
   border-color: rgba(255, 245, 220, 0.08);
 }
 
+/* Hero attention-pulse card + dynamics panel layer a near-opaque WHITE sheen
+   over their surface in light mode. That sheen is opaque enough to bury the
+   inverted --landing-surface in dark mode (card reads pure white, text unread-
+   able). Swap the white floor for a faint warm sheen — same depth cue, lets the
+   dark surface + tokenized text win. Mirrors the accent-wash inversion in
+   global.css. */
+:global([data-theme="dark"]) .heroSignalCard {
+  background:
+    linear-gradient(180deg, rgba(255, 245, 220, 0.05), rgba(255, 245, 220, 0)),
+    var(--landing-surface);
+}
+:global([data-theme="dark"]) .dynamicsPanel {
+  background:
+    linear-gradient(135deg, rgba(255, 245, 220, 0.06), rgba(255, 245, 220, 0)),
+    var(--landing-surface-muted);
+}
+
 .progress {
   position: fixed;
   inset: 0 auto auto 0;

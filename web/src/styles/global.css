@@ -55,6 +55,9 @@
   --warm-card:  #ffffff;
   --warm-border:#ececea;
   --warm-rule:  #f1efeb;
+  /* Decorative dot-grid texture (AnimatedDAG / chart shells). Theme-aware so
+     the texture survives the dark floor instead of vanishing into it. */
+  --dot-grid:   rgba(28, 26, 24, 0.04);
   --warm-fg1:   #1c1a18;
   --warm-fg2:   #3d3a36;
   --warm-fg3:   #6f6b66;
@@ -117,6 +120,7 @@
   --warm-card:  #1f1c17;
   --warm-border:#2e2a23;
   --warm-rule:  #25221c;
+  --dot-grid:   rgba(255, 245, 220, 0.05);
   --warm-fg1:   #f1ece1;
   --warm-fg2:   #d8d2c4;
   --warm-fg3:   #aaa496;
@@ -238,6 +242,15 @@
 
 /* Glass panel + utilities used by the warm dashboard surfaces */
 @layer components {
+  /* Canonical dashboard tile surface. Single semantic source of truth for the
+     warm card background + hairline border so KPI tiles, the DAG shell, flow
+     cards, and map panels stop re-deriving `bg-white` (which only inverted via
+     the global .bg-white override). Pair with Tailwind radius/shadow utilities
+     (`rounded-card shadow-card`) at the call site. */
+  .surface-card {
+    background: var(--warm-card);
+    border: 1px solid var(--warm-border);
+  }
   .glass-panel {
     background: rgba(255, 255, 255, 0.78);
     backdrop-filter: blur(12px);

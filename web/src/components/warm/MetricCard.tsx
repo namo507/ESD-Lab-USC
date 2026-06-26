@@ -65,7 +65,7 @@ export function MetricCard({
 }: MetricCardProps) {
   return (
     <div
-      className="relative overflow-hidden rounded-card bg-white border border-[color:var(--warm-border)] shadow-card min-h-[168px]"
+      className="relative overflow-hidden rounded-card surface-card shadow-card min-h-[168px]"
       data-insight={insightId}
     >
       <div className={`absolute inset-0 pointer-events-none ${WASH[accent]}`} />

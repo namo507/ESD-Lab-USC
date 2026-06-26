@@ -29,7 +29,7 @@ interface Props {
 export function ParticipantFlow({ rows }: Props) {
   const navigate = useNavigate();
   return (
-    <div className="bg-white border border-[color:var(--warm-border)] rounded-2xl shadow-card overflow-hidden min-h-[320px]">
+    <div className="surface-card rounded-2xl shadow-card overflow-hidden min-h-[320px]">
       <div className="px-6 py-5 border-b border-[color:var(--warm-rule)] flex justify-between items-start gap-4">
         <div>
           <div className="font-serif text-h3 font-semibold text-[color:var(--warm-fg1)] -tracking-[0.01em]">

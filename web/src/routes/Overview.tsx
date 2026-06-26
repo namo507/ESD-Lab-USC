@@ -193,14 +193,14 @@ export function Overview() {
           <button
             type="button"
             onClick={() => navigate("/results")}
-            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-white text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
+            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
           >
             Trajectories
           </button>
           <button
             type="button"
             onClick={() => navigate("/runs")}
-            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-white text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
+            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
           >
             Last 24 h
           </button>
