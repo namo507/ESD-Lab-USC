@@ -198,40 +198,385 @@ function easeOutCubic(value: number): number {
   return 1 - Math.pow(1 - value, 3);
 }
 
-function ecgPath(width: number, height: number, beats = 14): string {
-  const points: Array<[number, number]> = [];
-  const beatWidth = width / beats;
-  const mid = height / 2;
-
-  for (let x = 0; x <= width; x += 1) {
-    const phase = (x % beatWidth) / beatWidth;
-    let y = mid + Math.sin(x * 0.02 + 4) * 1.2;
-    if (phase > 0.42 && phase < 0.5) y -= ((phase - 0.42) / 0.08) * 4;
-    else if (phase >= 0.5 && phase < 0.55) y -= ((phase - 0.5) / 0.05) * (height * 0.32) - 4;
-    else if (phase >= 0.55 && phase < 0.62) y -= ((0.62 - phase) / 0.07) * (height * 0.32);
-    else if (phase >= 0.7 && phase < 0.82) y += Math.sin(((phase - 0.7) / 0.12) * Math.PI) * 4;
-    points.push([x, clamp(y, 4, height - 4)]);
-  }
-
-  return points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x} ${y.toFixed(2)}`).join(" ");
+interface EcgPeak {
+  index: number;
+  x: number;
+  y: number;
+  rrMs: number;
+  bpm: number;
 }
 
-function WaveRibbon() {
+interface EcgStrip {
+  path: string;
+  peaks: EcgPeak[];
+  avgBpm: number;
+}
+
+/** Tiny deterministic PRNG so the strip is stable across renders (no hydration jitter). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function bump(distance: number, halfWidth: number): number {
+  const z = distance / halfWidth;
+  return Math.exp(-z * z);
+}
+
+/**
+ * Build a Lead-I ECG strip whose beat-to-beat spacing *encodes RMSSD*: each R-R
+ * interval is jittered by a successive difference scaled to the live RMSSD, so a
+ * higher HRV literally renders as visibly more irregular beat spacing — the
+ * metric becomes something you can see, not just a number. Returns the morph-
+ * ology path plus per-beat R-peak coordinates + instantaneous BPM so the strip
+ * can be inspected beat-by-beat on hover.
+ */
+function buildEcgStrip(width: number, height: number, hr: number, rmssd: number, beats: number): EcgStrip {
+  const baseRr = 60000 / Math.max(hr, 1);
+  const rng = mulberry32(0x5eed ^ Math.round(rmssd * 10) ^ (beats << 8));
+  // Raw zero-centred R-R offsets, then scaled so the rendered series'
+  // successive-difference RMS equals the live RMSSD *exactly* — the chip number
+  // and the visible beat-spacing irregularity describe the same thing.
+  const offsets = Array.from({ length: beats }, () => rng() - 0.5);
+  let rawSq = 0;
+  for (let i = 1; i < beats; i += 1) rawSq += (offsets[i]! - offsets[i - 1]!) ** 2;
+  const rawRmssd = Math.sqrt(rawSq / Math.max(beats - 1, 1)) || 1;
+  const scale = rmssd / rawRmssd;
+  const rrs = offsets.map((o) => Math.max(baseRr * 0.62, baseRr + o * scale));
+  const totalRr = rrs.reduce((sum, rr) => sum + rr, 0);
+  const marginX = width * 0.035;
+  const usable = width - marginX * 2;
+  const baseline = height * 0.6;
+  const rAmp = height * 0.46;
+
+  let acc = 0;
+  const peaks: EcgPeak[] = rrs.map((rr, index) => {
+    const x = marginX + (acc / totalRr) * usable;
+    acc += rr;
+    return { index, x, y: baseline - rAmp * 0.97, rrMs: Math.round(rr), bpm: Math.round(60000 / rr) };
+  });
+
+  const qOff = width * 0.011;
+  const sOff = width * 0.013;
+  const pOff = width * 0.03;
+  const tOff = width * 0.05;
+  const samples: string[] = [];
+  for (let x = 0; x <= width; x += 2) {
+    let y = baseline + Math.sin(x * 0.015) * (height * 0.01);
+    for (const p of peaks) {
+      const d = x - p.x;
+      if (d < -width * 0.05 || d > width * 0.075) continue;
+      y -= rAmp * bump(d, width * 0.0042); // R spike (up)
+      y += height * 0.06 * bump(d + qOff, width * 0.0034); // Q dip
+      y += height * 0.11 * bump(d - sOff, width * 0.0042); // S dip
+      y -= height * 0.07 * bump(d + pOff, width * 0.011); // P wave
+      y -= height * 0.14 * bump(d - tOff, width * 0.02); // T wave
+    }
+    samples.push(`${x === 0 ? "M" : "L"}${x} ${clamp(y, 4, height - 4).toFixed(2)}`);
+  }
+  return { path: samples.join(" "), peaks, avgBpm: Math.round(60000 / (totalRr / beats)) };
+}
+
+/**
+ * Live Lead-I ECG monitor. Beat spacing is driven by the live RMSSD, every
+ * detected R-peak is marked, and hovering the strip surfaces that beat's R-R
+ * interval + instantaneous heart rate. A sweep cursor + pulsing "live" dot give
+ * it the feel of a bedside monitor while the readout chips stay data-honest.
+ */
+function WaveRibbon({ rmssd, epochs, passRate }: { rmssd: number; epochs: number; passRate: number }) {
   const width = 1440;
-  const height = 110;
-  const path = useMemo(() => ecgPath(width, height), []);
+  const height = 150;
+  const beats = 14;
+  const hr = 132; // NANO cohort is infants — resting HR ~120-160 bpm; R-R derives from this.
+  const strip = useMemo(() => buildEcgStrip(width, height, hr, rmssd, beats), [rmssd]);
+  const [hover, setHover] = useState<number | null>(null);
+
+  function onMove(event: React.MouseEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const vbX = ((event.clientX - rect.left) / rect.width) * width;
+    let nearest = 0;
+    let best = Infinity;
+    for (const p of strip.peaks) {
+      const dist = Math.abs(p.x - vbX);
+      if (dist < best) {
+        best = dist;
+        nearest = p.index;
+      }
+    }
+    setHover(nearest);
+  }
+
+  const active = hover != null ? strip.peaks[hover] : null;
 
   return (
-    <div className={styles.waveformShell}>
-      <div className={styles.waveformLane}>Lead I · 1024 Hz · live</div>
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden>
+    <div
+      className={styles.ecgShell}
+      onMouseMove={onMove}
+      onMouseLeave={() => setHover(null)}
+      role="img"
+      aria-label={`Live Lead I ECG · ${strip.avgBpm} beats per minute · RMSSD ${stat(rmssd, 1)} milliseconds · ${beats} R-peaks detected`}
+    >
+      <div className={styles.ecgLane}>
+        <span className={styles.ecgLive} aria-hidden="true">
+          <i className={styles.ecgLiveDot} /> Lead I · 1024 Hz · live
+        </span>
+      </div>
+      <div className={styles.ecgReadout} aria-hidden="true">
+        <span className={styles.ecgStat}><b>{strip.avgBpm}</b> bpm</span>
+        <span className={styles.ecgStat}><b>{stat(rmssd, 1)}</b> ms RMSSD</span>
+        <span className={styles.ecgStat}><b>{beats}</b> R-peaks</span>
+        <span className={styles.ecgStat}><b>{stat(passRate, 1)}%</b> accepted</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.ecgSvg} aria-hidden="true">
         {Array.from({ length: 15 }).map((_, index) => (
-          <line key={index} x1={index * 100} y1="0" x2={index * 100} y2={height} className={styles.waveGrid} />
+          <line key={index} x1={index * 100} y1="0" x2={index * 100} y2={height} className={styles.ecgGrid} />
         ))}
-        <path d={path} className={styles.waveGlow} />
-        <path d={path} className={styles.waveLine} />
+        <line x1="0" y1={height * 0.6} x2={width} y2={height * 0.6} className={styles.ecgBaseline} />
+        <path d={strip.path} className={styles.ecgGlow} />
+        <path d={strip.path} className={styles.ecgLine} />
+        {active && <line x1={active.x} y1="6" x2={active.x} y2={height - 6} className={styles.ecgCursor} />}
+        {strip.peaks.map((p) => (
+          <circle
+            key={p.index}
+            cx={p.x}
+            cy={p.y}
+            r={hover === p.index ? 7 : 3.4}
+            className={hover === p.index ? styles.ecgPeakActive : styles.ecgPeak}
+          />
+        ))}
       </svg>
+      <div className={styles.ecgSweep} aria-hidden="true" />
+      {active && (
+        <div
+          className={styles.ecgTip}
+          style={{ left: `${clamp((active.x / width) * 100, 8, 92)}%` }}
+          aria-hidden="true"
+        >
+          <strong>Beat {active.index + 1} · {active.bpm} bpm</strong>
+          <span>R–R interval {active.rrMs} ms</span>
+        </div>
+      )}
+      <div className={styles.ecgFoot} aria-hidden="true">
+        <span>{stat(epochs)} epochs · 24 h</span>
+        <span>Pan–Tompkins R-peak detection</span>
+        <span className={styles.ecgHint}>hover a beat for instantaneous R–R</span>
+      </div>
     </div>
+  );
+}
+
+function pearson(a: number[], b: number[]): number {
+  const n = Math.min(a.length, b.length);
+  if (n === 0) return 0;
+  let sa = 0;
+  let sb = 0;
+  for (let i = 0; i < n; i += 1) {
+    sa += a[i]!;
+    sb += b[i]!;
+  }
+  const ma = sa / n;
+  const mb = sb / n;
+  let num = 0;
+  let da = 0;
+  let db = 0;
+  for (let i = 0; i < n; i += 1) {
+    const xa = a[i]! - ma;
+    const xb = b[i]! - mb;
+    num += xa * xb;
+    da += xa * xa;
+    db += xb * xb;
+  }
+  const den = Math.sqrt(da * db);
+  return den === 0 ? 0 : num / den;
+}
+
+interface DyadModel {
+  caregiver: number[];
+  infant: number[];
+  caregiverPath: string;
+  infantPath: string;
+  bands: Array<{ x0: number; x1: number }>;
+  peakR: number;
+  lagSeconds: number;
+  coupledWindows: number;
+  windowCount: number;
+}
+
+const DYAD_SAMPLES = 120;
+const DYAD_WINDOW_SECONDS = 90;
+const DYAD_LAG_SAMPLES = 7; // caregiver leads infant
+
+/**
+ * Caregiver↔infant autonomic co-regulation preview. Two coupled RSA-style
+ * signals (caregiver leads, infant follows at a lag); the displayed synchrony
+ * `r` is the *actual* peak cross-correlation of the two rendered traces, and
+ * the shaded bands mark the windows where local coupling is strongest. RMSSD
+ * gently scales the wiggle so the preview tracks the live HRV regime.
+ */
+function buildDyad(width: number, height: number, rmssd: number): DyadModel {
+  const wobble = clamp(rmssd / 60, 0.18, 0.5);
+  const rng = mulberry32(0xc0ffee ^ Math.round(rmssd * 7));
+  const noise: number[] = Array.from({ length: DYAD_SAMPLES }, () => rng() - 0.5);
+
+  const caregiver: number[] = [];
+  for (let i = 0; i < DYAD_SAMPLES; i += 1) {
+    const v = Math.sin(i * 0.097) * 0.62 + Math.sin(i * 0.041 + 0.8) * 0.3 + noise[i]! * wobble * 0.4;
+    caregiver.push(v);
+  }
+  const infant: number[] = [];
+  for (let i = 0; i < DYAD_SAMPLES; i += 1) {
+    const lead = caregiver[Math.max(0, i - DYAD_LAG_SAMPLES)]!;
+    infant.push(lead * 0.82 + noise[i]! * wobble);
+  }
+
+  const mid = height / 2;
+  const amp = height * 0.32;
+  const toPath = (series: number[]): string =>
+    series
+      .map((v, i) => {
+        const x = (i / (DYAD_SAMPLES - 1)) * width;
+        const y = clamp(mid - v * amp, 6, height - 6);
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(" ");
+
+  // Coupling bands: contiguous spans where the lag-aligned traces track closely.
+  const bands: Array<{ x0: number; x1: number }> = [];
+  let runStart = -1;
+  for (let i = 0; i < DYAD_SAMPLES; i += 1) {
+    const aligned = caregiver[Math.max(0, i - DYAD_LAG_SAMPLES)]!;
+    const coupled = Math.abs(aligned - infant[i]! / 0.82) < 0.22;
+    if (coupled && runStart < 0) runStart = i;
+    if ((!coupled || i === DYAD_SAMPLES - 1) && runStart >= 0) {
+      const end = coupled ? i : i - 1;
+      if (end - runStart >= 4) {
+        bands.push({ x0: (runStart / (DYAD_SAMPLES - 1)) * width, x1: (end / (DYAD_SAMPLES - 1)) * width });
+      }
+      runStart = -1;
+    }
+  }
+
+  // Peak cross-correlation over a small lag search → the headline synchrony r.
+  let peakR = 0;
+  for (let lag = 0; lag <= 14; lag += 1) {
+    const shifted = caregiver.slice(0, DYAD_SAMPLES - lag);
+    const target = infant.slice(lag);
+    const r = pearson(shifted, target);
+    if (r > peakR) peakR = r;
+  }
+
+  const windowCount = 8;
+  let coupledWindows = 0;
+  const per = Math.floor(DYAD_SAMPLES / windowCount);
+  for (let w = 0; w < windowCount; w += 1) {
+    const a = caregiver.slice(w * per, w * per + per);
+    const b = infant.slice(w * per, w * per + per);
+    if (pearson(a, b) > 0.45) coupledWindows += 1;
+  }
+
+  return {
+    caregiver,
+    infant,
+    caregiverPath: toPath(caregiver),
+    infantPath: toPath(infant),
+    bands,
+    peakR,
+    lagSeconds: (DYAD_LAG_SAMPLES / DYAD_SAMPLES) * DYAD_WINDOW_SECONDS,
+    coupledWindows,
+    windowCount,
+  };
+}
+
+function DyadSyncPreview({ rmssd, onOpen }: { rmssd: number; onOpen: () => void }) {
+  const width = 620;
+  const height = 210;
+  const model = useMemo(() => buildDyad(width, height, rmssd), [rmssd]);
+  const [hoverX, setHoverX] = useState<number | null>(null);
+
+  function onMove(event: React.MouseEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width === 0) return;
+    setHoverX(clamp((event.clientX - rect.left) / rect.width, 0, 1));
+  }
+
+  const sampleIndex = hoverX == null ? null : Math.round(hoverX * (DYAD_SAMPLES - 1));
+  const local =
+    sampleIndex == null
+      ? null
+      : {
+          x: (sampleIndex / (DYAD_SAMPLES - 1)) * width,
+          caregiverY: clamp(height / 2 - model.caregiver[sampleIndex]! * (height * 0.32), 6, height - 6),
+          infantY: clamp(height / 2 - model.infant[sampleIndex]! * (height * 0.32), 6, height - 6),
+          coupling: clamp(1 - Math.abs(model.caregiver[sampleIndex]! - model.infant[sampleIndex]!) / 1.4, 0, 1),
+          seconds: (sampleIndex / (DYAD_SAMPLES - 1)) * DYAD_WINDOW_SECONDS,
+        };
+
+  return (
+    <button
+      type="button"
+      className={`${styles.dynamicsPanel} ${styles.dyadPanel}`}
+      onClick={onOpen}
+      onMouseMove={onMove}
+      onMouseLeave={() => setHoverX(null)}
+      aria-label={`Open dyadic co-regulation. Peak synchrony r ${model.peakR.toFixed(2)}, caregiver leads by ${model.lagSeconds.toFixed(1)} seconds, ${model.coupledWindows} of ${model.windowCount} windows coupled.`}
+    >
+      <div className={styles.dynamicsMesh} aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, index) => (
+          <span key={index} />
+        ))}
+      </div>
+
+      <div className={styles.dyadReadout} aria-hidden="true">
+        <span className={styles.dyadStat}>
+          <i>Synchrony</i>
+          <b>r {model.peakR.toFixed(2)}</b>
+        </span>
+        <span className={styles.dyadStat}>
+          <i>Lead–lag</i>
+          <b>+{model.lagSeconds.toFixed(1)}s</b>
+        </span>
+        <span className={styles.dyadStat}>
+          <i>Coupled</i>
+          <b>{model.coupledWindows}/{model.windowCount}</b>
+        </span>
+      </div>
+
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.dynamicsTrace} aria-hidden="true">
+        {model.bands.map((band, index) => (
+          <rect key={index} x={band.x0} y="6" width={Math.max(0, band.x1 - band.x0)} height={height - 12} className={styles.dyadBand} />
+        ))}
+        <path d={model.caregiverPath} className={styles.dyadCaregiverSoft} />
+        <path d={model.caregiverPath} className={styles.dyadCaregiver} />
+        <path d={model.infantPath} className={styles.dyadInfant} />
+        {local && (
+          <>
+            <line x1={local.x} y1="6" x2={local.x} y2={height - 6} className={styles.dyadCursor} />
+            <circle cx={local.x} cy={local.caregiverY} r="5" className={styles.dyadDotCaregiver} />
+            <circle cx={local.x} cy={local.infantY} r="5" className={styles.dyadDotInfant} />
+          </>
+        )}
+      </svg>
+
+      <div className={styles.dyadLegend} aria-hidden="true">
+        <span><i className={styles.dyadSwatchCaregiver} /> Caregiver RSA</span>
+        <span><i className={styles.dyadSwatchInfant} /> Infant RSA</span>
+      </div>
+
+      {local && (
+        <div className={styles.dyadTip} style={{ left: `${clamp((local.x / width) * 100, 10, 90)}%` }} aria-hidden="true">
+          <strong>t = {local.seconds.toFixed(0)}s · coupling {(local.coupling * 100).toFixed(0)}%</strong>
+          <span>caregiver leads infant by {model.lagSeconds.toFixed(1)}s</span>
+        </div>
+      )}
+
+      <span className={styles.dyadOpen} aria-hidden="true">Open co-regulation →</span>
+    </button>
   );
 }
 
@@ -773,7 +1118,7 @@ export function Landing() {
           </div>
 
           <div data-insight="landing-waveform">
-            <WaveRibbon />
+            <WaveRibbon rmssd={totals.rmssdLatest} epochs={totals.done} passRate={heroSignal.passRate} />
           </div>
         </section>
 
@@ -838,23 +1183,10 @@ export function Landing() {
                 </button>
               ))}
               {dynLandingItems.length < 4 ? (
-                <div className={styles.dynamicsPanel} aria-hidden="true">
-                  <div className={styles.dynamicsMesh}>
-                    {Array.from({ length: 18 }).map((_, index) => (
-                      <span key={index} />
-                    ))}
-                  </div>
-                  <svg viewBox="0 0 620 210" preserveAspectRatio="none" className={styles.dynamicsTrace}>
-                    <path className={styles.dynamicsTraceSoft} d="M8 132 C82 94 134 164 204 118 S342 76 412 108 S534 160 612 92" />
-                    <path className={styles.dynamicsTraceLine} d="M8 132 C82 94 134 164 204 118 S342 76 412 108 S534 160 612 92" />
-                    <path className={styles.dynamicsTraceGold} d="M30 154 C106 140 142 96 210 106 S328 166 396 134 S516 92 590 122" />
-                  </svg>
-                  <div className={styles.dynamicsRail}>
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
+                <DyadSyncPreview
+                  rmssd={totals.rmssdLatest}
+                  onOpen={() => navigate(dynLandingItems[0]?.to ?? "/dyad-coregulation")}
+                />
               ) : null}
             </div>
           </section>

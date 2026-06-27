@@ -347,53 +347,211 @@
   letter-spacing: -0.03em;
 }
 
-.waveformShell {
+/* ── Live ECG monitor ─────────────────────────────────────────────────── */
+.ecgShell {
   position: relative;
-  height: 112px;
+  height: 176px;
   margin-top: 34px;
   border: 1px solid var(--landing-border);
   border-radius: 28px;
   background: var(--landing-surface-muted);
   box-shadow: var(--landing-shadow);
   overflow: hidden;
+  cursor: crosshair;
 }
 
-.waveformShell svg {
+.ecgSvg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
 }
 
-.waveformLane {
+.ecgLane {
   position: absolute;
   left: 20px;
-  top: 16px;
-  z-index: 1;
+  top: 15px;
+  z-index: 2;
+}
+
+.ecgLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--warm-600);
+  color: var(--warm-fg3);
 }
 
-.waveGrid {
-  stroke: rgba(0, 0, 0, 0.05);
+.ecgLiveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--usc-garnet);
+  box-shadow: 0 0 0 0 rgba(115, 0, 10, 0.5);
+  animation: ecg-live 1.6s ease-in-out infinite;
+}
+
+.ecgReadout {
+  position: absolute;
+  right: 18px;
+  top: 13px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.ecgStat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-pill);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--warm-fg3);
+  white-space: nowrap;
+}
+
+.ecgStat b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--usc-garnet);
+}
+
+.ecgGrid {
+  stroke: var(--warm-border);
   stroke-width: 1;
+  opacity: 0.55;
 }
 
-.waveGlow {
-  fill: none;
-  stroke: rgba(115, 0, 10, 0.3);
-  stroke-width: 3;
-  filter: blur(2px);
-}
-
-.waveLine {
-  fill: none;
+.ecgBaseline {
   stroke: var(--usc-garnet);
-  stroke-width: 1.8;
+  stroke-width: 1;
+  opacity: 0.16;
+  stroke-dasharray: 2 7;
+}
+
+.ecgGlow {
+  fill: none;
+  stroke: rgba(115, 0, 10, 0.32);
+  stroke-width: 3.5;
+  filter: blur(2.5px);
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.ecgLine {
+  fill: none;
+  stroke: var(--usc-garnet);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ecgPeak {
+  fill: var(--usc-garnet);
+  opacity: 0.55;
+  transition: r 120ms var(--ease-soft), opacity 120ms var(--ease-soft);
+}
+
+.ecgPeakActive {
+  fill: var(--usc-gold);
+  stroke: var(--usc-garnet);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 5px rgba(255, 204, 0, 0.7));
+}
+
+.ecgCursor {
+  stroke: var(--usc-gold);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 4;
+  opacity: 0.8;
+}
+
+.ecgSweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 18%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(115, 0, 10, 0.12) 70%, rgba(115, 0, 10, 0.22));
+  animation: ecg-sweep 4.2s linear infinite;
+}
+
+:global([data-theme="dark"]) .ecgSweep {
+  background: linear-gradient(90deg, transparent, rgba(255, 184, 77, 0.08) 70%, rgba(255, 184, 77, 0.16));
+}
+
+.ecgTip {
+  position: absolute;
+  top: 40px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 7px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-panel);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--landing-shadow);
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.ecgTip strong {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--warm-fg1);
+}
+
+.ecgTip span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--warm-fg3);
+}
+
+.ecgFoot {
+  position: absolute;
+  left: 20px;
+  right: 18px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warm-fg4);
+}
+
+.ecgHint {
+  margin-left: auto;
+  color: var(--usc-garnet);
+  opacity: 0.85;
+}
+
+@keyframes ecg-live {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(115, 0, 10, 0.45); opacity: 1; }
+  50% { box-shadow: 0 0 0 6px rgba(115, 0, 10, 0); opacity: 0.55; }
+}
+
+@keyframes ecg-sweep {
+  0% { left: -18%; }
+  100% { left: 100%; }
 }
 
 .primaryButton,
@@ -918,6 +1076,194 @@
 
 .dynamicsRail span:nth-child(3) {
   animation-delay: 1.4s;
+}
+
+/* ── Dyadic co-regulation preview (interactive) ───────────────────────── */
+.dyadPanel {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft), border-color 160ms var(--ease-soft);
+}
+
+.dyadPanel:hover,
+.dyadPanel:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--usc-garnet);
+  box-shadow: 0 18px 44px rgba(115, 0, 10, 0.14);
+}
+
+.dyadReadout {
+  position: absolute;
+  left: 22px;
+  top: 18px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dyadStat {
+  display: grid;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-pill);
+  backdrop-filter: blur(6px);
+}
+
+.dyadStat i {
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--warm-fg4);
+}
+
+.dyadStat b {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--warm-fg1);
+}
+
+.dyadBand {
+  fill: rgba(115, 0, 10, 0.07);
+}
+
+:global([data-theme="dark"]) .dyadBand {
+  fill: rgba(255, 184, 77, 0.08);
+}
+
+.dyadCaregiverSoft {
+  fill: none;
+  stroke: rgba(115, 0, 10, 0.16);
+  stroke-width: 11;
+  filter: blur(7px);
+  stroke-linecap: round;
+}
+
+.dyadCaregiver {
+  fill: none;
+  stroke: var(--usc-garnet);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 18 12;
+  animation: dynamics-dash 20s linear infinite;
+}
+
+.dyadInfant {
+  fill: none;
+  stroke: var(--sand);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 5 11;
+  animation: dynamics-dash 24s linear infinite reverse;
+}
+
+.dyadCursor {
+  stroke: var(--warm-fg3);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+  opacity: 0.7;
+}
+
+.dyadDotCaregiver {
+  fill: var(--usc-garnet);
+  stroke: var(--warm-card);
+  stroke-width: 1.5;
+}
+
+.dyadDotInfant {
+  fill: var(--sand);
+  stroke: var(--warm-card);
+  stroke-width: 1.5;
+}
+
+.dyadLegend {
+  position: absolute;
+  left: 22px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--warm-fg3);
+}
+
+.dyadLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dyadSwatchCaregiver,
+.dyadSwatchInfant {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.dyadSwatchCaregiver { background: var(--usc-garnet); }
+.dyadSwatchInfant { background: var(--sand); }
+
+.dyadTip {
+  position: absolute;
+  top: 64px;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 7px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-panel);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--landing-shadow);
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.dyadTip strong {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--warm-fg1);
+}
+
+.dyadTip span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--warm-fg3);
+}
+
+.dyadOpen {
+  position: absolute;
+  right: 20px;
+  bottom: 16px;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--usc-garnet);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 160ms var(--ease-soft), transform 160ms var(--ease-soft);
+}
+
+.dyadPanel:hover .dyadOpen,
+.dyadPanel:focus-visible .dyadOpen {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .metricGrid,
@@ -1977,7 +2323,11 @@
   .fillDotB,
   .fillDotY,
   .heroSignalGlow span,
-  .heroSignalRailSegment {
+  .heroSignalRailSegment,
+  .ecgSweep,
+  .ecgLiveDot,
+  .dyadCaregiver,
+  .dyadInfant {
     animation: none !important;
   }
 }
