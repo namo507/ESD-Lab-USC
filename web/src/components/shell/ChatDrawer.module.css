@@ -40,7 +40,7 @@
 
 .head {
   padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--glass-stroke-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -73,7 +73,7 @@
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--glass-200);
   border: 1px solid var(--glass-stroke-soft);
   color: var(--warm-600);
   margin-top: 5px;
@@ -104,7 +104,7 @@
   width: 28px;
   height: 28px;
   border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--glass-200);
   border: 1px solid var(--glass-stroke-soft);
   display: flex;
   align-items: center;
@@ -115,7 +115,7 @@
 }
 
 .closeBtn:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--glass-400);
 }
 
 .closeBtn:focus-visible {
@@ -174,7 +174,7 @@
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glass-300);
   border: 1px solid var(--glass-stroke-soft);
   word-wrap: break-word;
   min-width: 0;
@@ -218,7 +218,7 @@
 
 .suggestion {
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--glass-200);
   border: 1px solid var(--glass-stroke-soft);
   border-radius: 12px;
   font-size: 12px;
@@ -230,7 +230,7 @@
 }
 
 .suggestion:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--glass-400);
   transform: translateX(3px);
   color: var(--ink);
 }
@@ -247,7 +247,7 @@
 
 .form {
   padding: 12px 20px 18px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--glass-stroke-soft);
   display: flex;
   gap: 8px;
   align-items: flex-end;
@@ -255,7 +255,7 @@
 
 .textarea {
   flex: 1;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--glass-300);
   border: 1px solid var(--glass-stroke);
   border-radius: 18px;
   padding: 10px 14px;

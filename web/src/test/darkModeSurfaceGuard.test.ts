@@ -118,4 +118,18 @@ describe("dark mode surface guard", () => {
     expect(css).toMatch(/\[data-theme="dark"\]\)\s*\.heroSignalCard/);
     expect(css).toMatch(/\[data-theme="dark"\]\)\s*\.dynamicsPanel/);
   });
+
+  it("keeps assistant drawer/bubble surfaces on theme-aware glass tokens, not raw white alpha", () => {
+    // The chat drawer panel inverts via --glass-*; its bubbles, pills, close
+    // button, and textarea must too. A raw rgba(255,255,255,…) background never
+    // flips in dark mode and renders as a glaring near-white blob with
+    // near-white (--ink) text on it (observed contrast 1.18).
+    const whiteBg = /background:\s*rgba\(\s*255\s*,\s*255\s*,\s*255/;
+    for (const file of [
+      "src/components/shell/ChatDrawer.module.css",
+      "src/components/shell/Buddy.module.css",
+    ]) {
+      expect(read(file), `${file} ships a raw white-alpha surface background`).not.toMatch(whiteBg);
+    }
+  });
 });
