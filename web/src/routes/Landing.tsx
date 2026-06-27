@@ -7,6 +7,7 @@ import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
+import { READING_CORPUS } from "@/data/readingLibrary";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
@@ -577,6 +578,195 @@ function DyadSyncPreview({ rmssd, onOpen }: { rmssd: number; onOpen: () => void 
 
       <span className={styles.dyadOpen} aria-hidden="true">Open co-regulation →</span>
     </button>
+  );
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Count up from 0 to `target` on mount (eased); jumps instantly under reduced motion. */
+function useCountUp(target: number, duration = 950): number {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (prefersReducedMotion()) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      setValue(target * easeOutCubic(t));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return value;
+}
+
+function CorpusStat({ value, label, suffix = "", decimals = 0 }: { value: number; label: string; suffix?: string; decimals?: number }) {
+  const animated = useCountUp(value);
+  return (
+    <div className={styles.corpusStat}>
+      <strong>{stat(animated, decimals)}{suffix}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+const CORPUS_ACCENTS = {
+  source: "var(--usc-garnet)",
+  year: "var(--ocean)",
+  depth: "var(--sage)",
+} as const;
+
+/**
+ * Reading-library corpus intelligence. Every number, bar, and term here is
+ * derived from `lab-readings.json` — the build-time index of the lab's
+ * `esd-lab-readings/` PDF library. Bars are hover-inspectable (count + page
+ * weight) and the source breakdown drives a focus list of the actual indexed
+ * titles, so the public corpus is presented as live metric graphs.
+ */
+function ReadingCorpusPanel() {
+  const corpus = READING_CORPUS;
+  const [selectedSource, setSelectedSource] = useState(corpus.bySource[0]?.key ?? "");
+  const [hoverBar, setHoverBar] = useState<string | null>(null);
+
+  const maxSource = Math.max(1, ...corpus.bySource.map((b) => b.count));
+  const maxYear = Math.max(1, ...corpus.byYear.map((b) => b.count));
+  const maxDepth = Math.max(1, ...corpus.depthBuckets.map((b) => b.count));
+  const maxTerm = Math.max(1, ...corpus.topKeywords.map((k) => k.count));
+
+  const focusReadings = corpus.readings
+    .filter((r) => r.source === selectedSource)
+    .sort((a, b) => b.pageCount - a.pageCount)
+    .slice(0, 5);
+  const focusPages = corpus.readings.filter((r) => r.source === selectedSource).reduce((sum, r) => sum + r.pageCount, 0);
+
+  const renderBar = (
+    dim: "source" | "year" | "depth",
+    bar: { key: string; label: string; count: number; pages: number },
+    max: number,
+    interactive: boolean,
+  ) => {
+    const id = `${dim}:${bar.key}`;
+    const pct = (bar.count / max) * 100;
+    const selected = dim === "source" && bar.key === selectedSource;
+    const className = `${styles.corpusBar} ${selected ? styles.corpusBarSelected : ""}`;
+    const inner = (
+      <>
+        <span className={styles.corpusBarLabel}>{bar.label}</span>
+        <span className={styles.corpusBarTrack}>
+          <span
+            className={styles.corpusBarFill}
+            style={{ width: `${pct}%`, background: CORPUS_ACCENTS[dim] }}
+          />
+        </span>
+        <span className={styles.corpusBarValue}>{bar.count}</span>
+        {hoverBar === id && (
+          <span className={styles.corpusBarTip}>{bar.count} readings · {stat(bar.pages)} pages</span>
+        )}
+      </>
+    );
+    if (interactive) {
+      return (
+        <button
+          key={id}
+          type="button"
+          className={className}
+          aria-pressed={selected}
+          onClick={() => setSelectedSource(bar.key)}
+          onMouseEnter={() => setHoverBar(id)}
+          onMouseLeave={() => setHoverBar((h) => (h === id ? null : h))}
+        >
+          {inner}
+        </button>
+      );
+    }
+    return (
+      <div
+        key={id}
+        className={className}
+        onMouseEnter={() => setHoverBar(id)}
+        onMouseLeave={() => setHoverBar((h) => (h === id ? null : h))}
+      >
+        {inner}
+      </div>
+    );
+  };
+
+  return (
+    <div className={styles.corpusPanel} data-insight="landing-corpus">
+      <div className={styles.corpusHead}>
+        <div>
+          <span className={styles.sectionEyebrow}>Indexed corpus</span>
+          <h3>The reading library, in numbers.</h3>
+          <p>
+            Auto-built from <code>esd-lab-readings/</code>
+            {corpus.generatedAt ? ` · indexed ${new Date(corpus.generatedAt).toLocaleDateString([], { month: "short", day: "numeric" })}` : ""}
+          </p>
+        </div>
+        <div className={styles.corpusStatRow}>
+          <CorpusStat value={corpus.totalReadings} label="Readings" />
+          <CorpusStat value={corpus.totalPages} label="Pages" />
+          <CorpusStat value={corpus.sourceCount} label="Sources" />
+          <CorpusStat value={corpus.totalMb} label="MB indexed" suffix="" decimals={1} />
+        </div>
+      </div>
+
+      <div className={styles.corpusGrid}>
+        <div className={styles.corpusCol}>
+          <div className={styles.corpusBlockLabel}>Library composition · by source</div>
+          <div className={styles.corpusBars}>
+            {corpus.bySource.map((bar) => renderBar("source", bar, maxSource, true))}
+          </div>
+          <div className={styles.corpusFocus} aria-live="polite">
+            <div className={styles.corpusFocusHead}>
+              <strong>{selectedSource}</strong>
+              <span>{stat(focusPages)} pages</span>
+            </div>
+            <ul>
+              {focusReadings.map((reading) => (
+                <li key={reading.id}>
+                  <span className={styles.corpusFocusTitle}>{reading.title}</span>
+                  <span className={styles.corpusFocusMeta}>
+                    {reading.year ?? "n/a"} · {reading.pageCount} pg
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className={styles.corpusCol}>
+          <div className={styles.corpusBlockLabel}>Publication cadence · by year</div>
+          <div className={styles.corpusBars}>
+            {corpus.byYear.map((bar) => renderBar("year", bar, maxYear, false))}
+          </div>
+
+          <div className={styles.corpusBlockLabel}>Reading depth · by length</div>
+          <div className={styles.corpusBars}>
+            {corpus.depthBuckets.map((bar) => renderBar("depth", bar, maxDepth, false))}
+          </div>
+
+          <div className={styles.corpusBlockLabel}>Frequent indexed terms</div>
+          <div className={styles.corpusTerms}>
+            {corpus.topKeywords.map((kw) => (
+              <span
+                key={kw.term}
+                className={styles.corpusTerm}
+                style={{ fontSize: `${11 + (kw.count / maxTerm) * 6}px`, opacity: 0.6 + (kw.count / maxTerm) * 0.4 }}
+                title={`${kw.count} readings`}
+              >
+                {kw.term}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1668,6 +1858,7 @@ export function Landing() {
               />
             </label>
           </header>
+          <ReadingCorpusPanel />
           <div className={styles.readingList}>
             {filteredReading.map((entry) => (
               <article key={entry.title} className={styles.readingItem} data-insight="landing-reading">

@@ -1836,6 +1836,271 @@
   margin-top: 16px;
 }
 
+/* ── Reading-corpus intelligence panel ─────────────────────────────────── */
+.corpusPanel {
+  margin-bottom: 22px;
+  padding: 24px 26px;
+  border: 1px solid var(--landing-border);
+  border-radius: 24px;
+  background: var(--landing-surface);
+  box-shadow: var(--landing-shadow);
+}
+
+.corpusHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.corpusHead h3 {
+  margin: 6px 0 0;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--warm-fg1);
+}
+
+.corpusHead p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--warm-fg3);
+}
+
+.corpusHead p code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--landing-pill);
+  color: var(--warm-fg2);
+}
+
+.corpusStatRow {
+  display: flex;
+  gap: 26px;
+}
+
+.corpusStat {
+  display: grid;
+  gap: 2px;
+}
+
+.corpusStat strong {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--usc-garnet);
+  font-variant-numeric: tabular-nums;
+}
+
+.corpusStat span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warm-fg4);
+}
+
+.corpusGrid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 28px;
+}
+
+.corpusCol {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.corpusBlockLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--warm-fg4);
+  margin-top: 4px;
+}
+
+.corpusBars {
+  display: grid;
+  gap: 7px;
+}
+
+.corpusBar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(72px, 138px) 1fr 28px;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+  transition: background 140ms var(--ease-soft), border-color 140ms var(--ease-soft);
+}
+
+button.corpusBar { cursor: pointer; }
+
+.corpusBar:hover {
+  background: var(--landing-pill);
+}
+
+.corpusBarSelected {
+  background: var(--landing-pill);
+  border-color: var(--landing-border);
+}
+
+.corpusBarLabel {
+  font-size: 12px;
+  color: var(--warm-fg2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.corpusBarTrack {
+  height: 9px;
+  border-radius: 999px;
+  background: var(--warm-pill);
+  overflow: hidden;
+}
+
+.corpusBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: corpus-grow 820ms var(--ease-soft) both;
+}
+
+.corpusBarValue {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warm-fg1);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.corpusBarTip {
+  position: absolute;
+  right: 8px;
+  top: -26px;
+  z-index: 4;
+  padding: 4px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-panel);
+  box-shadow: var(--landing-shadow);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--warm-fg2);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.corpusFocus {
+  margin-top: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--landing-border);
+  border-radius: 16px;
+  background: var(--landing-surface-muted);
+}
+
+.corpusFocusHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.corpusFocusHead strong {
+  font-size: 13px;
+  color: var(--warm-fg1);
+}
+
+.corpusFocusHead span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--warm-fg4);
+  white-space: nowrap;
+}
+
+.corpusFocus ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.corpusFocus li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--warm-rule);
+  padding-top: 8px;
+}
+
+.corpusFocus li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.corpusFocusTitle {
+  font-size: 12.5px;
+  color: var(--warm-fg2);
+  line-height: 1.35;
+}
+
+.corpusFocusMeta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--warm-fg4);
+  white-space: nowrap;
+}
+
+.corpusTerms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.corpusTerm {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--landing-border);
+  background: var(--landing-pill);
+  color: var(--warm-fg2);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  transition: transform 140ms var(--ease-soft), color 140ms var(--ease-soft), border-color 140ms var(--ease-soft);
+}
+
+.corpusTerm:hover {
+  transform: translateY(-2px);
+  color: var(--usc-garnet);
+  border-color: var(--usc-garnet);
+}
+
+@keyframes corpus-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 .storyCard h3,
 .assistantCard h3,
 .darkCard h3,
@@ -2327,7 +2592,8 @@
   .ecgSweep,
   .ecgLiveDot,
   .dyadCaregiver,
-  .dyadInfant {
+  .dyadInfant,
+  .corpusBarFill {
     animation: none !important;
   }
 }
@@ -2412,6 +2678,20 @@
 
   .dynamicsGrid {
     grid-template-columns: 1fr;
+  }
+
+  .corpusGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .corpusHead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .corpusStatRow {
+    gap: 20px;
   }
 
   .dynamicsPanel {
