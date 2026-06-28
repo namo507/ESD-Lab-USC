@@ -1,0 +1,17 @@
+# Copy this file to docker-compose.override.yml for workstation-specific
+# settings. The real override file is intentionally ignored by git.
+
+services:
+  dashboard:
+    ports:
+      - "${DASHBOARD_HOST_PORT:-18080}:8080"
+    environment:
+      DASHBOARD_ASSISTANT_TIER: auto
+      DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: "false"
+    mem_limit: 2g
+
+  dashboard-share:
+    profiles: ["share"]
+
+  dashboard-share-named:
+    profiles: ["share"]

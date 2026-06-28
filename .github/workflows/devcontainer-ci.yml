@@ -1,0 +1,26 @@
+name: Devcontainer CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-devcontainer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and test devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          push: never
+          runCmd: |
+            . .devcontainer/.venv/bin/activate
+            python --version
+            pip check

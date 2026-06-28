@@ -15,8 +15,11 @@ cloudflared/
 .mypy_cache
 .pytest_cache
 .venv
+.venv-*/
 **/__pycache__
 **/*.pyc
+**/*.pyo
+build/
 archive/
 design-ideas/
 data/deidentified/

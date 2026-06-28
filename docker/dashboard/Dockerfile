@@ -1,5 +1,9 @@
 FROM python:3.11-slim
 
+LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
+    version="0.1.0" \
+    description="Runtime image for the ESD Lab USC NANO live dashboard"
+
 ARG PIP_VERSION=25.3
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,19 +25,20 @@ RUN apt-get update \
     && npm install -g npm@10.9.8 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY dashboard/requirements.txt /tmp/dashboard-requirements.txt
+RUN groupadd -g 1000 appuser \
+    && useradd -u 1000 -g 1000 -m appuser \
+    && chown appuser:appuser /app
+
+COPY --chown=appuser:appuser dashboard/requirements.txt /tmp/dashboard-requirements.txt
 RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}" \
     && python -m pip install --no-cache-dir -r /tmp/dashboard-requirements.txt
 
 # Install frontend dependencies so `npm run build` works at startup
-COPY web/package.json web/package-lock.json /app/web/
+COPY --chown=appuser:appuser web/package.json web/package-lock.json /app/web/
 RUN cd /app/web && npm ci --ignore-scripts
 
-COPY . /app
+COPY --chown=appuser:appuser . /app
 
-# Create non-root user matching K8s podSecurityContext (runAsUser: 1000)
-RUN groupadd -g 1000 appuser && useradd -u 1000 -g 1000 -m appuser \
-    && chown -R appuser:appuser /app
 USER appuser
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD python -c "import json, urllib.request; payload = json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/healthz')); assert payload.get('status') == 'ok'; assert payload.get('dashboard'); assert payload.get('readings')"

@@ -1,5 +1,9 @@
 FROM mcr.microsoft.com/devcontainers/python:1-3.11-bookworm
 
+LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
+    version="0.1.0" \
+    description="Development container for the ESD Lab USC NANO dashboard and pipelines"
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN rm -f /etc/apt/sources.list.d/yarn.list /etc/apt/sources.list.d/yarn.list.save \
@@ -34,3 +38,5 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list /etc/apt/sources.list.d/yarn.list.sa
         nodejs \
     && npm install -g npm@10.9.8 \
     && rm -rf /var/lib/apt/lists/*
+
+USER vscode

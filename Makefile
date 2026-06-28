@@ -10,11 +10,14 @@ PYTEST := $(VENV)/bin/pytest
 BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
-DASHBOARD_LOCAL_URL ?= http://127.0.0.1:8080
+DASHBOARD_LOCAL_URL ?= http://localhost:8080
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
+ROOT_COMPOSE := docker compose -f docker-compose.yml
+MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
+SHARE_SERVICE ?= dashboard-share
 
-.PHONY: help install test lint clean redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean clean-python docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -118,6 +121,21 @@ dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
 	$(PYTHON) dashboard/pipelines/bootstrap_dashboard_demo_inputs.py
 	@echo "✓ Repo-local dashboard demo inputs refreshed."
 
+up:  ## Start the canonical Docker stack in the background
+	$(ROOT_COMPOSE) up -d --build
+
+down:  ## Stop the canonical Docker stack
+	$(ROOT_COMPOSE) down
+
+logs:  ## Tail canonical Docker stack logs
+	$(ROOT_COMPOSE) logs -f
+
+shell:  ## Open a shell in the main dashboard container
+	docker exec -it $(MAIN_CONTAINER) /bin/bash
+
+rebuild:  ## Recreate the canonical Docker stack from a fresh build
+	$(ROOT_COMPOSE) down && $(ROOT_COMPOSE) up -d --build
+
 dashboard-build:  ## Build the live dashboard Docker image
 	$(COMPOSE) build dashboard
 
@@ -178,7 +196,7 @@ k8s-helm-lint:  ## Validate Kubernetes Helm templates locally
 	@echo "✓ Helm templates rendered to /tmp/esd-lab-dashboard.yaml"
 
 k8s-smoke:  ## Smoke-check readings pipeline endpoints against a running dashboard
-	$(PYTHON) scripts/check_k8s_readings_pipeline.py --base-url http://127.0.0.1:8080 --mode local
+	$(PYTHON) scripts/check_k8s_readings_pipeline.py --base-url $(DASHBOARD_LOCAL_URL) --mode local
 
 pages-runtime-deploy:  ## Deploy the tunnel runtime wrapper to a non-production Pages preview branch
 	npx --yes wrangler@3.112.0 pages deploy dist/pages-runtime-wrapper --project-name $${CLOUDFLARE_RUNTIME_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_RUNTIME_PAGES_BRANCH:-runtime-share} --commit-dirty=true
@@ -199,7 +217,7 @@ verify-backup:  ## Verify secure server backup integrity
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-clean:  ## Remove Python cache files and test artifacts
+clean-python:  ## Remove Python cache files and test artifacts
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; true
 	find . -type f -name "*.pyc" -delete 2>/dev/null; true
 	find . -type f -name "*.pyo" -delete 2>/dev/null; true
@@ -208,19 +226,20 @@ clean:  ## Remove Python cache files and test artifacts
 	find . -type f -name ".coverage" -delete 2>/dev/null; true
 	@echo "✓ Cleaned Python cache and test artifacts."
 
+clean:  ## Prune unused Docker images, containers, networks, and volumes
+	docker system prune -f && docker volume prune -f
+
+docker-clean: clean  ## Alias for Docker cleanup
+
 
 docker-preflight:  ## Check Docker daemon and Compose availability before starting services
 	$(PYTHON) scripts/check_docker_health.py --daemon-only --json
 
 docker-health:  ## Check and repair the dashboard Docker runtime health
-	$(PYTHON) scripts/check_docker_health.py --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
 
 docker-share-health:  ## Check dashboard plus the currently selected share sidecar
-	@share_service=dashboard-share; \
-	if [ -n "$${CLOUDFLARE_TUNNEL_TOKEN:-$${CLOUDFLARED_TUNNEL_TOKEN:-}}" ]; then \
-		share_service=dashboard-share-named; \
-	fi; \
-	$(PYTHON) scripts/check_docker_health.py --profile share --service dashboard --service $$share_service --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --profile share --service dashboard --service $(SHARE_SERVICE) --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
 
 ops-check: compose-validate  ## Check canonical + runtime-share public dashboard surfaces
 	$(PYTHON) scripts/check_live_surfaces.py --max-stamp-age-hours 168
@@ -228,6 +247,6 @@ ops-check: compose-validate  ## Check canonical + runtime-share public dashboard
 logs-prune:  ## Delete local log files older than LOG_RETENTION_DAYS (default: 30)
 	bash scripts/prune_logs.sh
 
-clean-all: clean  ## Remove virtualenv and all generated files
+clean-all: clean-python  ## Remove virtualenv and all generated files
 	rm -rf $(VENV)
 	@echo "✓ Removed virtualenv. Run 'make install' to reinstall."

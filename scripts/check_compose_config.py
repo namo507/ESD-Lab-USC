@@ -18,6 +18,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FILES = [
+    PROJECT_ROOT / "docker-compose.yml",
     PROJECT_ROOT / "docker" / "compose.dev.yml",
     PROJECT_ROOT / "docker" / "compose.prod.yml",
 ]
@@ -93,6 +94,10 @@ def validate_compose(path: Path) -> list[str]:
     if not isinstance(services, dict):
         return [f"{path}: missing top-level services mapping"]
 
+    networks = data.get("networks")
+    if not isinstance(networks, dict) or not networks:
+        errors.append(f"{path}: missing top-level named networks mapping")
+
     dashboard = services.get("dashboard")
     if not isinstance(dashboard, dict):
         errors.append(f"{path}: missing dashboard service")
@@ -124,14 +129,26 @@ def validate_compose(path: Path) -> list[str]:
                 errors.append(f"{path}: volume source does not exist: {source_path}")
 
     if path.name == "compose.dev.yml":
-        if ("../", "/app", "") not in volumes:
+        if ("..", "/app", "") not in volumes:
             errors.append(f"{path}: dev compose should bind repository root to /app")
+    if path.name == "docker-compose.yml":
+        if (".", "/app", "") not in volumes:
+            errors.append(f"{path}: root compose should bind repository root to /app")
     if path.name == "compose.prod.yml":
         required_targets = {"/app/dashboard/data", "/app/esd-lab-readings"}
         actual_targets = {target for _source, target, _mode in volumes}
         missing = sorted(required_targets - actual_targets)
         if missing:
             errors.append(f"{path}: prod compose missing volume target(s): {', '.join(missing)}")
+
+    for service_name, service in services.items():
+        if not isinstance(service, dict):
+            errors.append(f"{path}: service {service_name} must be a mapping")
+            continue
+        if service.get("restart") != "unless-stopped":
+            errors.append(f"{path}: {service_name} must set restart: unless-stopped")
+        if not service.get("networks"):
+            errors.append(f"{path}: {service_name} must attach to a named network")
 
     for service_name in ("dashboard-share", "dashboard-share-named"):
         service = services.get(service_name)

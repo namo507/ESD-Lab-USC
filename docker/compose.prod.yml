@@ -1,3 +1,5 @@
+name: esd-lab-dashboard-prod
+
 services:
   dashboard:
     init: true
@@ -6,9 +8,10 @@ services:
       dockerfile: docker/dashboard/Dockerfile
     image: esd-lab-dashboard:local
     ports:
-      - "8080:8080"
+      - "${DASHBOARD_HOST_PORT:-8080}:8080"
     env_file:
-      - ../.env
+      - path: ../.env
+        required: false
     environment:
       PYTHONUNBUFFERED: "1"
       DASHBOARD_ASSISTANT_TIER: ${DASHBOARD_ASSISTANT_TIER:-auto}
@@ -20,9 +23,19 @@ services:
     mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
     pids_limit: 512
     volumes:
-      - ../dashboard/data:/app/dashboard/data
-      - ../esd-lab-readings:/app/esd-lab-readings:ro
-      - ../models/local_llms:/app/models/local_llms
+      - type: bind
+        source: ../dashboard/data
+        target: /app/dashboard/data
+      - type: bind
+        source: ../esd-lab-readings
+        target: /app/esd-lab-readings
+        read_only: true
+      - type: bind
+        source: ../models/local_llms
+        target: /app/models/local_llms
+      - type: volume
+        source: dashboard-hf-cache
+        target: /app/models/.cache/huggingface
     healthcheck:
       test:
         - CMD
@@ -40,37 +53,15 @@ services:
       retries: 3
       start_period: 45s
     restart: unless-stopped
-
-  assistant-bootstrap:
-    profiles: ["assistant"]
-    init: true
-    build:
-      context: ..
-      dockerfile: docker/dashboard/Dockerfile
-    image: esd-lab-dashboard:local
-    env_file:
-      - ../.env
-    environment:
-      PYTHONUNBUFFERED: "1"
-      DASHBOARD_ASSISTANT_TIER: ${DASHBOARD_ASSISTANT_TIER:-clinical}
-      HF_HOME: /app/models/.cache/huggingface
-    command:
-      - python
-      - scripts/prepare_dashboard_assistant.py
-      - --tier
-      - ${DASHBOARD_ASSISTANT_TIER:-clinical}
-      - --write-config
-      - --download
-      - --reindex
-    volumes:
-      - ../dashboard/data:/app/dashboard/data
-      - ../config:/app/config
-      - ../models/local_llms:/app/models/local_llms
-    restart: "no"
+    networks:
+      - dashboard-net
 
   dashboard-share:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
+    env_file:
+      - path: ../.env
+        required: false
     cpus: "0.5"
     mem_limit: 256m
     pids_limit: 128
@@ -79,10 +70,15 @@ services:
         condition: service_healthy
     command: tunnel --no-autoupdate --url http://dashboard:8080
     restart: unless-stopped
+    networks:
+      - dashboard-net
 
   dashboard-share-named:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
+    env_file:
+      - path: ../.env
+        required: false
     cpus: "0.5"
     mem_limit: 256m
     pids_limit: 128
@@ -91,3 +87,12 @@ services:
         condition: service_healthy
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
     restart: unless-stopped
+    networks:
+      - dashboard-net
+
+volumes:
+  dashboard-hf-cache:
+
+networks:
+  dashboard-net:
+    driver: bridge

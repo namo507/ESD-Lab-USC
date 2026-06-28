@@ -55,6 +55,7 @@ config/redcap_config_local.yml
 *.key
 *.p12
 *.pfx
+docker-compose.override.yml
 
 # ─── Python ─────────────────────────────────────────────────
 __pycache__/

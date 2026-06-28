@@ -1,16 +1,16 @@
-name: docker
+name: esd-lab-usc
 
 services:
   dashboard:
     init: true
     build:
-      context: ..
+      context: .
       dockerfile: docker/dashboard/Dockerfile
-    image: docker-dashboard:latest
+    image: esd-lab-usc-dashboard:latest
     ports:
       - "${DASHBOARD_HOST_PORT:-8080}:8080"
     env_file:
-      - path: ../.env
+      - path: .env
         required: false
     environment:
       PYTHONUNBUFFERED: "1"
@@ -24,7 +24,7 @@ services:
     pids_limit: 512
     volumes:
       - type: bind
-        source: ..
+        source: .
         target: /app
       - type: volume
         source: dashboard-hf-cache
@@ -47,13 +47,13 @@ services:
       start_period: 45s
     restart: unless-stopped
     networks:
-      - dashboard-net
+      - esd-lab-dashboard
 
   dashboard-share:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
     env_file:
-      - path: ../.env
+      - path: .env
         required: false
     cpus: "0.5"
     mem_limit: 256m
@@ -64,13 +64,13 @@ services:
     command: tunnel --no-autoupdate --url http://dashboard:8080
     restart: unless-stopped
     networks:
-      - dashboard-net
+      - esd-lab-dashboard
 
   dashboard-share-named:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
     env_file:
-      - path: ../.env
+      - path: .env
         required: false
     cpus: "0.5"
     mem_limit: 256m
@@ -81,11 +81,11 @@ services:
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
     restart: unless-stopped
     networks:
-      - dashboard-net
+      - esd-lab-dashboard
 
 volumes:
   dashboard-hf-cache:
 
 networks:
-  dashboard-net:
+  esd-lab-dashboard:
     driver: bridge

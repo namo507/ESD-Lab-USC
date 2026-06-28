@@ -7,12 +7,19 @@
   "workspaceFolder": "/workspaces/ESD-Lab-USC",
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  "forwardPorts": [8080],
+  "forwardPorts": [8080, 18080],
   "portsAttributes": {
     "8080": {
       "label": "NANO dashboard",
       "onAutoForward": "openBrowser"
+    },
+    "18080": {
+      "label": "Secondary dashboard",
+      "onAutoForward": "notify"
     }
   },
   "containerEnv": {
@@ -36,6 +43,8 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-toolsai.jupyter",
+        "github.copilot",
+        "eamodio.gitlens",
         "REditorSupport.r",
         "ms-vscode.makefile-tools",
         "ms-azuretools.vscode-docker"
