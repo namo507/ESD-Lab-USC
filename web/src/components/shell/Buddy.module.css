@@ -167,6 +167,27 @@
   font-weight: 600;
 }
 
+.tourButton {
+  margin-top: 10px;
+  border: 1px solid rgba(115, 0, 10, 0.22);
+  border-radius: 999px;
+  background: rgba(115, 0, 10, 0.08);
+  color: var(--usc-garnet);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms var(--ease-soft),
+    border-color 160ms var(--ease-soft);
+}
+
+.tourButton:hover {
+  background: rgba(115, 0, 10, 0.14);
+  border-color: rgba(115, 0, 10, 0.38);
+}
+
 @keyframes buddy-float {
   0%,
   100% {

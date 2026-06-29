@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Badge, Icon } from "@/components/primitives";
+import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
 import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
@@ -28,6 +29,8 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/overview", label: "Overview", icon: "layout-dashboard" },
       { to: "/participants", label: "Intakes & Stories", icon: "heart-handshake" },
       { to: "/qa", label: "Window QA", icon: "shield-check" },
+      { to: DOC_ROUTE, label: "Documentation", icon: "book-open" },
+      { to: HOW_TO_ROUTE, label: "Help / Tour", icon: "compass" },
     ],
   },
   {
@@ -189,6 +192,13 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
                   key={`${g.id}-${i}`}
                   to={it.to}
                   end={it.to === "/overview"}
+                  data-tour={
+                    it.label === "Documentation"
+                      ? "operator-docs"
+                      : it.label === "Help / Tour"
+                        ? "operator-help"
+                        : undefined
+                  }
                   className={({ isActive }) =>
                     `relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-sans text-left transition ${
                       isActive

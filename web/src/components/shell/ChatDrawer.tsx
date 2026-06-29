@@ -3,10 +3,12 @@ import { Send, Sparkles, X } from "lucide-react";
 import { fetchAssistantStatus, streamChat, type AssistantStatus, type ChatMessage } from "@/api/chatApi";
 import { FastPaths, type FastPathPrompt } from "@/components/warm/FastPaths";
 import { AmbientOrbit } from "@/components/warm/AmbientOrbit";
+import { HELP_ASSISTANT_FAST_PATHS } from "@/data/helpContent";
 import { useUi } from "@/store/ui";
 import styles from "./ChatDrawer.module.css";
 
 const BUDDY_FAST_PATHS: FastPathPrompt[] = [
+  ...HELP_ASSISTANT_FAST_PATHS,
   { lane: "qa",     label: "Explain SQI thresholds",      prompt: "What do the SQI thresholds (0.3 / 0.5 / 0.7) mean for an ECG epoch and how should I QA the borderline tiles?" },
   { lane: "qa",     label: "When to reject an epoch?",    prompt: "Walk me through when I should reject an epoch versus mark it for review. Use the current NANO QA rubric." },
   { lane: "model",  label: "Risk classifier validation",  prompt: "How is the NANO risk classifier validated? Cover AUROC, calibration, and out-of-site holdout." },

@@ -2,9 +2,12 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/AppShell";
+import { GuidedTourHost } from "@/components/help/GuidedTour";
 import { applyTheme, loadInitialTheme, persistTheme, useUi } from "@/store/ui";
 
 const Landing = lazy(() => import("@/routes/Landing").then((m) => ({ default: m.Landing })));
+const Docs = lazy(() => import("@/routes/Docs").then((m) => ({ default: m.Docs })));
+const HowTo = lazy(() => import("@/routes/HowTo").then((m) => ({ default: m.HowTo })));
 const Overview = lazy(() => import("@/routes/Overview").then((m) => ({ default: m.Overview })));
 const Participants = lazy(() => import("@/routes/Participants").then((m) => ({ default: m.Participants })));
 const ParticipantDetail = lazy(() => import("@/routes/ParticipantDetail").then((m) => ({ default: m.ParticipantDetail })));
@@ -114,6 +117,8 @@ export default function App() {
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/docs" element={<Docs />} />
+          <Route path="/how-to" element={<HowTo />} />
           <Route element={<AppShell />}>
             <Route path="/overview" element={<Overview />} />
             <Route path="/participants" element={<Participants />} />
@@ -165,6 +170,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        <GuidedTourHost />
       </Suspense>
     </QueryClientProvider>
   );

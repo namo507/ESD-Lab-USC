@@ -16,6 +16,16 @@ const DEFAULT_ROUTES = [
     expect: ["The heartbeat", "The NANO pipeline, live"],
   },
   {
+    name: "docs",
+    path: "/docs",
+    expect: ["NANO dashboard reference", "Public landing reference", "Operator console reference"],
+  },
+  {
+    name: "how-to",
+    path: "/how-to",
+    expect: ["Learn the dashboard by doing", "Every interactive feature", "Readable ordered config"],
+  },
+  {
     name: "participants",
     path: "/participants",
     expect: ["Participants", "NANO-"],

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { HELP_INSIGHTS } from "@/data/helpContent";
+import { startNanoTour } from "@/components/help/tourEvents";
 import styles from "./Buddy.module.css";
 
 export interface InsightData {
@@ -7,6 +9,7 @@ export interface InsightData {
 }
 
 export const INSIGHTS: Record<string, InsightData> = {
+  ...HELP_INSIGHTS,
   "kpi-enroll": { term: "Enrollment", body: "231 of 260 infants are enrolled across VPT, ASIB, and TD cohorts. The dashboard highlights active recruitment progress and weekly movement toward target." },
   "kpi-evals": { term: "Evaluations", body: "This tile summarizes study visits that still need HDA labeling, adjudication, or downstream scoring before the analysis pipeline is fully caught up." },
   "kpi-epochs": { term: "Epochs", body: "Each epoch is a 5-second ECG window. The pipeline counts them after preprocessing and QA because they are the unit that drives both HRV features and HDA labels." },
@@ -271,6 +274,8 @@ export interface BuddyProps {
 export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
   const [insight, setInsight] = useState<InsightData | null>(null);
   const [look, setLook] = useState({ x: 48, y: 48 });
+  const path = typeof window !== "undefined" ? window.location.pathname : "/";
+  const tourTrack = path === "/" || path === "/docs" || path === "/how-to" ? "public" : "operator";
 
   const buddyRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
@@ -367,6 +372,9 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
           <>
             <span className={styles.termTag}>{insight.term}</span>
             <div className={styles.bodyText}>{insight.body}</div>
+            <button type="button" className={styles.tourButton} onClick={() => startNanoTour(tourTrack)}>
+              Walk me through it
+            </button>
           </>
         )}
       </div>

@@ -61,6 +61,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
       </div>
 
       <label className="relative flex-[0_1_320px] min-w-[180px] bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)] rounded-full pl-9 pr-3.5 py-2 flex items-center gap-2">
+        <span data-tour="operator-search" className="absolute inset-0 rounded-full pointer-events-none" aria-hidden />
         <Icon name="sparkles" size={14} stroke={1.5} color="var(--usc-garnet)" style={{ position: "absolute", left: 12 }} />
         <input
           ref={searchRef}
@@ -80,6 +81,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
       <button
         type="button"
         onClick={() => navigate("/runs")}
+        data-tour="operator-session"
         className="hidden lg:inline-flex items-center gap-1.5 text-[11px] font-mono text-[color:var(--warm-fg3)] hover:text-[color:var(--warm-fg1)] transition"
         title="Idle countdown · 30 m HIPAA gate"
       >
@@ -90,6 +92,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
       <button
         type="button"
         onClick={() => navigate("/")}
+        data-tour="operator-landing"
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-[color:var(--warm-fg2)] bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)] hover:text-[color:var(--usc-garnet)] hover:border-[color:var(--usc-garnet)] transition"
         title="Back to public landing site"
         aria-label="Back to landing"
@@ -109,6 +112,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
         type="button"
         onClick={onForceSync}
         disabled={syncing}
+        data-tour="operator-force-sync"
         className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-[13px] font-medium transition shadow-garnet"
         style={{ background: syncing ? "var(--warm-fg2)" : "var(--usc-garnet)", cursor: syncing ? "wait" : "pointer" }}
       >

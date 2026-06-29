@@ -214,6 +214,7 @@ export function Overview() {
             : "grid-cols-4 max-[1100px]:grid-cols-2 max-[640px]:grid-cols-1"
         }`}
         aria-label="Lab KPI ribbon"
+        data-tour="operator-kpis"
       >
         {kpis.map((k) => (
           <MetricCard
@@ -234,7 +235,7 @@ export function Overview() {
         ))}
       </section>
 
-      <section aria-label="Live pipeline DAG">
+      <section aria-label="Live pipeline DAG" data-tour="operator-pipeline">
         <AnimatedDAG
           stages={stages}
           selected={selected}

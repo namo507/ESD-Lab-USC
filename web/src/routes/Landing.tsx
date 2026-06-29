@@ -5,9 +5,11 @@ import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { startNanoTour } from "@/components/help/tourEvents";
 import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { READING_CORPUS } from "@/data/readingLibrary";
+import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
@@ -1107,7 +1109,7 @@ export function Landing() {
     <div className={styles.page}>
       <div ref={progressRef} className={styles.progress} style={{ transform: "scaleX(0)" }} aria-hidden />
 
-      <nav className={styles.nav} aria-label="Landing sections">
+      <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav">
         <button
           type="button"
           className={styles.brand}
@@ -1132,6 +1134,15 @@ export function Landing() {
               {section.label}
             </button>
           ))}
+          <button type="button" className={styles.navLink} onClick={() => navigate(DOC_ROUTE)}>
+            Docs
+          </button>
+          <button type="button" className={styles.navLink} onClick={() => navigate(HOW_TO_ROUTE)}>
+            How-to
+          </button>
+          <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
+            Tour
+          </button>
         </div>
 
         <button type="button" className={styles.askButton} onClick={() => openAssistant()}>
@@ -1180,7 +1191,7 @@ export function Landing() {
                   <Presentation size={14} strokeWidth={1.5} />
                 </button>
               </div>
-              <button type="button" className={styles.tourLink} onClick={() => navigate("/guided-explorer")}>
+              <button type="button" className={styles.tourLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
                 New here? Take the 3-minute tour <ArrowRight size={13} aria-hidden />
               </button>
 
@@ -1208,6 +1219,7 @@ export function Landing() {
               href="/results"
               className={`${styles.heroSignalCard} ${styles.heroSignalButton}`}
               data-insight="landing-attention-pulse"
+              data-tour="attention-pulse"
               aria-label="Open results view for deeper HDA and cohort metrics"
             >
               <div className={styles.heroSignalGlow} aria-hidden="true">
@@ -1394,7 +1406,12 @@ export function Landing() {
             {AIMS.map((aim, index) => {
               const isOpen = openAim === index;
               return (
-                <article key={aim.id} className={`${styles.aimCard} ${isOpen ? styles.aimCardOpen : ""}`} data-insight={`landing-aim-${aim.id}`}>
+                <article
+                  key={aim.id}
+                  className={`${styles.aimCard} ${isOpen ? styles.aimCardOpen : ""}`}
+                  data-insight={`landing-aim-${aim.id}`}
+                  data-tour={index === 0 ? "aim-card" : undefined}
+                >
                   <div className={styles.aimHeader}>
                     <div>
                       <span className={styles.storyKicker}>Aim {aim.id}</span>
@@ -1450,7 +1467,7 @@ export function Landing() {
             <div className={styles.sectionNote}>Select a layer to inspect how raw capture becomes publishable output.</div>
           </header>
           <div className={styles.architectureShell}>
-            <div className={styles.layerRail}>
+            <div className={styles.layerRail} data-tour="architecture-layer">
               {ARCHITECTURE.map((layer) => (
                 <button
                   key={layer.id}
@@ -1501,7 +1518,14 @@ export function Landing() {
           </header>
           <div className={styles.pipelineRail}>
             {stages.slice(0, 6).map((stage, index) => (
-              <button key={stage.id} type="button" className={styles.pipelineCard} onClick={() => navigate("/runs")} data-insight={`stage-${stage.id}`}>
+              <button
+                key={stage.id}
+                type="button"
+                className={styles.pipelineCard}
+                onClick={() => navigate("/runs")}
+                data-insight={`stage-${stage.id}`}
+                data-tour={index === 0 ? "pipeline-stage" : undefined}
+              >
                 <span className={styles.pipelineIndex}>Stage {String(index + 1).padStart(2, "0")}</span>
                 <h3>{stage.label}</h3>
                 <strong>{stage.inflight}</strong>
@@ -1603,7 +1627,7 @@ export function Landing() {
           <div className={styles.tableCard} data-insight="landing-cohort">
             <div className={styles.tableToolbar}>
               <div className={styles.toolbarActions}>
-                <label className={styles.groupSelectWrap}>
+                <label className={styles.groupSelectWrap} data-tour="cohort-filter">
                   <span className={styles.sectionEyebrow}>Filter</span>
                   <select className={styles.groupSelect} value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
                     <option value="all">All groups</option>
@@ -1758,8 +1782,8 @@ export function Landing() {
                 <SlidersHorizontal size={18} strokeWidth={1.5} />
               </div>
               <div className={styles.sliderList}>
-                {STUDIO_INPUTS.map((input) => (
-                  <label key={input.id} className={styles.sliderRow}>
+                {STUDIO_INPUTS.map((input, index) => (
+                  <label key={input.id} className={styles.sliderRow} data-tour={index === 0 ? "studio-slider" : undefined}>
                     <div className={styles.sliderMeta}>
                       <span>{input.label}</span>
                       <strong>
@@ -1828,7 +1852,7 @@ export function Landing() {
               <h2>Ask the lab anything.</h2>
             </div>
           </header>
-          <article className={styles.assistantCard} data-insight="landing-assistant">
+          <article className={styles.assistantCard} data-insight="landing-assistant" data-tour="assistant-surface">
             <p>
               The in-page assistant stays visually central and operationally grounded. Use it to explain the study, unpack HDA, summarize a result, or decide when to switch from this narrative surface into the operator routes.
             </p>
@@ -1849,7 +1873,7 @@ export function Landing() {
               <span className={styles.sectionEyebrow}>Anchor reading</span>
               <h2>Where this work points.</h2>
             </div>
-            <label className={styles.searchShell}>
+            <label className={styles.searchShell} data-tour="library-search">
               <Search size={15} strokeWidth={1.5} />
               <input
                 value={libraryQuery}
@@ -1883,7 +1907,7 @@ export function Landing() {
         <span><ShieldCheck size={14} strokeWidth={1.5} /> HIPAA session</span>
         <span>{runs[0]?.id ?? "run_2026_115_a"}</span>
         <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-        <button type="button" onClick={() => navigate("/overview")}>Operator view</button>
+        <button type="button" onClick={() => navigate("/overview")} data-tour="operator-toggle">Operator view</button>
       </div>
 
       <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()}>
