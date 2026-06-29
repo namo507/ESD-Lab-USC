@@ -219,6 +219,44 @@
 :root            { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
+.satellite-map-soft {
+  font-family: var(--font-sans);
+  background: var(--warm-pill);
+}
+
+.satellite-map-soft .leaflet-tile-pane {
+  filter: saturate(0.72) sepia(0.08) contrast(0.92) brightness(0.86);
+}
+
+.satellite-map-soft .leaflet-control-attribution {
+  max-width: min(86%, 620px);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--warm-fg3);
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+:root[data-theme="dark"] .satellite-map-soft .leaflet-control-attribution {
+  background: rgba(20, 18, 14, 0.84);
+  color: var(--warm-fg3);
+}
+
+.satellite-map-soft .leaflet-tooltip {
+  border: 1px solid var(--warm-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-overlay);
+  color: var(--warm-fg2);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+
+:root[data-theme="dark"] .satellite-map-soft .leaflet-tooltip {
+  background: rgba(31, 28, 23, 0.94);
+  color: var(--warm-fg2);
+}
+
 /* Tailwind utility overrides — components use `bg-white` literally in many
    spots; remap to the warm-card token so the whole UI inverts cleanly. */
 :root[data-theme="dark"] .bg-white { background-color: var(--warm-card) !important; }

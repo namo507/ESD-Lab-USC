@@ -102,12 +102,40 @@
   font-size: 13px;
 }
 .mapShell {
+  position: relative;
   min-height: 360px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--r-card);
+  background: var(--bg-subtle);
 }
 .mapShell :global(.leaflet-container) { width: 100%; height: 360px; background: var(--bg-subtle); }
+.mapWarmOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(250, 246, 238, 0.14), rgba(250, 246, 238, 0.02) 45%, rgba(115, 0, 10, 0.08));
+  mix-blend-mode: soft-light;
+}
+.mapNotice {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  z-index: 500;
+  border: 1px solid var(--usc-gold);
+  border-radius: var(--r-2);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  box-shadow: var(--shadow-overlay);
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 10px 12px;
+}
+:root[data-theme="dark"] .mapNotice {
+  background: rgba(31, 28, 23, 0.94);
+  color: var(--warm-fg2);
+}
 .toolbarButton {
   border: 1px solid var(--border);
   background: var(--bg-surface);

@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
-import "leaflet/dist/leaflet.css";
-import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip as LeafletTooltip } from "react-leaflet";
-import type { FeatureCollection } from "geojson";
+import L, { type Layer, type PathOptions } from "leaflet";
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip as LeafletTooltip, useMap } from "react-leaflet";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 import { Button, Card, SectionLabel } from "@/components/primitives";
 import { useSdohMap } from "@/api/hooks";
 import type { SdohMapRow } from "@/api/schemas";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { SATELLITE_ATTRIBUTION, SATELLITE_TILE_URL } from "@/lib/mapTiles";
 import sdohLookup from "@/data/sc_sdoh.json";
 import styles from "./FeatureRoutes.module.css";
 
 type SdohMetric = "deprivationIndex" | "broadbandPct" | "foodAccessPct" | "priorityIndex";
+type CountyMapMetric = SdohMetric | "participants" | "completion";
 
 interface StaticSdohRow {
   county: string;
@@ -26,11 +28,31 @@ interface CountyMapProps {
   selectedCounty?: string;
   onCountySelect?: (county: SdohMapRow) => void;
   ariaLabel?: string;
-  metric?: SdohMetric;
+  metric?: CountyMapMetric;
 }
+
+type CountyFeature = Feature<Geometry, { name?: string; fips?: string }>;
 
 function countyKey(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase();
+}
+
+function CountyBoundsFitter({ geo }: { geo: FeatureCollection | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const invalidateTimer = window.setTimeout(() => map.invalidateSize(), 80);
+    if (!geo) return () => window.clearTimeout(invalidateTimer);
+
+    const bounds = L.geoJSON(geo).getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 8 });
+    }
+
+    return () => window.clearTimeout(invalidateTimer);
+  }, [geo, map]);
+
+  return null;
 }
 
 export function CountyMap({
@@ -41,40 +63,104 @@ export function CountyMap({
   metric = "deprivationIndex",
 }: CountyMapProps) {
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
+  const [geoStatus, setGeoStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [tileStatus, setTileStatus] = useState<"loading" | "ready" | "error">("loading");
   const activeKey = countyKey(selectedCounty);
+  const rowLookup = useMemo(() => {
+    const map = new Map<string, SdohMapRow>();
+    rows.forEach((row) => {
+      map.set(row.fips, row);
+      map.set(countyKey(row.county), row);
+    });
+    return map;
+  }, [rows]);
+  const maxParticipants = useMemo(
+    () => Math.max(1, ...rows.map((row) => row.participants)),
+    [rows],
+  );
+  const styleKey = useMemo(
+    () => rows.map((row) => `${row.fips}:${metricValue(metric, row, maxParticipants).toFixed(3)}`).join("|"),
+    [maxParticipants, metric, rows],
+  );
 
   useEffect(() => {
-    fetch("/sc-counties.geojson")
-      .then((res) => res.json())
-      .then((payload: FeatureCollection) => setGeo(payload))
-      .catch(() => setGeo(null));
+    const controller = new AbortController();
+    setGeoStatus("loading");
+    fetch("/sc-counties.geojson", { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Unable to load county geometry (${res.status})`);
+        return res.json();
+      })
+      .then((payload: FeatureCollection) => {
+        if (controller.signal.aborted) return;
+        setGeo(payload);
+        setGeoStatus("ready");
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setGeo(null);
+        setGeoStatus("error");
+      });
+    return () => controller.abort();
   }, []);
+
+  function rowForFeature(feature: CountyFeature | undefined): SdohMapRow | undefined {
+    const props = feature?.properties;
+    return rowLookup.get(props?.fips ?? "") ?? rowLookup.get(countyKey(props?.name));
+  }
+
+  function styleCounty(feature: Feature | undefined): PathOptions {
+    const countyFeature = feature as CountyFeature | undefined;
+    const props = countyFeature?.properties;
+    const selected = Boolean(activeKey && (countyKey(props?.name) === activeKey || countyKey(props?.fips) === activeKey));
+    const county = rowForFeature(countyFeature);
+    const priority = staticForFeature(props)?.priorityIndex ?? 0;
+
+    if (!county) {
+      return {
+        color: selected ? "var(--usc-garnet)" : "rgba(255, 255, 255, 0.72)",
+        weight: selected ? 3 : 1,
+        fillColor: "var(--warm-pill)",
+        fillOpacity: selected ? 0.28 : 0.16,
+        opacity: 0.9,
+      };
+    }
+
+    return {
+      color: selected ? "var(--usc-garnet)" : priority > 0.7 ? "var(--red)" : "rgba(255, 255, 255, 0.78)",
+      weight: selected ? 3.4 : priority > 0.7 ? 2.4 : 1.2,
+      dashArray: selected ? "" : priority > 0.7 ? "4 3" : "",
+      fillColor: metricColor(metric, county, maxParticipants),
+      fillOpacity: selected ? 0.72 : 0.32 + metricValue(metric, county, maxParticipants) * 0.34,
+      opacity: 1,
+    };
+  }
 
   return (
     <div className={styles.mapShell} role="img" aria-label={ariaLabel}>
-      <MapContainer center={[33.9, -81.1]} zoom={6.4} scrollWheelZoom={false}>
-        <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <MapContainer className="satellite-map-soft" center={[33.9, -81.1]} zoom={7} minZoom={6} maxZoom={11} scrollWheelZoom={false}>
+        <TileLayer
+          attribution={SATELLITE_ATTRIBUTION}
+          url={SATELLITE_TILE_URL}
+          eventHandlers={{
+            tileload: () => setTileStatus("ready"),
+            tileerror: () => setTileStatus("error"),
+          }}
+        />
+        <CountyBoundsFitter geo={geo} />
         {geo && (
           <GeoJSON
-            key={activeKey || "all"}
+            key={`${activeKey || "all"}-${metric}-${styleKey}`}
             data={geo}
-            style={(feature) => {
-              const props = feature?.properties as { name?: string; fips?: string } | undefined;
-              const selected = activeKey && (countyKey(props?.name) === activeKey || countyKey(props?.fips) === activeKey);
-              const county = rows.find((row) => row.fips === props?.fips || countyKey(row.county) === countyKey(props?.name));
-              const priority = staticForCounty(county)?.priorityIndex ?? 0;
-              return {
-                color: selected ? "var(--usc-garnet)" : priority > 0.7 ? "var(--red)" : "var(--warm-border)",
-                weight: selected || priority > 0.7 ? 3 : 1.2,
-                fillColor: county ? metricColor(metric, county) : "var(--warm-border)",
-                fillOpacity: county ? 0.26 + metricValue(metric, county) * 0.42 : 0.12,
-              };
-            }}
+            style={styleCounty}
             onEachFeature={(feature, layer) => {
-              const props = feature.properties as { name?: string; fips?: string };
-              const county = rows.find((row) => row.fips === props.fips || countyKey(row.county) === countyKey(props.name));
-              if (!county || !onCountySelect) return;
-              layer.on({ click: () => onCountySelect(county) });
+              const countyFeature = feature as CountyFeature;
+              const props = countyFeature.properties;
+              const county = rowForFeature(countyFeature);
+              bindCountyTooltip(layer, props, county, metric, maxParticipants);
+              if (county && onCountySelect) {
+                layer.on({ click: () => onCountySelect(county) });
+              }
             }}
           />
         )}
@@ -100,6 +186,18 @@ export function CountyMap({
           );
         })}
       </MapContainer>
+      <div className={styles.mapWarmOverlay} aria-hidden />
+      {tileStatus === "error" && (
+        <div className={styles.mapNotice}>
+          Satellite imagery could not load. County overlays remain available; check CSP or the imagery provider.
+        </div>
+      )}
+      {geoStatus === "loading" && (
+        <div className={styles.mapNotice}>Loading South Carolina county boundaries...</div>
+      )}
+      {geoStatus === "error" && (
+        <div className={styles.mapNotice}>County boundaries could not load. Aggregate markers remain available.</div>
+      )}
     </div>
   );
 }
@@ -176,17 +274,59 @@ function staticForCounty(row: SdohMapRow | undefined): StaticSdohRow | undefined
   return (sdohLookup as StaticSdohRow[]).find((item) => item.fips === row.fips || countyKey(item.county) === countyKey(row.county));
 }
 
-function metricValue(metric: SdohMetric, row: SdohMapRow): number {
+function staticForFeature(props: { name?: string; fips?: string } | undefined): StaticSdohRow | undefined {
+  if (!props) return undefined;
+  return (sdohLookup as StaticSdohRow[]).find((item) => item.fips === props.fips || countyKey(item.county) === countyKey(props.name));
+}
+
+function bindCountyTooltip(
+  layer: Layer,
+  props: { name?: string; fips?: string } | undefined,
+  row: SdohMapRow | undefined,
+  metric: CountyMapMetric,
+  maxParticipants: number,
+): void {
+  const countyName = props?.name ? `${props.name} County` : "South Carolina county";
+  const metricText = row
+    ? `${metricLabel(metric)} ${metricDisplay(metric, row, maxParticipants)}`
+    : "No aggregate study rows in the current mock payload";
+  layer.bindTooltip(`${countyName} · ${metricText}`, { sticky: true });
+}
+
+function metricLabel(metric: CountyMapMetric): string {
+  if (metric === "priorityIndex") return "priority";
+  if (metric === "broadbandPct") return "broadband";
+  if (metric === "foodAccessPct") return "food access";
+  if (metric === "participants") return "participants";
+  if (metric === "completion") return "completion";
+  return "deprivation";
+}
+
+function metricDisplay(metric: CountyMapMetric, row: SdohMapRow, maxParticipants: number): string {
+  if (metric === "participants") return String(row.participants);
+  if (metric === "completion") return `${row.meanCompletion.toFixed(1)}%`;
+  if (metric === "broadbandPct") return `${row.broadbandPct.toFixed(1)}%`;
+  if (metric === "foodAccessPct") return `${row.foodAccessPct.toFixed(1)}%`;
+  if (metric === "priorityIndex") return (staticForCounty(row)?.priorityIndex ?? 0).toFixed(2);
+  return row.deprivationIndex.toFixed(2);
+}
+
+function metricValue(metric: CountyMapMetric, row: SdohMapRow, maxParticipants = 100): number {
   if (metric === "priorityIndex") return staticForCounty(row)?.priorityIndex ?? 0;
+  if (metric === "participants") return Math.max(0, Math.min(1, row.participants / Math.max(maxParticipants, 1)));
+  if (metric === "completion") return Math.max(0, Math.min(1, row.meanCompletion / 100));
   if (metric === "broadbandPct") return Math.max(0, Math.min(1, row.broadbandPct / 100));
   if (metric === "foodAccessPct") return Math.max(0, Math.min(1, row.foodAccessPct / 100));
   return Math.max(0, Math.min(1, row.deprivationIndex));
 }
 
-function metricColor(metric: SdohMetric, row: SdohMapRow): string {
-  const value = metricValue(metric, row);
+function metricColor(metric: CountyMapMetric, row: SdohMapRow, maxParticipants = 100): string {
+  const value = metricValue(metric, row, maxParticipants);
   if (metric === "broadbandPct" || metric === "foodAccessPct") {
     return value > 0.82 ? "var(--green)" : value > 0.72 ? "var(--ocean)" : "var(--usc-gold)";
+  }
+  if (metric === "participants" || metric === "completion") {
+    return value > 0.72 ? "var(--ocean)" : value > 0.46 ? "var(--sage)" : "var(--usc-gold)";
   }
   return value > 0.7 ? "var(--red)" : value > 0.45 ? "var(--usc-garnet)" : "var(--usc-gold)";
 }

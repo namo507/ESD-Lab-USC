@@ -64,7 +64,7 @@ export function PublicInsights() {
   const enabled = useFeatureFlag("PUBLIC_INSIGHTS");
   const [metric, setMetric] = useState<Metric>("RMSSD");
   const [showCi, setShowCi] = useState(true);
-  const [mapMetric, setMapMetric] = useState("participants");
+  const [mapMetric, setMapMetric] = useState<"participants" | "completion">("participants");
   const [leftGroup, setLeftGroup] = useState<GroupCode>("VPT");
   const [rightGroup, setRightGroup] = useState<GroupCode>("TD");
   const [shareState, setShareState] = useState<"idle" | "copied">("idle");
@@ -236,12 +236,12 @@ export function PublicInsights() {
         learnMoreTo="/sdoh-map"
       >
         <div className={styles.controls}>
-          <select className={styles.select} value={mapMetric} onChange={(event) => setMapMetric(event.target.value)} aria-label="Map color metric">
+          <select className={styles.select} value={mapMetric} onChange={(event) => setMapMetric(event.target.value as "participants" | "completion")} aria-label="Map color metric">
             <option value="participants">Enrollment count</option>
             <option value="completion">Completion rate</option>
           </select>
         </div>
-        <CountyMap rows={sdoh.data?.data ?? []} ariaLabel={`County-level map colored by ${mapMetric}`} />
+        <CountyMap rows={sdoh.data?.data ?? []} metric={mapMetric} ariaLabel={`County-level map colored by ${mapMetric}`} />
       </InsightSection>
 
       <InsightSection

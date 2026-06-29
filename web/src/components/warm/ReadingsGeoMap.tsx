@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import L, { type LatLngExpression } from "leaflet";
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip as LeafletTooltip, useMap } from "react-leaflet";
 import {
   READING_LIBRARY,
   READINGS_GEO,
@@ -10,6 +12,7 @@ import {
   type ReadingGeoState,
   type StateCode,
 } from "@/data/readingsGeo";
+import { SATELLITE_ATTRIBUTION, SATELLITE_TILE_URL } from "@/lib/mapTiles";
 
 interface HoverInsight {
   term: string;
@@ -81,58 +84,49 @@ function describeCountryInsight(country: ReadingGeoCountry): HoverInsight {
   };
 }
 
-function resolveStateTone(count: number, selected: boolean): { background: string; border: string; color: string; shadow: string } {
+function resolveMarkerTone(count: number, selected: boolean): { fill: string; stroke: string; text: string; opacity: number } {
   if (selected) {
     return {
-      background: count > 0 ? "var(--white)" : "var(--warm-pill)",
-      border: "var(--usc-garnet)",
-      color: "var(--usc-garnet)",
-      shadow: "0 0 0 1px var(--usc-garnet), var(--shadow-overlay)",
+      fill: "var(--white)",
+      stroke: "var(--usc-garnet)",
+      text: "var(--usc-garnet)",
+      opacity: 0.96,
     };
   }
   if (count >= 3) {
     return {
-      background: "var(--ocean)",
-      border: "var(--ocean)",
-      color: "var(--white)",
-      shadow: "none",
+      fill: "var(--ocean)",
+      stroke: "var(--white)",
+      text: "var(--white)",
+      opacity: 0.86,
     };
   }
   if (count === 2) {
     return {
-      background: "var(--blue-tint)",
-      border: "var(--ocean-ring)",
-      color: "var(--on-info)",
-      shadow: "none",
+      fill: "var(--blue-tint)",
+      stroke: "var(--ocean-ring)",
+      text: "var(--on-info)",
+      opacity: 0.78,
     };
   }
   if (count === 1) {
     return {
-      background: "var(--ocean-soft)",
-      border: "var(--ocean-ring)",
-      color: "var(--on-info)",
-      shadow: "none",
+      fill: "var(--ocean-soft)",
+      stroke: "var(--ocean-ring)",
+      text: "var(--on-info)",
+      opacity: 0.72,
     };
   }
   return {
-    background: "var(--warm-pill)",
-    border: "var(--warm-border)",
-    color: "var(--warm-fg4)",
-    shadow: "none",
+    fill: "var(--warm-pill)",
+    stroke: "rgba(255, 255, 255, 0.72)",
+    text: "var(--warm-fg4)",
+    opacity: 0.52,
   };
 }
 
-function resolveCountryTone(count: number, selected: boolean): { fill: string; stroke: string; text: string } {
-  if (selected) {
-    return { fill: "var(--white)", stroke: "var(--usc-garnet)", text: "var(--usc-garnet)" };
-  }
-  if (count >= 3) {
-    return { fill: "var(--ocean)", stroke: "var(--ocean)", text: "var(--white)" };
-  }
-  if (count === 2) {
-    return { fill: "var(--blue-tint)", stroke: "var(--ocean-ring)", text: "var(--on-info)" };
-  }
-  return { fill: "var(--ocean-soft)", stroke: "var(--ocean-ring)", text: "var(--on-info)" };
+function markerLabel(code: StateCode | CountryCode): string {
+  return code === "United Kingdom" ? "UK" : code;
 }
 
 function MapSummaryCard({
@@ -158,147 +152,163 @@ function MapSummaryCard({
   );
 }
 
-function UnitedStatesReadingMap({
-  states,
-  activeCode,
+interface ReadingMarkerPoint {
+  code: StateCode | CountryCode;
+  label: string;
+  lat: number;
+  lng: number;
+  readingCount: number;
+  selected: boolean;
+}
+
+function ReadingsMapFitter({
+  points,
+  mode,
+}: {
+  points: LatLngExpression[];
+  mode: GeoMapMode;
+}) {
+  const map = useMap();
+  const pointKey = points.map((point) => Array.isArray(point) ? point.join(",") : String(point)).join("|");
+
+  useEffect(() => {
+    const invalidateTimer = window.setTimeout(() => map.invalidateSize(), 80);
+    if (points.length === 0) {
+      map.setView(mode === "us" ? [39.5, -98.35] : [28, 0], mode === "us" ? 4 : 2);
+      return () => window.clearTimeout(invalidateTimer);
+    }
+
+    if (points.length === 1) {
+      const [point] = points;
+      if (point) map.setView(point, mode === "us" ? 5 : 4);
+      return () => window.clearTimeout(invalidateTimer);
+    }
+
+    const bounds = L.latLngBounds(points);
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, {
+        padding: [36, 36],
+        maxZoom: mode === "us" ? 5 : 4,
+      });
+    }
+    return () => window.clearTimeout(invalidateTimer);
+  }, [map, mode, pointKey, points]);
+
+  return null;
+}
+
+function ReadingSatelliteMap({
+  mode,
+  points,
+  fitPoints,
+  origin,
   onSelect,
 }: {
-  states: ReadingGeoState[];
-  activeCode: StateCode | null;
-  onSelect: (code: StateCode) => void;
+  mode: GeoMapMode;
+  points: ReadingMarkerPoint[];
+  fitPoints: LatLngExpression[];
+  origin?: ReadingGeoCountry | null;
+  onSelect: (code: StateCode | CountryCode) => void;
 }) {
-  const columnCount = useMemo(
-    () => states.reduce((maxCol, state) => Math.max(maxCol, state.col), 0) + 1,
-    [states],
-  );
-  const rowCount = useMemo(
-    () => states.reduce((maxRow, state) => Math.max(maxRow, state.row), 0) + 1,
-    [states],
-  );
+  const [tileStatus, setTileStatus] = useState<"loading" | "ready" | "error">("loading");
+  const activeLinks = mode === "global" && origin
+    ? points.filter((point) => point.readingCount > 0 && point.code !== "USA")
+    : [];
 
   return (
-    <div className="rounded-[24px] border border-[color:var(--warm-border)] bg-[color:var(--warm-bg)] p-4">
-      <div
-        className="grid gap-1.5"
-        style={{
-          gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${rowCount}, 52px)`,
-        }}
-      >
-        {states.map((state) => {
-          const tone = resolveStateTone(state.readingCount, state.code === activeCode);
-          return (
-            <button
-              key={state.code}
-              type="button"
-              aria-pressed={state.code === activeCode}
-              title={`${state.name} · ${state.readingCount > 0 ? formatReadingCount(state.readingCount) : "no signal"}`}
-              onClick={() => onSelect(state.code)}
-              className="min-w-0 rounded-[14px] border px-2 py-1.5 text-left transition hover:-translate-y-[1px]"
-              {...createInsightAttrs(describeStateInsight(state))}
-              style={{
-                gridColumn: state.col + 1,
-                gridRow: state.row + 1,
-                background: tone.background,
-                borderColor: tone.border,
-                color: tone.color,
-                boxShadow: tone.shadow,
-              }}
-            >
-              <div className="text-[11px] font-mono font-semibold leading-none">{state.code}</div>
-              <div className="mt-2 text-[10px] leading-none opacity-80">
-                {state.readingCount > 0 ? state.readingCount : "--"}
-              </div>
-            </button>
-          );
-        })}
+    <div className="relative overflow-hidden rounded-[24px] border border-[color:var(--warm-border)] bg-[color:var(--warm-pill)] shadow-[var(--shadow-overlay)]">
+      <div className="relative h-[360px] min-h-[360px]">
+        <MapContainer
+          className="satellite-map-soft h-full w-full"
+          center={mode === "us" ? [39.5, -98.35] : [28, 0]}
+          zoom={mode === "us" ? 4 : 2}
+          minZoom={2}
+          maxZoom={9}
+          scrollWheelZoom={false}
+        >
+          <TileLayer
+            attribution={SATELLITE_ATTRIBUTION}
+            url={SATELLITE_TILE_URL}
+            eventHandlers={{
+              tileload: () => setTileStatus("ready"),
+              tileerror: () => setTileStatus("error"),
+            }}
+          />
+          <ReadingsMapFitter points={fitPoints} mode={mode} />
+          {origin
+            ? activeLinks.map((point) => (
+                <Polyline
+                  key={`reading-link-${point.code}`}
+                  positions={[[origin.lat, origin.lng], [point.lat, point.lng]]}
+                  pathOptions={{
+                    color: "rgba(255, 255, 255, 0.62)",
+                    dashArray: "4 6",
+                    weight: 1.4,
+                    opacity: 0.7,
+                  }}
+                />
+              ))
+            : null}
+          {points.map((point) => {
+            const tone = resolveMarkerTone(point.readingCount, point.selected);
+            const radius = point.selected
+              ? 13
+              : point.readingCount >= 3
+                ? 11
+                : point.readingCount === 2
+                  ? 9
+                  : point.readingCount === 1
+                    ? 8
+                    : 5;
+            return (
+              <CircleMarker
+                key={point.code}
+                center={[point.lat, point.lng]}
+                radius={radius}
+                pathOptions={{
+                  color: tone.stroke,
+                  fillColor: tone.fill,
+                  fillOpacity: tone.opacity,
+                  opacity: point.readingCount > 0 || point.selected ? 1 : 0.62,
+                  weight: point.selected ? 3 : point.readingCount > 0 ? 1.8 : 1,
+                }}
+                eventHandlers={{ click: () => onSelect(point.code) }}
+              >
+                <LeafletTooltip direction="top" opacity={0.96}>
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.06em]">
+                    {markerLabel(point.code)}
+                  </span>
+                  <span> · {point.label}</span>
+                  <span> · {point.readingCount > 0 ? formatReadingCount(point.readingCount) : "no signal"}</span>
+                </LeafletTooltip>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+        <div className="pointer-events-none absolute inset-0 bg-[rgba(250,246,238,0.12)] mix-blend-soft-light" aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[rgba(28,26,24,0.22)] to-transparent" aria-hidden />
+        {tileStatus === "error" ? (
+          <div className="absolute left-4 right-4 top-4 rounded-xl border border-[color:var(--usc-gold)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-[12px] leading-snug text-[color:var(--warm-fg2)] shadow-[var(--shadow-overlay)]">
+            Satellite imagery could not load. The aggregate markers remain available; check CSP or tile-provider reachability.
+          </div>
+        ) : null}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-[color:var(--warm-fg3)]">
-        <span>Grey tiles indicate no affiliation signal in the current reading filter.</span>
+      <div className="flex flex-wrap items-center gap-3 border-t border-[color:var(--warm-border)] bg-[color:var(--warm-card)] px-4 py-3 text-[11px] text-[color:var(--warm-fg3)]">
+        <span>{mode === "us" ? "Markers use U.S. state centroids; muted markers have no current affiliation signal." : "Markers use country centroids derived from affiliation and publication-location mentions."}</span>
         {LEGEND_STOPS.map((item) => {
-          const tone = resolveStateTone(item.count, false);
+          const tone = resolveMarkerTone(item.count, false);
           return (
             <span key={item.label} className="inline-flex items-center gap-2">
               <span
                 className="h-3 w-3 rounded-full border"
-                style={{ background: tone.background, borderColor: tone.border }}
+                style={{ background: tone.fill, borderColor: tone.stroke }}
                 aria-hidden
               />
               {item.label}
             </span>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function GlobalReadingMap({
-  countries,
-  activeCode,
-  onSelect,
-}: {
-  countries: ReadingGeoCountry[];
-  activeCode: CountryCode | null;
-  onSelect: (code: CountryCode) => void;
-}) {
-  const activeCountries = countries.filter((country) => country.readingCount > 0);
-  const unitedStates = countries.find((country) => country.code === "USA") ?? null;
-
-  return (
-    <div className="rounded-[24px] border border-[color:var(--warm-border)] bg-[color:var(--warm-bg)] p-4">
-      <svg viewBox="0 0 100 80" className="h-[340px] w-full" role="img" aria-label="Global reading geography map">
-        <rect x="2" y="6" width="96" height="68" rx="10" fill="var(--white)" stroke="var(--warm-border)" />
-        <ellipse cx="20" cy="34" rx="16" ry="11" fill="var(--warm-pill)" opacity="0.9" />
-        <ellipse cx="58" cy="28" rx="12" ry="9" fill="var(--ocean-soft)" opacity="0.75" />
-        <ellipse cx="84" cy="34" rx="12" ry="10" fill="var(--warm-pill)" opacity="0.9" />
-        <ellipse cx="88" cy="62" rx="10" ry="7" fill="var(--ocean-soft)" opacity="0.75" />
-
-        {unitedStates
-          ? activeCountries
-              .filter((country) => country.code !== "USA")
-              .map((country) => (
-                <line
-                  key={`link-${country.code}`}
-                  x1={unitedStates.x}
-                  y1={unitedStates.y}
-                  x2={country.x}
-                  y2={country.y}
-                  stroke="var(--warm-border)"
-                  strokeDasharray="2 3"
-                />
-              ))
-          : null}
-
-        {activeCountries.map((country) => {
-          const tone = resolveCountryTone(country.readingCount, country.code === activeCode);
-          const radius = country.readingCount >= 3 ? 5.6 : country.readingCount === 2 ? 4.8 : 4.2;
-          return (
-            <g
-              key={country.code}
-              onClick={() => onSelect(country.code)}
-              style={{ cursor: "pointer" }}
-              {...createInsightAttrs(describeCountryInsight(country))}
-            >
-              <circle cx={country.x} cy={country.y} r={radius} fill={tone.fill} stroke={tone.stroke} strokeWidth={country.code === activeCode ? 1.8 : 1.2} />
-              <text
-                x={country.x}
-                y={country.y + 0.8}
-                fill={tone.text}
-                fontSize="3"
-                textAnchor="middle"
-                style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}
-              >
-                {country.code === "United Kingdom" ? "UK" : country.code}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] text-[color:var(--warm-fg3)]">
-        <span>Country nodes are derived from author affiliation and publication-location mentions in the indexed readings.</span>
       </div>
     </div>
   );
@@ -382,6 +392,41 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
   const activeInsight = geo.mode === "us"
     ? (selectedState ? describeStateInsight(selectedState) : { term: activeTitle, body: "No geography signal is selected yet." })
     : (selectedCountry ? describeCountryInsight(selectedCountry) : { term: activeTitle, body: "No geography signal is selected yet." });
+  const readingPoints = useMemo<ReadingMarkerPoint[]>(() => {
+    if (geo.mode === "us") {
+      return geo.states.map((state) => ({
+        code: state.code,
+        label: state.name,
+        lat: state.lat,
+        lng: state.lng,
+        readingCount: state.readingCount,
+        selected: state.code === activeStateCode,
+      }));
+    }
+
+    return geo.countries.map((country) => ({
+      code: country.code,
+      label: country.label,
+      lat: country.lat,
+      lng: country.lng,
+      readingCount: country.readingCount,
+      selected: country.code === activeCountryCode,
+    }));
+  }, [activeCountryCode, activeStateCode, geo]);
+  const readingFitPoints = useMemo<LatLngExpression[]>(() => {
+    if (geo.mode === "us") {
+      const activeStates = geo.activeStates.length > 0
+        ? geo.activeStates
+        : geo.states.filter((state) => state.code !== "AK" && state.code !== "HI");
+      return activeStates.map((state) => [state.lat, state.lng]);
+    }
+
+    const activeCountries = geo.activeCountries.length > 0 ? geo.activeCountries : geo.countries;
+    return activeCountries.map((country) => [country.lat, country.lng]);
+  }, [geo]);
+  const globalOrigin = geo.mode === "global"
+    ? geo.countries.find((country) => country.code === "USA") ?? null
+    : null;
 
   return (
     <div className="grid grid-cols-[1.18fr_0.82fr] gap-4">
@@ -483,19 +528,19 @@ export function ReadingsGeoMap({ readings, loading = false }: ReadingsGeoMapProp
         </div>
 
         <div className="px-6 py-6">
-          {geo.mode === "us" ? (
-            <UnitedStatesReadingMap
-              states={geo.states}
-              activeCode={activeStateCode}
-              onSelect={setActiveStateCode}
-            />
-          ) : (
-            <GlobalReadingMap
-              countries={geo.countries}
-              activeCode={activeCountryCode}
-              onSelect={setActiveCountryCode}
-            />
-          )}
+          <ReadingSatelliteMap
+            mode={geo.mode}
+            points={readingPoints}
+            fitPoints={readingFitPoints}
+            origin={globalOrigin}
+            onSelect={(code) => {
+              if (geo.mode === "us") {
+                setActiveStateCode(code as StateCode);
+                return;
+              }
+              setActiveCountryCode(code as CountryCode);
+            }}
+          />
         </div>
       </section>
 

@@ -50,7 +50,11 @@ describe("buildReadingsGeoFromReadings", () => {
       "TX",
       "VA",
     ]);
-    expect(geo.activeStates.find((state) => state.code === "SC")?.readings[0]?.id).toBe("sc-ca");
+    const southCarolina = geo.activeStates.find((state) => state.code === "SC");
+    expect(southCarolina?.readings[0]?.id).toBe("sc-ca");
+    expect(southCarolina).toMatchObject({ lat: expect.any(Number), lng: expect.any(Number) });
+    expect(southCarolina).not.toHaveProperty("col");
+    expect(southCarolina).not.toHaveProperty("row");
   });
 
   it("falls back to global mode when only country-level geography is present", () => {
@@ -84,5 +88,8 @@ describe("buildReadingsGeoFromReadings", () => {
     expect(geo.mode).toBe("global");
     expect(geo.activeStates).toHaveLength(0);
     expect(geo.activeCountries.map((country) => country.code)).toEqual(["France", "United Kingdom"]);
+    expect(geo.activeCountries[0]).toMatchObject({ lat: expect.any(Number), lng: expect.any(Number) });
+    expect(geo.activeCountries[0]).not.toHaveProperty("x");
+    expect(geo.activeCountries[0]).not.toHaveProperty("y");
   });
 });
