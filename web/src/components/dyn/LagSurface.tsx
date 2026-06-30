@@ -18,13 +18,17 @@ function color(value: number): string {
 }
 
 export function LagSurface({ corr, fs, maxLagSamples, windowStepSec }: LagSurfaceProps) {
-  const rows = corr.length;
-  const cols = corr[0]?.length ?? 0;
+  const rows = corr.length; // time windows → horizontal (x) axis
+  const cols = corr[0]?.length ?? 0; // lag bins → vertical (y) axis
   const w = 760;
   const h = 280;
   const pad = { left: 64, top: 18, right: 18, bottom: 42 };
-  const cw = cols ? (w - pad.left - pad.right) / cols : 0;
-  const ch = rows ? (h - pad.top - pad.bottom) / rows : 0;
+  // Each time window occupies a column of width cellW; each lag bin a row of
+  // height cellH. Deriving cellW from rows (not cols) and cellH from cols keeps
+  // the heatmap inside the viewBox — the previous code transposed these, which
+  // pushed cells far below the 280px viewBox and overflowed the card.
+  const cellW = rows ? (w - pad.left - pad.right) / rows : 0;
+  const cellH = cols ? (h - pad.top - pad.bottom) / cols : 0;
   const zeroLag = maxLagSamples;
 
   if (!rows || !cols) {
@@ -43,10 +47,10 @@ export function LagSurface({ corr, fs, maxLagSamples, windowStepSec }: LagSurfac
         row.map((value, c) => (
           <rect
             key={`${r}-${c}`}
-            x={pad.left + r * ch}
-            y={pad.top + c * cw}
-            width={Math.max(1, ch + 0.5)}
-            height={Math.max(1, cw + 0.5)}
+            x={pad.left + r * cellW}
+            y={pad.top + c * cellH}
+            width={Math.max(1, cellW + 0.5)}
+            height={Math.max(1, cellH + 0.5)}
             fill={color(value)}
           >
             <title>
@@ -57,17 +61,17 @@ export function LagSurface({ corr, fs, maxLagSamples, windowStepSec }: LagSurfac
       )}
       <line
         x1={pad.left}
-        x2={pad.left + rows * ch}
-        y1={pad.top + zeroLag * cw + cw / 2}
-        y2={pad.top + zeroLag * cw + cw / 2}
+        x2={pad.left + rows * cellW}
+        y1={pad.top + zeroLag * cellH + cellH / 2}
+        y2={pad.top + zeroLag * cellH + cellH / 2}
         stroke="var(--ink)"
         strokeWidth={1}
         strokeDasharray="4 4"
       />
       <text x={pad.left} y={h - 14} className={styles.tinyLabel}>time windows · {windowStepSec.toFixed(0)} s step</text>
-      <text x={8} y={pad.top + zeroLag * cw + 4} className={styles.tinyLabel}>0 lag</text>
+      <text x={8} y={pad.top + zeroLag * cellH + 4} className={styles.tinyLabel}>0 lag</text>
       <text x={8} y={pad.top + 12} className={styles.tinyLabel}>infant leads</text>
-      <text x={8} y={pad.top + cols * cw - 4} className={styles.tinyLabel}>caregiver leads</text>
+      <text x={8} y={pad.top + cols * cellH - 4} className={styles.tinyLabel}>caregiver leads</text>
     </svg>
   );
 }
