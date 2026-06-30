@@ -1,0 +1,175 @@
+/* Cascade DAG — layered, interactive, animated developmental-cascade graph.
+   Page chrome (page/hero/lede/plotSvg/legend/metric*) is reused from
+   FeatureRoutes.module.css; this module owns the cascade-specific visuals. */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+}
+
+.svgWrap {
+  animation: cascadeFade 460ms ease both;
+}
+
+/* Interactive elements fade between dim/lit states smoothly. */
+.node {
+  cursor: pointer;
+  transition: opacity 220ms ease;
+}
+.node:focus {
+  outline: none;
+}
+.edge {
+  transition: opacity 220ms ease;
+}
+.edgeLine {
+  stroke-dasharray: 640;
+  animation: cascadeDraw 900ms var(--ease-standard, ease) both;
+}
+.flowDot {
+  transition: opacity 220ms ease;
+}
+
+.colCaption {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  fill: var(--slate-400);
+}
+
+/* ---- detail / trace panel ---------------------------------------------- */
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.panelTitle {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: var(--w-semibold);
+  color: var(--ink);
+  line-height: 1.2;
+}
+.domainChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--slate-600);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.sectionTitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--slate-500);
+  margin: 14px 0 4px;
+}
+.linkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.linkRow:last-child {
+  border-bottom: none;
+}
+.linkMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.linkName {
+  font-size: 12px;
+  font-weight: var(--w-semibold);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.linkEvidence {
+  font-size: 10px;
+  color: var(--slate-500);
+  font-family: var(--font-mono);
+}
+.weightCol {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+.weightBar {
+  height: 5px;
+  width: 52px;
+  border-radius: 3px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.weightFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--usc-garnet);
+}
+.weightNum {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--slate-600);
+  min-width: 26px;
+  text-align: right;
+}
+.emptyTrace {
+  font-size: 12px;
+  color: var(--slate-500);
+  line-height: 1.5;
+}
+
+@keyframes cascadeDraw {
+  from {
+    stroke-dashoffset: 640;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes cascadeFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svgWrap,
+  .edgeLine {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .flowDot {
+    display: none;
+  }
+}
