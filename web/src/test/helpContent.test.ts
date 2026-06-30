@@ -65,6 +65,23 @@ describe("dashboard help content", () => {
     });
   });
 
+  it("gives every how-to a schematic figure and working redirects", () => {
+    HOW_TO_CARDS.forEach((card) => {
+      expect(card.figure.kind).toBeTruthy();
+      expect(card.route.startsWith("/")).toBe(true);
+      expect(card.links.length).toBeGreaterThan(0);
+      card.links.forEach((link) => {
+        expect(link.to.startsWith("/")).toBe(true);
+        expect(link.label.length).toBeGreaterThan(0);
+      });
+      // every figure pin must map to an existing step so step<->pin hover links up
+      card.figure.pins.forEach((pin) => {
+        expect(pin.n).toBeGreaterThanOrEqual(1);
+        expect(pin.n).toBeLessThanOrEqual(card.steps.length);
+      });
+    });
+  });
+
   it("keeps public and operator tour steps targetable", () => {
     expect(PUBLIC_TOUR_STEPS.length).toBeGreaterThanOrEqual(9);
     expect(OPERATOR_TOUR_STEPS.length).toBeGreaterThanOrEqual(7);

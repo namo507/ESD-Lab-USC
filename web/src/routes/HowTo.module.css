@@ -1,0 +1,227 @@
+/* How-to specific styles. Page chrome is reused from Docs.module.css; this
+   module owns the schematic visual tutorials, the step/pin linking, and the
+   sublink rows that redirect into the real surfaces. */
+
+.figureScene {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 10px;
+  animation: howtoFigureIn 460ms ease both;
+}
+
+.pinGroup {
+  cursor: pointer;
+  outline: none;
+}
+.pinGroup:focus-visible > circle:last-of-type {
+  stroke: var(--usc-garnet);
+  stroke-width: 2.5;
+}
+
+.pinPulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: howtoPinPulse 1.8s ease-in-out infinite;
+}
+
+/* steps that mirror the numbered pins */
+.steps {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 5px 7px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  color: var(--warm-fg2);
+  transition:
+    background 150ms var(--ease-soft),
+    border-color 150ms var(--ease-soft);
+}
+.step:hover,
+.stepActive {
+  background: var(--warm-pill);
+  border-color: var(--warm-border);
+}
+.stepNum {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-card);
+  border: 1px solid var(--warm-border);
+  color: var(--usc-garnet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.stepActive .stepNum {
+  background: var(--usc-garnet);
+  border-color: var(--usc-garnet);
+  color: #fff8f3;
+}
+
+/* sublinks that redirect to the real routes */
+.sublinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin-top: 14px;
+}
+.sublinkLead {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--warm-fg4);
+  margin-right: 2px;
+}
+.openLink,
+.deepLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: none;
+  border: 1px solid var(--warm-border);
+  transition:
+    background 150ms var(--ease-soft),
+    color 150ms var(--ease-soft),
+    border-color 150ms var(--ease-soft),
+    transform 150ms var(--ease-soft);
+}
+.openLink {
+  background: var(--usc-garnet);
+  border-color: var(--usc-garnet);
+  color: #fff8f3;
+}
+.openLink:hover {
+  background: var(--usc-garnet-600);
+  transform: translateY(-1px);
+}
+.deepLink {
+  background: var(--glass-200);
+  color: var(--warm-fg2);
+}
+.deepLink:hover {
+  border-color: var(--usc-garnet);
+  color: var(--usc-garnet);
+  transform: translateY(-1px);
+}
+
+/* navigable tour index */
+.tourIndex {
+  display: grid;
+  gap: 8px;
+}
+.tourRow {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--warm-border);
+  border-radius: 14px;
+  background: var(--warm-card);
+  padding: 11px 13px;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 150ms var(--ease-soft),
+    transform 150ms var(--ease-soft);
+}
+.tourRow:hover {
+  border-color: var(--usc-garnet);
+  transform: translateY(-1px);
+}
+.tourRowNum {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warm-pill);
+  color: var(--usc-garnet);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.tourRowBody strong {
+  display: block;
+  color: var(--warm-fg1);
+  font-size: 14px;
+}
+.tourRowBody span {
+  display: block;
+  margin-top: 2px;
+  color: var(--warm-fg3);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.tourRowGo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--warm-fg4);
+  white-space: nowrap;
+}
+
+@keyframes howtoPinPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+@keyframes howtoFigureIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figureScene {
+    animation: none;
+  }
+  .pinPulse {
+    animation: none;
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 980px) {
+  .tourRow {
+    grid-template-columns: 30px 1fr;
+  }
+  .tourRowGo {
+    display: none;
+  }
+}

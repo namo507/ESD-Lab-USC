@@ -38,6 +38,24 @@ export interface DataLayerDoc {
   detail: string;
 }
 
+export type HowToFigureKind =
+  | "landing-hero"
+  | "nav"
+  | "pipeline"
+  | "aim"
+  | "architecture"
+  | "cohort"
+  | "studio"
+  | "assistant"
+  | "library"
+  | "operator-shell"
+  | "operator-topbar";
+
+export interface HowToSubLink {
+  label: string;
+  to: string;
+}
+
 export interface HowToCard {
   id: string;
   title: string;
@@ -45,9 +63,14 @@ export interface HowToCard {
   steps: string[];
   figure: {
     label: string;
+    kind: HowToFigureKind;
     pins: Array<{ n: number; label: string; x: number; y: number }>;
   };
   track: TourTrack;
+  /** Primary "open the real surface" destination for this task. */
+  route: string;
+  /** Extra deep links to the concrete routes this task touches. */
+  links: HowToSubLink[];
 }
 
 export interface TourStep {
@@ -304,88 +327,110 @@ export const HOW_TO_CARDS: HowToCard[] = [
     title: "Get oriented in 5 minutes",
     goal: "Read the landing page without opening the operator console.",
     steps: ["Start at the enrollment banner.", "Read Attention Pulse for the HDA mix.", "Read About the Study for the study frame.", "Open the tour if the page feels dense."],
-    figure: { label: "Hero, attention pulse, study card", pins: [{ n: 1, label: "Banner", x: 14, y: 18 }, { n: 2, label: "Pulse", x: 61, y: 43 }, { n: 3, label: "Study", x: 82, y: 45 }] },
+    figure: { label: "Hero, attention pulse, study card", kind: "landing-hero", pins: [{ n: 1, label: "Banner", x: 24, y: 24 }, { n: 2, label: "Pulse", x: 47, y: 62 }, { n: 3, label: "Study", x: 82, y: 55 }] },
     track: "public",
+    route: "/",
+    links: [{ label: "Operator overview", to: "/overview" }, { label: "Documentation", to: DOC_ROUTE }],
   },
   {
     id: "navigate",
     title: "Navigate the site",
     goal: "Move through sections and use Buddy tips.",
     steps: ["Use the top nav to jump to a section.", "Hover a card to let Buddy explain it.", "Use Docs when you need reference detail.", "Use Take the tour for guided context."],
-    figure: { label: "Top nav and Buddy", pins: [{ n: 1, label: "Nav", x: 45, y: 18 }, { n: 2, label: "Buddy", x: 18, y: 82 }] },
+    figure: { label: "Top nav and Buddy", kind: "nav", pins: [{ n: 1, label: "Nav", x: 55, y: 24 }, { n: 2, label: "Buddy", x: 17, y: 82 }] },
     track: "public",
+    route: "/",
+    links: [{ label: "Operator overview", to: "/overview" }, { label: "Documentation", to: DOC_ROUTE }],
   },
   {
     id: "pipeline",
     title: "Read the live Pipeline",
     goal: "Understand what done and fail mean.",
     steps: ["Open Pipeline.", "Read each stage left to right.", "Treat done as completed windows or jobs.", "Treat fail as surfaced exceptions for review.", "Open run history for detail."],
-    figure: { label: "Six stage cards", pins: [{ n: 1, label: "Stage", x: 18, y: 55 }, { n: 2, label: "Done", x: 47, y: 70 }, { n: 3, label: "Fail", x: 78, y: 70 }] },
+    figure: { label: "Six stage cards", kind: "pipeline", pins: [{ n: 1, label: "Stage", x: 14, y: 56 }, { n: 2, label: "Done", x: 48, y: 40 }, { n: 3, label: "Fail", x: 85, y: 70 }] },
     track: "public",
+    route: "/#pipeline",
+    links: [{ label: "Live pipeline DAG", to: "/overview" }, { label: "Run history", to: "/runs" }, { label: "Pipeline health", to: "/pipeline-health" }],
   },
   {
     id: "aims",
     title: "Explore the Specific Aims",
     goal: "Open an aim and ask a plain-language follow-up.",
     steps: ["Open Aims.", "Expand one card.", "Read Hypothesis, Method, and Outcome.", "Press Ask about Aim N."],
-    figure: { label: "Expandable aim card", pins: [{ n: 1, label: "Aim", x: 26, y: 32 }, { n: 2, label: "Expand", x: 72, y: 31 }, { n: 3, label: "Ask", x: 63, y: 77 }] },
+    figure: { label: "Expandable aim card", kind: "aim", pins: [{ n: 1, label: "Aim", x: 26, y: 33 }, { n: 2, label: "Expand", x: 78, y: 33 }, { n: 3, label: "Ask", x: 64, y: 78 }] },
     track: "public",
+    route: "/#aims",
+    links: [{ label: "Results and trajectories", to: "/results" }],
   },
   {
     id: "architecture",
     title: "Inspect the Data Architecture",
     goal: "Follow how raw capture becomes a model-ready export.",
     steps: ["Select a layer on the left.", "Read the detail panel.", "Open pipeline detail for processing status.", "Open REDCap sync for form health."],
-    figure: { label: "Layer rail and detail panel", pins: [{ n: 1, label: "Layer", x: 18, y: 43 }, { n: 2, label: "Detail", x: 62, y: 43 }, { n: 3, label: "Links", x: 70, y: 76 }] },
+    figure: { label: "Layer rail and detail panel", kind: "architecture", pins: [{ n: 1, label: "Layer", x: 15, y: 45 }, { n: 2, label: "Detail", x: 62, y: 42 }, { n: 3, label: "Links", x: 70, y: 78 }] },
     track: "public",
+    route: "/#architecture",
+    links: [{ label: "Clinical pipeline", to: "/runs" }, { label: "REDCap sync", to: "/redcap" }],
   },
   {
     id: "cohort",
     title: "Use the Cohort table",
     goal: "Filter de-identified participants by group.",
     steps: ["Open Cohort.", "Choose a group in Filter.", "Read Participant, Group, Visit, Site, and Status.", "Open the full participant table when you need more rows."],
-    figure: { label: "Filter and participant rows", pins: [{ n: 1, label: "Filter", x: 20, y: 28 }, { n: 2, label: "Rows", x: 52, y: 62 }, { n: 3, label: "Open", x: 81, y: 27 }] },
+    figure: { label: "Filter and participant rows", kind: "cohort", pins: [{ n: 1, label: "Filter", x: 22, y: 28 }, { n: 2, label: "Rows", x: 52, y: 64 }, { n: 3, label: "Open", x: 82, y: 27 }] },
     track: "public",
+    route: "/participants",
+    links: [{ label: "Window QA", to: "/qa" }, { label: "Data explorer", to: "/data-explorer" }],
   },
   {
     id: "studio",
     title: "Try the Model Studio",
     goal: "See how illustrative inputs move the gauge.",
     steps: ["Move one input slider.", "Watch the likelihood gauge update.", "Press Explain features.", "Press Reset inputs.", "Remember that sliders do not change study data."],
-    figure: { label: "Sliders and gauge", pins: [{ n: 1, label: "Slider", x: 28, y: 49 }, { n: 2, label: "Gauge", x: 72, y: 42 }, { n: 3, label: "Reset", x: 31, y: 76 }] },
+    figure: { label: "Sliders and gauge", kind: "studio", pins: [{ n: 1, label: "Slider", x: 27, y: 50 }, { n: 2, label: "Gauge", x: 74, y: 45 }, { n: 3, label: "Reset", x: 30, y: 78 }] },
     track: "public",
+    route: "/#studio",
+    links: [{ label: "Model leaderboard", to: "/model-leaderboard" }, { label: "SHAP explorer", to: "/shap-explorer" }],
   },
   {
     id: "assistant",
     title: "Ask the lab",
     goal: "Use ESD Buddy for grounded study questions.",
     steps: ["Open the assistant.", "Pick a starter chip.", "Ask a follow-up.", "Keep questions de-identified."],
-    figure: { label: "Assistant chips and input", pins: [{ n: 1, label: "Open", x: 80, y: 76 }, { n: 2, label: "Chip", x: 42, y: 42 }, { n: 3, label: "Input", x: 51, y: 78 }] },
+    figure: { label: "Assistant chips and input", kind: "assistant", pins: [{ n: 1, label: "Open", x: 82, y: 80 }, { n: 2, label: "Chip", x: 42, y: 44 }, { n: 3, label: "Input", x: 50, y: 80 }] },
     track: "public",
+    route: "/#assistant",
+    links: [{ label: "Guided explorer", to: "/guided-explorer" }],
   },
   {
     id: "library",
     title: "Search the Library",
     goal: "Find reading context without leaving the dashboard.",
     steps: ["Open Library.", "Search by title, author, or abstract.", "Read composition, cadence, and depth charts.", "Ask Buddy to summarize a reading."],
-    figure: { label: "Search and corpus charts", pins: [{ n: 1, label: "Search", x: 72, y: 25 }, { n: 2, label: "Charts", x: 35, y: 61 }, { n: 3, label: "Readings", x: 72, y: 71 }] },
+    figure: { label: "Search and corpus charts", kind: "library", pins: [{ n: 1, label: "Search", x: 72, y: 26 }, { n: 2, label: "Charts", x: 34, y: 62 }, { n: 3, label: "Readings", x: 72, y: 72 }] },
     track: "public",
+    route: "/#library",
+    links: [{ label: "Publications", to: "/publications" }],
   },
   {
     id: "operator-switch",
     title: "Switch to Operator view",
     goal: "Understand what changes when the console opens.",
     steps: ["Use Operator view in the bottom session pill.", "Notice the sidebar and compliance banner.", "Use Landing to return to the public surface.", "Use Help / Tour if the console feels dense."],
-    figure: { label: "Dock, sidebar, banner", pins: [{ n: 1, label: "Operator", x: 78, y: 84 }, { n: 2, label: "Sidebar", x: 14, y: 48 }, { n: 3, label: "Banner", x: 55, y: 28 }] },
+    figure: { label: "Dock, sidebar, banner", kind: "operator-shell", pins: [{ n: 1, label: "Operator", x: 80, y: 85 }, { n: 2, label: "Sidebar", x: 13, y: 52 }, { n: 3, label: "Banner", x: 58, y: 26 }] },
     track: "operator",
+    route: "/overview",
+    links: [{ label: "Pipeline health", to: "/pipeline-health" }, { label: "Help and tour", to: HOW_TO_ROUTE }],
   },
   {
     id: "operator-basics",
     title: "Operator basics",
     goal: "Run a refresh and read the top chrome.",
     steps: ["Use Force Sync when you need a fresh pull.", "Read the session timer.", "Open System to check display mode.", "Use Ask the lab for an operational question."],
-    figure: { label: "Operator top bar", pins: [{ n: 1, label: "Ask", x: 44, y: 30 }, { n: 2, label: "Timer", x: 65, y: 30 }, { n: 3, label: "Sync", x: 86, y: 30 }] },
+    figure: { label: "Operator top bar", kind: "operator-topbar", pins: [{ n: 1, label: "Ask", x: 38, y: 44 }, { n: 2, label: "Timer", x: 62, y: 62 }, { n: 3, label: "Sync", x: 89, y: 44 }] },
     track: "operator",
+    route: "/overview",
+    links: [{ label: "Data explorer", to: "/data-explorer" }, { label: "REDCap sync", to: "/redcap" }],
   },
 ];
 

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, HelpCircle, Play, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, HelpCircle, Play, Sparkles } from "lucide-react";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { HowToFigure } from "@/components/help/HowToFigure";
 import { startNanoTour } from "@/components/help/tourEvents";
 import {
   DOC_ROUTE,
@@ -11,9 +13,11 @@ import {
   OPERATOR_TOUR_STEPS,
   PUBLIC_TOUR_STEPS,
   type HowToCard,
+  type TourStep,
 } from "@/data/helpContent";
 import { useUi } from "@/store/ui";
 import styles from "./Docs.module.css";
+import local from "./HowTo.module.css";
 
 function HelpNav() {
   const location = useLocation();
@@ -59,42 +63,75 @@ function HelpNav() {
   );
 }
 
-function AnnotatedFigure({ card }: { card: HowToCard }) {
-  return (
-    <figure className={styles.figure} aria-label={card.figure.label}>
-      <figcaption className={styles.figureLabel}>{card.figure.label}</figcaption>
-      <div className={styles.figurePanel} aria-hidden="true" />
-      {card.figure.pins.map((pin) => (
-        <span
-          key={pin.n}
-          className={styles.pin}
-          style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-          aria-label={`${pin.n}. ${pin.label}`}
-        >
-          <span className={styles.pinNumber}>{pin.n}</span>
-          <span>{pin.label}</span>
-        </span>
-      ))}
-    </figure>
-  );
-}
-
 function HowToCardView({ card }: { card: HowToCard }) {
+  const [activeN, setActiveN] = useState<number | null>(null);
+  const pinNumbers = new Set(card.figure.pins.map((pin) => pin.n));
+
   return (
     <article className={styles.card}>
       <small>{card.goal}</small>
       <h3>{card.title}</h3>
-      <ol>
-        {card.steps.map((step) => (
-          <li key={step}>{step}</li>
+
+      <ul className={local.steps}>
+        {card.steps.map((step, index) => {
+          const n = index + 1;
+          const linked = pinNumbers.has(n);
+          return (
+            <li
+              key={step}
+              className={`${local.step} ${activeN === n ? local.stepActive : ""}`}
+              onMouseEnter={() => linked && setActiveN(n)}
+              onMouseLeave={() => linked && setActiveN(null)}
+            >
+              <span className={local.stepNum}>{n}</span>
+              <span>{step}</span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <figure className={styles.figure} aria-label={card.figure.label}>
+        <figcaption className={styles.figureLabel}>{card.figure.label}</figcaption>
+        <HowToFigure kind={card.figure.kind} pins={card.figure.pins} activeN={activeN} onHover={setActiveN} />
+      </figure>
+
+      <div className={local.sublinks}>
+        <span className={local.sublinkLead}>Go to</span>
+        <Link className={local.openLink} to={card.route}>
+          Open this surface
+          <ArrowRight size={13} strokeWidth={1.8} />
+        </Link>
+        {card.links.map((link) => (
+          <Link key={link.to} className={local.deepLink} to={link.to}>
+            {link.label}
+          </Link>
         ))}
-      </ol>
-      <AnnotatedFigure card={card} />
-      <button type="button" className={styles.secondaryButton} onClick={() => startNanoTour(card.track)}>
-        <Play size={14} strokeWidth={1.5} />
-        Show me
-      </button>
+        <button type="button" className={styles.secondaryButton} onClick={() => startNanoTour(card.track)}>
+          <Play size={14} strokeWidth={1.5} />
+          Show me
+        </button>
+      </div>
     </article>
+  );
+}
+
+function TourIndex({ steps }: { steps: TourStep[] }) {
+  return (
+    <div className={local.tourIndex}>
+      {steps.map((step, index) => (
+        <Link key={step.id} className={local.tourRow} to={step.route}>
+          <span className={local.tourRowNum}>{index + 1}</span>
+          <span className={local.tourRowBody}>
+            <strong>{step.title}</strong>
+            <span>{step.body}</span>
+          </span>
+          <span className={local.tourRowGo}>
+            {step.route}
+            <ArrowRight size={12} strokeWidth={1.8} />
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -108,16 +145,17 @@ export function HowTo() {
             <span className={styles.eyebrow}>How-to</span>
             <h1>Learn the dashboard by doing.</h1>
             <p className={styles.lede}>
-              Short task cards, quiet annotated figures, and Buddy-led guided tours for new lab members,
-              clinicians, researchers, and operators.
+              Short task cards, annotated schematic figures, and Buddy-led guided tours for new lab members,
+              clinicians, researchers, and operators. Every card links straight to the live surface it describes.
             </p>
           </div>
           <aside className={styles.heroCard} data-insight="tour-trigger">
             <span className={styles.eyebrow}>Visual tutorial</span>
             <h2>Walk the real UI.</h2>
             <p>
-              Start with the public tour for the landing page, or use the operator tour when you are inside the lab console.
-              Reduced-motion users can read the annotated figures below instead.
+              Hover a step to light up the matching point on the figure, then use the links to open the real surface.
+              Start with the public tour for the landing page, or the operator tour inside the lab console. Reduced-motion
+              users can read the annotated figures instead.
             </p>
             <div className={styles.heroActions}>
               <button type="button" className={styles.primaryButton} onClick={() => startNanoTour("public")}>
@@ -144,34 +182,28 @@ export function HowTo() {
 
         <section className={styles.section} id="tour-config">
           <span className={styles.eyebrow}>Tour tracks</span>
-          <h2>Readable ordered config</h2>
+          <h2>Step-by-step, each linked to its route</h2>
           <div className={styles.grid2}>
             <article className={styles.card}>
               <small>Public tour</small>
-              <h3>Landing route targets</h3>
-              <div className={styles.tourList}>
-                {PUBLIC_TOUR_STEPS.map((step) => (
-                  <div className={styles.tourStep} key={step.id}>
-                    <div>
-                      <strong>{step.title}</strong>
-                      <span>{step.route} . data-tour=&quot;{step.target}&quot;</span>
-                    </div>
-                  </div>
-                ))}
+              <h3>Landing walkthrough</h3>
+              <TourIndex steps={PUBLIC_TOUR_STEPS} />
+              <div className={local.sublinks}>
+                <button type="button" className={styles.secondaryButton} onClick={() => startNanoTour("public")}>
+                  <Play size={14} strokeWidth={1.5} />
+                  Launch public tour
+                </button>
               </div>
             </article>
             <article className={styles.card}>
               <small>Operator tour</small>
-              <h3>Console route targets</h3>
-              <div className={styles.tourList}>
-                {OPERATOR_TOUR_STEPS.map((step) => (
-                  <div className={styles.tourStep} key={step.id}>
-                    <div>
-                      <strong>{step.title}</strong>
-                      <span>{step.route} . data-tour=&quot;{step.target}&quot;</span>
-                    </div>
-                  </div>
-                ))}
+              <h3>Console walkthrough</h3>
+              <TourIndex steps={OPERATOR_TOUR_STEPS} />
+              <div className={local.sublinks}>
+                <button type="button" className={styles.secondaryButton} onClick={() => startNanoTour("operator")}>
+                  <Play size={14} strokeWidth={1.5} />
+                  Launch operator tour
+                </button>
               </div>
             </article>
           </div>
@@ -185,8 +217,9 @@ export function HowTo() {
               <small>When adding UI</small>
               <h3>Add one help card</h3>
               <p>
-                Add the feature to the shared help content module with a goal, steps, visual pins, and the right tour track.
-                The How-to page updates from that source.
+                Add the feature to the shared help content module with a goal, steps, a figure kind, scene pins, the route
+                it opens, deep sublinks, and the right tour track. The How-to page renders the schematic figure and links
+                from that source.
               </p>
             </article>
             <article className={styles.card}>
