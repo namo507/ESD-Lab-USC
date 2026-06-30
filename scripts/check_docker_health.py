@@ -165,6 +165,38 @@ def check_compose_services(
     return rows
 
 
+def query_compose_ps_rows(
+    compose_cmd: list[str],
+    compose_file: Path,
+    project_name: str | None,
+    profiles: list[str],
+) -> list[dict[str, Any]]:
+    """Best-effort snapshot of Compose service rows (never raises)."""
+    command = compose_base_command(compose_cmd, compose_file, project_name, profiles)
+    command.extend(["ps", "--format", "json"])
+    result = run_command(command, cwd=PROJECT_ROOT)
+    if result.returncode != 0:
+        return []
+    return parse_compose_ps_json(result.stdout)
+
+
+def find_unhealthy_running_services(
+    rows: list[dict[str, Any]], services: list[str]
+) -> list[str]:
+    """Services that are up but failing their healthcheck (hung-but-alive)."""
+    requested = set(services)
+    names: list[str] = []
+    for row in rows:
+        service = str(row.get("Service") or row.get("Name") or "")
+        if requested and service not in requested:
+            continue
+        state = str(row.get("State") or row.get("Status") or "")
+        health = str(row.get("Health") or "")
+        if is_running_state(state) and "unhealthy" in health.strip().lower():
+            names.append(service)
+    return names
+
+
 def repair_compose_services(
     compose_cmd: list[str],
     compose_file: Path,
@@ -173,9 +205,18 @@ def repair_compose_services(
     profiles: list[str],
 ) -> None:
     targets = services or ["dashboard"]
-    command = compose_base_command(compose_cmd, compose_file, project_name, profiles)
-    command.extend(["up", "-d", *targets])
-    result = run_command(command, cwd=PROJECT_ROOT)
+    base = compose_base_command(compose_cmd, compose_file, project_name, profiles)
+
+    # 1. Restart any service that is alive but failing its healthcheck. A plain
+    #    `up -d` is a no-op for an already-running container, so a hung process
+    #    would otherwise never recover through this repair path.
+    rows = query_compose_ps_rows(compose_cmd, compose_file, project_name, profiles)
+    stale = find_unhealthy_running_services(rows, targets)
+    if stale:
+        run_command([*base, "restart", *stale], cwd=PROJECT_ROOT)
+
+    # 2. (Re)create any service that is missing or stopped.
+    result = run_command([*base, "up", "-d", *targets], cwd=PROJECT_ROOT)
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip() or "unknown error"
         raise RuntimeError(f"Compose repair failed: {detail}")

@@ -107,18 +107,50 @@ def test_repair_compose_services_targets_requested_services(monkeypatch, tmp_pat
         ["share"],
     )
 
+    base = [
+        "docker",
+        "compose",
+        "-f",
+        str(tmp_path / "compose.yml"),
+        "--profile",
+        "share",
+        "-p",
+        "esd-test",
+    ]
+    # Repair first probes service health (empty output -> nothing unhealthy),
+    # then (re)creates the requested services with `up -d`.
     assert calls == [
-        [
-            "docker",
-            "compose",
-            "-f",
-            str(tmp_path / "compose.yml"),
-            "--profile",
-            "share",
-            "-p",
-            "esd-test",
-            "up",
-            "-d",
-            "dashboard",
-        ]
+        base + ["ps", "--format", "json"],
+        base + ["up", "-d", "dashboard"],
+    ]
+
+
+def test_repair_compose_services_restarts_unhealthy_running(monkeypatch, tmp_path):
+    """A running-but-unhealthy service is bounced before `up -d` runs."""
+    calls: list[list[str]] = []
+
+    def fake_run_command(command, cwd=None):
+        calls.append(command)
+        stdout = ""
+        if "ps" in command:
+            stdout = json.dumps(
+                [{"Service": "dashboard", "State": "running", "Health": "unhealthy"}]
+            )
+        return subprocess.CompletedProcess(command, 0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(check_docker_health, "run_command", fake_run_command)
+
+    check_docker_health.repair_compose_services(
+        ["docker", "compose"],
+        tmp_path / "compose.yml",
+        None,
+        ["dashboard"],
+        [],
+    )
+
+    base = ["docker", "compose", "-f", str(tmp_path / "compose.yml")]
+    assert calls == [
+        base + ["ps", "--format", "json"],
+        base + ["restart", "dashboard"],
+        base + ["up", "-d", "dashboard"],
     ]

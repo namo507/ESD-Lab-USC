@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { TOUR_STEPS, type TourStep, type TourTrack } from "@/data/helpContent";
+import { TOUR_STEPS, type TourTrack } from "@/data/helpContent";
 import { NANO_TOUR_EVENT, type NanoTourEventDetail } from "./tourEvents";
 import styles from "./GuidedTour.module.css";
 

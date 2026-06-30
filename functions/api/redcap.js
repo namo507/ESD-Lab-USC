@@ -22,11 +22,13 @@ export async function onRequestPost(context) {
     return json({ error: "Write actions are not allowed through the browser proxy." }, 403);
   }
 
+  // Spread the client body first so the trusted server credentials/format below
+  // always win — a request can never override the token or response format.
   const form = new URLSearchParams({
+    ...body,
     token: REDCAP_API_TOKEN,
     format: "json",
     returnFormat: "json",
-    ...body,
   });
 
   try {

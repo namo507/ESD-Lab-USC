@@ -131,7 +131,7 @@ async function redcapProxy(request, env) {
   if (body.action === "import" || body.action === "delete") {
     return jsonResponse({ error: "Write actions are not allowed through the browser proxy." }, 403);
   }
-  const form = new URLSearchParams({ token, format: "json", returnFormat: "json", ...body });
+  const form = new URLSearchParams({ ...body, token, format: "json", returnFormat: "json" });
   try {
     const response = await fetch(apiUrl, {
       method: "POST",

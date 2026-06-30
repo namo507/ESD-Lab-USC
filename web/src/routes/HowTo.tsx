@@ -154,7 +154,7 @@ export function HowTo() {
                   <div className={styles.tourStep} key={step.id}>
                     <div>
                       <strong>{step.title}</strong>
-                      <span>{step.route} . data-tour="{step.target}"</span>
+                      <span>{step.route} . data-tour=&quot;{step.target}&quot;</span>
                     </div>
                   </div>
                 ))}
@@ -168,7 +168,7 @@ export function HowTo() {
                   <div className={styles.tourStep} key={step.id}>
                     <div>
                       <strong>{step.title}</strong>
-                      <span>{step.route} . data-tour="{step.target}"</span>
+                      <span>{step.route} . data-tour=&quot;{step.target}&quot;</span>
                     </div>
                   </div>
                 ))}

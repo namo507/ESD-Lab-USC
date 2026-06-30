@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import * as Lucide from "lucide-react";
+import { ICONS, FALLBACK_ICON } from "./iconRegistry";
 
 interface IconProps {
   name: string;
@@ -10,24 +10,11 @@ interface IconProps {
   ariaLabel?: string;
 }
 
-/** Convert kebab-case lucide names → PascalCase used by lucide-react. */
-function pascal(name: string): string {
-  return name
-    .split("-")
-    .map((p) => (p ? p[0]!.toUpperCase() + p.slice(1) : ""))
-    .join("");
-}
-
 export function Icon({ name, size = 16, color, stroke = 1.5, style, ariaLabel }: IconProps) {
-  const Component = (Lucide as unknown as Record<string, React.FC<{
-    size?: number;
-    color?: string;
-    strokeWidth?: number;
-    style?: CSSProperties;
-    "aria-hidden"?: boolean;
-    "aria-label"?: string;
-    role?: string;
-  }>>)[pascal(name)] ?? Lucide.Circle;
+  // Explicit registry instead of a dynamic `import * as Lucide` lookup so the
+  // bundler tree-shakes to only the icons this app uses. Unknown names fall back
+  // to Circle, matching the previous behaviour.
+  const Component = ICONS[name] ?? FALLBACK_ICON;
 
   return (
     <Component

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { Badge, Button, Card, Gloss, KPI, SectionLabel, Segmented, type BadgeKind } from "@/components/primitives";
@@ -8,7 +8,6 @@ import {
   useRedcapEvents,
   useRedcapMissingData,
   useRedcapVisitDetail,
-  useRedcapVisitEntry,
   useRedcapVisitHealth,
 } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
@@ -16,7 +15,7 @@ import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
-import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitOption, RedcapVisitRecord } from "@/api/schemas";
+import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitRecord } from "@/api/schemas";
 import type { RedcapPayload as RedcapDashboardPayload } from "@/api/redcapSchemas";
 import { callREDCap } from "@/api/redcapClient";
 import { SwimLane } from "@/components/timeline/SwimLane";
@@ -195,7 +194,7 @@ export function Redcap() {
   const liveProxyEnabled = useFeatureFlag("REDCAP_LIVE_PROXY");
   const visitHealth = useRedcapVisitHealth(visitHealthEnabled);
   const redcapPayload = useRedcapData(visitHealthEnabled);
-  const visitRecords = visitHealth.data?.data ?? [];
+  const visitRecords = useMemo(() => visitHealth.data?.data ?? [], [visitHealth.data]);
   const visitSummary = useMemo(() => summarizeVisitHealth(visitRecords), [visitRecords]);
   const queryClient = useQueryClient();
   const theme = useUi((s) => s.theme);
@@ -1253,99 +1252,6 @@ function VisitRecordDrawer({ record, onClose }: { record: RedcapVisitRecord; onC
         <Button size="sm" icon="external-link" onClick={openRedcap}>Open in REDCap</Button>
       </div>
     </aside>
-  );
-}
-
-function VisitEntryPanel({
-  records,
-  visitOptions,
-}: {
-  records: RedcapVisitRecord[];
-  visitOptions: RedcapVisitOption[];
-}) {
-  const options = useMemo(() => {
-    if (visitOptions.length) return visitOptions;
-    const first = records[0];
-    if (!first) return [];
-    return VISIT_COLUMNS.map(({ key, label }) => ({ key, label, eventName: first[key].eventName ?? "" }));
-  }, [records, visitOptions]);
-  const [recordId, setRecordId] = useState("");
-  const [eventName, setEventName] = useState("");
-  const [visitDate, setVisitDate] = useState("");
-  const [toast, setToast] = useState<{ kind: "ok" | "fail"; text: string } | null>(null);
-  const mutation = useRedcapVisitEntry();
-
-  useEffect(() => {
-    if (!recordId && records[0]) setRecordId(records[0].recordId);
-  }, [recordId, records]);
-
-  useEffect(() => {
-    const firstOption = options[0];
-    if (!eventName && firstOption) setEventName(firstOption.eventName);
-  }, [eventName, options]);
-
-  async function submitVisitEntry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setToast(null);
-    try {
-      const result = await mutation.mutateAsync({ recordId, eventName, visitDate });
-      if (!result.success) {
-        throw new Error(result.errors.join("; ") || "REDCap returned an import error.");
-      }
-      const label = options.find((option) => option.eventName === eventName)?.label ?? eventName;
-      setToast({
-        kind: "ok",
-        text: `Visit date recorded for ${recordId} at ${label}. REDCap Form Display Logic will now disable the previous timepoint's CSBS survey.`,
-      });
-      void logAudit({ action: "run.trigger", scope: "/redcap/visit-entry", detail: { event: label } });
-    } catch (error) {
-      setToast({
-        kind: "fail",
-        text: error instanceof Error ? error.message : "Visit date import failed.",
-      });
-    }
-  }
-
-  return (
-    <Card pad={0}>
-      <div className={styles.listHead} data-insight="redcap-visit-entry">
-        <SectionLabel>Visit date entry · staff quick action</SectionLabel>
-        <Badge kind="phi" size="sm">server-side token only</Badge>
-      </div>
-      <form className={styles.entryForm} onSubmit={submitVisitEntry}>
-        <label>
-          <span>Participant record</span>
-          <select value={recordId} onChange={(event) => setRecordId(event.target.value)} disabled={!records.length}>
-            {records.length ? records.map((record) => (
-              <option key={record.recordId} value={record.recordId}>{record.recordId}</option>
-            )) : <option value="">No records loaded</option>}
-          </select>
-        </label>
-        <label>
-          <span>Visit timepoint</span>
-          <select value={eventName} onChange={(event) => setEventName(event.target.value)} disabled={!options.length}>
-            {options.length ? options.map((option) => (
-              <option key={option.key} value={option.eventName}>{option.label}</option>
-            )) : <option value="">No REDCap events configured</option>}
-          </select>
-        </label>
-        <label>
-          <span>Visit date</span>
-          <input type="date" value={visitDate} onChange={(event) => setVisitDate(event.target.value)} />
-        </label>
-        <Button type="submit" icon="check" disabled={!recordId || !eventName || !visitDate || mutation.isPending}>
-          {mutation.isPending ? "Recording..." : "Record Visit Start"}
-        </Button>
-      </form>
-      {toast && (
-        <div className={`${styles.toast} ${toast.kind === "ok" ? styles.toastOk : styles.toastFail}`}>
-          {toast.text}
-        </div>
-      )}
-      <div className={styles.hipaaReminder}>
-        IRB #Pro00115234 · Visit entry writes only the configured visit-date field through the backend REDCap proxy. API tokens never enter the browser bundle.
-      </div>
-    </Card>
   );
 }
 

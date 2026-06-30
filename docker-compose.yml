@@ -45,6 +45,8 @@ services:
       timeout: 5s
       retries: 3
       start_period: 45s
+    labels:
+      autoheal: "true"
     restart: unless-stopped
     networks:
       - esd-lab-dashboard
@@ -80,6 +82,30 @@ services:
         condition: service_healthy
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
     restart: unless-stopped
+    networks:
+      - esd-lab-dashboard
+
+  # Continuous self-heal: watches the Docker daemon for containers labelled
+  # `autoheal=true` that report an "unhealthy" healthcheck status and restarts
+  # them. Plain `restart: unless-stopped` only reacts to a process exit, not to
+  # a process that is alive but failing its healthcheck — this closes that gap.
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    init: true
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: "15"
+      AUTOHEAL_START_PERIOD: "60"
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: "30"
+      DOCKER_SOCK: /var/run/docker.sock
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    cpus: "0.25"
+    mem_limit: 64m
+    pids_limit: 64
     networks:
       - esd-lab-dashboard
 

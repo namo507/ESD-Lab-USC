@@ -302,7 +302,7 @@ function metricLabel(metric: CountyMapMetric): string {
   return "deprivation";
 }
 
-function metricDisplay(metric: CountyMapMetric, row: SdohMapRow, maxParticipants: number): string {
+function metricDisplay(metric: CountyMapMetric, row: SdohMapRow, _maxParticipants: number): string {
   if (metric === "participants") return String(row.participants);
   if (metric === "completion") return `${row.meanCompletion.toFixed(1)}%`;
   if (metric === "broadbandPct") return `${row.broadbandPct.toFixed(1)}%`;
