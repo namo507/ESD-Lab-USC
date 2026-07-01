@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-07-01T15:13:13",
+    "generated_at": "2026-07-01T18:24:56",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2236,7 +2236,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-07-01T15:13:13",
+      "generated_at": "2026-07-01T18:24:56",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8817,7 +8817,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-07-01T15:13:09",
+      "generated_at": "2026-07-01T18:24:54",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9779,7 +9779,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-07-01T15:13:13",
+      "generated_at": "2026-07-01T18:24:56",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9810,7 +9810,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-07-01T14:48:13",
+        "last_run": "2026-07-01T17:59:56",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9818,7 +9818,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-07-01T14:48:13",
+        "last_run": "2026-07-01T17:59:56",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9826,7 +9826,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-07-01T15:03:13",
+        "last_run": "2026-07-01T18:14:56",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9834,7 +9834,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-07-01T14:53:13",
+        "last_run": "2026-07-01T18:04:56",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9842,9 +9842,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "16:00",
-        "17:00",
-        "18:00",
         "19:00",
         "20:00",
         "21:00",
@@ -9865,7 +9862,10 @@
         "12:00",
         "13:00",
         "14:00",
-        "15:00"
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00"
       ],
       "rows": [
         526,
@@ -10590,13 +10590,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-07-01T15:13:11Z",
+    "generated_at": "2026-07-01T18:24:55Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-07-01T15:13:11Z"
+    "payload_version": "2026-07-01T18:24:55Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33205,7 +33205,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-07-01T15:13:11Z",
+      "generated_at": "2026-07-01T18:24:55Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33219,7 +33219,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-e89223f24043",
-        "started_at": "2026-07-01T15:13:11Z",
+        "started_at": "2026-07-01T18:24:55Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,

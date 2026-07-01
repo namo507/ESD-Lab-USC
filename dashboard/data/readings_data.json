@@ -1,16 +1,16 @@
 {
   "meta": {
-    "generated_at": "2026-07-01T15:13:15",
+    "generated_at": "2026-07-01T18:24:59",
     "source_dir": "esd-lab-readings",
-    "total_readings": 20,
-    "latest_modified_at": "2026-04-18T01:12:08",
+    "total_readings": 22,
+    "latest_modified_at": "2026-07-01T18:24:29",
     "pdf_metadata_enabled": true
   },
   "summary": {
-    "total_readings": 20,
-    "total_size_mb": 24.24,
-    "total_pages": 634,
-    "latest_modified_at": "2026-04-18T01:12:08",
+    "total_readings": 22,
+    "total_size_mb": 33.77,
+    "total_pages": 846,
+    "latest_modified_at": "2026-07-01T18:24:29",
     "categories": [
       {
         "label": "Front Matter",
@@ -18,7 +18,7 @@
       },
       {
         "label": "Grant Materials",
-        "count": 5
+        "count": 7
       }
     ],
     "years": [
@@ -38,7 +38,7 @@
       },
       {
         "label": "Grant Materials",
-        "count": 3
+        "count": 5
       },
       {
         "label": "Child Development Perspectives",
@@ -48,11 +48,69 @@
     "formats": [
       {
         "label": "pdf",
-        "count": 20
+        "count": 22
       }
     ]
   },
   "featured": [
+    {
+      "id": "nano",
+      "title": "NANO",
+      "display_name": "NANO.pdf",
+      "relative_path": "esd-lab-readings/NANO.pdf",
+      "relative_href": "../esd-lab-readings/NANO.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "Grant Materials",
+      "category": "Grant Materials",
+      "keywords": [
+        "number",
+        "south",
+        "carolina",
+        "application",
+        "date",
+        "street"
+      ],
+      "authors": [],
+      "authors_display": "Unknown authors",
+      "subject": "",
+      "page_count": 107,
+      "is_packet": false,
+      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
+      "search_text": "NANO Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials number south carolina application date street",
+      "size_mb": 4.14,
+      "modified_at": "2026-07-01T18:24:23",
+      "is_recent": true
+    },
+    {
+      "id": "nico",
+      "title": "NICO",
+      "display_name": "NICO.pdf",
+      "relative_path": "esd-lab-readings/NICO.pdf",
+      "relative_href": "../esd-lab-readings/NICO.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "Grant Materials",
+      "category": "Grant Materials",
+      "keywords": [
+        "number",
+        "south",
+        "carolina",
+        "columbia",
+        "application",
+        "date"
+      ],
+      "authors": [],
+      "authors_display": "Unknown authors",
+      "subject": "",
+      "page_count": 105,
+      "is_packet": false,
+      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
+      "search_text": "NICO Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials number south carolina columbia application date",
+      "size_mb": 5.39,
+      "modified_at": "2026-07-01T18:24:29",
+      "is_recent": true
+    },
     {
       "id": "preparing-for-equitable-family-and-community-engagement-through-home-visiting-linking-culturally-responsive-sustaining-pedagogy-and-developmental-frameworks",
       "title": "Preparing for equitable family and community engagement through home visiting: linking culturally responsive/sustaining pedagogy and developmental frameworks",
@@ -110,64 +168,6 @@
       "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
       "search_text": "SIGNIFICANCE Earlier Intervention Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials Jessica Bradshaw attention that intervention early earlier lifelong",
       "size_mb": 1.03,
-      "modified_at": "2026-04-18T01:12:08",
-      "is_recent": false
-    },
-    {
-      "id": "microsoft-word-specific-aims-and-research-strategy-linked-robin-only-unlinked",
-      "title": "Microsoft Word - specific aims and research strategy linked_ROBIN ONLY_unlinked",
-      "display_name": "ResearchStrategy_Final.pdf",
-      "relative_path": "esd-lab-readings/ResearchStrategy_Final.pdf",
-      "relative_href": "../esd-lab-readings/ResearchStrategy_Final.pdf",
-      "extension": "pdf",
-      "year": null,
-      "source": "Grant Materials",
-      "category": "Grant Materials",
-      "keywords": [
-        "infants",
-        "outcomes",
-        "dysfunction",
-        "intervention",
-        "that",
-        "specific"
-      ],
-      "authors": [],
-      "authors_display": "Unknown authors",
-      "subject": "",
-      "page_count": 12,
-      "is_packet": false,
-      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
-      "search_text": "Microsoft Word - specific aims and research strategy linked_ROBIN ONLY_unlinked Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials infants outcomes dysfunction intervention that specific",
-      "size_mb": 1.21,
-      "modified_at": "2026-04-18T01:12:08",
-      "is_recent": false
-    },
-    {
-      "id": "capturing-the-complexity-of-autism-applying-a-developmental-cascades-framework",
-      "title": "Capturing the complexity of autism: Applying a developmental cascades framework",
-      "display_name": "Child Dev Perspectives - 2022 - Bradshaw - Capturing the complexity of autism  Applying a developmental cascades framework.pdf",
-      "relative_path": "esd-lab-readings/Child Dev Perspectives - 2022 - Bradshaw - Capturing the complexity of autism  Applying a developmental cascades framework.pdf",
-      "relative_href": "../esd-lab-readings/Child%20Dev%20Perspectives%20-%202022%20-%20Bradshaw%20-%20Capturing%20the%20complexity%20of%20autism%20%20Applying%20a%20developmental%20cascades%20framework.pdf",
-      "extension": "pdf",
-      "year": 2022,
-      "source": "Child Development Perspectives",
-      "category": "Grant Materials",
-      "keywords": [
-        "developmental",
-        "capturing",
-        "complexity",
-        "autism",
-        "cascades",
-        "change"
-      ],
-      "authors": [],
-      "authors_display": "Unknown authors",
-      "subject": "Child Dev Perspectives 2022.16:18-26",
-      "page_count": 9,
-      "is_packet": false,
-      "excerpt": "Developmental change emerges from dynamic interactions among networks of neu- ral activity, behavior systems, and experience- dependent processes...",
-      "search_text": "Capturing the complexity of autism: Applying a developmental cascades framework Child Dev Perspectives 2022.16:18-26 Developmental change emerges from dynamic interactions among networks of neu- ral activity, behavior systems, and experience- dependent processes... Child Development Perspectives Grant Materials developmental capturing complexity autism cascades change",
-      "size_mb": 0.62,
       "modified_at": "2026-04-18T01:12:08",
       "is_recent": false
     }
@@ -665,6 +665,64 @@
       "size_mb": 0.62,
       "modified_at": "2026-04-18T01:12:08",
       "is_recent": false
+    },
+    {
+      "id": "nico",
+      "title": "NICO",
+      "display_name": "NICO.pdf",
+      "relative_path": "esd-lab-readings/NICO.pdf",
+      "relative_href": "../esd-lab-readings/NICO.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "Grant Materials",
+      "category": "Grant Materials",
+      "keywords": [
+        "number",
+        "south",
+        "carolina",
+        "columbia",
+        "application",
+        "date"
+      ],
+      "authors": [],
+      "authors_display": "Unknown authors",
+      "subject": "",
+      "page_count": 105,
+      "is_packet": false,
+      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
+      "search_text": "NICO Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials number south carolina columbia application date",
+      "size_mb": 5.39,
+      "modified_at": "2026-07-01T18:24:29",
+      "is_recent": true
+    },
+    {
+      "id": "nano",
+      "title": "NANO",
+      "display_name": "NANO.pdf",
+      "relative_path": "esd-lab-readings/NANO.pdf",
+      "relative_href": "../esd-lab-readings/NANO.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "Grant Materials",
+      "category": "Grant Materials",
+      "keywords": [
+        "number",
+        "south",
+        "carolina",
+        "application",
+        "date",
+        "street"
+      ],
+      "authors": [],
+      "authors_display": "Unknown authors",
+      "subject": "",
+      "page_count": 107,
+      "is_packet": false,
+      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
+      "search_text": "NANO Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials number south carolina application date street",
+      "size_mb": 4.14,
+      "modified_at": "2026-07-01T18:24:23",
+      "is_recent": true
     },
     {
       "id": "specific-aims-atypical-attention-is-among-the-earliest-emerging-lifelong-features-of-autism-spectrum-disorder-asd-and-a-particularly-compelling-candidate-for",
