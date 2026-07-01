@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppShell } from "@/components/shell/AppShell";
+import { RouteErrorBoundary } from "@/components/shell/RouteErrorBoundary";
 import { GuidedTourHost } from "@/components/help/GuidedTour";
 import { applyTheme, loadInitialTheme, persistTheme, useUi } from "@/store/ui";
 
@@ -76,6 +77,17 @@ function PageFallback() {
 }
 
 /**
+ * Remounts the error boundary on navigation so a crash on one route clears when
+ * the user moves to another. Operator routes are additionally guarded inside the
+ * AppShell (which keeps the shell visible); this is the catch-all for the
+ * standalone routes and any shell-level failure.
+ */
+function KeyedBoundary({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  return <RouteErrorBoundary key={pathname}>{children}</RouteErrorBoundary>;
+}
+
+/**
  * Hydrate theme into the zustand store + keep <html data-theme> synced.
  * Listens to system colour-scheme changes while user pref is "system".
  */
@@ -115,6 +127,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeBoot />
       <Suspense fallback={<PageFallback />}>
+        <KeyedBoundary>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/docs" element={<Docs />} />
@@ -170,6 +183,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        </KeyedBoundary>
         <GuidedTourHost />
       </Suspense>
     </QueryClientProvider>

@@ -38,23 +38,29 @@ export function Attrition() {
       <div className={styles.wideSplit}>
         <Card pad={20}>
           <SectionLabel>Visit flow</SectionLabel>
-          <div style={{ height: 420 }} role="img" aria-label="Attrition Sankey from enrollment through visits">
-            <ResponsiveSankey
-              data={sankey}
-              margin={{ top: 20, right: 24, bottom: 20, left: 24 }}
-              align="justify"
-              colors={{ scheme: "set2" }}
-              nodeOpacity={0.92}
-              nodeThickness={12}
-              nodeSpacing={12}
-              linkOpacity={0.28}
-              labelPosition="outside"
-              labelOrientation="horizontal"
-              labelPadding={8}
-              labelTextColor="var(--slate-700)"
-              theme={{ text: { fontSize: 11, fill: "var(--slate-700)", fontFamily: "var(--font-mono)" } }}
-            />
-          </div>
+          {sankey.nodes.length > 0 && sankey.links.length > 0 ? (
+            <div style={{ height: 420 }} role="img" aria-label="Attrition Sankey from enrollment through visits">
+              <ResponsiveSankey
+                data={sankey}
+                margin={{ top: 20, right: 24, bottom: 20, left: 24 }}
+                align="justify"
+                colors={{ scheme: "set2" }}
+                nodeOpacity={0.92}
+                nodeThickness={12}
+                nodeSpacing={12}
+                linkOpacity={0.28}
+                labelPosition="outside"
+                labelOrientation="horizontal"
+                labelPadding={8}
+                labelTextColor="var(--slate-700)"
+                theme={{ text: { fontSize: 11, fill: "var(--slate-700)", fontFamily: "var(--font-mono)" } }}
+              />
+            </div>
+          ) : (
+            <div style={{ height: 420, display: "grid", placeItems: "center" }} className={styles.muted}>
+              Preparing visit flow…
+            </div>
+          )}
         </Card>
 
         <Card pad={0}>

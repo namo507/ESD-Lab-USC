@@ -6,6 +6,7 @@ import { Sidebar } from "./Sidebar";
 import { HipaaBanner } from "./HipaaBanner";
 import { Buddy } from "./Buddy";
 import { ChatDrawer } from "./ChatDrawer";
+import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { useIdleTimer } from "./useIdleTimer";
 import { useStudySummary, useStages, useRuns } from "@/api/hooks";
 import { useUi } from "@/store/ui";
@@ -122,7 +123,9 @@ export function AppShell() {
         )}
 
         <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main-content">
-          <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
+          <RouteErrorBoundary key={location.pathname}>
+            <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
+          </RouteErrorBoundary>
           <footer className="app-footer">
             <span>Early Social Development Lab · Dr. Bradshaw · UofSC</span>
             <span>NIH R01 MH123456 · IRB Pro00115234 · v0.15.0</span>
