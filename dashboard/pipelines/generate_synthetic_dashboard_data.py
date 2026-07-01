@@ -43,15 +43,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 try:
     from dashboard.pipelines.participant_operations import build_participant_operations
+    from dashboard.pipelines.lab_operations import build_lab_operations_payload
+    from dashboard.pipelines.study_blocks import build_study_blocks
 except ImportError:  # pragma: no cover - script can be run directly
     from participant_operations import build_participant_operations
+    from lab_operations import build_lab_operations_payload
+    from study_blocks import build_study_blocks
 
 # ─── Reproducibility ────────────────────────────────────────────────────────
 SEED = 42
@@ -1071,6 +1079,7 @@ def build_payload() -> dict:
     redcap_anomaly_count = sum(
         1 for row in redcap_visit_health if row["hasCarryForwardRisk"]
     )
+    study_blocks = build_study_blocks(generated_at=redcap_generated_at)
 
     return {
         "meta": {
@@ -1126,6 +1135,8 @@ def build_payload() -> dict:
             timeline=redcap_timeline,
             next_wave=redcap_next_wave,
         ),
+        "lab_operations": build_lab_operations_payload(generated_at=redcap_generated_at),
+        **study_blocks,
     }
 
 

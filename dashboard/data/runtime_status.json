@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-01T18:25:01",
-  "status": "degraded",
-  "build_count": 2,
+  "generated_at": "2026-07-01T21:50:48",
+  "status": "ok",
+  "build_count": 5,
   "last_build_reason": "source-change",
-  "last_build_started_at": "2026-07-01T18:24:42",
-  "last_build_finished_at": "2026-07-01T18:24:59",
-  "last_successful_build_finished_at": "2026-07-01T15:13:15",
+  "last_build_started_at": "2026-07-01T21:50:34",
+  "last_build_finished_at": "2026-07-01T21:50:48",
+  "last_successful_build_finished_at": "2026-07-01T21:50:48",
   "watch_interval_seconds": 20,
   "fallback_synthetic": true,
   "dashboard": {
-    "generated_at": "2026-07-01T18:24:56",
+    "generated_at": "2026-07-01T21:50:45",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -23,7 +23,7 @@
     }
   },
   "readings": {
-    "generated_at": "2026-07-01T18:24:59",
+    "generated_at": "2026-07-01T21:50:48",
     "source_dir": "esd-lab-readings",
     "total_readings": 22,
     "latest_modified_at": "2026-07-01T18:24:29",
@@ -90,8 +90,5 @@
     "models/_metrics.json",
     "dashboard/pipelines/bootstrap_dashboard_demo_inputs.py"
   ],
-  "errors": [
-    "dashboard build exited with code 1",
-    "readings build exited with code 1"
-  ]
+  "errors": []
 }

@@ -66,6 +66,10 @@ SUMMARY_KEYS = (
     "matlab_integration",
     "cohort_table",
     "organization_site",
+    "nano",
+    "nico",
+    "shared",
+    "lab_operations",
 )
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_]{2,}")
 SECTION_KEYWORDS: dict[str, set[str]] = {
@@ -333,6 +337,50 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "linking",
         "numbering",
         "intervention",
+    },
+    "lab_operations": {
+        "lab",
+        "operations",
+        "workflow",
+        "workflows",
+        "role",
+        "roles",
+        "handoff",
+        "handoffs",
+        "coordinator",
+        "coordinators",
+        "graduate",
+        "grad",
+        "undergraduate",
+        "undergrad",
+        "supervisor",
+        "supervisors",
+        "sam",
+        "bradshaw",
+        "nano",
+        "nico",
+        "grant",
+        "grants",
+        "redcap",
+        "coding",
+        "scoring",
+        "assessment",
+        "assessments",
+        "family",
+        "families",
+        "phase",
+        "phases",
+        "priority",
+        "priorities",
+        "rollout",
+        "quick",
+        "wins",
+        "metric",
+        "metrics",
+        "business",
+        "hours",
+        "visit",
+        "visits",
     },
     "database_features": {
         "data",
@@ -1166,6 +1214,8 @@ class DashboardChatAssistant:
                     fragments.extend(self._build_redcap_visit_health_fragments(payload))
                 elif key == "redcap_clinical":
                     fragments.extend(self._build_redcap_next_wave_fragments(payload))
+                elif key == "lab_operations":
+                    fragments.extend(self._build_lab_operations_fragments(payload))
                 elif key in {
                     "redcap_integrity",
                     "redcap_schedule",
@@ -1359,6 +1409,7 @@ class DashboardChatAssistant:
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
                     "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
+                    "The lab_operations key is the source of truth for the Nano-first operational rollout. It covers current priority, dashboard surface status, four workflow phases, coordinator/graduate/undergraduate/supervisor handoffs, draft metrics, daily check-ins, business-hour/visit-window guardrails, and the current family-facing data-sharing boundary.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
             }
@@ -1743,6 +1794,131 @@ class DashboardChatAssistant:
             )
         return fragments
 
+    def _build_lab_operations_fragments(
+        self,
+        payload: dict[str, Any],
+    ) -> list[tuple[str, str]]:
+        operations = payload.get("lab_operations") or {}
+        if not isinstance(operations, dict):
+            return []
+
+        priority = operations.get("priority") if isinstance(operations.get("priority"), dict) else {}
+        surfaces = operations.get("dashboard_surface_status") if isinstance(operations.get("dashboard_surface_status"), list) else []
+        phases = operations.get("workflow_phases") if isinstance(operations.get("workflow_phases"), list) else []
+        roles = operations.get("role_workflows") if isinstance(operations.get("role_workflows"), list) else []
+        metrics = operations.get("draft_metrics") if isinstance(operations.get("draft_metrics"), list) else []
+        routine = operations.get("daily_routine") if isinstance(operations.get("daily_routine"), list) else []
+        controls = operations.get("rollout_controls") if isinstance(operations.get("rollout_controls"), list) else []
+        family = operations.get("family_data_sharing") if isinstance(operations.get("family_data_sharing"), dict) else {}
+        quick_wins = operations.get("quick_wins") if isinstance(operations.get("quick_wins"), list) else []
+
+        fragments: list[tuple[str, str]] = []
+        if priority:
+            fragments.append(
+                (
+                    "lab_operations.priority",
+                    "Lab operations priority: "
+                    f"primary objective={priority.get('primary_objective')}; "
+                    f"secondary objective={priority.get('secondary_objective')}; "
+                    f"current priority={priority.get('current_priority')}; "
+                    f"decision dependency={priority.get('decision_dependency')}.",
+                )
+            )
+
+        for index, surface in enumerate(surfaces[:8]):
+            if not isinstance(surface, dict):
+                continue
+            fragments.append(
+                (
+                    f"lab_operations.dashboard_surface_status[{index}]",
+                    "Dashboard surface status "
+                    f"{surface.get('area')}: status={surface.get('status')}; "
+                    f"shown={surface.get('shown')}; next_need={surface.get('next_need')}.",
+                )
+            )
+
+        for index, phase in enumerate(phases):
+            if not isinstance(phase, dict):
+                continue
+            fragments.append(
+                (
+                    f"lab_operations.workflow_phases[{index}]",
+                    "Lab workflow phase "
+                    f"{phase.get('phase')} ({phase.get('timeframe')}): "
+                    f"status={phase.get('status')}; focus={phase.get('study_focus')}; "
+                    f"tasks={'; '.join(str(item) for item in (phase.get('tasks') or [])[:5])}; "
+                    f"outputs={'; '.join(str(item) for item in (phase.get('outputs') or [])[:3])}.",
+                )
+            )
+
+        if roles:
+            fragments.append(
+                (
+                    "lab_operations.role_workflows",
+                    "Lab role handoffs: "
+                    + " | ".join(
+                        f"{row.get('role')}: {row.get('focus')} Handoff: {row.get('handoff')}"
+                        for row in roles
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if metrics:
+            fragments.append(
+                (
+                    "lab_operations.draft_metrics",
+                    "Draft lab metrics: "
+                    + "; ".join(
+                        f"{row.get('name')} ({row.get('kind')}, {row.get('status')}): {row.get('definition')}"
+                        for row in metrics
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if routine:
+            fragments.append(
+                (
+                    "lab_operations.daily_routine",
+                    "Daily lab routine: "
+                    + "; ".join(
+                        f"{row.get('block')}: {row.get('purpose')}"
+                        for row in routine
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if controls:
+            fragments.append(
+                (
+                    "lab_operations.rollout_controls",
+                    "Lab rollout controls: " + "; ".join(str(item) for item in controls),
+                )
+            )
+
+        if quick_wins:
+            fragments.append(
+                (
+                    "lab_operations.quick_wins",
+                    "Lab quick wins: " + "; ".join(str(item) for item in quick_wins),
+                )
+            )
+
+        if family:
+            fragments.append(
+                (
+                    "lab_operations.family_data_sharing",
+                    "Family-facing data sharing: "
+                    f"current_state={family.get('current_state')}; "
+                    f"near_term_policy={family.get('near_term_policy')}; "
+                    f"future_option={family.get('future_option')}.",
+                )
+            )
+
+        return fragments
+
     def _build_summary_fragments(
         self,
         payload: dict[str, Any],
@@ -1762,11 +1938,22 @@ class DashboardChatAssistant:
         redcap_schedule = payload.get("redcap_schedule") or {}
         redcap_predictive = payload.get("redcap_predictive") or {}
         participant_operations = payload.get("participant_operations") or {}
+        lab_operations = payload.get("lab_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
             if isinstance(participant_operations, dict)
             else {}
         ) or {}
+        lab_priority = (
+            lab_operations.get("priority")
+            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("priority"), dict)
+            else {}
+        )
+        lab_phases = (
+            lab_operations.get("workflow_phases")
+            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("workflow_phases"), list)
+            else []
+        )
         readings_summary = readings.get("summary", {})
         fragments: list[tuple[str, str]] = []
 
@@ -1977,6 +2164,25 @@ class DashboardChatAssistant:
                 )
             )
 
+        if lab_priority:
+            active_phase = next(
+                (
+                    phase
+                    for phase in lab_phases
+                    if isinstance(phase, dict) and phase.get("status") == "active"
+                ),
+                lab_phases[0] if lab_phases else {},
+            )
+            fragments.append(
+                (
+                    "lab_operations.priority",
+                    "Lab operations priority: "
+                    f"{lab_priority.get('current_priority')}; "
+                    f"active phase: {active_phase.get('phase') or 'not listed'} "
+                    f"({active_phase.get('timeframe') or 'timeframe unknown'}).",
+                )
+            )
+
         best_index, best = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
         )
@@ -2004,6 +2210,7 @@ class DashboardChatAssistant:
         matlab = payload.get("matlab_integration", {})
         cohort = payload.get("cohort_table") or []
         participant_operations = payload.get("participant_operations") or {}
+        lab_operations = payload.get("lab_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
             if isinstance(participant_operations, dict)
@@ -2104,6 +2311,37 @@ class DashboardChatAssistant:
             "participant_workflow_steps": (
                 participant_operations.get("workflow_steps") or []
                 if isinstance(participant_operations, dict)
+                else []
+            ),
+            "lab_operations": lab_operations if isinstance(lab_operations, dict) else {},
+            "lab_operations_priority": (
+                lab_operations.get("priority") or {}
+                if isinstance(lab_operations, dict)
+                else {}
+            ),
+            "lab_operations_phases": (
+                lab_operations.get("workflow_phases") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_roles": (
+                lab_operations.get("role_workflows") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_metrics": (
+                lab_operations.get("draft_metrics") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_family": (
+                lab_operations.get("family_data_sharing") or {}
+                if isinstance(lab_operations, dict)
+                else {}
+            ),
+            "lab_operations_surfaces": (
+                lab_operations.get("dashboard_surface_status") or []
+                if isinstance(lab_operations, dict)
                 else []
             ),
             "hda_groups": (
@@ -2299,6 +2537,67 @@ class DashboardChatAssistant:
             except (TypeError, ValueError):
                 return default
             return parsed if parsed == parsed else default
+
+        if question_tokens & {"operations", "workflow", "workflows", "rollout", "phase", "phases", "priority"}:
+            if question_tokens & {"nano", "nico", "grant", "priority", "phase", "phases", "rollout", "workflow", "workflows"}:
+                priority = facts.get("lab_operations_priority") or {}
+                phases = facts.get("lab_operations_phases") or []
+                if isinstance(priority, dict) and isinstance(phases, list) and priority:
+                    active_phase = next(
+                        (
+                            phase
+                            for phase in phases
+                            if isinstance(phase, dict) and phase.get("status") == "active"
+                        ),
+                        phases[0] if phases else {},
+                    )
+                    phase_text = "; ".join(
+                        f"{phase.get('phase')} ({phase.get('timeframe')}, {phase.get('status')})"
+                        for phase in phases
+                        if isinstance(phase, dict)
+                    )
+                    return (
+                        f"Current priority: {priority.get('current_priority')} "
+                        f"Active phase: {active_phase.get('phase')} ({active_phase.get('timeframe')}). "
+                        f"The rollout phases are: {phase_text}."
+                    )
+
+        if question_tokens & {"coordinator", "coordinators", "graduate", "grad", "undergraduate", "undergrad", "supervisor", "supervisors", "handoff", "handoffs", "roles"}:
+            roles = facts.get("lab_operations_roles") or []
+            if isinstance(roles, list) and roles:
+                return "Role handoffs: " + " ".join(
+                    f"{row.get('role')}: {row.get('focus')} Handoff: {row.get('handoff')}"
+                    for row in roles
+                    if isinstance(row, dict)
+                )
+
+        if question_tokens & {"metric", "metrics", "standardize", "standardized", "coding", "scoring"}:
+            metrics = facts.get("lab_operations_metrics") or []
+            if isinstance(metrics, list) and metrics:
+                return "Draft aligned metrics: " + " ".join(
+                    f"{row.get('name')} ({row.get('kind')}, {row.get('status')}): {row.get('definition')}"
+                    for row in metrics
+                    if isinstance(row, dict)
+                )
+
+        if question_tokens & {"family", "families", "share", "sharing", "visualization", "visualizations"}:
+            family = facts.get("lab_operations_family") or {}
+            if isinstance(family, dict) and family:
+                return (
+                    "Family-facing data sharing is intentionally limited right now. "
+                    f"Current state: {family.get('current_state')} "
+                    f"Near-term policy: {family.get('near_term_policy')} "
+                    f"Future option: {family.get('future_option')}"
+                )
+
+        if question_tokens & {"shown", "showing", "dashboard", "website", "surface", "surfaces", "feature", "features", "status"}:
+            surfaces = facts.get("lab_operations_surfaces") or []
+            if question_tokens & {"shown", "showing", "surface", "surfaces", "feature", "features", "status"} and isinstance(surfaces, list) and surfaces:
+                return "Dashboard surface status: " + " ".join(
+                    f"{row.get('area')} is {row.get('status')}: {row.get('shown')}"
+                    for row in surfaces
+                    if isinstance(row, dict)
+                )
 
         if question_tokens & {"reading", "readings"} and question_tokens & {
             "count",

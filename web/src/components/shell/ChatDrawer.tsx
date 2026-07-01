@@ -20,6 +20,10 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Participant ID legend",       prompt: "What does the participant ID legend mean for NANO, NICO, ANONICO, and dual-enrolled participants? Explain 5-series versus 9-series and visit markers." },
   { lane: "redcap", label: "Dual forms policy",           prompt: "For a dual-enrolled participant, should AIH and EH be one shared master form or duplicate study-specific forms? Explain the linking ID rule." },
   { lane: "qa",     label: "Next visit packet",           prompt: "Given a participant's role, enrollment type, visit marker, and scheduling risk, how should staff cross-check forms, questionnaires, and packets before scheduling?" },
+  { lane: "qa",     label: "Nano rollout plan",           prompt: "Summarize the Nano-first rollout plan, including phases, current priority, and what Nico should wait on." },
+  { lane: "qa",     label: "Role handoffs",               prompt: "What should coordinators, grad students, undergrads, and supervisors each own in the lab operations workflow?" },
+  { lane: "redcap", label: "Standardize coding",          prompt: "How should the lab standardize REDCap handling, video coding, scoring queues, and draft metrics without overloading staff?" },
+  { lane: "model",  label: "Family-facing guardrails",    prompt: "What is safe to share with families right now, and what should stay exploratory until supervisor/governance review?" },
   { lane: "redcap", label: "Data Explorer",               prompt: "Walk me through the Data Explorer tables, filters, pagination, column visibility, and CSV export guardrails." },
   { lane: "redcap", label: "How to add a new instrument", prompt: "Walk me through adding a new REDCap instrument, including field map, hooks, and double-entry QC." },
   { lane: "redcap", label: "NDA completeness",            prompt: "How should I use the REDCap completeness scorecard before an NDA deadline?" },
@@ -262,7 +266,7 @@ export function ChatDrawer() {
           />
           <div style={{ position: "relative", zIndex: 1 }}>
             <div className={styles.headTitle}>ESD Buddy</div>
-            <div className={styles.headSub}>Grounded in NANO study context</div>
+            <div className={styles.headSub}>Grounded in NANO + NICO operations</div>
             <div
               className={styles.statusPill}
               data-insight="assistant-model-clinical"

@@ -24,6 +24,7 @@ import {
 } from "@/api/hooks";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
 import { StudyHero } from "@/components/studies/StudyHero";
+import { LabOperationsPanel } from "@/components/studies/LabOperationsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -209,6 +210,8 @@ export function Overview() {
       </header>
 
       <StudyHero />
+
+      <LabOperationsPanel />
 
       <section
         className={`grid gap-3.5 ${

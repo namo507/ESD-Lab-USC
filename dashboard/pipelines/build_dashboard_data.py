@@ -115,7 +115,9 @@ except Exception:  # pragma: no cover
     )
     logger = logging.getLogger("build_dashboard_data")
 
+from dashboard.pipelines.lab_operations import build_lab_operations_payload
 from dashboard.pipelines.participant_operations import build_participant_operations
+from dashboard.pipelines.study_blocks import build_study_blocks
 
 
 # ─── Configuration loading ──────────────────────────────────────────────────
@@ -2153,6 +2155,7 @@ def build_payload(
         redcap_timeline,
         redcap_next_wave,
     )
+    study_blocks = build_study_blocks(generated_at=redcap_generated_at)
 
     payload = {
         "meta": {
@@ -2208,6 +2211,8 @@ def build_payload(
             content_hash=parity_hash,
             controls=controls,
         ),
+        "lab_operations": build_lab_operations_payload(generated_at=redcap_generated_at),
+        **study_blocks,
     }
     return _make_json_safe(payload)
 

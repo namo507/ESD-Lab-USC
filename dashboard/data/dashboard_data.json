@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-07-01T18:24:56",
+    "generated_at": "2026-07-01T21:50:45",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2236,7 +2236,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-07-01T18:24:56",
+      "generated_at": "2026-07-01T21:50:45",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8817,7 +8817,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-07-01T18:24:54",
+      "generated_at": "2026-07-01T21:50:41",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9779,7 +9779,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-07-01T18:24:56",
+      "generated_at": "2026-07-01T21:50:45",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9810,7 +9810,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-07-01T17:59:56",
+        "last_run": "2026-07-01T21:25:45",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9818,7 +9818,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-07-01T17:59:56",
+        "last_run": "2026-07-01T21:25:45",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9826,7 +9826,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-07-01T18:14:56",
+        "last_run": "2026-07-01T21:40:45",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9834,7 +9834,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-07-01T18:04:56",
+        "last_run": "2026-07-01T21:30:45",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9842,9 +9842,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "19:00",
-        "20:00",
-        "21:00",
         "22:00",
         "23:00",
         "00:00",
@@ -9865,7 +9862,10 @@
         "15:00",
         "16:00",
         "17:00",
-        "18:00"
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
       ],
       "rows": [
         526,
@@ -10590,13 +10590,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-07-01T18:24:55Z",
+    "generated_at": "2026-07-01T21:50:43Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-07-01T18:24:55Z"
+    "payload_version": "2026-07-01T21:50:43Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33205,7 +33205,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-07-01T18:24:55Z",
+      "generated_at": "2026-07-01T21:50:43Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33219,7 +33219,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-e89223f24043",
-        "started_at": "2026-07-01T18:24:55Z",
+        "started_at": "2026-07-01T21:50:43Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33257,5 +33257,1610 @@
         "redcap.pipelineHealth": true
       }
     }
+  },
+  "lab_operations": {
+    "generated_at": "2026-07-01T21:50:43Z",
+    "source_documents": [
+      {
+        "study": "NANO",
+        "file": "esd-lab-readings/NANO.pdf",
+        "pages": 107,
+        "award": "R01MH132925",
+        "status": "primary operational focus"
+      },
+      {
+        "study": "NICO",
+        "file": "esd-lab-readings/NICO.pdf",
+        "pages": 105,
+        "award": "R01MH138028",
+        "status": "secondary integration focus"
+      }
+    ],
+    "priority": {
+      "primary_objective": "Improve lab workflow, data handling, and operational efficiency without setting unrealistic expectations.",
+      "secondary_objective": "Align academic research outputs with operational needs for daily lab function.",
+      "current_priority": "Nano grant data and lab processes first; Nico remains visible as the secondary study lane.",
+      "decision_dependency": "Pace rollout with Sam and Dr. Bradshaw decision availability.",
+      "scope_guardrail": "Use de-identified aggregate status only; family-facing visualizations stay exploratory until approved."
+    },
+    "dashboard_surface_status": [
+      {
+        "area": "Overview",
+        "status": "live",
+        "shown": "Lab Pulse KPIs, NANO/NICO study hero, pipeline DAG, cluster operations, readings geography, ESD Buddy, participant flow, and progress rings.",
+        "next_need": "Make Nano-first operational workflow and role handoffs explicit."
+      },
+      {
+        "area": "REDCap",
+        "status": "live",
+        "shown": "Sync freshness, visit health, carry-forward risk, completeness heatwall, anomaly board, runtime parity, controls, and next-wave REDCap panels.",
+        "next_need": "Standardize coding conventions and make inefficiencies easier to capture during observation."
+      },
+      {
+        "area": "Participants",
+        "status": "live",
+        "shown": "De-identified participant table, intake/story routing, participant detail, dual-study role badges, form policy, and timeline/passport links.",
+        "next_need": "Map coordinator scheduling, assessment collection, and packet checks into repeatable steps."
+      },
+      {
+        "area": "Study Analytics",
+        "status": "live",
+        "shown": "Results and trajectories, HDA player, ECG quality, SHAP/model surfaces, NANO LGCM trajectories, and NICO Aim 3 clusters.",
+        "next_need": "Separate operational summaries from manuscript-ready research reporting templates."
+      },
+      {
+        "area": "Assistant",
+        "status": "live",
+        "shown": "Hover-aware Buddy glossary, local GGUF chat drawer, assistant status, REDCap freshness, and fast-path prompts.",
+        "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard."
+      }
+    ],
+    "current_problems": [
+      {
+        "category": "Operational gaps",
+        "items": [
+          "Many moving parts across research, visits, assessments, scoring, and reporting.",
+          "Coordinator, graduate-student, and undergraduate workflows need clearer boundaries.",
+          "Coding and data handling practices vary across lab members."
+        ]
+      },
+      {
+        "category": "Data management",
+        "items": [
+          "Most data lives in REDCap, but usage patterns vary by project.",
+          "Nano and Nico integration is limited and should be staged rather than forced.",
+          "Operational dashboards and academic writing outputs need distinct definitions."
+        ]
+      },
+      {
+        "category": "Family perspective",
+        "items": [
+          "Families currently receive text updates and on-site assessments.",
+          "Data sharing outside individual feedback on request is minimal.",
+          "Family-facing insight views should remain future-feasibility work until approved."
+        ]
+      },
+      {
+        "category": "Resource management",
+        "items": [
+          "Rollout must avoid overloading staff.",
+          "Priority decisions should align with Sam and Dr. Bradshaw availability.",
+          "Quick wins should be small, reversible, and visible to operators."
+        ]
+      }
+    ],
+    "recommendations": [
+      {
+        "horizon": "Short-term",
+        "items": [
+          "Shadow coordinators and learn REDCap workflows before changing process.",
+          "Start early requests with Nano data and document quick wins.",
+          "Capture visit scheduling, assessment collection, scoring, and blocker patterns."
+        ]
+      },
+      {
+        "horizon": "Medium-term",
+        "items": [
+          "Map graduate and undergraduate coding/scoring handoffs.",
+          "Draft aligned operational and research metrics.",
+          "Create a standard coding and data-handling system before expanding scope."
+        ]
+      },
+      {
+        "horizon": "Long-term",
+        "items": [
+          "Scale the workflow system to Nico and future grants.",
+          "Evaluate optional family-facing aggregate insights only after governance review.",
+          "Keep dashboards, reports, and assistant context synchronized from one payload."
+        ]
+      }
+    ],
+    "workflow_phases": [
+      {
+        "id": "phase-1",
+        "phase": "Onboarding and observation",
+        "timeframe": "Weeks 1-2",
+        "status": "active",
+        "study_focus": "Nano first, Nico document context second",
+        "tasks": [
+          "Read Nano and Nico grant documents at high level.",
+          "Shadow coordinators on visit scheduling, assessment collection, and scoring.",
+          "Document workflows, bottlenecks, and daily blockers.",
+          "Run morning and afternoon check-ins."
+        ],
+        "outputs": [
+          "Initial process map",
+          "Quick-win opportunity list"
+        ],
+        "owners": [
+          "Coordinator",
+          "Supervisor",
+          "Lab operations analyst"
+        ]
+      },
+      {
+        "id": "phase-2",
+        "phase": "Data and process standardization",
+        "timeframe": "Weeks 3-4",
+        "status": "next",
+        "study_focus": "Nano REDCap and coding conventions",
+        "tasks": [
+          "Explore Nano REDCap dataset structure.",
+          "Identify inconsistencies in coding, scoring, and handoff practices.",
+          "Create a workflow chart across coordinator, graduate-student, and undergraduate tasks.",
+          "Draft aligned metrics for operations and research reporting."
+        ],
+        "outputs": [
+          "Standardized workflow documentation",
+          "Draft operational metrics list"
+        ],
+        "owners": [
+          "Coordinator",
+          "Graduate students",
+          "Undergraduates"
+        ]
+      },
+      {
+        "id": "phase-3",
+        "phase": "Pilot improvements and reporting",
+        "timeframe": "Months 2-3",
+        "status": "planned",
+        "study_focus": "Nano reports and coordinator quick wins",
+        "tasks": [
+          "Implement small coordinator workflow improvements.",
+          "Build Nano data summaries for research outputs.",
+          "Coordinate priority assignments with Sam and Dr. Bradshaw.",
+          "Prepare lab and academic reporting templates."
+        ],
+        "outputs": [
+          "Pilot process improvements",
+          "First structured lab report or dashboard"
+        ],
+        "owners": [
+          "Coordinator",
+          "Sam",
+          "Dr. Bradshaw",
+          "Analyst"
+        ]
+      },
+      {
+        "id": "phase-4",
+        "phase": "Long-term growth and integration",
+        "timeframe": "Month 3+",
+        "status": "future",
+        "study_focus": "Nico integration and multi-grant scale",
+        "tasks": [
+          "Expand validated improvements to Nico.",
+          "Explore feasibility of family-facing aggregate insights.",
+          "Develop multi-grant data workflow management.",
+          "Keep academic and operational outputs aligned."
+        ],
+        "outputs": [
+          "Scalable workflow system",
+          "Enhanced data management and reporting structure"
+        ],
+        "owners": [
+          "Operations team",
+          "Study leads",
+          "Data team"
+        ]
+      }
+    ],
+    "role_workflows": [
+      {
+        "role": "Coordinators",
+        "focus": "Visits, scheduling, packet readiness, assessment collection, and immediate blockers.",
+        "handoff": "Daily check-in notes, REDCap status flags, visit-window updates, and unresolved family logistics."
+      },
+      {
+        "role": "Graduate students",
+        "focus": "Scoring oversight, analytic interpretation, coding reliability, and manuscript-aligned metrics.",
+        "handoff": "Coding decisions, reliability notes, analysis-ready variable definitions, and review queues."
+      },
+      {
+        "role": "Undergraduates",
+        "focus": "Frame-by-frame coding, data entry support, scoring prep, and defined QA checks.",
+        "handoff": "Coding logs, timestamp/sync flags, incomplete-scoring queues, and exception notes."
+      },
+      {
+        "role": "Supervisors",
+        "focus": "Priority setting, scope control, escalation, and approval for family-facing or cross-grant changes.",
+        "handoff": "Morning priorities, afternoon blockers, and decisions needed from Sam or Dr. Bradshaw."
+      }
+    ],
+    "draft_metrics": [
+      {
+        "name": "REDCap freshness",
+        "kind": "operations",
+        "definition": "Hours since the last successful REDCap-derived dashboard payload.",
+        "status": "live"
+      },
+      {
+        "name": "Visit-window adherence",
+        "kind": "operations",
+        "definition": "Difference between actual/forecast visit timing and protocol target window.",
+        "status": "live"
+      },
+      {
+        "name": "Coding queue age",
+        "kind": "operations",
+        "definition": "Oldest unscored or unreviewed coding/scoring item by study and visit.",
+        "status": "draft"
+      },
+      {
+        "name": "Assessment completion coverage",
+        "kind": "operations and research",
+        "definition": "Complete plus intentional skip states divided by expected assessments.",
+        "status": "live"
+      },
+      {
+        "name": "Analysis-ready Nano summary",
+        "kind": "research",
+        "definition": "Nano-specific output separating operational completeness from manuscript-ready variables.",
+        "status": "draft"
+      }
+    ],
+    "daily_routine": [
+      {
+        "block": "Morning check-in",
+        "purpose": "Align priorities, confirm visit windows, and name decisions or blockers."
+      },
+      {
+        "block": "Observation/analysis block",
+        "purpose": "Shadow workflows, inspect REDCap, document bottlenecks, or draft process artifacts."
+      },
+      {
+        "block": "Afternoon check-in",
+        "purpose": "Share findings, capture blockers, and set the next smallest useful step."
+      }
+    ],
+    "rollout_controls": [
+      "All data access and workflow tasks stay within business hours and visit time frames.",
+      "Data outside approved visit windows is not used for dashboard or assistant outputs.",
+      "New workflow changes should be piloted as quick wins before becoming lab-wide process.",
+      "Assistant responses must use the same de-identified operations payload shown in the dashboard."
+    ],
+    "quick_wins": [
+      "Add a Nano-first operations status panel to Overview.",
+      "Expose coordinator, graduate-student, and undergraduate handoffs in one visible workflow.",
+      "Add assistant prompts for rollout plan, role handoffs, REDCap standardization, and family-facing feasibility.",
+      "Keep Nico present as a secondary lane without forcing premature integration."
+    ],
+    "family_data_sharing": {
+      "current_state": "Text updates, on-site assessments, and individual feedback on request.",
+      "near_term_policy": "Do not add family-facing participant visualizations yet.",
+      "future_option": "Explore aggregate, plain-language insights after supervisor and governance review."
+    },
+    "assistant_sync": {
+      "context_key": "lab_operations",
+      "buddy_insights": [
+        "lab-ops-priority",
+        "lab-ops-workflow",
+        "lab-ops-roles",
+        "lab-ops-metrics",
+        "lab-ops-family"
+      ],
+      "fast_paths": [
+        "Summarize the Nano-first rollout plan.",
+        "What should coordinators, grad students, and undergrads each own?",
+        "Which metrics should we draft for operations versus research?",
+        "What is safe to share with families right now?"
+      ]
+    }
+  },
+  "nano": {
+    "study_meta": {
+      "award": "R01MH132925",
+      "start_date": "2023-07-01",
+      "end_date": "2028-06-30",
+      "n_target": 200,
+      "n_target_asib": 75,
+      "n_target_pt": 75,
+      "n_target_td": 50,
+      "pi": "Jessica Bradshaw, PhD"
+    },
+    "enrollment": {
+      "asib": 26,
+      "pt": 31,
+      "td": 19,
+      "total": 76,
+      "last_updated": "2026-07-01T21:50:43Z",
+      "by_ga_stratum": {
+        "24_26w": 9,
+        "27_29w": 11,
+        "30_32w": 11
+      }
+    },
+    "active_followup": {
+      "1_3m": 22,
+      "6_12m": 34,
+      "24_36m": 20
+    },
+    "ecg_quality": {
+      "pct_valid_ecg_by_visit": {
+        "1m": 0.94,
+        "2m": 0.92,
+        "3m": 0.9,
+        "6m": 0.88,
+        "9m": 0.85,
+        "12m": 0.86
+      },
+      "pct_hda_synced_by_visit": {
+        "1m": 0.97,
+        "2m": 0.95,
+        "3m": 0.93,
+        "6m": 0.9,
+        "9m": 0.89,
+        "12m": 0.9
+      },
+      "flagged_participants": [
+        "ASIB-07",
+        "PT-14"
+      ]
+    },
+    "hda_features": {
+      "by_participant_visit": []
+    },
+    "lgcm_results": {
+      "pct_sa": {
+        "asib_intercept_mean": 34.0,
+        "asib_slope_mean": 3.1,
+        "pt_intercept_mean": 30.0,
+        "pt_slope_mean": 3.6,
+        "td_intercept_mean": 38.0,
+        "td_slope_mean": 4.4,
+        "asib_vs_td_intercept_p": 0.018,
+        "asib_vs_td_slope_p": 0.006,
+        "pt_vs_td_intercept_p": 0.004,
+        "pt_vs_td_slope_p": 0.021,
+        "growth_curves": [
+          {
+            "group": "asib",
+            "timepoint_m": 1,
+            "mean": 34.0,
+            "ci_low": 29.24,
+            "ci_high": 38.76
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 2,
+            "mean": 37.1,
+            "ci_low": 31.91,
+            "ci_high": 42.29
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 3,
+            "mean": 40.2,
+            "ci_low": 34.57,
+            "ci_high": 45.83
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 1,
+            "mean": 30.0,
+            "ci_low": 25.8,
+            "ci_high": 34.2
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 2,
+            "mean": 33.6,
+            "ci_low": 28.9,
+            "ci_high": 38.3
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 3,
+            "mean": 37.2,
+            "ci_low": 31.99,
+            "ci_high": 42.41
+          },
+          {
+            "group": "td",
+            "timepoint_m": 1,
+            "mean": 38.0,
+            "ci_low": 32.68,
+            "ci_high": 43.32
+          },
+          {
+            "group": "td",
+            "timepoint_m": 2,
+            "mean": 42.4,
+            "ci_low": 36.46,
+            "ci_high": 48.34
+          },
+          {
+            "group": "td",
+            "timepoint_m": 3,
+            "mean": 46.8,
+            "ci_low": 40.25,
+            "ci_high": 53.35
+          }
+        ],
+        "individual_traces": [
+          {
+            "group": "asib",
+            "participant": "ASIB-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 33.3
+              },
+              {
+                "timepoint_m": 2,
+                "value": 36.4
+              },
+              {
+                "timepoint_m": 3,
+                "value": 39.5
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 34.0
+              },
+              {
+                "timepoint_m": 2,
+                "value": 37.1
+              },
+              {
+                "timepoint_m": 3,
+                "value": 40.2
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 34.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 37.8
+              },
+              {
+                "timepoint_m": 3,
+                "value": 40.9
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 29.3
+              },
+              {
+                "timepoint_m": 2,
+                "value": 32.9
+              },
+              {
+                "timepoint_m": 3,
+                "value": 36.5
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 30.0
+              },
+              {
+                "timepoint_m": 2,
+                "value": 33.6
+              },
+              {
+                "timepoint_m": 3,
+                "value": 37.2
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 30.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 34.3
+              },
+              {
+                "timepoint_m": 3,
+                "value": 37.9
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 37.3
+              },
+              {
+                "timepoint_m": 2,
+                "value": 41.7
+              },
+              {
+                "timepoint_m": 3,
+                "value": 46.1
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 38.0
+              },
+              {
+                "timepoint_m": 2,
+                "value": 42.4
+              },
+              {
+                "timepoint_m": 3,
+                "value": 46.8
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 38.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 43.1
+              },
+              {
+                "timepoint_m": 3,
+                "value": 47.5
+              }
+            ]
+          }
+        ]
+      },
+      "hr_decel": {
+        "asib_intercept_mean": 3.4,
+        "asib_slope_mean": 0.18,
+        "pt_intercept_mean": 3.0,
+        "pt_slope_mean": 0.25,
+        "td_intercept_mean": 4.2,
+        "td_slope_mean": 0.34,
+        "asib_vs_td_intercept_p": 0.018,
+        "asib_vs_td_slope_p": 0.006,
+        "pt_vs_td_intercept_p": 0.004,
+        "pt_vs_td_slope_p": 0.021,
+        "growth_curves": [
+          {
+            "group": "asib",
+            "timepoint_m": 1,
+            "mean": 3.4,
+            "ci_low": 2.92,
+            "ci_high": 3.88
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 2,
+            "mean": 3.58,
+            "ci_low": 3.08,
+            "ci_high": 4.08
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 3,
+            "mean": 3.76,
+            "ci_low": 3.23,
+            "ci_high": 4.29
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 1,
+            "mean": 3.0,
+            "ci_low": 2.58,
+            "ci_high": 3.42
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 2,
+            "mean": 3.25,
+            "ci_low": 2.79,
+            "ci_high": 3.7
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 3,
+            "mean": 3.5,
+            "ci_low": 3.01,
+            "ci_high": 3.99
+          },
+          {
+            "group": "td",
+            "timepoint_m": 1,
+            "mean": 4.2,
+            "ci_low": 3.61,
+            "ci_high": 4.79
+          },
+          {
+            "group": "td",
+            "timepoint_m": 2,
+            "mean": 4.54,
+            "ci_low": 3.9,
+            "ci_high": 5.18
+          },
+          {
+            "group": "td",
+            "timepoint_m": 3,
+            "mean": 4.88,
+            "ci_low": 4.2,
+            "ci_high": 5.56
+          }
+        ],
+        "individual_traces": [
+          {
+            "group": "asib",
+            "participant": "ASIB-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.88
+              },
+              {
+                "timepoint_m": 3,
+                "value": 3.06
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 3.4
+              },
+              {
+                "timepoint_m": 2,
+                "value": 3.58
+              },
+              {
+                "timepoint_m": 3,
+                "value": 3.76
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 4.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 4.28
+              },
+              {
+                "timepoint_m": 3,
+                "value": 4.46
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.3
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.55
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.8
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 3.0
+              },
+              {
+                "timepoint_m": 2,
+                "value": 3.25
+              },
+              {
+                "timepoint_m": 3,
+                "value": 3.5
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 3.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 3.95
+              },
+              {
+                "timepoint_m": 3,
+                "value": 4.2
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 3.5
+              },
+              {
+                "timepoint_m": 2,
+                "value": 3.84
+              },
+              {
+                "timepoint_m": 3,
+                "value": 4.18
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 4.2
+              },
+              {
+                "timepoint_m": 2,
+                "value": 4.54
+              },
+              {
+                "timepoint_m": 3,
+                "value": 4.88
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 4.9
+              },
+              {
+                "timepoint_m": 2,
+                "value": 5.24
+              },
+              {
+                "timepoint_m": 3,
+                "value": 5.58
+              }
+            ]
+          }
+        ]
+      },
+      "rsa": {
+        "asib_intercept_mean": 2.1,
+        "asib_slope_mean": 0.09,
+        "pt_intercept_mean": 1.8,
+        "pt_slope_mean": 0.14,
+        "td_intercept_mean": 2.4,
+        "td_slope_mean": 0.18,
+        "asib_vs_td_intercept_p": 0.018,
+        "asib_vs_td_slope_p": 0.006,
+        "pt_vs_td_intercept_p": 0.004,
+        "pt_vs_td_slope_p": 0.021,
+        "growth_curves": [
+          {
+            "group": "asib",
+            "timepoint_m": 1,
+            "mean": 2.1,
+            "ci_low": 1.81,
+            "ci_high": 2.39
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 2,
+            "mean": 2.19,
+            "ci_low": 1.88,
+            "ci_high": 2.5
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 3,
+            "mean": 2.28,
+            "ci_low": 1.96,
+            "ci_high": 2.6
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 1,
+            "mean": 1.8,
+            "ci_low": 1.55,
+            "ci_high": 2.05
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 2,
+            "mean": 1.94,
+            "ci_low": 1.67,
+            "ci_high": 2.21
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 3,
+            "mean": 2.08,
+            "ci_low": 1.79,
+            "ci_high": 2.37
+          },
+          {
+            "group": "td",
+            "timepoint_m": 1,
+            "mean": 2.4,
+            "ci_low": 2.06,
+            "ci_high": 2.74
+          },
+          {
+            "group": "td",
+            "timepoint_m": 2,
+            "mean": 2.58,
+            "ci_low": 2.22,
+            "ci_high": 2.94
+          },
+          {
+            "group": "td",
+            "timepoint_m": 3,
+            "mean": 2.76,
+            "ci_low": 2.37,
+            "ci_high": 3.15
+          }
+        ],
+        "individual_traces": [
+          {
+            "group": "asib",
+            "participant": "ASIB-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.4
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.49
+              },
+              {
+                "timepoint_m": 3,
+                "value": 1.58
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.19
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.28
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.8
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.89
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.98
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.24
+              },
+              {
+                "timepoint_m": 3,
+                "value": 1.38
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.8
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.94
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.08
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.5
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.64
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.78
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.88
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.06
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.4
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.58
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.76
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 3.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 3.28
+              },
+              {
+                "timepoint_m": 3,
+                "value": 3.46
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "ml_results": {
+      "r2_by_outcome": {
+        "ados_total_css": {
+          "1_3m": 0.19,
+          "6_12m": 0.25
+        },
+        "ados_social_affect": {
+          "1_3m": 0.17,
+          "6_12m": 0.23
+        }
+      },
+      "outcomes": [
+        "ados_total_css",
+        "ados_social_affect"
+      ],
+      "windows": [
+        "1_3m",
+        "6_12m"
+      ],
+      "feature_importance": [
+        {
+          "feature": "pct_sa_slope",
+          "mean_abs_shap": 0.19
+        },
+        {
+          "feature": "rsa_3m",
+          "mean_abs_shap": 0.16
+        },
+        {
+          "feature": "hr_decel_6m",
+          "mean_abs_shap": 0.13
+        }
+      ]
+    },
+    "preliminary_finding": {
+      "label": "MLP ASD-likelihood classification",
+      "value": 0.86,
+      "type": "accuracy",
+      "n": 23,
+      "pilot": true
+    }
+  },
+  "nico": {
+    "study_meta": {
+      "award": "R01MH138028",
+      "start_date": "2025-04-01",
+      "end_date": "2030-03-31",
+      "n_target_enrolled": 260,
+      "n_target_completers": 200,
+      "n_monthly_target": 12,
+      "pi": "Robin Dail, PhD and Jessica Bradshaw, PhD"
+    },
+    "enrollment": {
+      "total_enrolled": 41,
+      "in_nicu": 12,
+      "discharged": 29,
+      "completed_12m": 8,
+      "completed_24m": 3,
+      "completed_36m": 0,
+      "last_updated": "2026-07-01T21:50:43Z"
+    },
+    "participants": [
+      {
+        "participant": "VPT-001",
+        "ga_weeks": 25.6,
+        "birthweight_g": 703,
+        "days_in_nicu": 51,
+        "status": "discharged",
+        "morbidities": []
+      },
+      {
+        "participant": "VPT-002",
+        "ga_weeks": 26.4,
+        "birthweight_g": 786,
+        "days_in_nicu": 60,
+        "status": "in_nicu",
+        "morbidities": [
+          "NEC"
+        ]
+      },
+      {
+        "participant": "VPT-003",
+        "ga_weeks": 27.2,
+        "birthweight_g": 869,
+        "days_in_nicu": 69,
+        "status": "discharged",
+        "morbidities": [
+          "PDA"
+        ]
+      },
+      {
+        "participant": "VPT-004",
+        "ga_weeks": 28.0,
+        "birthweight_g": 952,
+        "days_in_nicu": 78,
+        "status": "discharged",
+        "morbidities": [
+          "NEC"
+        ]
+      },
+      {
+        "participant": "VPT-005",
+        "ga_weeks": 28.8,
+        "birthweight_g": 1035,
+        "days_in_nicu": 87,
+        "status": "in_nicu",
+        "morbidities": []
+      },
+      {
+        "participant": "VPT-006",
+        "ga_weeks": 29.6,
+        "birthweight_g": 1118,
+        "days_in_nicu": 96,
+        "status": "discharged",
+        "morbidities": [
+          "PDA"
+        ]
+      },
+      {
+        "participant": "VPT-007",
+        "ga_weeks": 24.8,
+        "birthweight_g": 1201,
+        "days_in_nicu": 105,
+        "status": "in_nicu",
+        "morbidities": []
+      },
+      {
+        "participant": "VPT-008",
+        "ga_weeks": 25.6,
+        "birthweight_g": 1284,
+        "days_in_nicu": 114,
+        "status": "discharged",
+        "morbidities": [
+          "NEC"
+        ]
+      }
+    ],
+    "thermal_data": {
+      "by_participant_day": [],
+      "summary_stats": {
+        "n_participant_days": 1284,
+        "pct_days_ge_80_valid": 0.91,
+        "median_cptd": 1.4,
+        "pct_days_abnormal_cold": 0.12,
+        "pct_days_abnormal_hot": 0.08
+      }
+    },
+    "hrc_scores": {
+      "by_participant_day": [],
+      "alert_threshold": 5,
+      "summary": {
+        "alert_threshold": 5,
+        "n_alerts_last_7d": 6,
+        "pct_windows_below_discard": 0.94
+      }
+    },
+    "hri_features": {
+      "by_participant_window": [],
+      "feature_names": [
+        "hrv",
+        "ln_rmssd",
+        "rsa_cwt",
+        "mean_nn",
+        "sd_nn",
+        "nn_sample_entropy",
+        "rmssd",
+        "sd1",
+        "sd2",
+        "cvnn",
+        "hti",
+        "sai",
+        "pai"
+      ]
+    },
+    "morbidities": {
+      "by_participant": [],
+      "cohort_rates": {
+        "sbi": 0.11,
+        "sep": 0.24,
+        "nec": 0.09,
+        "bpd": 0.38,
+        "pda": 0.31,
+        "rop": 0.19
+      }
+    },
+    "followup_visits": {
+      "by_participant": []
+    },
+    "aim1_ml_results": {
+      "r2_by_outcome": {},
+      "feature_importance": [],
+      "shap_values": {}
+    },
+    "aim2_moderation": {
+      "moderators": [
+        "sex",
+        "morbidity_score"
+      ],
+      "models": []
+    },
+    "aim3_clusters": {
+      "n_clusters": 3,
+      "silhouette_score": 0.42,
+      "epsilon": 0.8,
+      "min_samples": 5,
+      "tsne_coords": [
+        {
+          "participant": "VPT-001",
+          "x": -5.9,
+          "y": -0.9,
+          "cluster": 1,
+          "ados_css": 3,
+          "ga_weeks": 25.9,
+          "top_shap_feature": "ln_rmssd"
+        },
+        {
+          "participant": "VPT-002",
+          "x": -3.8,
+          "y": 0.9,
+          "cluster": 2,
+          "ados_css": 4,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-003",
+          "x": -1.7,
+          "y": 2.7,
+          "cluster": 0,
+          "ados_css": 5,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
+        },
+        {
+          "participant": "VPT-004",
+          "x": 0.4,
+          "y": -2.7,
+          "cluster": 1,
+          "ados_css": 6,
+          "ga_weeks": 28.6,
+          "top_shap_feature": "ln_rmssd"
+        },
+        {
+          "participant": "VPT-005",
+          "x": 2.5,
+          "y": -0.9,
+          "cluster": 2,
+          "ados_css": 7,
+          "ga_weeks": 29.5,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-006",
+          "x": 4.6,
+          "y": 0.9,
+          "cluster": 0,
+          "ados_css": 8,
+          "ga_weeks": 25.0,
+          "top_shap_feature": "median_cptd"
+        },
+        {
+          "participant": "VPT-007",
+          "x": 6.7,
+          "y": 2.7,
+          "cluster": 1,
+          "ados_css": 2,
+          "ga_weeks": 25.9,
+          "top_shap_feature": "ln_rmssd"
+        },
+        {
+          "participant": "VPT-008",
+          "x": 8.8,
+          "y": -2.7,
+          "cluster": 2,
+          "ados_css": 3,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-009",
+          "x": 10.9,
+          "y": -0.9,
+          "cluster": 0,
+          "ados_css": 4,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
+        },
+        {
+          "participant": "VPT-010",
+          "x": 13.0,
+          "y": 0.9,
+          "cluster": 1,
+          "ados_css": 5,
+          "ga_weeks": 28.6,
+          "top_shap_feature": "ln_rmssd"
+        },
+        {
+          "participant": "VPT-011",
+          "x": 15.1,
+          "y": 2.7,
+          "cluster": 2,
+          "ados_css": 6,
+          "ga_weeks": 29.5,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-012",
+          "x": 17.2,
+          "y": -2.7,
+          "cluster": 0,
+          "ados_css": 7,
+          "ga_weeks": 25.0,
+          "top_shap_feature": "median_cptd"
+        },
+        {
+          "participant": "VPT-013",
+          "x": 19.3,
+          "y": -0.9,
+          "cluster": 1,
+          "ados_css": 8,
+          "ga_weeks": 25.9,
+          "top_shap_feature": "ln_rmssd"
+        },
+        {
+          "participant": "VPT-014",
+          "x": 21.4,
+          "y": 0.9,
+          "cluster": 2,
+          "ados_css": 2,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-015",
+          "x": 23.5,
+          "y": 2.7,
+          "cluster": 0,
+          "ados_css": 3,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
+        }
+      ],
+      "trajectory_by_cluster": {
+        "0": {
+          "12m": 2.8,
+          "24m": 3.2,
+          "36m": 3.7
+        },
+        "1": {
+          "12m": 4.1,
+          "24m": 5.0,
+          "36m": 5.9
+        },
+        "2": {
+          "12m": 3.4,
+          "24m": 4.0,
+          "36m": 4.8
+        }
+      },
+      "trajectory_metrics": [
+        "ADOS CSS",
+        "Bayley cognitive",
+        "Bayley motor"
+      ],
+      "hotelling_t2_matrix": [
+        [
+          0,
+          4.8,
+          3.2
+        ],
+        [
+          4.8,
+          0,
+          2.9
+        ],
+        [
+          3.2,
+          2.9,
+          0
+        ]
+      ],
+      "cluster_ados_css": {
+        "0": 3.7,
+        "1": 5.9,
+        "2": 4.8
+      }
+    },
+    "preliminary_finding": {
+      "label": "HRC Score x SORF ASD symptoms at 12m",
+      "r": 0.81,
+      "p": 0.01,
+      "n": 20,
+      "pilot": true,
+      "scatter_points": [
+        {
+          "hrc_score": 1.2,
+          "sorf_asd_symptoms": 4.1
+        },
+        {
+          "hrc_score": 2.4,
+          "sorf_asd_symptoms": 5.0
+        },
+        {
+          "hrc_score": 3.1,
+          "sorf_asd_symptoms": 6.2
+        },
+        {
+          "hrc_score": 4.6,
+          "sorf_asd_symptoms": 7.8
+        },
+        {
+          "hrc_score": 5.2,
+          "sorf_asd_symptoms": 8.5
+        },
+        {
+          "hrc_score": 6.0,
+          "sorf_asd_symptoms": 9.1
+        }
+      ]
+    }
+  },
+  "shared": {
+    "data_pipeline_run": {
+      "last_success": "2026-07-01T21:50:43Z",
+      "last_error": "",
+      "stages_passed": [
+        "redcap_nano",
+        "redcap_nico",
+        "ecg_nano",
+        "thermal_nico",
+        "hri_extraction",
+        "lgcm_nano",
+        "ctmc_nano",
+        "mlp_nano",
+        "svr_nico",
+        "moderation_nico",
+        "dbscan_nico",
+        "json_build"
+      ],
+      "stages": [
+        {
+          "id": "redcap_nano",
+          "label": "REDCap NANO",
+          "status": "ok"
+        },
+        {
+          "id": "redcap_nico",
+          "label": "REDCap NICO",
+          "status": "ok"
+        },
+        {
+          "id": "ecg_nano",
+          "label": "ECG NANO",
+          "status": "ok"
+        },
+        {
+          "id": "thermal_nico",
+          "label": "Thermal NICO",
+          "status": "ok"
+        },
+        {
+          "id": "hri_extraction",
+          "label": "HRI Extraction",
+          "status": "ok"
+        },
+        {
+          "id": "lgcm_nano",
+          "label": "LGCM NANO",
+          "status": "ok"
+        },
+        {
+          "id": "ctmc_nano",
+          "label": "CTMC NANO",
+          "status": "warn"
+        },
+        {
+          "id": "mlp_nano",
+          "label": "MLP NANO",
+          "status": "ok"
+        },
+        {
+          "id": "svr_nico",
+          "label": "SVR NICO",
+          "status": "ok"
+        },
+        {
+          "id": "moderation_nico",
+          "label": "Moderation NICO",
+          "status": "ok"
+        },
+        {
+          "id": "dbscan_nico",
+          "label": "DBSCAN NICO",
+          "status": "ok"
+        },
+        {
+          "id": "json_build",
+          "label": "JSON Build",
+          "status": "ok"
+        }
+      ],
+      "record_deltas": {
+        "new_participants": 3,
+        "new_ecg_windows": 1440,
+        "new_redcap_entries": 42,
+        "new_thermal_days": 21
+      },
+      "git_sha": "seed0000"
+    },
+    "changelog": [
+      {
+        "timestamp": "2026-07-01T21:50:43Z",
+        "build": "seed0000",
+        "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
+      }
+    ]
   }
 }

@@ -213,16 +213,122 @@ const SharedSchema = z
   })
   .passthrough();
 
+const LabOperationsSchema = z
+  .object({
+    generated_at: z.string().default(""),
+    source_documents: z
+      .array(
+        z
+          .object({
+            study: z.string(),
+            file: z.string(),
+            pages: z.number(),
+            award: z.string(),
+            status: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    priority: z
+      .object({
+        primary_objective: z.string(),
+        secondary_objective: z.string(),
+        current_priority: z.string(),
+        decision_dependency: z.string(),
+        scope_guardrail: z.string(),
+      })
+      .passthrough(),
+    dashboard_surface_status: z
+      .array(
+        z
+          .object({
+            area: z.string(),
+            status: z.string(),
+            shown: z.string(),
+            next_need: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    current_problems: z
+      .array(z.object({ category: z.string(), items: z.array(z.string()) }).passthrough())
+      .default([]),
+    recommendations: z
+      .array(z.object({ horizon: z.string(), items: z.array(z.string()) }).passthrough())
+      .default([]),
+    workflow_phases: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            phase: z.string(),
+            timeframe: z.string(),
+            status: z.string(),
+            study_focus: z.string(),
+            tasks: z.array(z.string()).default([]),
+            outputs: z.array(z.string()).default([]),
+            owners: z.array(z.string()).default([]),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    role_workflows: z
+      .array(
+        z
+          .object({
+            role: z.string(),
+            focus: z.string(),
+            handoff: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    draft_metrics: z
+      .array(
+        z
+          .object({
+            name: z.string(),
+            kind: z.string(),
+            definition: z.string(),
+            status: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    daily_routine: z
+      .array(z.object({ block: z.string(), purpose: z.string() }).passthrough())
+      .default([]),
+    rollout_controls: z.array(z.string()).default([]),
+    quick_wins: z.array(z.string()).default([]),
+    family_data_sharing: z
+      .object({
+        current_state: z.string(),
+        near_term_policy: z.string(),
+        future_option: z.string(),
+      })
+      .passthrough(),
+    assistant_sync: z
+      .object({
+        context_key: z.string(),
+        buddy_insights: z.array(z.string()).default([]),
+        fast_paths: z.array(z.string()).default([]),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 export const StudyDataSchema = z.object({
   nano: NanoSchema,
   nico: NicoSchema,
   shared: SharedSchema,
+  lab_operations: LabOperationsSchema.optional(),
 });
 
 export type StudyData = z.infer<typeof StudyDataSchema>;
 export type NanoData = z.infer<typeof NanoSchema>;
 export type NicoData = z.infer<typeof NicoSchema>;
 export type SharedData = z.infer<typeof SharedSchema>;
+export type LabOperationsData = z.infer<typeof LabOperationsSchema>;
 export type LgcmOutcomeData = z.infer<typeof LgcmOutcome>;
 export type GrowthPointData = z.infer<typeof GrowthPoint>;
 export type ScatterPointData = z.infer<typeof ScatterPoint>;

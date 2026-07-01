@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-06-29T16:59:35",
+    "generated_at": "2026-07-01T21:50:45",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -39,18 +39,18 @@
       "2025-10",
       "2025-11",
       "2025-12",
-      "2025-12",
       "2026-01",
-      "2026-03",
+      "2026-02",
       "2026-03",
       "2026-04",
-      "2026-05"
+      "2026-05",
+      "2026-06"
     ],
     "by_group": {
       "ASIB": {
         "target": 65,
-        "current": 55,
-        "percent": 84.6,
+        "current": 52,
+        "percent": 80.0,
         "monthly": [
           1,
           4,
@@ -76,20 +76,20 @@
           46,
           49,
           50,
-          51,
-          51,
-          53,
-          55,
-          55,
-          55
+          50,
+          50,
+          52,
+          52,
+          52,
+          52
         ],
         "color": "#C44E52",
         "label": "ASIB (VPT + ASD traits)"
       },
       "PT": {
         "target": 130,
-        "current": 104,
-        "percent": 80.0,
+        "current": 105,
+        "percent": 80.8,
         "monthly": [
           5,
           5,
@@ -115,12 +115,12 @@
           93,
           96,
           98,
-          100,
-          100,
-          100,
-          100,
-          103,
-          104
+          98,
+          101,
+          101,
+          104,
+          105,
+          105
         ],
         "color": "#4C72B0",
         "label": "PT (VPT typical)"
@@ -154,11 +154,11 @@
           46,
           49,
           49,
-          49,
           51,
           51,
           51,
           52,
+          53,
           53
         ],
         "color": "#55A868",
@@ -2236,7 +2236,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-06-29T16:59:35",
+      "generated_at": "2026-07-01T21:50:45",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8817,7 +8817,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-06-29T16:59:33",
+      "generated_at": "2026-07-01T21:50:41",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9779,7 +9779,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-06-29T16:59:35",
+      "generated_at": "2026-07-01T21:50:45",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9810,7 +9810,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-06-29T16:34:35",
+        "last_run": "2026-07-01T21:25:45",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9818,7 +9818,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-06-29T16:34:35",
+        "last_run": "2026-07-01T21:25:45",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9826,7 +9826,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-06-29T16:49:35",
+        "last_run": "2026-07-01T21:40:45",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9834,7 +9834,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-06-29T16:39:35",
+        "last_run": "2026-07-01T21:30:45",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9842,11 +9842,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00",
         "22:00",
         "23:00",
         "00:00",
@@ -9865,7 +9860,12 @@
         "13:00",
         "14:00",
         "15:00",
-        "16:00"
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
       ],
       "rows": [
         526,
@@ -10590,13 +10590,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-06-29T16:59:34Z",
+    "generated_at": "2026-07-01T21:50:43Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-06-29T16:59:34Z"
+    "payload_version": "2026-07-01T21:50:43Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33205,7 +33205,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-06-29T16:59:34Z",
+      "generated_at": "2026-07-01T21:50:43Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33219,7 +33219,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-e89223f24043",
-        "started_at": "2026-06-29T16:59:34Z",
+        "started_at": "2026-07-01T21:50:43Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33258,6 +33258,316 @@
       }
     }
   },
+  "lab_operations": {
+    "generated_at": "2026-07-01T21:50:43Z",
+    "source_documents": [
+      {
+        "study": "NANO",
+        "file": "esd-lab-readings/NANO.pdf",
+        "pages": 107,
+        "award": "R01MH132925",
+        "status": "primary operational focus"
+      },
+      {
+        "study": "NICO",
+        "file": "esd-lab-readings/NICO.pdf",
+        "pages": 105,
+        "award": "R01MH138028",
+        "status": "secondary integration focus"
+      }
+    ],
+    "priority": {
+      "primary_objective": "Improve lab workflow, data handling, and operational efficiency without setting unrealistic expectations.",
+      "secondary_objective": "Align academic research outputs with operational needs for daily lab function.",
+      "current_priority": "Nano grant data and lab processes first; Nico remains visible as the secondary study lane.",
+      "decision_dependency": "Pace rollout with Sam and Dr. Bradshaw decision availability.",
+      "scope_guardrail": "Use de-identified aggregate status only; family-facing visualizations stay exploratory until approved."
+    },
+    "dashboard_surface_status": [
+      {
+        "area": "Overview",
+        "status": "live",
+        "shown": "Lab Pulse KPIs, NANO/NICO study hero, pipeline DAG, cluster operations, readings geography, ESD Buddy, participant flow, and progress rings.",
+        "next_need": "Make Nano-first operational workflow and role handoffs explicit."
+      },
+      {
+        "area": "REDCap",
+        "status": "live",
+        "shown": "Sync freshness, visit health, carry-forward risk, completeness heatwall, anomaly board, runtime parity, controls, and next-wave REDCap panels.",
+        "next_need": "Standardize coding conventions and make inefficiencies easier to capture during observation."
+      },
+      {
+        "area": "Participants",
+        "status": "live",
+        "shown": "De-identified participant table, intake/story routing, participant detail, dual-study role badges, form policy, and timeline/passport links.",
+        "next_need": "Map coordinator scheduling, assessment collection, and packet checks into repeatable steps."
+      },
+      {
+        "area": "Study Analytics",
+        "status": "live",
+        "shown": "Results and trajectories, HDA player, ECG quality, SHAP/model surfaces, NANO LGCM trajectories, and NICO Aim 3 clusters.",
+        "next_need": "Separate operational summaries from manuscript-ready research reporting templates."
+      },
+      {
+        "area": "Assistant",
+        "status": "live",
+        "shown": "Hover-aware Buddy glossary, local GGUF chat drawer, assistant status, REDCap freshness, and fast-path prompts.",
+        "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard."
+      }
+    ],
+    "current_problems": [
+      {
+        "category": "Operational gaps",
+        "items": [
+          "Many moving parts across research, visits, assessments, scoring, and reporting.",
+          "Coordinator, graduate-student, and undergraduate workflows need clearer boundaries.",
+          "Coding and data handling practices vary across lab members."
+        ]
+      },
+      {
+        "category": "Data management",
+        "items": [
+          "Most data lives in REDCap, but usage patterns vary by project.",
+          "Nano and Nico integration is limited and should be staged rather than forced.",
+          "Operational dashboards and academic writing outputs need distinct definitions."
+        ]
+      },
+      {
+        "category": "Family perspective",
+        "items": [
+          "Families currently receive text updates and on-site assessments.",
+          "Data sharing outside individual feedback on request is minimal.",
+          "Family-facing insight views should remain future-feasibility work until approved."
+        ]
+      },
+      {
+        "category": "Resource management",
+        "items": [
+          "Rollout must avoid overloading staff.",
+          "Priority decisions should align with Sam and Dr. Bradshaw availability.",
+          "Quick wins should be small, reversible, and visible to operators."
+        ]
+      }
+    ],
+    "recommendations": [
+      {
+        "horizon": "Short-term",
+        "items": [
+          "Shadow coordinators and learn REDCap workflows before changing process.",
+          "Start early requests with Nano data and document quick wins.",
+          "Capture visit scheduling, assessment collection, scoring, and blocker patterns."
+        ]
+      },
+      {
+        "horizon": "Medium-term",
+        "items": [
+          "Map graduate and undergraduate coding/scoring handoffs.",
+          "Draft aligned operational and research metrics.",
+          "Create a standard coding and data-handling system before expanding scope."
+        ]
+      },
+      {
+        "horizon": "Long-term",
+        "items": [
+          "Scale the workflow system to Nico and future grants.",
+          "Evaluate optional family-facing aggregate insights only after governance review.",
+          "Keep dashboards, reports, and assistant context synchronized from one payload."
+        ]
+      }
+    ],
+    "workflow_phases": [
+      {
+        "id": "phase-1",
+        "phase": "Onboarding and observation",
+        "timeframe": "Weeks 1-2",
+        "status": "active",
+        "study_focus": "Nano first, Nico document context second",
+        "tasks": [
+          "Read Nano and Nico grant documents at high level.",
+          "Shadow coordinators on visit scheduling, assessment collection, and scoring.",
+          "Document workflows, bottlenecks, and daily blockers.",
+          "Run morning and afternoon check-ins."
+        ],
+        "outputs": [
+          "Initial process map",
+          "Quick-win opportunity list"
+        ],
+        "owners": [
+          "Coordinator",
+          "Supervisor",
+          "Lab operations analyst"
+        ]
+      },
+      {
+        "id": "phase-2",
+        "phase": "Data and process standardization",
+        "timeframe": "Weeks 3-4",
+        "status": "next",
+        "study_focus": "Nano REDCap and coding conventions",
+        "tasks": [
+          "Explore Nano REDCap dataset structure.",
+          "Identify inconsistencies in coding, scoring, and handoff practices.",
+          "Create a workflow chart across coordinator, graduate-student, and undergraduate tasks.",
+          "Draft aligned metrics for operations and research reporting."
+        ],
+        "outputs": [
+          "Standardized workflow documentation",
+          "Draft operational metrics list"
+        ],
+        "owners": [
+          "Coordinator",
+          "Graduate students",
+          "Undergraduates"
+        ]
+      },
+      {
+        "id": "phase-3",
+        "phase": "Pilot improvements and reporting",
+        "timeframe": "Months 2-3",
+        "status": "planned",
+        "study_focus": "Nano reports and coordinator quick wins",
+        "tasks": [
+          "Implement small coordinator workflow improvements.",
+          "Build Nano data summaries for research outputs.",
+          "Coordinate priority assignments with Sam and Dr. Bradshaw.",
+          "Prepare lab and academic reporting templates."
+        ],
+        "outputs": [
+          "Pilot process improvements",
+          "First structured lab report or dashboard"
+        ],
+        "owners": [
+          "Coordinator",
+          "Sam",
+          "Dr. Bradshaw",
+          "Analyst"
+        ]
+      },
+      {
+        "id": "phase-4",
+        "phase": "Long-term growth and integration",
+        "timeframe": "Month 3+",
+        "status": "future",
+        "study_focus": "Nico integration and multi-grant scale",
+        "tasks": [
+          "Expand validated improvements to Nico.",
+          "Explore feasibility of family-facing aggregate insights.",
+          "Develop multi-grant data workflow management.",
+          "Keep academic and operational outputs aligned."
+        ],
+        "outputs": [
+          "Scalable workflow system",
+          "Enhanced data management and reporting structure"
+        ],
+        "owners": [
+          "Operations team",
+          "Study leads",
+          "Data team"
+        ]
+      }
+    ],
+    "role_workflows": [
+      {
+        "role": "Coordinators",
+        "focus": "Visits, scheduling, packet readiness, assessment collection, and immediate blockers.",
+        "handoff": "Daily check-in notes, REDCap status flags, visit-window updates, and unresolved family logistics."
+      },
+      {
+        "role": "Graduate students",
+        "focus": "Scoring oversight, analytic interpretation, coding reliability, and manuscript-aligned metrics.",
+        "handoff": "Coding decisions, reliability notes, analysis-ready variable definitions, and review queues."
+      },
+      {
+        "role": "Undergraduates",
+        "focus": "Frame-by-frame coding, data entry support, scoring prep, and defined QA checks.",
+        "handoff": "Coding logs, timestamp/sync flags, incomplete-scoring queues, and exception notes."
+      },
+      {
+        "role": "Supervisors",
+        "focus": "Priority setting, scope control, escalation, and approval for family-facing or cross-grant changes.",
+        "handoff": "Morning priorities, afternoon blockers, and decisions needed from Sam or Dr. Bradshaw."
+      }
+    ],
+    "draft_metrics": [
+      {
+        "name": "REDCap freshness",
+        "kind": "operations",
+        "definition": "Hours since the last successful REDCap-derived dashboard payload.",
+        "status": "live"
+      },
+      {
+        "name": "Visit-window adherence",
+        "kind": "operations",
+        "definition": "Difference between actual/forecast visit timing and protocol target window.",
+        "status": "live"
+      },
+      {
+        "name": "Coding queue age",
+        "kind": "operations",
+        "definition": "Oldest unscored or unreviewed coding/scoring item by study and visit.",
+        "status": "draft"
+      },
+      {
+        "name": "Assessment completion coverage",
+        "kind": "operations and research",
+        "definition": "Complete plus intentional skip states divided by expected assessments.",
+        "status": "live"
+      },
+      {
+        "name": "Analysis-ready Nano summary",
+        "kind": "research",
+        "definition": "Nano-specific output separating operational completeness from manuscript-ready variables.",
+        "status": "draft"
+      }
+    ],
+    "daily_routine": [
+      {
+        "block": "Morning check-in",
+        "purpose": "Align priorities, confirm visit windows, and name decisions or blockers."
+      },
+      {
+        "block": "Observation/analysis block",
+        "purpose": "Shadow workflows, inspect REDCap, document bottlenecks, or draft process artifacts."
+      },
+      {
+        "block": "Afternoon check-in",
+        "purpose": "Share findings, capture blockers, and set the next smallest useful step."
+      }
+    ],
+    "rollout_controls": [
+      "All data access and workflow tasks stay within business hours and visit time frames.",
+      "Data outside approved visit windows is not used for dashboard or assistant outputs.",
+      "New workflow changes should be piloted as quick wins before becoming lab-wide process.",
+      "Assistant responses must use the same de-identified operations payload shown in the dashboard."
+    ],
+    "quick_wins": [
+      "Add a Nano-first operations status panel to Overview.",
+      "Expose coordinator, graduate-student, and undergraduate handoffs in one visible workflow.",
+      "Add assistant prompts for rollout plan, role handoffs, REDCap standardization, and family-facing feasibility.",
+      "Keep Nico present as a secondary lane without forcing premature integration."
+    ],
+    "family_data_sharing": {
+      "current_state": "Text updates, on-site assessments, and individual feedback on request.",
+      "near_term_policy": "Do not add family-facing participant visualizations yet.",
+      "future_option": "Explore aggregate, plain-language insights after supervisor and governance review."
+    },
+    "assistant_sync": {
+      "context_key": "lab_operations",
+      "buddy_insights": [
+        "lab-ops-priority",
+        "lab-ops-workflow",
+        "lab-ops-roles",
+        "lab-ops-metrics",
+        "lab-ops-family"
+      ],
+      "fast_paths": [
+        "Summarize the Nano-first rollout plan.",
+        "What should coordinators, grad students, and undergrads each own?",
+        "Which metrics should we draft for operations versus research?",
+        "What is safe to share with families right now?"
+      ]
+    }
+  },
   "nano": {
     "study_meta": {
       "award": "R01MH132925",
@@ -33274,7 +33584,7 @@
       "pt": 31,
       "td": 19,
       "total": 76,
-      "last_updated": "2026-06-29T02:00:12Z",
+      "last_updated": "2026-07-01T21:50:43Z",
       "by_ga_stratum": {
         "24_26w": 9,
         "27_29w": 11,
@@ -33328,64 +33638,64 @@
             "group": "asib",
             "timepoint_m": 1,
             "mean": 34.0,
-            "ci_low": 28.84,
-            "ci_high": 39.16
+            "ci_low": 29.24,
+            "ci_high": 38.76
           },
           {
             "group": "asib",
             "timepoint_m": 2,
             "mean": 37.1,
-            "ci_low": 31.51,
-            "ci_high": 42.69
+            "ci_low": 31.91,
+            "ci_high": 42.29
           },
           {
             "group": "asib",
             "timepoint_m": 3,
             "mean": 40.2,
-            "ci_low": 34.17,
-            "ci_high": 46.23
+            "ci_low": 34.57,
+            "ci_high": 45.83
           },
           {
             "group": "pt",
             "timepoint_m": 1,
             "mean": 30.0,
-            "ci_low": 25.4,
-            "ci_high": 34.6
+            "ci_low": 25.8,
+            "ci_high": 34.2
           },
           {
             "group": "pt",
             "timepoint_m": 2,
             "mean": 33.6,
-            "ci_low": 28.5,
-            "ci_high": 38.7
+            "ci_low": 28.9,
+            "ci_high": 38.3
           },
           {
             "group": "pt",
             "timepoint_m": 3,
             "mean": 37.2,
-            "ci_low": 31.59,
-            "ci_high": 42.81
+            "ci_low": 31.99,
+            "ci_high": 42.41
           },
           {
             "group": "td",
             "timepoint_m": 1,
             "mean": 38.0,
-            "ci_low": 32.28,
-            "ci_high": 43.72
+            "ci_low": 32.68,
+            "ci_high": 43.32
           },
           {
             "group": "td",
             "timepoint_m": 2,
             "mean": 42.4,
-            "ci_low": 36.06,
-            "ci_high": 48.74
+            "ci_low": 36.46,
+            "ci_high": 48.34
           },
           {
             "group": "td",
             "timepoint_m": 3,
             "mean": 46.8,
-            "ci_low": 39.85,
-            "ci_high": 53.75
+            "ci_low": 40.25,
+            "ci_high": 53.35
           }
         ],
         "individual_traces": [
@@ -33395,15 +33705,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 34.13
+                "value": 33.3
               },
               {
                 "timepoint_m": 2,
-                "value": 37.43
+                "value": 36.4
               },
               {
                 "timepoint_m": 3,
-                "value": 40.76
+                "value": 39.5
               }
             ]
           },
@@ -33413,15 +33723,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 33.21
+                "value": 34.0
               },
               {
                 "timepoint_m": 2,
-                "value": 36.76
+                "value": 37.1
               },
               {
                 "timepoint_m": 3,
-                "value": 40.82
+                "value": 40.2
               }
             ]
           },
@@ -33431,33 +33741,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 35.73
+                "value": 34.7
               },
               {
                 "timepoint_m": 2,
-                "value": 38.78
+                "value": 37.8
               },
               {
                 "timepoint_m": 3,
-                "value": 39.95
-              }
-            ]
-          },
-          {
-            "group": "asib",
-            "participant": "ASIB-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 33.5
-              },
-              {
-                "timepoint_m": 2,
-                "value": 38.37
-              },
-              {
-                "timepoint_m": 3,
-                "value": 40.79
+                "value": 40.9
               }
             ]
           },
@@ -33467,15 +33759,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 30.32
+                "value": 29.3
               },
               {
                 "timepoint_m": 2,
-                "value": 33.24
+                "value": 32.9
               },
               {
                 "timepoint_m": 3,
-                "value": 35.57
+                "value": 36.5
               }
             ]
           },
@@ -33485,15 +33777,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 29.81
+                "value": 30.0
               },
               {
                 "timepoint_m": 2,
-                "value": 33.83
+                "value": 33.6
               },
               {
                 "timepoint_m": 3,
-                "value": 37.14
+                "value": 37.2
               }
             ]
           },
@@ -33503,33 +33795,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 30.11
+                "value": 30.7
               },
               {
                 "timepoint_m": 2,
-                "value": 34.58
+                "value": 34.3
               },
               {
                 "timepoint_m": 3,
-                "value": 38.93
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 29.61
-              },
-              {
-                "timepoint_m": 2,
-                "value": 33.2
-              },
-              {
-                "timepoint_m": 3,
-                "value": 36.36
+                "value": 37.9
               }
             ]
           },
@@ -33539,15 +33813,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 38.44
+                "value": 37.3
               },
               {
                 "timepoint_m": 2,
-                "value": 42.32
+                "value": 41.7
               },
               {
                 "timepoint_m": 3,
-                "value": 48.07
+                "value": 46.1
               }
             ]
           },
@@ -33557,15 +33831,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 38.39
+                "value": 38.0
               },
               {
                 "timepoint_m": 2,
-                "value": 42.56
+                "value": 42.4
               },
               {
                 "timepoint_m": 3,
-                "value": 46.88
+                "value": 46.8
               }
             ]
           },
@@ -33575,407 +33849,94 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 38.67
+                "value": 38.7
               },
               {
                 "timepoint_m": 2,
-                "value": 43.37
+                "value": 43.1
               },
               {
                 "timepoint_m": 3,
-                "value": 47.45
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 38.31
-              },
-              {
-                "timepoint_m": 2,
-                "value": 43.15
-              },
-              {
-                "timepoint_m": 3,
-                "value": 47.08
+                "value": 47.5
               }
             ]
           }
         ]
       },
       "hr_decel": {
-        "asib_intercept_mean": 6.2,
-        "asib_slope_mean": 0.55,
-        "pt_intercept_mean": 5.4,
-        "pt_slope_mean": 0.62,
-        "td_intercept_mean": 7.5,
-        "td_slope_mean": 0.78,
-        "asib_vs_td_intercept_p": 0.041,
-        "asib_vs_td_slope_p": 0.033,
-        "pt_vs_td_intercept_p": 0.012,
-        "pt_vs_td_slope_p": 0.048,
-        "growth_curves": [
-          {
-            "group": "asib",
-            "timepoint_m": 1,
-            "mean": 6.2,
-            "ci_low": 4.93,
-            "ci_high": 7.47
-          },
-          {
-            "group": "asib",
-            "timepoint_m": 2,
-            "mean": 6.75,
-            "ci_low": 5.4,
-            "ci_high": 8.1
-          },
-          {
-            "group": "asib",
-            "timepoint_m": 3,
-            "mean": 7.3,
-            "ci_low": 5.88,
-            "ci_high": 8.72
-          },
-          {
-            "group": "pt",
-            "timepoint_m": 1,
-            "mean": 5.4,
-            "ci_low": 4.24,
-            "ci_high": 6.56
-          },
-          {
-            "group": "pt",
-            "timepoint_m": 2,
-            "mean": 6.02,
-            "ci_low": 4.78,
-            "ci_high": 7.26
-          },
-          {
-            "group": "pt",
-            "timepoint_m": 3,
-            "mean": 6.64,
-            "ci_low": 5.31,
-            "ci_high": 7.97
-          },
-          {
-            "group": "td",
-            "timepoint_m": 1,
-            "mean": 7.5,
-            "ci_low": 6.05,
-            "ci_high": 8.95
-          },
-          {
-            "group": "td",
-            "timepoint_m": 2,
-            "mean": 8.28,
-            "ci_low": 6.72,
-            "ci_high": 9.84
-          },
-          {
-            "group": "td",
-            "timepoint_m": 3,
-            "mean": 9.06,
-            "ci_low": 7.39,
-            "ci_high": 10.73
-          }
-        ],
-        "individual_traces": [
-          {
-            "group": "asib",
-            "participant": "ASIB-01",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 7.03
-              },
-              {
-                "timepoint_m": 2,
-                "value": 7.19
-              },
-              {
-                "timepoint_m": 3,
-                "value": 7.37
-              }
-            ]
-          },
-          {
-            "group": "asib",
-            "participant": "ASIB-02",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 5.27
-              },
-              {
-                "timepoint_m": 2,
-                "value": 5.69
-              },
-              {
-                "timepoint_m": 3,
-                "value": 7.17
-              }
-            ]
-          },
-          {
-            "group": "asib",
-            "participant": "ASIB-03",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 6.96
-              },
-              {
-                "timepoint_m": 2,
-                "value": 7.86
-              },
-              {
-                "timepoint_m": 3,
-                "value": 7.28
-              }
-            ]
-          },
-          {
-            "group": "asib",
-            "participant": "ASIB-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 5.08
-              },
-              {
-                "timepoint_m": 2,
-                "value": 5.78
-              },
-              {
-                "timepoint_m": 3,
-                "value": 5.63
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-01",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 5.39
-              },
-              {
-                "timepoint_m": 2,
-                "value": 5.64
-              },
-              {
-                "timepoint_m": 3,
-                "value": 6.11
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-02",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 5.84
-              },
-              {
-                "timepoint_m": 2,
-                "value": 5.48
-              },
-              {
-                "timepoint_m": 3,
-                "value": 5.77
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-03",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 5.65
-              },
-              {
-                "timepoint_m": 2,
-                "value": 5.45
-              },
-              {
-                "timepoint_m": 3,
-                "value": 6.66
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 6.21
-              },
-              {
-                "timepoint_m": 2,
-                "value": 7.16
-              },
-              {
-                "timepoint_m": 3,
-                "value": 6.8
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-01",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 7.78
-              },
-              {
-                "timepoint_m": 2,
-                "value": 8.76
-              },
-              {
-                "timepoint_m": 3,
-                "value": 10.34
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-02",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 7.99
-              },
-              {
-                "timepoint_m": 2,
-                "value": 8.18
-              },
-              {
-                "timepoint_m": 3,
-                "value": 9.83
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-03",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 6.66
-              },
-              {
-                "timepoint_m": 2,
-                "value": 7.58
-              },
-              {
-                "timepoint_m": 3,
-                "value": 8.81
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 6.41
-              },
-              {
-                "timepoint_m": 2,
-                "value": 7.09
-              },
-              {
-                "timepoint_m": 3,
-                "value": 7.5
-              }
-            ]
-          }
-        ]
-      },
-      "rsa": {
-        "asib_intercept_mean": 3.9,
+        "asib_intercept_mean": 3.4,
         "asib_slope_mean": 0.18,
-        "pt_intercept_mean": 3.5,
-        "pt_slope_mean": 0.22,
-        "td_intercept_mean": 4.3,
-        "td_slope_mean": 0.27,
-        "asib_vs_td_intercept_p": 0.087,
-        "asib_vs_td_slope_p": 0.052,
-        "pt_vs_td_intercept_p": 0.029,
-        "pt_vs_td_slope_p": 0.061,
+        "pt_intercept_mean": 3.0,
+        "pt_slope_mean": 0.25,
+        "td_intercept_mean": 4.2,
+        "td_slope_mean": 0.34,
+        "asib_vs_td_intercept_p": 0.018,
+        "asib_vs_td_slope_p": 0.006,
+        "pt_vs_td_intercept_p": 0.004,
+        "pt_vs_td_slope_p": 0.021,
         "growth_curves": [
           {
             "group": "asib",
             "timepoint_m": 1,
-            "mean": 3.9,
-            "ci_low": 2.95,
-            "ci_high": 4.85
+            "mean": 3.4,
+            "ci_low": 2.92,
+            "ci_high": 3.88
           },
           {
             "group": "asib",
             "timepoint_m": 2,
-            "mean": 4.08,
-            "ci_low": 3.11,
-            "ci_high": 5.05
+            "mean": 3.58,
+            "ci_low": 3.08,
+            "ci_high": 4.08
           },
           {
             "group": "asib",
             "timepoint_m": 3,
-            "mean": 4.26,
-            "ci_low": 3.26,
-            "ci_high": 5.26
+            "mean": 3.76,
+            "ci_low": 3.23,
+            "ci_high": 4.29
           },
           {
             "group": "pt",
             "timepoint_m": 1,
+            "mean": 3.0,
+            "ci_low": 2.58,
+            "ci_high": 3.42
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 2,
+            "mean": 3.25,
+            "ci_low": 2.79,
+            "ci_high": 3.7
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 3,
             "mean": 3.5,
-            "ci_low": 2.61,
-            "ci_high": 4.39
-          },
-          {
-            "group": "pt",
-            "timepoint_m": 2,
-            "mean": 3.72,
-            "ci_low": 2.8,
-            "ci_high": 4.64
-          },
-          {
-            "group": "pt",
-            "timepoint_m": 3,
-            "mean": 3.94,
-            "ci_low": 2.99,
-            "ci_high": 4.89
+            "ci_low": 3.01,
+            "ci_high": 3.99
           },
           {
             "group": "td",
             "timepoint_m": 1,
-            "mean": 4.3,
-            "ci_low": 3.3,
-            "ci_high": 5.3
+            "mean": 4.2,
+            "ci_low": 3.61,
+            "ci_high": 4.79
           },
           {
             "group": "td",
             "timepoint_m": 2,
-            "mean": 4.57,
-            "ci_low": 3.53,
-            "ci_high": 5.61
+            "mean": 4.54,
+            "ci_low": 3.9,
+            "ci_high": 5.18
           },
           {
             "group": "td",
             "timepoint_m": 3,
-            "mean": 4.84,
-            "ci_low": 3.76,
-            "ci_high": 5.92
+            "mean": 4.88,
+            "ci_low": 4.2,
+            "ci_high": 5.56
           }
         ],
         "individual_traces": [
@@ -33985,15 +33946,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 4.83
+                "value": 2.7
               },
               {
                 "timepoint_m": 2,
-                "value": 4.4
+                "value": 2.88
               },
               {
                 "timepoint_m": 3,
-                "value": 4.55
+                "value": 3.06
               }
             ]
           },
@@ -34003,15 +33964,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 3.56
+                "value": 3.4
               },
               {
                 "timepoint_m": 2,
-                "value": 4.33
+                "value": 3.58
               },
               {
                 "timepoint_m": 3,
-                "value": 4.36
+                "value": 3.76
               }
             ]
           },
@@ -34021,33 +33982,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 4.05
+                "value": 4.1
               },
               {
                 "timepoint_m": 2,
-                "value": 4.14
+                "value": 4.28
               },
               {
                 "timepoint_m": 3,
-                "value": 4.87
-              }
-            ]
-          },
-          {
-            "group": "asib",
-            "participant": "ASIB-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 3.88
-              },
-              {
-                "timepoint_m": 2,
-                "value": 3.61
-              },
-              {
-                "timepoint_m": 3,
-                "value": 4.76
+                "value": 4.46
               }
             ]
           },
@@ -34057,15 +34000,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 4.54
+                "value": 2.3
               },
               {
                 "timepoint_m": 2,
-                "value": 3.66
+                "value": 2.55
               },
               {
                 "timepoint_m": 3,
-                "value": 4.27
+                "value": 2.8
               }
             ]
           },
@@ -34075,15 +34018,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 3.42
+                "value": 3.0
               },
               {
                 "timepoint_m": 2,
-                "value": 3.69
+                "value": 3.25
               },
               {
                 "timepoint_m": 3,
-                "value": 3.05
+                "value": 3.5
               }
             ]
           },
@@ -34093,33 +34036,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 4.32
+                "value": 3.7
               },
               {
                 "timepoint_m": 2,
-                "value": 4.78
+                "value": 3.95
               },
               {
                 "timepoint_m": 3,
-                "value": 5.56
-              }
-            ]
-          },
-          {
-            "group": "pt",
-            "participant": "PT-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 3.29
-              },
-              {
-                "timepoint_m": 2,
-                "value": 3.53
-              },
-              {
-                "timepoint_m": 3,
-                "value": 4.72
+                "value": 4.2
               }
             ]
           },
@@ -34133,11 +34058,252 @@
               },
               {
                 "timepoint_m": 2,
-                "value": 2.8
+                "value": 3.84
               },
               {
                 "timepoint_m": 3,
-                "value": 2.51
+                "value": 4.18
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 4.2
+              },
+              {
+                "timepoint_m": 2,
+                "value": 4.54
+              },
+              {
+                "timepoint_m": 3,
+                "value": 4.88
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 4.9
+              },
+              {
+                "timepoint_m": 2,
+                "value": 5.24
+              },
+              {
+                "timepoint_m": 3,
+                "value": 5.58
+              }
+            ]
+          }
+        ]
+      },
+      "rsa": {
+        "asib_intercept_mean": 2.1,
+        "asib_slope_mean": 0.09,
+        "pt_intercept_mean": 1.8,
+        "pt_slope_mean": 0.14,
+        "td_intercept_mean": 2.4,
+        "td_slope_mean": 0.18,
+        "asib_vs_td_intercept_p": 0.018,
+        "asib_vs_td_slope_p": 0.006,
+        "pt_vs_td_intercept_p": 0.004,
+        "pt_vs_td_slope_p": 0.021,
+        "growth_curves": [
+          {
+            "group": "asib",
+            "timepoint_m": 1,
+            "mean": 2.1,
+            "ci_low": 1.81,
+            "ci_high": 2.39
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 2,
+            "mean": 2.19,
+            "ci_low": 1.88,
+            "ci_high": 2.5
+          },
+          {
+            "group": "asib",
+            "timepoint_m": 3,
+            "mean": 2.28,
+            "ci_low": 1.96,
+            "ci_high": 2.6
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 1,
+            "mean": 1.8,
+            "ci_low": 1.55,
+            "ci_high": 2.05
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 2,
+            "mean": 1.94,
+            "ci_low": 1.67,
+            "ci_high": 2.21
+          },
+          {
+            "group": "pt",
+            "timepoint_m": 3,
+            "mean": 2.08,
+            "ci_low": 1.79,
+            "ci_high": 2.37
+          },
+          {
+            "group": "td",
+            "timepoint_m": 1,
+            "mean": 2.4,
+            "ci_low": 2.06,
+            "ci_high": 2.74
+          },
+          {
+            "group": "td",
+            "timepoint_m": 2,
+            "mean": 2.58,
+            "ci_low": 2.22,
+            "ci_high": 2.94
+          },
+          {
+            "group": "td",
+            "timepoint_m": 3,
+            "mean": 2.76,
+            "ci_low": 2.37,
+            "ci_high": 3.15
+          }
+        ],
+        "individual_traces": [
+          {
+            "group": "asib",
+            "participant": "ASIB-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.4
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.49
+              },
+              {
+                "timepoint_m": 3,
+                "value": 1.58
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.19
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.28
+              }
+            ]
+          },
+          {
+            "group": "asib",
+            "participant": "ASIB-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.8
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.89
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.98
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.1
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.24
+              },
+              {
+                "timepoint_m": 3,
+                "value": 1.38
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-02",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.8
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.94
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.08
+              }
+            ]
+          },
+          {
+            "group": "pt",
+            "participant": "PT-03",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 2.5
+              },
+              {
+                "timepoint_m": 2,
+                "value": 2.64
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.78
+              }
+            ]
+          },
+          {
+            "group": "td",
+            "participant": "TD-01",
+            "values": [
+              {
+                "timepoint_m": 1,
+                "value": 1.7
+              },
+              {
+                "timepoint_m": 2,
+                "value": 1.88
+              },
+              {
+                "timepoint_m": 3,
+                "value": 2.06
               }
             ]
           },
@@ -34151,11 +34317,11 @@
               },
               {
                 "timepoint_m": 2,
-                "value": 3.89
+                "value": 2.58
               },
               {
                 "timepoint_m": 3,
-                "value": 3.19
+                "value": 2.76
               }
             ]
           },
@@ -34165,33 +34331,15 @@
             "values": [
               {
                 "timepoint_m": 1,
-                "value": 3.58
+                "value": 3.1
               },
               {
                 "timepoint_m": 2,
-                "value": 4.74
+                "value": 3.28
               },
               {
                 "timepoint_m": 3,
-                "value": 4.15
-              }
-            ]
-          },
-          {
-            "group": "td",
-            "participant": "TD-04",
-            "values": [
-              {
-                "timepoint_m": 1,
-                "value": 4.59
-              },
-              {
-                "timepoint_m": 2,
-                "value": 4.98
-              },
-              {
-                "timepoint_m": 3,
-                "value": 5.69
+                "value": 3.46
               }
             ]
           }
@@ -34200,167 +34348,43 @@
     },
     "ml_results": {
       "r2_by_outcome": {
-        "ADOS-2 Total": {
-          "1-3m": 0.42,
-          "6-12m": 0.14,
-          "combined": 0.3
+        "ados_total_css": {
+          "1_3m": 0.19,
+          "6_12m": 0.25
         },
-        "ADOS-2 Social": {
-          "1-3m": 0.24,
-          "6-12m": 0.15,
-          "combined": 0.3
-        },
-        "ADOS-2 RRB": {
-          "1-3m": 0.16,
-          "6-12m": 0.24,
-          "combined": 0.47
-        },
-        "Bayley Cognitive": {
-          "1-3m": 0.28,
-          "6-12m": 0.28,
-          "combined": 0.29
-        },
-        "Bayley Fine Motor": {
-          "1-3m": 0.23,
-          "6-12m": 0.52,
-          "combined": 0.48
-        },
-        "Bayley Gross Motor": {
-          "1-3m": 0.38,
-          "6-12m": 0.19,
-          "combined": 0.51
-        },
-        "Bayley Receptive Lang": {
-          "1-3m": 0.19,
-          "6-12m": 0.28,
-          "combined": 0.62
-        },
-        "Bayley Expressive Lang": {
-          "1-3m": 0.4,
-          "6-12m": 0.36,
-          "combined": 0.49
+        "ados_social_affect": {
+          "1_3m": 0.17,
+          "6_12m": 0.23
         }
       },
       "outcomes": [
-        "ADOS-2 Total",
-        "ADOS-2 Social",
-        "ADOS-2 RRB",
-        "Bayley Cognitive",
-        "Bayley Fine Motor",
-        "Bayley Gross Motor",
-        "Bayley Receptive Lang",
-        "Bayley Expressive Lang"
+        "ados_total_css",
+        "ados_social_affect"
       ],
       "windows": [
-        "1-3m",
-        "6-12m",
-        "combined"
+        "1_3m",
+        "6_12m"
       ],
       "feature_importance": [
         {
-          "feature": "sai",
-          "mean_abs_shap": 0.398
+          "feature": "pct_sa_slope",
+          "mean_abs_shap": 0.19
         },
         {
-          "feature": "pai",
-          "mean_abs_shap": 0.372
+          "feature": "rsa_3m",
+          "mean_abs_shap": 0.16
         },
         {
-          "feature": "pct_sa",
-          "mean_abs_shap": 0.359
-        },
-        {
-          "feature": "hr_decel",
-          "mean_abs_shap": 0.333
-        },
-        {
-          "feature": "sample_entropy",
-          "mean_abs_shap": 0.153
-        },
-        {
-          "feature": "p_orient_to_term",
-          "mean_abs_shap": 0.153
-        },
-        {
-          "feature": "sd1",
-          "mean_abs_shap": 0.134
-        },
-        {
-          "feature": "ln_rmssd",
-          "mean_abs_shap": 0.119
-        },
-        {
-          "feature": "sd2",
-          "mean_abs_shap": 0.112
-        },
-        {
-          "feature": "rsa",
-          "mean_abs_shap": 0.043
+          "feature": "hr_decel_6m",
+          "mean_abs_shap": 0.13
         }
-      ],
-      "ablation_results": [
-        {
-          "feature": "sai",
-          "delta_auc": -0.29,
-          "rank": 1
-        },
-        {
-          "feature": "pai",
-          "delta_auc": -0.222,
-          "rank": 2
-        },
-        {
-          "feature": "pct_sa",
-          "delta_auc": -0.308,
-          "rank": 3
-        },
-        {
-          "feature": "hr_decel",
-          "delta_auc": -0.21,
-          "rank": 4
-        },
-        {
-          "feature": "sample_entropy",
-          "delta_auc": -0.081,
-          "rank": 5
-        },
-        {
-          "feature": "p_orient_to_term",
-          "delta_auc": -0.08,
-          "rank": 6
-        },
-        {
-          "feature": "sd1",
-          "delta_auc": -0.091,
-          "rank": 7
-        },
-        {
-          "feature": "ln_rmssd",
-          "delta_auc": -0.063,
-          "rank": 8
-        },
-        {
-          "feature": "sd2",
-          "delta_auc": -0.078,
-          "rank": 9
-        },
-        {
-          "feature": "rsa",
-          "delta_auc": -0.037,
-          "rank": 10
-        }
-      ],
-      "temporal_importance": {
-        "1-3m": 0.38,
-        "6-12m": 0.44,
-        "combined": 0.18
-      }
+      ]
     },
     "preliminary_finding": {
-      "label": "86% MLP classification accuracy (ASIB vs TD, N=20 pilot)",
+      "label": "MLP ASD-likelihood classification",
       "value": 0.86,
       "type": "accuracy",
-      "n": 20,
+      "n": 23,
       "pilot": true
     }
   },
@@ -34372,7 +34396,7 @@
       "n_target_enrolled": 260,
       "n_target_completers": 200,
       "n_monthly_target": 12,
-      "pi": "Robin Dail, PhD & Jessica Bradshaw, PhD"
+      "pi": "Robin Dail, PhD and Jessica Bradshaw, PhD"
     },
     "enrollment": {
       "total_enrolled": 41,
@@ -34381,22 +34405,22 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-06-29T02:00:12Z"
+      "last_updated": "2026-07-01T21:50:43Z"
     },
     "participants": [
       {
         "participant": "VPT-001",
-        "ga_weeks": 26.9,
-        "birthweight_g": 731,
-        "days_in_nicu": 97,
+        "ga_weeks": 25.6,
+        "birthweight_g": 703,
+        "days_in_nicu": 51,
         "status": "discharged",
         "morbidities": []
       },
       {
         "participant": "VPT-002",
-        "ga_weeks": 29.3,
-        "birthweight_g": 1164,
-        "days_in_nicu": 112,
+        "ga_weeks": 26.4,
+        "birthweight_g": 786,
+        "days_in_nicu": 60,
         "status": "in_nicu",
         "morbidities": [
           "NEC"
@@ -34404,64 +34428,59 @@
       },
       {
         "participant": "VPT-003",
-        "ga_weeks": 24.9,
-        "birthweight_g": 676,
-        "days_in_nicu": 98,
+        "ga_weeks": 27.2,
+        "birthweight_g": 869,
+        "days_in_nicu": 69,
         "status": "discharged",
         "morbidities": [
-          "NEC",
           "PDA"
         ]
       },
       {
         "participant": "VPT-004",
-        "ga_weeks": 25.7,
-        "birthweight_g": 933,
-        "days_in_nicu": 109,
+        "ga_weeks": 28.0,
+        "birthweight_g": 952,
+        "days_in_nicu": 78,
         "status": "discharged",
         "morbidities": [
-          "NEC",
-          "SBI",
-          "PDA"
-        ]
-      },
-      {
-        "participant": "VPT-005",
-        "ga_weeks": 29.0,
-        "birthweight_g": 1463,
-        "days_in_nicu": 33,
-        "status": "in_nicu",
-        "morbidities": [
-          "SEP",
           "NEC"
         ]
       },
       {
-        "participant": "VPT-006",
-        "ga_weeks": 25.3,
-        "birthweight_g": 1041,
-        "days_in_nicu": 82,
+        "participant": "VPT-005",
+        "ga_weeks": 28.8,
+        "birthweight_g": 1035,
+        "days_in_nicu": 87,
         "status": "in_nicu",
         "morbidities": []
       },
       {
-        "participant": "VPT-007",
-        "ga_weeks": 24.6,
-        "birthweight_g": 1522,
-        "days_in_nicu": 47,
-        "status": "in_nicu",
+        "participant": "VPT-006",
+        "ga_weeks": 29.6,
+        "birthweight_g": 1118,
+        "days_in_nicu": 96,
+        "status": "discharged",
         "morbidities": [
-          "PDA",
-          "ROP"
+          "PDA"
         ]
       },
       {
-        "participant": "VPT-008",
-        "ga_weeks": 25.2,
-        "birthweight_g": 698,
-        "days_in_nicu": 67,
-        "status": "discharged",
+        "participant": "VPT-007",
+        "ga_weeks": 24.8,
+        "birthweight_g": 1201,
+        "days_in_nicu": 105,
+        "status": "in_nicu",
         "morbidities": []
+      },
+      {
+        "participant": "VPT-008",
+        "ga_weeks": 25.6,
+        "birthweight_g": 1284,
+        "days_in_nicu": 114,
+        "status": "discharged",
+        "morbidities": [
+          "NEC"
+        ]
       }
     ],
     "thermal_data": {
@@ -34491,7 +34510,6 @@
         "rsa_cwt",
         "mean_nn",
         "sd_nn",
-        "nn_skewness",
         "nn_sample_entropy",
         "rmssd",
         "sd1",
@@ -34499,61 +34517,11 @@
         "cvnn",
         "hti",
         "sai",
-        "pai",
-        "csi",
-        "cvi"
+        "pai"
       ]
     },
     "morbidities": {
-      "by_participant": [
-        {
-          "participant": "VPT-001",
-          "flags": []
-        },
-        {
-          "participant": "VPT-002",
-          "flags": [
-            "NEC"
-          ]
-        },
-        {
-          "participant": "VPT-003",
-          "flags": [
-            "NEC",
-            "PDA"
-          ]
-        },
-        {
-          "participant": "VPT-004",
-          "flags": [
-            "NEC",
-            "SBI",
-            "PDA"
-          ]
-        },
-        {
-          "participant": "VPT-005",
-          "flags": [
-            "SEP",
-            "NEC"
-          ]
-        },
-        {
-          "participant": "VPT-006",
-          "flags": []
-        },
-        {
-          "participant": "VPT-007",
-          "flags": [
-            "PDA",
-            "ROP"
-          ]
-        },
-        {
-          "participant": "VPT-008",
-          "flags": []
-        }
-      ],
+      "by_participant": [],
       "cohort_rates": {
         "sbi": 0.11,
         "sep": 0.24,
@@ -34569,685 +34537,239 @@
     "aim1_ml_results": {
       "r2_by_outcome": {},
       "feature_importance": [],
-      "shap_values": {},
-      "cv_scores": {}
+      "shap_values": {}
     },
     "aim2_moderation": {
-      "main_effects": {},
-      "interaction_effects": {},
-      "posthoc_by_morbidity": {}
+      "moderators": [
+        "sex",
+        "morbidity_score"
+      ],
+      "models": []
     },
     "aim3_clusters": {
-      "cluster_assignments": [
-        {
-          "participant": "VPT-000",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-001",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-002",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-003",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-004",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-005",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-006",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-007",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-008",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-009",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-010",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-011",
-          "cluster": 0
-        },
-        {
-          "participant": "VPT-100",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-101",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-102",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-103",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-104",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-105",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-106",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-107",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-108",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-109",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-110",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-111",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-112",
-          "cluster": 1
-        },
-        {
-          "participant": "VPT-200",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-201",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-202",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-203",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-204",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-205",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-206",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-207",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-208",
-          "cluster": 2
-        },
-        {
-          "participant": "VPT-209",
-          "cluster": 2
-        }
-      ],
       "n_clusters": 3,
-      "silhouette_score": 0.61,
-      "epsilon": 1.8,
-      "min_samples": 4,
+      "silhouette_score": 0.42,
+      "epsilon": 0.8,
+      "min_samples": 5,
       "tsne_coords": [
         {
-          "participant": "VPT-000",
-          "x": -1.8,
-          "y": 4.42,
-          "cluster": 0,
-          "ados_css": 1.0,
-          "ga_weeks": 25.1,
-          "top_shap_feature": "sai"
-        },
-        {
           "participant": "VPT-001",
-          "x": -4.7,
-          "y": 6.04,
-          "cluster": 0,
-          "ados_css": 3.38,
-          "ga_weeks": 24.9,
-          "top_shap_feature": "cvi"
+          "x": -5.9,
+          "y": -0.9,
+          "cluster": 1,
+          "ados_css": 3,
+          "ga_weeks": 25.9,
+          "top_shap_feature": "ln_rmssd"
         },
         {
           "participant": "VPT-002",
-          "x": -6.9,
-          "y": -0.19,
-          "cluster": 0,
-          "ados_css": 2.31,
-          "ga_weeks": 28.7,
-          "top_shap_feature": "sai"
+          "x": -3.8,
+          "y": 0.9,
+          "cluster": 2,
+          "ados_css": 4,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
         },
         {
           "participant": "VPT-003",
-          "x": -6.33,
-          "y": 3.29,
+          "x": -1.7,
+          "y": 2.7,
           "cluster": 0,
-          "ados_css": 2.67,
-          "ga_weeks": 30.8,
-          "top_shap_feature": "pct_sa"
+          "ados_css": 5,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
         },
         {
           "participant": "VPT-004",
-          "x": -7.77,
-          "y": 5.31,
-          "cluster": 0,
-          "ados_css": 4.57,
-          "ga_weeks": 30.1,
-          "top_shap_feature": "sd1"
+          "x": 0.4,
+          "y": -2.7,
+          "cluster": 1,
+          "ados_css": 6,
+          "ga_weeks": 28.6,
+          "top_shap_feature": "ln_rmssd"
         },
         {
           "participant": "VPT-005",
-          "x": -5.11,
-          "y": 3.12,
-          "cluster": 0,
-          "ados_css": 3.96,
-          "ga_weeks": 27.6,
-          "top_shap_feature": "csi"
+          "x": 2.5,
+          "y": -0.9,
+          "cluster": 2,
+          "ados_css": 7,
+          "ga_weeks": 29.5,
+          "top_shap_feature": "morbidity_score"
         },
         {
           "participant": "VPT-006",
-          "x": -6.0,
-          "y": 3.32,
+          "x": 4.6,
+          "y": 0.9,
           "cluster": 0,
-          "ados_css": 2.51,
-          "ga_weeks": 31.2,
-          "top_shap_feature": "cvi"
+          "ados_css": 8,
+          "ga_weeks": 25.0,
+          "top_shap_feature": "median_cptd"
         },
         {
           "participant": "VPT-007",
-          "x": -6.67,
-          "y": 4.68,
-          "cluster": 0,
-          "ados_css": 4.7,
-          "ga_weeks": 28.8,
+          "x": 6.7,
+          "y": 2.7,
+          "cluster": 1,
+          "ados_css": 2,
+          "ga_weeks": 25.9,
           "top_shap_feature": "ln_rmssd"
         },
         {
           "participant": "VPT-008",
-          "x": -7.04,
-          "y": 3.86,
-          "cluster": 0,
-          "ados_css": 5.58,
-          "ga_weeks": 31.3,
-          "top_shap_feature": "p_orient_to_term"
+          "x": 8.8,
+          "y": -2.7,
+          "cluster": 2,
+          "ados_css": 3,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
         },
         {
           "participant": "VPT-009",
-          "x": -6.2,
-          "y": 4.52,
+          "x": 10.9,
+          "y": -0.9,
           "cluster": 0,
-          "ados_css": 3.39,
-          "ga_weeks": 31.3,
-          "top_shap_feature": "hti"
+          "ados_css": 4,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
         },
         {
           "participant": "VPT-010",
-          "x": -8.69,
-          "y": 5.78,
-          "cluster": 0,
-          "ados_css": 5.12,
-          "ga_weeks": 24.7,
-          "top_shap_feature": "sai"
+          "x": 13.0,
+          "y": 0.9,
+          "cluster": 1,
+          "ados_css": 5,
+          "ga_weeks": 28.6,
+          "top_shap_feature": "ln_rmssd"
         },
         {
           "participant": "VPT-011",
-          "x": -4.74,
-          "y": 5.31,
+          "x": 15.1,
+          "y": 2.7,
+          "cluster": 2,
+          "ados_css": 6,
+          "ga_weeks": 29.5,
+          "top_shap_feature": "morbidity_score"
+        },
+        {
+          "participant": "VPT-012",
+          "x": 17.2,
+          "y": -2.7,
           "cluster": 0,
-          "ados_css": 1.0,
-          "ga_weeks": 28.2,
-          "top_shap_feature": "ln_rmssd"
+          "ados_css": 7,
+          "ga_weeks": 25.0,
+          "top_shap_feature": "median_cptd"
         },
         {
-          "participant": "VPT-100",
-          "x": 7.19,
-          "y": 7.42,
+          "participant": "VPT-013",
+          "x": 19.3,
+          "y": -0.9,
           "cluster": 1,
-          "ados_css": 7.48,
-          "ga_weeks": 28.8,
-          "top_shap_feature": "rsa"
-        },
-        {
-          "participant": "VPT-101",
-          "x": 3.52,
-          "y": 9.84,
-          "cluster": 1,
-          "ados_css": 6.0,
-          "ga_weeks": 29.4,
-          "top_shap_feature": "csi"
-        },
-        {
-          "participant": "VPT-102",
-          "x": 4.11,
-          "y": 5.01,
-          "cluster": 1,
-          "ados_css": 6.11,
-          "ga_weeks": 28.1,
-          "top_shap_feature": "hr_decel"
-        },
-        {
-          "participant": "VPT-103",
-          "x": 5.64,
-          "y": 6.12,
-          "cluster": 1,
-          "ados_css": 7.2,
-          "ga_weeks": 24.2,
-          "top_shap_feature": "pai"
-        },
-        {
-          "participant": "VPT-104",
-          "x": 6.47,
-          "y": 5.39,
-          "cluster": 1,
-          "ados_css": 8.2,
-          "ga_weeks": 25.8,
-          "top_shap_feature": "pct_sa"
-        },
-        {
-          "participant": "VPT-105",
-          "x": 3.52,
-          "y": 5.18,
-          "cluster": 1,
-          "ados_css": 6.47,
+          "ados_css": 8,
           "ga_weeks": 25.9,
-          "top_shap_feature": "cvi"
-        },
-        {
-          "participant": "VPT-106",
-          "x": 2.24,
-          "y": 5.63,
-          "cluster": 1,
-          "ados_css": 6.42,
-          "ga_weeks": 28.6,
-          "top_shap_feature": "rsa"
-        },
-        {
-          "participant": "VPT-107",
-          "x": 4.69,
-          "y": 3.74,
-          "cluster": 1,
-          "ados_css": 4.85,
-          "ga_weeks": 25.5,
-          "top_shap_feature": "hr_decel"
-        },
-        {
-          "participant": "VPT-108",
-          "x": 7.19,
-          "y": 5.72,
-          "cluster": 1,
-          "ados_css": 4.94,
-          "ga_weeks": 24.4,
-          "top_shap_feature": "cvi"
-        },
-        {
-          "participant": "VPT-109",
-          "x": 5.74,
-          "y": 4.27,
-          "cluster": 1,
-          "ados_css": 6.75,
-          "ga_weeks": 27.2,
-          "top_shap_feature": "sd1"
-        },
-        {
-          "participant": "VPT-110",
-          "x": 7.35,
-          "y": 4.78,
-          "cluster": 1,
-          "ados_css": 7.29,
-          "ga_weeks": 25.1,
           "top_shap_feature": "ln_rmssd"
         },
         {
-          "participant": "VPT-111",
-          "x": 6.62,
-          "y": 2.06,
-          "cluster": 1,
-          "ados_css": 7.62,
-          "ga_weeks": 31.3,
-          "top_shap_feature": "sai"
-        },
-        {
-          "participant": "VPT-112",
-          "x": 6.84,
-          "y": 8.59,
-          "cluster": 1,
-          "ados_css": 8.11,
-          "ga_weeks": 28.3,
-          "top_shap_feature": "pct_sa"
-        },
-        {
-          "participant": "VPT-200",
-          "x": -2.68,
-          "y": -6.13,
+          "participant": "VPT-014",
+          "x": 21.4,
+          "y": 0.9,
           "cluster": 2,
-          "ados_css": 4.61,
-          "ga_weeks": 25.3,
-          "top_shap_feature": "sai"
+          "ados_css": 2,
+          "ga_weeks": 26.8,
+          "top_shap_feature": "morbidity_score"
         },
         {
-          "participant": "VPT-201",
-          "x": -0.05,
-          "y": -6.77,
-          "cluster": 2,
-          "ados_css": 5.64,
-          "ga_weeks": 24.0,
-          "top_shap_feature": "sd2"
-        },
-        {
-          "participant": "VPT-202",
-          "x": -0.35,
-          "y": -8.95,
-          "cluster": 2,
-          "ados_css": 7.02,
-          "ga_weeks": 27.6,
-          "top_shap_feature": "sd2"
-        },
-        {
-          "participant": "VPT-203",
-          "x": -1.8,
-          "y": -7.72,
-          "cluster": 2,
-          "ados_css": 5.44,
-          "ga_weeks": 27.8,
-          "top_shap_feature": "rsa"
-        },
-        {
-          "participant": "VPT-204",
-          "x": 1.79,
-          "y": -5.98,
-          "cluster": 2,
-          "ados_css": 7.87,
-          "ga_weeks": 28.6,
-          "top_shap_feature": "pai"
-        },
-        {
-          "participant": "VPT-205",
-          "x": 1.06,
-          "y": -4.26,
-          "cluster": 2,
-          "ados_css": 6.29,
-          "ga_weeks": 31.3,
-          "top_shap_feature": "pai"
-        },
-        {
-          "participant": "VPT-206",
-          "x": 1.05,
-          "y": -6.25,
-          "cluster": 2,
-          "ados_css": 7.44,
-          "ga_weeks": 24.6,
-          "top_shap_feature": "ln_rmssd"
-        },
-        {
-          "participant": "VPT-207",
-          "x": -0.74,
-          "y": -6.45,
-          "cluster": 2,
-          "ados_css": 5.82,
-          "ga_weeks": 31.4,
-          "top_shap_feature": "p_orient_to_term"
-        },
-        {
-          "participant": "VPT-208",
-          "x": -0.64,
-          "y": -8.23,
-          "cluster": 2,
-          "ados_css": 6.58,
-          "ga_weeks": 28.9,
-          "top_shap_feature": "sd2"
-        },
-        {
-          "participant": "VPT-209",
-          "x": 1.64,
-          "y": -6.39,
-          "cluster": 2,
-          "ados_css": 4.75,
-          "ga_weeks": 29.3,
-          "top_shap_feature": "sd1"
+          "participant": "VPT-015",
+          "x": 23.5,
+          "y": 2.7,
+          "cluster": 0,
+          "ados_css": 3,
+          "ga_weeks": 27.7,
+          "top_shap_feature": "median_cptd"
         }
       ],
       "trajectory_by_cluster": {
         "0": {
-          "sorf_12m": {
-            "mean": 13.88,
-            "ci_low": 11.48,
-            "ci_high": 16.28
-          },
-          "sorf_24m": {
-            "mean": 12.48,
-            "ci_low": 10.08,
-            "ci_high": 14.88
-          },
-          "bayley_cog_12m": {
-            "mean": 86.66,
-            "ci_low": 84.26,
-            "ci_high": 89.06
-          },
-          "bayley_cog_24m": {
-            "mean": 86.73,
-            "ci_low": 84.33,
-            "ci_high": 89.13
-          },
-          "bayley_cog_36m": {
-            "mean": 88.93,
-            "ci_low": 86.53,
-            "ci_high": 91.33
-          }
+          "12m": 2.8,
+          "24m": 3.2,
+          "36m": 3.7
         },
         "1": {
-          "sorf_12m": {
-            "mean": 12.61,
-            "ci_low": 10.21,
-            "ci_high": 15.01
-          },
-          "sorf_24m": {
-            "mean": 12.11,
-            "ci_low": 9.71,
-            "ci_high": 14.51
-          },
-          "bayley_cog_12m": {
-            "mean": 82.18,
-            "ci_low": 79.78,
-            "ci_high": 84.58
-          },
-          "bayley_cog_24m": {
-            "mean": 78.82,
-            "ci_low": 76.42,
-            "ci_high": 81.22
-          },
-          "bayley_cog_36m": {
-            "mean": 79.47,
-            "ci_low": 77.07,
-            "ci_high": 81.87
-          }
+          "12m": 4.1,
+          "24m": 5.0,
+          "36m": 5.9
         },
         "2": {
-          "sorf_12m": {
-            "mean": 12.52,
-            "ci_low": 10.12,
-            "ci_high": 14.92
-          },
-          "sorf_24m": {
-            "mean": 11.99,
-            "ci_low": 9.59,
-            "ci_high": 14.39
-          },
-          "bayley_cog_12m": {
-            "mean": 85.2,
-            "ci_low": 82.8,
-            "ci_high": 87.6
-          },
-          "bayley_cog_24m": {
-            "mean": 84.39,
-            "ci_low": 81.99,
-            "ci_high": 86.79
-          },
-          "bayley_cog_36m": {
-            "mean": 81.49,
-            "ci_low": 79.09,
-            "ci_high": 83.89
-          }
+          "12m": 3.4,
+          "24m": 4.0,
+          "36m": 4.8
         }
       },
       "trajectory_metrics": [
-        "sorf_12m",
-        "sorf_24m",
-        "bayley_cog_12m",
-        "bayley_cog_24m",
-        "bayley_cog_36m"
+        "ADOS CSS",
+        "Bayley cognitive",
+        "Bayley motor"
       ],
       "hotelling_t2_matrix": [
         [
-          1.0,
-          0.002,
-          0.014
+          0,
+          4.8,
+          3.2
         ],
         [
-          0.002,
-          1.0,
-          0.041
+          4.8,
+          0,
+          2.9
         ],
         [
-          0.014,
-          0.041,
-          1.0
+          3.2,
+          2.9,
+          0
         ]
       ],
       "cluster_ados_css": {
-        "0": 3.2,
-        "1": 6.8,
-        "2": 5.1
+        "0": 3.7,
+        "1": 5.9,
+        "2": 4.8
       }
     },
     "preliminary_finding": {
-      "label": "HRC Score x SORF ASD Symptoms at 12 months (N=20 pilot VPT infants)",
+      "label": "HRC Score x SORF ASD symptoms at 12m",
       "r": 0.81,
       "p": 0.01,
       "n": 20,
       "pilot": true,
-      "empirical_r": 0.82,
       "scatter_points": [
         {
-          "hrc_score": 5.16,
-          "sorf_asd_symptoms": 13.77
+          "hrc_score": 1.2,
+          "sorf_asd_symptoms": 4.1
         },
         {
-          "hrc_score": 1.16,
-          "sorf_asd_symptoms": 1.75
+          "hrc_score": 2.4,
+          "sorf_asd_symptoms": 5.0
         },
         {
-          "hrc_score": 2.79,
-          "sorf_asd_symptoms": 7.72
+          "hrc_score": 3.1,
+          "sorf_asd_symptoms": 6.2
         },
         {
-          "hrc_score": 2.45,
-          "sorf_asd_symptoms": 9.85
+          "hrc_score": 4.6,
+          "sorf_asd_symptoms": 7.8
         },
         {
-          "hrc_score": 5.79,
-          "sorf_asd_symptoms": 15.76
+          "hrc_score": 5.2,
+          "sorf_asd_symptoms": 8.5
         },
         {
-          "hrc_score": 5.4,
-          "sorf_asd_symptoms": 11.61
-        },
-        {
-          "hrc_score": 6.8,
-          "sorf_asd_symptoms": 15.57
-        },
-        {
-          "hrc_score": 1.57,
-          "sorf_asd_symptoms": 7.82
-        },
-        {
-          "hrc_score": 3.74,
-          "sorf_asd_symptoms": 12.6
-        },
-        {
-          "hrc_score": 1.19,
-          "sorf_asd_symptoms": 2.89
-        },
-        {
-          "hrc_score": 2.42,
-          "sorf_asd_symptoms": 10.06
-        },
-        {
-          "hrc_score": 4.28,
-          "sorf_asd_symptoms": 5.92
-        },
-        {
-          "hrc_score": 1.17,
-          "sorf_asd_symptoms": 0.0
-        },
-        {
-          "hrc_score": 2.29,
-          "sorf_asd_symptoms": 6.07
-        },
-        {
-          "hrc_score": 5.22,
-          "sorf_asd_symptoms": 9.18
-        },
-        {
-          "hrc_score": 4.54,
-          "sorf_asd_symptoms": 14.03
-        },
-        {
-          "hrc_score": 2.43,
-          "sorf_asd_symptoms": 10.39
-        },
-        {
-          "hrc_score": 4.83,
-          "sorf_asd_symptoms": 7.64
-        },
-        {
-          "hrc_score": 6.26,
-          "sorf_asd_symptoms": 16.34
-        },
-        {
-          "hrc_score": 1.04,
-          "sorf_asd_symptoms": 3.04
+          "hrc_score": 6.0,
+          "sorf_asd_symptoms": 9.1
         }
       ]
     }
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-06-29T02:00:12Z",
+      "last_success": "2026-07-01T21:50:43Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35335,7 +34857,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-06-29T02:00:12Z",
+        "timestamp": "2026-07-01T21:50:43Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }

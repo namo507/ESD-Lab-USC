@@ -167,6 +167,15 @@ function assistantStatus(reason = "upstream-unavailable") {
 
 function assistantReply(message) {
   const text = String(message || "").toLowerCase();
+  if (text.includes("nano") && (text.includes("rollout") || text.includes("workflow") || text.includes("priority"))) {
+    return "The current operations plan is Nano-first: start with lab process observation, REDCap workflow learning, coordinator shadowing, and quick wins. Nico stays visible as the secondary lane and should expand after Nano workflows, metrics, and reporting templates are stable.";
+  }
+  if (text.includes("coordinator") || text.includes("undergrad") || text.includes("grad student") || text.includes("handoff")) {
+    return "Coordinator work centers on scheduling, visit windows, packet readiness, assessments, and blockers. Graduate students own scoring oversight, reliability, analytic interpretation, and research metrics. Undergraduates support frame-by-frame coding, data entry prep, and defined QA checks. Supervisors own priority setting and approvals.";
+  }
+  if (text.includes("family") && (text.includes("share") || text.includes("visual") || text.includes("insight"))) {
+    return "Family-facing data sharing remains limited to text updates, on-site assessments, and individual feedback on request. Aggregate family-facing insights are a future option only after supervisor and governance review.";
+  }
   if (text.includes("carry-forward") || text.includes("visit health") || text.includes("csbs")) {
     return "The Visit Health Monitor checks CSBS caregiver completion across 6m, 9m, 12m, and 24m REDCap events. It emits R1-R5 carry-forward anomaly codes when an earlier incomplete or blank CSBS state conflicts with a later visit date or completion state.";
   }

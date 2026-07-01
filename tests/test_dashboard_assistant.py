@@ -362,3 +362,58 @@ def test_assistant_answers_redcap_epds_next_wave_from_clinical_payload(tmp_path)
     assert response is not None
     assert "12 screen-positive" in response
     assert "cutoff >= 10" in response
+
+
+def test_assistant_answers_lab_operations_rollout_from_payload(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "lab_operations": {
+                    "priority": {
+                        "current_priority": "Nano grant data and lab processes first; Nico remains visible.",
+                    },
+                    "workflow_phases": [
+                        {
+                            "phase": "Onboarding and observation",
+                            "timeframe": "Weeks 1-2",
+                            "status": "active",
+                        },
+                        {
+                            "phase": "Data and process standardization",
+                            "timeframe": "Weeks 3-4",
+                            "status": "next",
+                        },
+                    ],
+                    "role_workflows": [
+                        {
+                            "role": "Coordinators",
+                            "focus": "Visits and blockers.",
+                            "handoff": "Daily check-in notes.",
+                        }
+                    ],
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("Summarize the Nano rollout workflow phase")
+    response = assistant._maybe_short_circuit_response(
+        "Summarize the Nano rollout workflow phase",
+        context,
+    )
+
+    assert response is not None
+    assert "Nano grant data" in response
+    assert "Onboarding and observation" in response
