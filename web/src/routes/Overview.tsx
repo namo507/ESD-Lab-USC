@@ -23,6 +23,7 @@ import {
   usePublicationSyncStatus,
 } from "@/api/hooks";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
+import { StudyHero } from "@/components/studies/StudyHero";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -206,6 +207,8 @@ export function Overview() {
           </button>
         </div>
       </header>
+
+      <StudyHero />
 
       <section
         className={`grid gap-3.5 ${

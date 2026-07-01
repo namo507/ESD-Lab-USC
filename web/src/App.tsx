@@ -61,6 +61,8 @@ const AttritionFunnel = lazy(() => import("@/routes/AttritionFunnel").then((m) =
 const GuidedExplorer = lazy(() => import("@/routes/GuidedExplorer").then((m) => ({ default: m.GuidedExplorer })));
 const PublicInsights = lazy(() => import("@/routes/PublicInsights").then((m) => ({ default: m.PublicInsights })));
 const ExecutiveMode = lazy(() => import("@/routes/ExecutiveMode").then((m) => ({ default: m.ExecutiveMode })));
+const LgcmTrajectories = lazy(() => import("@/routes/LgcmTrajectories").then((m) => ({ default: m.LgcmTrajectories })));
+const Aim3Clusters = lazy(() => import("@/routes/Aim3Clusters").then((m) => ({ default: m.Aim3Clusters })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -180,6 +182,10 @@ export default function App() {
             <Route path="/guided-explorer" element={<GuidedExplorer />} />
             <Route path="/public-insights" element={<PublicInsights />} />
             <Route path="/executive" element={<ExecutiveMode />} />
+            <Route path="/nano/lgcm-trajectories" element={<LgcmTrajectories />} />
+            <Route path="/nico/aim3-clusters" element={<Aim3Clusters />} />
+            <Route path="/nano" element={<Navigate to="/nano/lgcm-trajectories" replace />} />
+            <Route path="/nico" element={<Navigate to="/nico/aim3-clusters" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

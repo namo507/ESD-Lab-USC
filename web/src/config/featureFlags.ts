@@ -39,6 +39,8 @@ export const FEATURE_FLAGS = {
   PUBLICATIONS_FEED: true,
   DATA_CHANGELOG: false,
   MULTIMODAL_SYNCHRONY: true,
+  NANO_LGCM_TRAJECTORIES: true,
+  NICO_AIM3_CLUSTERS: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -53,4 +55,6 @@ export const FEATURE_FLAG_RELEASE_DATES: Partial<Record<FeatureFlag, string>> = 
   REDCAP_LIVE_PROXY: "2026-06-24",
   REDCAP_PIPELINE_HEALTH: "2026-06-25",
   DYN_INFANT_PASSPORT: "2026-06-15",
+  NANO_LGCM_TRAJECTORIES: "2026-07-01",
+  NICO_AIM3_CLUSTERS: "2026-07-01",
 };

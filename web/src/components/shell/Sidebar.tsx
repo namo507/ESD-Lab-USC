@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Badge, Icon } from "@/components/primitives";
+import { StudySelector } from "./StudySelector";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
 import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
@@ -40,6 +41,14 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/overview", label: "NANO Study (VPT)", icon: "activity" },
       { to: "/participants?study=home", label: "Home Study", icon: "home" },
       { to: "/participants?study=fiscal", label: "FiSCAL-ASD", icon: "baby" },
+    ],
+  },
+  {
+    id: "dual-study",
+    title: "NANO · NICO Studies",
+    items: [
+      { to: "/nano/lgcm-trajectories", label: "LGCM Trajectories", icon: "line-chart", flag: "NANO_LGCM_TRAJECTORIES" },
+      { to: "/nico/aim3-clusters", label: "Aim 3 Clusters", icon: "git-fork", flag: "NICO_AIM3_CLUSTERS" },
     ],
   },
   {
@@ -173,6 +182,8 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
           </div>
         </div>
       </div>
+
+      {!executiveMode && <StudySelector />}
 
       {groups.map((g) => (
         <div key={g.id}>

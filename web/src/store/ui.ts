@@ -15,6 +15,36 @@ export type PipelineView = "dag" | "sankey" | "kanban";
 export type Density = "comfortable" | "compact";
 export type ThemeMode = "light" | "dark" | "system";
 
+/** Global study scope for the NANO + NICO dual-study dashboard. */
+export type StudyFilter = "NANO" | "NICO" | "BOTH";
+
+const STUDY_STORAGE_KEY = "esd-active-study";
+
+/**
+ * Study scope persists in localStorage (its own key, like theme) so the choice
+ * survives session resets. It carries no participant data, so it is not
+ * PHI-adjacent and is safe outside sessionStorage.
+ */
+export function loadInitialStudy(): StudyFilter {
+  if (typeof window === "undefined") return "BOTH";
+  try {
+    const raw = window.localStorage.getItem(STUDY_STORAGE_KEY);
+    if (raw === "NANO" || raw === "NICO" || raw === "BOTH") return raw;
+  } catch {
+    /* sandboxed contexts may throw; fall through */
+  }
+  return "BOTH";
+}
+
+function persistStudy(s: StudyFilter): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STUDY_STORAGE_KEY, s);
+  } catch {
+    /* ignore quota / privacy errors */
+  }
+}
+
 interface UiState {
   pipelineView: PipelineView;
   density: Density;
@@ -25,6 +55,8 @@ interface UiState {
   qaSelectedEpoch: number;
   theme: ThemeMode;
   lastSyncAt: string | null;
+  activeStudy: StudyFilter;
+  setActiveStudy: (s: StudyFilter) => void;
   setPipelineView: (v: PipelineView) => void;
   setDensity: (d: Density) => void;
   setHipaa: (v: boolean) => void;
@@ -51,6 +83,11 @@ export const useUi = create<UiState>()(
       qaSelectedEpoch: 0,
       theme: "system",
       lastSyncAt: null,
+      activeStudy: loadInitialStudy(),
+      setActiveStudy: (s) => {
+        persistStudy(s);
+        set({ activeStudy: s });
+      },
       setPipelineView: (v) => set({ pipelineView: v }),
       setDensity: (d) => set({ density: d }),
       setHipaa: (v) => set({ showHipaa: v }),
