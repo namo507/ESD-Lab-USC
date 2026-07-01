@@ -2,6 +2,13 @@
    module owns the schematic visual tutorials, the step/pin linking, and the
    sublink rows that redirect into the real surfaces. */
 
+/* Drop the shared Docs vertical-rule background: it was tuned for the old blank
+   figure panel and cuts across the schematic here. Keep only a clean, subtle
+   vertical wash behind the browser-frame scene. */
+figure.figureBox {
+  background: linear-gradient(180deg, var(--warm-pill), var(--warm-card));
+}
+
 .figureScene {
   position: relative;
   z-index: 1;

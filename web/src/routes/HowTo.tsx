@@ -90,7 +90,7 @@ function HowToCardView({ card }: { card: HowToCard }) {
         })}
       </ul>
 
-      <figure className={styles.figure} aria-label={card.figure.label}>
+      <figure className={`${styles.figure} ${local.figureBox}`} aria-label={card.figure.label}>
         <figcaption className={styles.figureLabel}>{card.figure.label}</figcaption>
         <HowToFigure kind={card.figure.kind} pins={card.figure.pins} activeN={activeN} onHover={setActiveN} />
       </figure>

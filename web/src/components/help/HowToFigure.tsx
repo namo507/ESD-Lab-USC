@@ -181,10 +181,9 @@ function Scene({ kind }: { kind: HowToFigureKind }) {
           {[52, 108, 164].map((x) => (
             <rect key={x} x={x} y={96} width={50} height={13} rx={6.5} fill={C.subtle} stroke={C.line} />
           ))}
-          <rect x={52} y={132} width={180} height={16} rx={8} fill={C.subtle} stroke={C.line} />
-          <circle cx={246} cy={140} r={7} fill={C.garnet} />
-          <circle cx={286} cy={150} r={14} fill={C.garnet} />
-          <path d="M 281 150 l 10 0 M 286 145 l 0 10" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
+          <rect x={52} y={130} width={168} height={16} rx={8} fill={C.subtle} stroke={C.line} />
+          <circle cx={284} cy={146} r={14} fill={C.garnet} />
+          <path d="M 279 146 l 10 0 M 284 141 l 0 10" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
         </>
       );
     case "library":
