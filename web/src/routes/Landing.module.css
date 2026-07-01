@@ -55,6 +55,24 @@
     linear-gradient(135deg, rgba(255, 245, 220, 0.06), rgba(255, 245, 220, 0)),
     var(--landing-surface-muted);
 }
+:global([data-theme="dark"]) .dynamicsCard {
+  background:
+    linear-gradient(135deg, rgba(255, 245, 220, 0.055), rgba(255, 245, 220, 0)),
+    var(--landing-surface);
+}
+:global([data-theme="dark"]) .dynamicsCard::before {
+  background:
+    linear-gradient(120deg, transparent 0 42%, rgba(255, 184, 77, 0.055) 42% 43%, transparent 43% 100%),
+    repeating-linear-gradient(90deg, rgba(255, 245, 220, 0.035) 0 1px, transparent 1px 74px);
+}
+:global([data-theme="dark"]) .dynamicsStatus {
+  border-color: rgba(255, 184, 77, 0.18);
+  background: rgba(255, 184, 77, 0.08);
+  color: var(--fg-link);
+}
+:global([data-theme="dark"]) .dynamicsRouteMeta span {
+  background: rgba(255, 245, 220, 0.045);
+}
 
 .progress {
   position: fixed;
@@ -587,6 +605,7 @@
 
 .heroMiniCard,
 .heroCard,
+.dynamicsCard,
 .metricCard,
 .aimCard,
 .comparisonCard,
@@ -955,15 +974,42 @@
 
 .dynamicsGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   align-items: stretch;
 }
 
 .dynamicsCard {
-  min-height: 204px;
+  position: relative;
+  isolation: isolate;
+  min-height: 286px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
   overflow: hidden;
-  text-align: center;
+  border: 1px solid var(--landing-border);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(246, 248, 247, 0.58)),
+    var(--landing-surface);
+  box-shadow: var(--landing-shadow);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.dynamicsCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(120deg, transparent 0 42%, rgba(115, 0, 10, 0.045) 42% 43%, transparent 43% 100%),
+    repeating-linear-gradient(90deg, rgba(120, 107, 89, 0.07) 0 1px, transparent 1px 74px);
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 .dynamicsCard::after {
@@ -975,9 +1021,199 @@
   opacity: 0.62;
 }
 
+.dynamicsCard > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dynamicsCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dynamicsStatus,
+.dynamicsLaunch,
+.dynamicsKicker,
+.dynamicsRouteMeta i,
+.dynamicsSteps i {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dynamicsStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 10px;
+  border: 1px solid rgba(115, 0, 10, 0.12);
+  border-radius: 999px;
+  background: rgba(115, 0, 10, 0.055);
+  color: var(--usc-garnet);
+  white-space: nowrap;
+}
+
+.dynamicsLaunch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--warm-600);
+  white-space: nowrap;
+  transition: color 160ms var(--ease-soft), transform 160ms var(--ease-soft);
+}
+
+.dynamicsLaunch svg {
+  transition: transform 160ms var(--ease-soft);
+}
+
+.dynamicsCardBody {
+  display: grid;
+  gap: 8px;
+}
+
+.dynamicsKicker {
+  color: var(--warm-500);
+}
+
+.dynamicsCard h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.dynamicsCard p {
+  max-width: 48ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--warm-700);
+}
+
+.dynamicsRouteMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dynamicsRouteMeta span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 11px 12px;
+  border: 1px solid var(--landing-border);
+  border-radius: 16px;
+  background: var(--landing-pill);
+  text-align: left;
+  backdrop-filter: blur(6px);
+}
+
+.dynamicsRouteMeta i,
+.dynamicsSteps i {
+  font-style: normal;
+  color: var(--warm-fg4);
+}
+
+.dynamicsRouteMeta b {
+  overflow: hidden;
+  color: var(--warm-fg1);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dynamicsSteps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.dynamicsSteps::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(115, 0, 10, 0.16), rgba(199, 144, 38, 0.42), rgba(91, 149, 119, 0.2));
+}
+
+.dynamicsSteps span {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.dynamicsSteps span::before {
+  content: "";
+  position: absolute;
+  top: -15px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--landing-surface);
+  border-radius: 50%;
+  background: var(--usc-garnet);
+  box-shadow: 0 0 0 1px rgba(115, 0, 10, 0.18);
+}
+
+.dynamicsSteps span:nth-child(2)::before {
+  background: var(--sand);
+  box-shadow: 0 0 0 1px rgba(199, 144, 38, 0.28);
+}
+
+.dynamicsSteps span:nth-child(3)::before {
+  background: var(--sage);
+  box-shadow: 0 0 0 1px rgba(91, 149, 119, 0.24);
+}
+
+.dynamicsSteps b {
+  overflow: hidden;
+  color: var(--warm-fg2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dynamicsCard:hover,
+.dynamicsCard:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(115, 0, 10, 0.22);
+  box-shadow: 0 18px 44px rgba(115, 0, 10, 0.12);
+}
+
+.dynamicsCard:hover .dynamicsLaunch,
+.dynamicsCard:focus-visible .dynamicsLaunch {
+  color: var(--usc-garnet);
+}
+
+.dynamicsCard:hover .dynamicsLaunch svg,
+.dynamicsCard:focus-visible .dynamicsLaunch svg {
+  transform: translateX(3px);
+}
+
+.dynamicsCard:focus-visible {
+  outline: 2px solid rgba(255, 204, 0, 0.75);
+  outline-offset: 4px;
+}
+
 .dynamicsPanel {
   position: relative;
-  grid-column: span 2;
+  grid-column: 1 / -1;
   min-height: 204px;
   overflow: hidden;
   border: 1px solid var(--landing-border);
@@ -2677,6 +2913,24 @@ button.corpusBar { cursor: pointer; }
   }
 
   .dynamicsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dynamicsCard {
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .dynamicsCardTop {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .dynamicsCard h3 {
+    font-size: 30px;
+  }
+
+  .dynamicsRouteMeta {
     grid-template-columns: 1fr;
   }
 

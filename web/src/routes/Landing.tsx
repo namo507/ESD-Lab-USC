@@ -162,11 +162,66 @@ const ASSISTANT_SUGGESTIONS = [
   "What should a clinician look at first on this site?",
 ] as const;
 
-const DYN_LANDING: Array<{ flag: FeatureFlag; title: string; body: string; to: string }> = [
-  { flag: "DYN_CO_REGULATION_BRAID", title: "Co-Regulation", body: "Caregiver-infant physiology coupling over time.", to: "/dyad-coregulation" },
-  { flag: "DYN_AROUSAL_ATTENTION_PORTRAIT", title: "Phase Portrait", body: "Arousal-attention state-space trajectory.", to: "/phase-portrait" },
-  { flag: "DYN_CVA_GAZE_THEATER", title: "CVA Theater", body: "Dyadic gaze overlap and face-availability gap.", to: "/cva-theater" },
-  { flag: "DYN_CASCADE_SIMULATOR", title: "Cascade Sim", body: "Guardrailed what-if model projections.", to: "/cascade-sim" },
+const DYN_LANDING: Array<{
+  flag: FeatureFlag;
+  title: string;
+  eyebrow: string;
+  body: string;
+  to: string;
+  status: string;
+  readoutLabel: string;
+  readout: string;
+  access: string;
+  steps: readonly [string, string, string];
+}> = [
+  {
+    flag: "DYN_CO_REGULATION_BRAID",
+    title: "Co-Regulation",
+    eyebrow: "Dyadic physiology",
+    body: "Align caregiver and infant autonomic streams to reveal synchrony, lead-lag, and coupled windows.",
+    to: "/dyad-coregulation",
+    status: "V2 preview",
+    readoutLabel: "Primary view",
+    readout: "Synchrony + lag",
+    access: "NANOID-only",
+    steps: ["Signals", "Lag scan", "Coupling"],
+  },
+  {
+    flag: "DYN_AROUSAL_ATTENTION_PORTRAIT",
+    title: "Phase Portrait",
+    eyebrow: "State-space route",
+    body: "Map arousal and attention as a moving trajectory with occupancy, recovery, and transition context.",
+    to: "/phase-portrait",
+    status: "V2 preview",
+    readoutLabel: "Primary view",
+    readout: "Orbit geometry",
+    access: "NANOID-only",
+    steps: ["Arousal", "Attention", "Recovery"],
+  },
+  {
+    flag: "DYN_CVA_GAZE_THEATER",
+    title: "CVA Theater",
+    eyebrow: "Social timing",
+    body: "Inspect dyadic gaze overlap, face availability, and scaffold timing around shared visual attention.",
+    to: "/cva-theater",
+    status: "V2 preview",
+    readoutLabel: "Primary view",
+    readout: "Gaze overlap",
+    access: "NANOID-only",
+    steps: ["Faces", "Overlap", "Scaffold"],
+  },
+  {
+    flag: "DYN_CASCADE_SIMULATOR",
+    title: "Cascade Sim",
+    eyebrow: "Guardrailed model",
+    body: "Move what-if inputs through fitted developmental paths while keeping uncertainty and limits visible.",
+    to: "/cascade-sim",
+    status: "V2 preview",
+    readoutLabel: "Primary view",
+    readout: "What-if + CI",
+    access: "NANOID-only",
+    steps: ["Inputs", "Paths", "Bounds"],
+  },
 ];
 
 const STUDIO_INPUTS = [
@@ -527,7 +582,7 @@ function DyadSyncPreview({ rmssd, onOpen }: { rmssd: number; onOpen: () => void 
       onClick={onOpen}
       onMouseMove={onMove}
       onMouseLeave={() => setHoverX(null)}
-      aria-label={`Open dyadic co-regulation. Peak synchrony r ${model.peakR.toFixed(2)}, caregiver leads by ${model.lagSeconds.toFixed(1)} seconds, ${model.coupledWindows} of ${model.windowCount} windows coupled.`}
+      aria-label={`Launch dyadic co-regulation. Peak synchrony r ${model.peakR.toFixed(2)}, caregiver leads by ${model.lagSeconds.toFixed(1)} seconds, ${model.coupledWindows} of ${model.windowCount} windows coupled.`}
     >
       <div className={styles.dynamicsMesh} aria-hidden="true">
         {Array.from({ length: 18 }).map((_, index) => (
@@ -578,7 +633,7 @@ function DyadSyncPreview({ rmssd, onOpen }: { rmssd: number; onOpen: () => void 
         </div>
       )}
 
-      <span className={styles.dyadOpen} aria-hidden="true">Open co-regulation →</span>
+      <span className={styles.dyadOpen} aria-hidden="true">Launch co-regulation →</span>
     </button>
   );
 }
@@ -1367,21 +1422,47 @@ export function Landing() {
                 <span className={styles.sectionEyebrow}>Dynamics &amp; Dyads</span>
                 <h2>Relationships across time.</h2>
               </div>
-              <div className={styles.sectionNote}>Feature-flagged V2 previews, all NANOID-only.</div>
+              <div className={styles.sectionNote}>Preview routes stay feature-flagged and NANOID-only.</div>
             </header>
             <div className={styles.dynamicsGrid}>
               {dynLandingItems.map((item) => (
                 <button
                   key={item.to}
                   type="button"
-                  className={`${styles.metricCard} ${styles.dynamicsCard}`}
+                  className={styles.dynamicsCard}
                   onClick={() => navigate(item.to)}
                   data-insight="dyn-discovery-card"
+                  aria-label={`Launch ${item.title}. ${item.body}`}
                 >
-                  <span>{item.title}</span>
-                  <strong>Open</strong>
-                  <p>{item.body}</p>
-                  <div className={styles.metricFooter}>Dynamics route</div>
+                  <div className={styles.dynamicsCardTop}>
+                    <span className={styles.dynamicsStatus}>{item.status}</span>
+                    <span className={styles.dynamicsLaunch}>
+                      Launch route <ArrowRight size={14} strokeWidth={1.5} aria-hidden />
+                    </span>
+                  </div>
+                  <div className={styles.dynamicsCardBody}>
+                    <span className={styles.dynamicsKicker}>{item.eyebrow}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </div>
+                  <div className={styles.dynamicsRouteMeta}>
+                    <span>
+                      <i>{item.readoutLabel}</i>
+                      <b>{item.readout}</b>
+                    </span>
+                    <span>
+                      <i>Access</i>
+                      <b>{item.access}</b>
+                    </span>
+                  </div>
+                  <div className={styles.dynamicsSteps}>
+                    {item.steps.map((step, index) => (
+                      <span key={step}>
+                        <i>{String(index + 1).padStart(2, "0")}</i>
+                        <b>{step}</b>
+                      </span>
+                    ))}
+                  </div>
                 </button>
               ))}
               {dynLandingItems.length < 4 ? (
