@@ -417,3 +417,70 @@ def test_assistant_answers_lab_operations_rollout_from_payload(tmp_path):
     assert response is not None
     assert "Nano grant data" in response
     assert "Onboarding and observation" in response
+
+
+def test_assistant_answers_lab_reporting_from_payload(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "lab_operations": {
+                    "reporting_management": {
+                        "status": "planning",
+                        "goal": "Define actionable reporting before formal templates.",
+                        "priority_note": "Start with demographic availability and participant tracking.",
+                        "alignment_rule": "Align priority data sets before building reports.",
+                    },
+                    "reporting_reviews": [
+                        {
+                            "area": "Demographic data availability",
+                            "status": "highest priority",
+                            "source_system": "REDCap demographics",
+                            "why_actionable": "Needed for cohort composition.",
+                            "breakdowns": ["study lane", "cohort/group"],
+                            "next_action": "Time a de-identified REDCap pull.",
+                        }
+                    ],
+                    "priority_datasets": [
+                        {
+                            "name": "Nano demographic baseline",
+                            "study": "NANO",
+                            "owner": "Coordinator plus data lead",
+                            "source_system": "REDCap demographics_complete_this_first",
+                            "pull_speed": "Measure during Week 3",
+                            "readiness": "priority draft",
+                            "report_use": "cohort composition",
+                        }
+                    ],
+                    "budget_reporting": {
+                        "goal": "Make budget-facing work possible from prepared aggregate inputs.",
+                        "current_gap": "Budget tasks are slowed by manual processes.",
+                        "ready_now": ["enrollment versus target"],
+                        "needs_alignment": ["finance-approved sources"],
+                        "guardrail": "Do not connect live budget ledgers without approval.",
+                    },
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("Which reporting needs and budget data should we prioritize?")
+    response = assistant._maybe_short_circuit_response(
+        "Which reporting needs and budget data should we prioritize?",
+        context,
+    )
+
+    assert response is not None
+    assert "Budget reporting goal" in response
+    assert "prepared aggregate inputs" in response

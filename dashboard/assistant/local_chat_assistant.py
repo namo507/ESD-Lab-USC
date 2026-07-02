@@ -375,6 +375,32 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "rollout",
         "quick",
         "wins",
+        "data",
+        "dataset",
+        "datasets",
+        "management",
+        "report",
+        "reports",
+        "reporting",
+        "demographic",
+        "demographics",
+        "projection",
+        "projections",
+        "budget",
+        "finance",
+        "systems",
+        "audit",
+        "tool",
+        "tools",
+        "owner",
+        "owners",
+        "ownership",
+        "storage",
+        "external",
+        "collaboration",
+        "collaborations",
+        "website",
+        "esdlabsc",
         "metric",
         "metrics",
         "business",
@@ -1409,7 +1435,7 @@ class DashboardChatAssistant:
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
                     "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
-                    "The lab_operations key is the source of truth for the Nano-first operational rollout. It covers current priority, dashboard surface status, four workflow phases, coordinator/graduate/undergraduate/supervisor handoffs, draft metrics, daily check-ins, business-hour/visit-window guardrails, and the current family-facing data-sharing boundary.\n\n"
+                    "The lab_operations key is the source of truth for the Nano-first operational rollout. It covers current priority, dashboard surface status, reporting/data-management priorities, systems audit tracks, budget-reporting guardrails, external collaboration and public-website integration status, four workflow phases, coordinator/graduate/undergraduate/supervisor handoffs, draft metrics, daily check-ins, business-hour/visit-window guardrails, and the current family-facing data-sharing boundary.\n\n"
                     f"Dashboard context:\n{context_block}"
                 ),
             }
@@ -1811,6 +1837,41 @@ class DashboardChatAssistant:
         controls = operations.get("rollout_controls") if isinstance(operations.get("rollout_controls"), list) else []
         family = operations.get("family_data_sharing") if isinstance(operations.get("family_data_sharing"), dict) else {}
         quick_wins = operations.get("quick_wins") if isinstance(operations.get("quick_wins"), list) else []
+        reporting = (
+            operations.get("reporting_management")
+            if isinstance(operations.get("reporting_management"), dict)
+            else {}
+        )
+        reporting_reviews = (
+            operations.get("reporting_reviews")
+            if isinstance(operations.get("reporting_reviews"), list)
+            else []
+        )
+        priority_datasets = (
+            operations.get("priority_datasets")
+            if isinstance(operations.get("priority_datasets"), list)
+            else []
+        )
+        systems_audit = (
+            operations.get("systems_audit")
+            if isinstance(operations.get("systems_audit"), list)
+            else []
+        )
+        budget = (
+            operations.get("budget_reporting")
+            if isinstance(operations.get("budget_reporting"), dict)
+            else {}
+        )
+        collaborations = (
+            operations.get("external_collaborations")
+            if isinstance(operations.get("external_collaborations"), list)
+            else []
+        )
+        next_month = (
+            operations.get("next_month_reporting")
+            if isinstance(operations.get("next_month_reporting"), list)
+            else []
+        )
 
         fragments: list[tuple[str, str]] = []
         if priority:
@@ -1822,6 +1883,111 @@ class DashboardChatAssistant:
                     f"secondary objective={priority.get('secondary_objective')}; "
                     f"current priority={priority.get('current_priority')}; "
                     f"decision dependency={priority.get('decision_dependency')}.",
+                )
+            )
+
+        if reporting:
+            source_alignment = reporting.get("source_alignment")
+            source_text = ""
+            if isinstance(source_alignment, list):
+                source_text = " Sources: " + "; ".join(
+                    f"{row.get('study')}: {row.get('anchor')} - {row.get('operational_relevance')}"
+                    for row in source_alignment
+                    if isinstance(row, dict)
+                )
+            fragments.append(
+                (
+                    "lab_operations.reporting_management",
+                    "Reporting management: "
+                    f"status={reporting.get('status')}; "
+                    f"goal={reporting.get('goal')}; "
+                    f"priority_note={reporting.get('priority_note')}; "
+                    f"alignment_rule={reporting.get('alignment_rule')}."
+                    f"{source_text}",
+                )
+            )
+
+        if reporting_reviews:
+            fragments.append(
+                (
+                    "lab_operations.reporting_reviews",
+                    "Reporting review queue: "
+                    + " | ".join(
+                        f"{row.get('area')} ({row.get('status')}): source={row.get('source_system')}; "
+                        f"why={row.get('why_actionable')}; breakdowns={', '.join(str(item) for item in (row.get('breakdowns') or [])[:6])}; next={row.get('next_action')}"
+                        for row in reporting_reviews
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if priority_datasets:
+            fragments.append(
+                (
+                    "lab_operations.priority_datasets",
+                    "Priority data sets: "
+                    + " | ".join(
+                        f"{row.get('name')} ({row.get('study')}, {row.get('readiness')}): "
+                        f"owner={row.get('owner')}; source={row.get('source_system')}; "
+                        f"pull_speed={row.get('pull_speed')}; use={row.get('report_use')}"
+                        for row in priority_datasets
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if systems_audit:
+            fragments.append(
+                (
+                    "lab_operations.systems_audit",
+                    "Systems and workflow audit: "
+                    + " | ".join(
+                        f"{row.get('track')} ({row.get('status')}): "
+                        f"captures={', '.join(str(item) for item in (row.get('captures') or [])[:5])}; "
+                        f"output={row.get('output')}"
+                        for row in systems_audit
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if budget:
+            fragments.append(
+                (
+                    "lab_operations.budget_reporting",
+                    "Budget reporting: "
+                    f"goal={budget.get('goal')}; current_gap={budget.get('current_gap')}; "
+                    f"ready_now={'; '.join(str(item) for item in (budget.get('ready_now') or []))}; "
+                    f"needs_alignment={'; '.join(str(item) for item in (budget.get('needs_alignment') or []))}; "
+                    f"guardrail={budget.get('guardrail')}.",
+                )
+            )
+
+        if collaborations:
+            fragments.append(
+                (
+                    "lab_operations.external_collaborations",
+                    "External collaboration and website integration: "
+                    + " | ".join(
+                        f"{row.get('partner')} ({row.get('status')}): value={row.get('current_value')}; "
+                        f"gap={row.get('operational_gap')}; next={row.get('next_action')}"
+                        for row in collaborations
+                        if isinstance(row, dict)
+                    ),
+                )
+            )
+
+        if next_month:
+            fragments.append(
+                (
+                    "lab_operations.next_month_reporting",
+                    "Next-month reporting candidates: "
+                    + " | ".join(
+                        f"{row.get('metric')} ({row.get('status')}): owner={row.get('owner')}; "
+                        f"source={row.get('source')}; decision_use={row.get('decision_use')}"
+                        for row in next_month
+                        if isinstance(row, dict)
+                    ),
                 )
             )
 
@@ -1953,6 +2119,11 @@ class DashboardChatAssistant:
             lab_operations.get("workflow_phases")
             if isinstance(lab_operations, dict) and isinstance(lab_operations.get("workflow_phases"), list)
             else []
+        )
+        lab_reporting = (
+            lab_operations.get("reporting_management")
+            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("reporting_management"), dict)
+            else {}
         )
         readings_summary = readings.get("summary", {})
         fragments: list[tuple[str, str]] = []
@@ -2182,6 +2353,15 @@ class DashboardChatAssistant:
                     f"({active_phase.get('timeframe') or 'timeframe unknown'}).",
                 )
             )
+        if lab_reporting:
+            fragments.append(
+                (
+                    "lab_operations.reporting_management",
+                    "Lab reporting management: "
+                    f"{lab_reporting.get('status') or 'status unknown'}; "
+                    f"{lab_reporting.get('priority_note') or lab_reporting.get('goal') or 'priority note not listed'}",
+                )
+            )
 
         best_index, best = _find_best_model_card(
             payload.get("ml_performance", {}).get("models") or []
@@ -2341,6 +2521,41 @@ class DashboardChatAssistant:
             ),
             "lab_operations_surfaces": (
                 lab_operations.get("dashboard_surface_status") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_reporting": (
+                lab_operations.get("reporting_management") or {}
+                if isinstance(lab_operations, dict)
+                else {}
+            ),
+            "lab_operations_reporting_reviews": (
+                lab_operations.get("reporting_reviews") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_priority_datasets": (
+                lab_operations.get("priority_datasets") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_systems_audit": (
+                lab_operations.get("systems_audit") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_budget": (
+                lab_operations.get("budget_reporting") or {}
+                if isinstance(lab_operations, dict)
+                else {}
+            ),
+            "lab_operations_collaborations": (
+                lab_operations.get("external_collaborations") or []
+                if isinstance(lab_operations, dict)
+                else []
+            ),
+            "lab_operations_next_month": (
+                lab_operations.get("next_month_reporting") or []
                 if isinstance(lab_operations, dict)
                 else []
             ),
@@ -2537,6 +2752,79 @@ class DashboardChatAssistant:
             except (TypeError, ValueError):
                 return default
             return parsed if parsed == parsed else default
+
+        if question_tokens & {"website", "esdlabsc", "external", "collaboration", "collaborations"}:
+            collaborations = facts.get("lab_operations_collaborations") or []
+            if isinstance(collaborations, list) and collaborations:
+                return "External collaboration and website status: " + " ".join(
+                    f"{row.get('partner')} ({row.get('status')}): {row.get('current_value')} Gap: {row.get('operational_gap')} Next: {row.get('next_action')}"
+                    for row in collaborations
+                    if isinstance(row, dict)
+                )
+
+        if question_tokens & {"budget", "finance"}:
+            budget = facts.get("lab_operations_budget") or {}
+            if isinstance(budget, dict) and budget:
+                ready = "; ".join(str(item) for item in (budget.get("ready_now") or []))
+                needs = "; ".join(str(item) for item in (budget.get("needs_alignment") or []))
+                return (
+                    f"Budget reporting goal: {budget.get('goal')} "
+                    f"Current gap: {budget.get('current_gap')} "
+                    f"Ready now: {ready or 'not listed'}. "
+                    f"Needs alignment: {needs or 'not listed'}. "
+                    f"Guardrail: {budget.get('guardrail')}"
+                )
+
+        if question_tokens & {"systems", "system", "audit", "tools", "storage", "owner", "owners", "ownership"}:
+            audit = facts.get("lab_operations_systems_audit") or []
+            if isinstance(audit, list) and audit:
+                return "Systems and workflow audit: " + " ".join(
+                    f"{row.get('track')} ({row.get('status')}): capture {', '.join(str(item) for item in (row.get('captures') or [])[:4])}; output {row.get('output')}."
+                    for row in audit
+                    if isinstance(row, dict)
+                )
+
+        if question_tokens & {"demographic", "demographics", "projection", "projections", "dataset", "datasets", "report", "reports", "reporting", "management"}:
+            reporting = facts.get("lab_operations_reporting") or {}
+            reviews = facts.get("lab_operations_reporting_reviews") or []
+            datasets = facts.get("lab_operations_priority_datasets") or []
+            next_month = facts.get("lab_operations_next_month") or []
+            if isinstance(reporting, dict) and (
+                reporting or reviews or datasets or next_month
+            ):
+                parts: list[str] = []
+                if reporting:
+                    parts.append(
+                        f"Reporting goal: {reporting.get('goal')} Priority: {reporting.get('priority_note')} Alignment rule: {reporting.get('alignment_rule')}"
+                    )
+                if isinstance(reviews, list) and reviews:
+                    parts.append(
+                        "Review queue: "
+                        + " ".join(
+                            f"{row.get('area')} ({row.get('status')}): {row.get('next_action')}"
+                            for row in reviews
+                            if isinstance(row, dict)
+                        )
+                    )
+                if isinstance(datasets, list) and datasets:
+                    parts.append(
+                        "Priority data sets: "
+                        + " ".join(
+                            f"{row.get('name')} ({row.get('study')}, {row.get('readiness')}), owner {row.get('owner')}, pull {row.get('pull_speed')}."
+                            for row in datasets
+                            if isinstance(row, dict)
+                        )
+                    )
+                if isinstance(next_month, list) and next_month:
+                    parts.append(
+                        "Next-month candidates: "
+                        + " ".join(
+                            f"{row.get('metric')} ({row.get('status')}): {row.get('decision_use')}"
+                            for row in next_month
+                            if isinstance(row, dict)
+                        )
+                    )
+                return " ".join(parts)
 
         if question_tokens & {"operations", "workflow", "workflows", "rollout", "phase", "phases", "priority"}:
             if question_tokens & {"nano", "nico", "grant", "priority", "phase", "phases", "rollout", "workflow", "workflows"}:

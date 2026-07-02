@@ -170,6 +170,21 @@ function assistantReply(message) {
   if (text.includes("nano") && (text.includes("rollout") || text.includes("workflow") || text.includes("priority"))) {
     return "The current operations plan is Nano-first: start with lab process observation, REDCap workflow learning, coordinator shadowing, and quick wins. Nico stays visible as the secondary lane and should expand after Nano workflows, metrics, and reporting templates are stable.";
   }
+  if (text.includes("report") && (text.includes("priority") || text.includes("demographic") || text.includes("participant") || text.includes("budget"))) {
+    return "Reporting should start with actionable operating questions: demographic data availability, participant and family projections, and budget-ready aggregate inputs. The team should agree on priority data sets, owners, source systems, and cadence before building formal reports.";
+  }
+  if (text.includes("demographic") || (text.includes("pull") && text.includes("redcap"))) {
+    return "The near-term demographic plan is Nano first: confirm REDCap field names and ownership, then time a de-identified pull for cohort composition, sex or gender targets, race and ethnicity categories, gestational-age strata, and visit stage. Nico demographic reporting is staged after the Nano definitions are stable.";
+  }
+  if (text.includes("budget")) {
+    return "Budget-facing work should use prepared aggregate inputs such as enrollment versus target, active follow-up counts, visit volume, scoring or coding queue effort, REDCap freshness, and completion coverage. Live budget ledgers or staff-level effort should stay gated until Sam and Dr. Bradshaw approve the source and audience.";
+  }
+  if (text.includes("systems audit") || text.includes("workflow audit") || (text.includes("tools") && text.includes("staff"))) {
+    return "The systems and workflow audit should list tools per staff member, responsibilities, process flows, data storage locations, duplicated trackers, source-of-truth ownership, and how data feeds dashboard, reporting, and manuscript decisions.";
+  }
+  if (text.includes("esdlabsc") || text.includes("public website") || text.includes("website integration") || text.includes("external collaboration")) {
+    return "The public ESD Lab website at https://www.esdlabsc.com is functional for mission, team, study, contact, and recruitment context, but it is not integrated with internal REDCap tracking, participant operations, reporting, or decision workflows. Prisma, CAN, and CAB collaboration touchpoints should be documented before dashboard metrics depend on them.";
+  }
   if (text.includes("coordinator") || text.includes("undergrad") || text.includes("grad student") || text.includes("handoff")) {
     return "Coordinator work centers on scheduling, visit windows, packet readiness, assessments, and blockers. Graduate students own scoring oversight, reliability, analytic interpretation, and research metrics. Undergraduates support frame-by-frame coding, data entry prep, and defined QA checks. Supervisors own priority setting and approvals.";
   }

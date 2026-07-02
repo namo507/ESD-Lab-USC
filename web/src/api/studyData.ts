@@ -256,6 +256,115 @@ const LabOperationsSchema = z
     recommendations: z
       .array(z.object({ horizon: z.string(), items: z.array(z.string()) }).passthrough())
       .default([]),
+    reporting_management: z
+      .object({
+        status: z.string(),
+        goal: z.string(),
+        priority_note: z.string(),
+        alignment_rule: z.string(),
+        source_alignment: z
+          .array(
+            z
+              .object({
+                study: z.string(),
+                anchor: z.string(),
+                operational_relevance: z.string(),
+              })
+              .passthrough(),
+          )
+          .default([]),
+      })
+      .passthrough()
+      .default({
+        status: "planning",
+        goal: "Define meaningful, actionable reporting before formal templates are built.",
+        priority_note: "Start with demographic availability and participant tracking.",
+        alignment_rule: "Align source ownership and cadence before building reports.",
+        source_alignment: [],
+      }),
+    reporting_reviews: z
+      .array(
+        z
+          .object({
+            area: z.string(),
+            status: z.string(),
+            source_system: z.string(),
+            why_actionable: z.string(),
+            breakdowns: z.array(z.string()).default([]),
+            next_action: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    priority_datasets: z
+      .array(
+        z
+          .object({
+            name: z.string(),
+            study: z.string(),
+            owner: z.string(),
+            source_system: z.string(),
+            pull_speed: z.string(),
+            readiness: z.string(),
+            report_use: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    systems_audit: z
+      .array(
+        z
+          .object({
+            track: z.string(),
+            status: z.string(),
+            captures: z.array(z.string()).default([]),
+            output: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    budget_reporting: z
+      .object({
+        goal: z.string(),
+        current_gap: z.string(),
+        ready_now: z.array(z.string()).default([]),
+        needs_alignment: z.array(z.string()).default([]),
+        guardrail: z.string(),
+      })
+      .passthrough()
+      .default({
+        goal: "Prepare aggregate inputs for budget-facing project work.",
+        current_gap: "Budget reporting needs source and owner alignment.",
+        ready_now: [],
+        needs_alignment: [],
+        guardrail: "Do not connect live budget ledgers without approval.",
+      }),
+    external_collaborations: z
+      .array(
+        z
+          .object({
+            partner: z.string(),
+            status: z.string(),
+            current_value: z.string(),
+            operational_gap: z.string(),
+            next_action: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+    next_month_reporting: z
+      .array(
+        z
+          .object({
+            metric: z.string(),
+            owner: z.string(),
+            source: z.string(),
+            decision_use: z.string(),
+            status: z.string(),
+          })
+          .passthrough(),
+      )
+      .default([]),
     workflow_phases: z
       .array(
         z

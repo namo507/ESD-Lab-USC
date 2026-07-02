@@ -23,6 +23,86 @@ const operations = {
   ],
   current_problems: [],
   recommendations: [],
+  reporting_management: {
+    status: "planning",
+    goal: "Define actionable reporting before formal templates.",
+    priority_note: "Start with demographic availability and participant tracking.",
+    alignment_rule: "Align priority data sets before building reports.",
+    source_alignment: [
+      {
+        study: "NANO",
+        anchor: "NANO.pdf page 64",
+        operational_relevance: "Links demographic and behavioral data for analysis.",
+      },
+      {
+        study: "NICO",
+        anchor: "NICO.pdf page 73",
+        operational_relevance: "Defines VPT enrollment and demographic expectations.",
+      },
+    ],
+  },
+  reporting_reviews: [
+    {
+      area: "Demographic data availability",
+      status: "highest priority",
+      source_system: "REDCap demographics",
+      why_actionable: "Needed for cohort composition and pull-speed planning.",
+      breakdowns: ["study lane", "cohort/group", "race and ethnicity category"],
+      next_action: "Time a de-identified REDCap pull.",
+    },
+    {
+      area: "Budget-related reporting",
+      status: "definition needed",
+      source_system: "Grant targets and staffing workflow notes",
+      why_actionable: "Avoids manual deep number crunching.",
+      breakdowns: ["enrollment versus target", "visit volume"],
+      next_action: "Define finance-safe aggregate inputs.",
+    },
+  ],
+  priority_datasets: [
+    {
+      name: "Nano demographic baseline",
+      study: "NANO",
+      owner: "Coordinator plus data lead",
+      source_system: "REDCap demographics_complete_this_first",
+      pull_speed: "Measure during Week 3",
+      readiness: "priority draft",
+      report_use: "cohort composition and inclusion checks",
+    },
+  ],
+  systems_audit: [
+    {
+      track: "Tools per staff member",
+      status: "start now",
+      captures: ["which tools are actively used", "where work is stored"],
+      output: "Staff tool inventory.",
+    },
+  ],
+  budget_reporting: {
+    goal: "Make budget-facing work possible from prepared aggregate inputs.",
+    current_gap: "Budget tasks are slowed by manual processes.",
+    ready_now: ["enrollment versus target", "visit-window adherence"],
+    needs_alignment: ["which finance-approved sources can be used"],
+    guardrail: "Do not connect live budget ledgers without approval.",
+  },
+  external_collaborations: [
+    {
+      partner: "ESD Lab public website",
+      status: "not integrated",
+      current_value: "Public-facing context at https://www.esdlabsc.com.",
+      operational_gap: "Not connected to internal tracking.",
+      next_action: "Keep as public linkout until approved.",
+    },
+  ],
+  next_month_reporting: [
+    {
+      metric: "Demographic pull readiness",
+      owner: "Coordinator plus data lead",
+      source: "REDCap",
+      decision_use: "Can the team pull cohort composition quickly enough?",
+      status: "define and time",
+    },
+  ],
   workflow_phases: [
     {
       id: "phase-1",
@@ -82,6 +162,12 @@ describe("LabOperationsPanel", () => {
     expect(screen.getByText("Onboarding and observation")).toBeInTheDocument();
     expect(screen.getByText("Data and process standardization")).toBeInTheDocument();
     expect(screen.getByText("Current dashboard status")).toBeInTheDocument();
+    expect(screen.getByText("Reporting and data management")).toBeInTheDocument();
+    expect(screen.getByText("Demographic data availability")).toBeInTheDocument();
+    expect(screen.getByText("Budget-related reporting")).toBeInTheDocument();
+    expect(screen.getByText("Systems and workflow audit")).toBeInTheDocument();
+    expect(screen.getByText("ESD Lab public website")).toBeInTheDocument();
+    expect(screen.getByText("Demographic pull readiness")).toBeInTheDocument();
     expect(screen.getByText(/Do not add family-facing participant visualizations yet/i)).toBeInTheDocument();
   });
 
@@ -91,5 +177,13 @@ describe("LabOperationsPanel", () => {
 
     expect(useUi.getState().chatOpen).toBe(true);
     expect(useUi.getState().chatSeed).toMatch(/Nano-first rollout plan/i);
+  });
+
+  it("seeds ESD Buddy from the reporting action", () => {
+    render(<LabOperationsPanelContent operations={operations} />);
+    fireEvent.click(screen.getByRole("button", { name: /Ask reporting/i }));
+
+    expect(useUi.getState().chatOpen).toBe(true);
+    expect(useUi.getState().chatSeed).toMatch(/reporting needs/i);
   });
 });
