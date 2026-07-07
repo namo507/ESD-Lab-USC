@@ -18,6 +18,7 @@ services:
       DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: ${DASHBOARD_ASSISTANT_AUTO_DOWNLOAD:-false}
       DASHBOARD_ASSISTANT_CONTEXT_WINDOW: ${DASHBOARD_ASSISTANT_CONTEXT_WINDOW:-2048}
       DASHBOARD_ASSISTANT_THREADS: ${DASHBOARD_ASSISTANT_THREADS:-4}
+      DASHBOARD_REUSE_EXISTING_SPA_BUILD: ${DASHBOARD_REUSE_EXISTING_SPA_BUILD:-true}
       HF_HOME: /app/models/.cache/huggingface
     cpus: "2.0"
     mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
@@ -29,6 +30,9 @@ services:
       - type: volume
         source: dashboard-hf-cache
         target: /app/models/.cache/huggingface
+      - type: volume
+        source: dashboard-node-modules
+        target: /app/web/node_modules
     healthcheck:
       test:
         - CMD
@@ -109,6 +113,7 @@ services:
 
 volumes:
   dashboard-hf-cache:
+  dashboard-node-modules:
 
 networks:
   esd-lab-dashboard:

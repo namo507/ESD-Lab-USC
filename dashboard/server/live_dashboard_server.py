@@ -116,6 +116,23 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
 
+
+def _float_env(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+ASSISTANT_REQUEST_QUEUE_TIMEOUT_SECONDS = max(
+    0.0,
+    _float_env("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS", 90.0),
+)
+ASSISTANT_QUEUE_TIMEOUT_MESSAGE = (
+    "The local assistant is still finishing another response. "
+    "Please try again in a few seconds."
+)
+
 REDCAP_CONTRACT = build_dashboard_data.load_redcap_contract()
 REDCAP_EVENTS = {
     "SIX_MONTH": "6_months_arm_1",
@@ -2975,7 +2992,8 @@ class PresentationJobStore:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS presentation_jobs (
                     job_id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -2990,7 +3008,8 @@ class PresentationJobStore:
                     worker_id TEXT,
                     heartbeat_at REAL
                 )
-                """)
+                """
+            )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_status ON presentation_jobs(status)"
             )
@@ -3236,12 +3255,14 @@ class PresentationJobStore:
         with self._connect() as conn:
             self._prune(conn)
             self._release_stale_claims(conn)
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT job_id FROM presentation_jobs
                 WHERE status IN ('queued', 'running')
                   AND worker_id IS NULL
                 ORDER BY created_ts ASC
-                """).fetchall()
+                """
+            ).fetchall()
         return [str(row["job_id"]) for row in rows]
 
     def should_recover(self, job: dict[str, Any]) -> bool:
@@ -4350,10 +4371,12 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
 
-        if not ASSISTANT_CHAT_LOCK.acquire(blocking=False):
+        if not ASSISTANT_CHAT_LOCK.acquire(
+            timeout=ASSISTANT_REQUEST_QUEUE_TIMEOUT_SECONDS
+        ):
             self._send_ndjson(
                 [
-                    {"error": "model busy — another request in flight"},
+                    {"error": ASSISTANT_QUEUE_TIMEOUT_MESSAGE},
                 ]
             )
             return
@@ -4406,9 +4429,11 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
 
-        if not ASSISTANT_CHAT_LOCK.acquire(blocking=False):
+        if not ASSISTANT_CHAT_LOCK.acquire(
+            timeout=ASSISTANT_REQUEST_QUEUE_TIMEOUT_SECONDS
+        ):
             self._send_json(
-                {"error": "model busy — another request in flight"},
+                {"error": ASSISTANT_QUEUE_TIMEOUT_MESSAGE},
                 status=HTTPStatus.SERVICE_UNAVAILABLE,
             )
             return

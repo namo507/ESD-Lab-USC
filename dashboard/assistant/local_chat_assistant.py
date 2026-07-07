@@ -462,6 +462,7 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "growth",
         "curve",
         "curves",
+        "rmss",
         "rmssd",
         "sdnn",
         "hda",
@@ -666,6 +667,7 @@ DETAIL_REQUEST_TOKENS = {
 }
 CONCISE_RESPONSE_TOKEN_LIMIT = 96
 DETAILED_RESPONSE_TOKEN_LIMIT = 144
+DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS = 90.0
 LOW_CONFIDENCE_SCORE_THRESHOLD = 3.0
 FOCUSED_CONFIDENCE_SCORE_THRESHOLD = 5.0
 
@@ -734,6 +736,7 @@ class AssistantConfig:
     context_window: int = DEFAULT_CONTEXT_WINDOW
     batch_size: int = DEFAULT_BATCH_SIZE
     thread_count: int = DEFAULT_THREAD_COUNT
+    generation_queue_timeout_seconds: float = DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS
     # Presentation-planner specific knobs (tunable without touching chat).
     presentation_max_new_tokens: int = PRESENTATION_MAX_NEW_TOKENS
     presentation_context_char_cap: int = PRESENTATION_CONTEXT_CHAR_CAP
@@ -829,6 +832,10 @@ class AssistantConfig:
                 os.getenv("DASHBOARD_ASSISTANT_THREADS") or os.getenv("LLM_N_THREADS"),
                 default=int(llm_config.get("thread_count") or DEFAULT_THREAD_COUNT),
             ),
+            generation_queue_timeout_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS"),
+                default=DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS,
+            ),
             presentation_max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
                 default=PRESENTATION_MAX_NEW_TOKENS,
@@ -855,6 +862,7 @@ class DashboardChatAssistant:
     ) -> None:
         self.data_dir = data_dir
         self._lock = threading.Lock()
+        self._generation_lock = threading.Lock()
         self._generator = None
         self._last_error: str | None = None
         self._json_cache: dict[Path, tuple[int, Any]] = {}
@@ -926,6 +934,8 @@ class DashboardChatAssistant:
             "available_memory_gib": memory_gib,
             "recommended_memory_gib": self.config.min_available_memory_gib,
             "generator_loaded": self._generator is not None,
+            "inference_busy": self._generation_lock.locked(),
+            "queue_timeout_seconds": self.config.generation_queue_timeout_seconds,
             "last_error": self._last_error,
             "freshness": self._assistant_freshness_status(),
         }
@@ -969,6 +979,7 @@ class DashboardChatAssistant:
 
         generator = self._ensure_generator()
 
+        self._acquire_generation_slot()
         try:
             output = generator.create_chat_completion(
                 messages=messages,
@@ -981,6 +992,8 @@ class DashboardChatAssistant:
             raise AssistantUnavailable(
                 self._last_error, self.get_status(), http_status=503
             ) from exc
+        finally:
+            self._generation_lock.release()
 
         reply = ""
         choices = (output or {}).get("choices") or []
@@ -1009,6 +1022,7 @@ class DashboardChatAssistant:
 
         generator = self._ensure_generator()
 
+        self._acquire_generation_slot()
         try:
             chunks = generator.create_chat_completion(
                 messages=messages,
@@ -1030,6 +1044,8 @@ class DashboardChatAssistant:
             raise AssistantUnavailable(
                 self._last_error, self.get_status(), http_status=503
             ) from exc
+        finally:
+            self._generation_lock.release()
 
     def plan_presentation(
         self,
@@ -1136,7 +1152,10 @@ class DashboardChatAssistant:
         if use_json:
             kwargs["response_format"] = {"type": "json_object"}
 
+        acquired_generation_slot = False
         try:
+            self._acquire_generation_slot()
+            acquired_generation_slot = True
             output = generator.create_chat_completion(**kwargs)
         except TypeError:
             # Older llama-cpp-python without response_format support.
@@ -1153,6 +1172,9 @@ class DashboardChatAssistant:
             raise AssistantUnavailable(
                 self._last_error, self.get_status(), http_status=503
             ) from exc
+        finally:
+            if acquired_generation_slot:
+                self._generation_lock.release()
 
         choices = (output or {}).get("choices") or []
         if not choices:
@@ -1406,6 +1428,20 @@ class DashboardChatAssistant:
 
         return self._generator
 
+    def _acquire_generation_slot(self) -> None:
+        timeout = max(0.0, float(self.config.generation_queue_timeout_seconds))
+        if self._generation_lock.acquire(timeout=timeout):
+            return
+
+        raise AssistantUnavailable(
+            (
+                "The local assistant is still finishing another response. "
+                "Please try again in a few seconds."
+            ),
+            self.get_status(),
+            http_status=429,
+        )
+
     def _build_messages(
         self,
         *,
@@ -1420,7 +1456,8 @@ class DashboardChatAssistant:
                 "content": (
                     "You are the NANO Study dashboard assistant embedded in the ESD Lab live dashboard. "
                     "Answer only from the provided dashboard context and do not invent facts. "
-                    "Be concise by default: answer in 2-4 sentences or short bullets unless the user explicitly asks for more detail. "
+                    "Be concise by default: answer in 2-4 short bullets or sentences unless the user explicitly asks for more detail. "
+                    "Use readable spacing: when an answer has multiple parts, put each part on its own bullet line. "
                     "Repeat exact counts, group labels, model names, and AUROC values verbatim when they appear in context. "
                     "Do not add qualitative judgments, speculation, or interpretations that are not explicitly stated. "
                     "If a list is requested, include every listed item from context and nothing else. "
@@ -1669,9 +1706,15 @@ class DashboardChatAssistant:
         fragments: list[tuple[str, str]] = []
         epds = clinical.get("epds_trajectory") if isinstance(clinical, dict) else []
         if isinstance(epds, list) and epds:
-            positive = sum(num(row.get("screen_positive")) for row in epds if isinstance(row, dict))
-            high = sum(num(row.get("high_concern")) for row in epds if isinstance(row, dict))
-            self_harm = sum(num(row.get("self_harm_flags")) for row in epds if isinstance(row, dict))
+            positive = sum(
+                num(row.get("screen_positive")) for row in epds if isinstance(row, dict)
+            )
+            high = sum(
+                num(row.get("high_concern")) for row in epds if isinstance(row, dict)
+            )
+            self_harm = sum(
+                num(row.get("self_harm_flags")) for row in epds if isinstance(row, dict)
+            )
             fragments.append(
                 (
                     "redcap_clinical.epds_trajectory",
@@ -1694,7 +1737,9 @@ class DashboardChatAssistant:
                 (
                     "redcap_clinical.developmental_grid",
                     "REDCap developmental grid domains: "
-                    + ", ".join(f"{key}={value}" for key, value in sorted(zone_counts.items()))
+                    + ", ".join(
+                        f"{key}={value}" for key, value in sorted(zone_counts.items())
+                    )
                     + f" across {len(dev)} aggregate domain rows.",
                 )
             )
@@ -1727,7 +1772,9 @@ class DashboardChatAssistant:
                 )
             )
 
-        adherence = schedule.get("window_adherence") if isinstance(schedule, dict) else []
+        adherence = (
+            schedule.get("window_adherence") if isinstance(schedule, dict) else []
+        )
         if isinstance(adherence, list) and adherence:
             latest = adherence[-1] if isinstance(adherence[-1], dict) else {}
             fragments.append(
@@ -1740,10 +1787,16 @@ class DashboardChatAssistant:
             )
 
         nullity = integrity.get("nullity_matrix") if isinstance(integrity, dict) else []
-        diffs = integrity.get("double_entry_diffs") if isinstance(integrity, dict) else []
+        diffs = (
+            integrity.get("double_entry_diffs") if isinstance(integrity, dict) else []
+        )
         if isinstance(nullity, list) or isinstance(diffs, list):
             mean_nullity = (
-                sum(num(row.get("missing_fraction")) for row in nullity if isinstance(row, dict))
+                sum(
+                    num(row.get("missing_fraction"))
+                    for row in nullity
+                    if isinstance(row, dict)
+                )
                 / max(1, len(nullity))
                 if isinstance(nullity, list)
                 else 0
@@ -1756,14 +1809,21 @@ class DashboardChatAssistant:
                 )
             )
 
-        burden = respondent.get("caregiver_burden") if isinstance(respondent, dict) else []
+        burden = (
+            respondent.get("caregiver_burden") if isinstance(respondent, dict) else []
+        )
         if isinstance(burden, list) and burden:
             burden_text = "; ".join(
                 f"{row.get('label') or row.get('respondent')}: {row.get('completed', 0)}/{row.get('assigned', 0)} completed"
                 for row in burden
                 if isinstance(row, dict)
             )
-            fragments.append(("redcap_respondent.caregiver_burden", f"REDCap caregiver burden: {burden_text}."))
+            fragments.append(
+                (
+                    "redcap_respondent.caregiver_burden",
+                    f"REDCap caregiver burden: {burden_text}.",
+                )
+            )
 
         audit_log = platform.get("audit_log") if isinstance(platform, dict) else []
         reports = platform.get("reports") if isinstance(platform, dict) else []
@@ -1798,7 +1858,11 @@ class DashboardChatAssistant:
 
         memo = predictive.get("weekly_memo") if isinstance(predictive, dict) else {}
         if isinstance(memo, dict) and memo:
-            highlights = memo.get("highlights") if isinstance(memo.get("highlights"), list) else []
+            highlights = (
+                memo.get("highlights")
+                if isinstance(memo.get("highlights"), list)
+                else []
+            )
             fragments.append(
                 (
                     "redcap_predictive.weekly_memo",
@@ -1828,15 +1892,51 @@ class DashboardChatAssistant:
         if not isinstance(operations, dict):
             return []
 
-        priority = operations.get("priority") if isinstance(operations.get("priority"), dict) else {}
-        surfaces = operations.get("dashboard_surface_status") if isinstance(operations.get("dashboard_surface_status"), list) else []
-        phases = operations.get("workflow_phases") if isinstance(operations.get("workflow_phases"), list) else []
-        roles = operations.get("role_workflows") if isinstance(operations.get("role_workflows"), list) else []
-        metrics = operations.get("draft_metrics") if isinstance(operations.get("draft_metrics"), list) else []
-        routine = operations.get("daily_routine") if isinstance(operations.get("daily_routine"), list) else []
-        controls = operations.get("rollout_controls") if isinstance(operations.get("rollout_controls"), list) else []
-        family = operations.get("family_data_sharing") if isinstance(operations.get("family_data_sharing"), dict) else {}
-        quick_wins = operations.get("quick_wins") if isinstance(operations.get("quick_wins"), list) else []
+        priority = (
+            operations.get("priority")
+            if isinstance(operations.get("priority"), dict)
+            else {}
+        )
+        surfaces = (
+            operations.get("dashboard_surface_status")
+            if isinstance(operations.get("dashboard_surface_status"), list)
+            else []
+        )
+        phases = (
+            operations.get("workflow_phases")
+            if isinstance(operations.get("workflow_phases"), list)
+            else []
+        )
+        roles = (
+            operations.get("role_workflows")
+            if isinstance(operations.get("role_workflows"), list)
+            else []
+        )
+        metrics = (
+            operations.get("draft_metrics")
+            if isinstance(operations.get("draft_metrics"), list)
+            else []
+        )
+        routine = (
+            operations.get("daily_routine")
+            if isinstance(operations.get("daily_routine"), list)
+            else []
+        )
+        controls = (
+            operations.get("rollout_controls")
+            if isinstance(operations.get("rollout_controls"), list)
+            else []
+        )
+        family = (
+            operations.get("family_data_sharing")
+            if isinstance(operations.get("family_data_sharing"), dict)
+            else {}
+        )
+        quick_wins = (
+            operations.get("quick_wins")
+            if isinstance(operations.get("quick_wins"), list)
+            else []
+        )
         reporting = (
             operations.get("reporting_management")
             if isinstance(operations.get("reporting_management"), dict)
@@ -2060,7 +2160,8 @@ class DashboardChatAssistant:
             fragments.append(
                 (
                     "lab_operations.rollout_controls",
-                    "Lab rollout controls: " + "; ".join(str(item) for item in controls),
+                    "Lab rollout controls: "
+                    + "; ".join(str(item) for item in controls),
                 )
             )
 
@@ -2112,17 +2213,20 @@ class DashboardChatAssistant:
         ) or {}
         lab_priority = (
             lab_operations.get("priority")
-            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("priority"), dict)
+            if isinstance(lab_operations, dict)
+            and isinstance(lab_operations.get("priority"), dict)
             else {}
         )
         lab_phases = (
             lab_operations.get("workflow_phases")
-            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("workflow_phases"), list)
+            if isinstance(lab_operations, dict)
+            and isinstance(lab_operations.get("workflow_phases"), list)
             else []
         )
         lab_reporting = (
             lab_operations.get("reporting_management")
-            if isinstance(lab_operations, dict) and isinstance(lab_operations.get("reporting_management"), dict)
+            if isinstance(lab_operations, dict)
+            and isinstance(lab_operations.get("reporting_management"), dict)
             else {}
         )
         readings_summary = readings.get("summary", {})
@@ -2463,6 +2567,9 @@ class DashboardChatAssistant:
             "enrollment_by_group": by_group,
             "trajectory_biomarkers": trajectories.get("biomarkers") or [],
             "trajectory_months": trajectories.get("months") or [],
+            "rmssd_latest_by_group": self._latest_metric_by_group(
+                trajectories, "RMSSD"
+            ),
             "top_shap_features": shap[:5],
             "matlab_version": (matlab.get("manifest") or {}).get("matlab_version"),
             "matlab_files": matlab.get("files") or [],
@@ -2493,7 +2600,9 @@ class DashboardChatAssistant:
                 if isinstance(participant_operations, dict)
                 else []
             ),
-            "lab_operations": lab_operations if isinstance(lab_operations, dict) else {},
+            "lab_operations": (
+                lab_operations if isinstance(lab_operations, dict) else {}
+            ),
             "lab_operations_priority": (
                 lab_operations.get("priority") or {}
                 if isinstance(lab_operations, dict)
@@ -2635,6 +2744,38 @@ class DashboardChatAssistant:
             ),
         }
 
+    def _latest_metric_by_group(
+        self, trajectories: dict[str, Any], metric: str
+    ) -> dict[str, dict[str, Any]]:
+        if not isinstance(trajectories, dict):
+            return {}
+
+        months = trajectories.get("months")
+        by_group = trajectories.get("by_group")
+        if not isinstance(months, list) or not isinstance(by_group, dict):
+            return {}
+
+        latest: dict[str, dict[str, Any]] = {}
+        for group, group_payload in by_group.items():
+            if not isinstance(group_payload, dict):
+                continue
+            mean = group_payload.get("mean")
+            values = mean.get(metric) if isinstance(mean, dict) else None
+            if not isinstance(values, list):
+                continue
+
+            limit = min(len(months), len(values))
+            for index in range(limit - 1, -1, -1):
+                value = values[index]
+                if isinstance(value, (int, float)) and value == value:
+                    latest[str(group)] = {
+                        "month": months[index],
+                        "value": value,
+                    }
+                    break
+
+        return latest
+
     def _readings_freshness_status(self) -> dict[str, Any]:
         try:
             from k8s.pipeline import PipelineConfig
@@ -2753,7 +2894,32 @@ class DashboardChatAssistant:
                 return default
             return parsed if parsed == parsed else default
 
-        if question_tokens & {"website", "esdlabsc", "external", "collaboration", "collaborations"}:
+        if question_tokens & {"model", "models"} and question_tokens & {
+            "active",
+            "api",
+            "assistant",
+            "configured",
+            "fallback",
+            "gguf",
+            "llm",
+            "local",
+            "no",
+            "selected",
+            "smaller",
+            "tier",
+        }:
+            return self._format_local_model_policy_response()
+
+        if question_tokens & {"rmss", "rmssd"}:
+            return self._format_rmssd_response(facts.get("rmssd_latest_by_group") or {})
+
+        if question_tokens & {
+            "website",
+            "esdlabsc",
+            "external",
+            "collaboration",
+            "collaborations",
+        }:
             collaborations = facts.get("lab_operations_collaborations") or []
             if isinstance(collaborations, list) and collaborations:
                 return "External collaboration and website status: " + " ".join(
@@ -2766,7 +2932,9 @@ class DashboardChatAssistant:
             budget = facts.get("lab_operations_budget") or {}
             if isinstance(budget, dict) and budget:
                 ready = "; ".join(str(item) for item in (budget.get("ready_now") or []))
-                needs = "; ".join(str(item) for item in (budget.get("needs_alignment") or []))
+                needs = "; ".join(
+                    str(item) for item in (budget.get("needs_alignment") or [])
+                )
                 return (
                     f"Budget reporting goal: {budget.get('goal')} "
                     f"Current gap: {budget.get('current_gap')} "
@@ -2775,7 +2943,16 @@ class DashboardChatAssistant:
                     f"Guardrail: {budget.get('guardrail')}"
                 )
 
-        if question_tokens & {"systems", "system", "audit", "tools", "storage", "owner", "owners", "ownership"}:
+        if question_tokens & {
+            "systems",
+            "system",
+            "audit",
+            "tools",
+            "storage",
+            "owner",
+            "owners",
+            "ownership",
+        }:
             audit = facts.get("lab_operations_systems_audit") or []
             if isinstance(audit, list) and audit:
                 return "Systems and workflow audit: " + " ".join(
@@ -2784,7 +2961,18 @@ class DashboardChatAssistant:
                     if isinstance(row, dict)
                 )
 
-        if question_tokens & {"demographic", "demographics", "projection", "projections", "dataset", "datasets", "report", "reports", "reporting", "management"}:
+        if question_tokens & {
+            "demographic",
+            "demographics",
+            "projection",
+            "projections",
+            "dataset",
+            "datasets",
+            "report",
+            "reports",
+            "reporting",
+            "management",
+        }:
             reporting = facts.get("lab_operations_reporting") or {}
             reviews = facts.get("lab_operations_reporting_reviews") or []
             datasets = facts.get("lab_operations_priority_datasets") or []
@@ -2826,8 +3014,26 @@ class DashboardChatAssistant:
                     )
                 return " ".join(parts)
 
-        if question_tokens & {"operations", "workflow", "workflows", "rollout", "phase", "phases", "priority"}:
-            if question_tokens & {"nano", "nico", "grant", "priority", "phase", "phases", "rollout", "workflow", "workflows"}:
+        if question_tokens & {
+            "operations",
+            "workflow",
+            "workflows",
+            "rollout",
+            "phase",
+            "phases",
+            "priority",
+        }:
+            if question_tokens & {
+                "nano",
+                "nico",
+                "grant",
+                "priority",
+                "phase",
+                "phases",
+                "rollout",
+                "workflow",
+                "workflows",
+            }:
                 priority = facts.get("lab_operations_priority") or {}
                 phases = facts.get("lab_operations_phases") or []
                 if isinstance(priority, dict) and isinstance(phases, list) and priority:
@@ -2835,7 +3041,8 @@ class DashboardChatAssistant:
                         (
                             phase
                             for phase in phases
-                            if isinstance(phase, dict) and phase.get("status") == "active"
+                            if isinstance(phase, dict)
+                            and phase.get("status") == "active"
                         ),
                         phases[0] if phases else {},
                     )
@@ -2850,7 +3057,19 @@ class DashboardChatAssistant:
                         f"The rollout phases are: {phase_text}."
                     )
 
-        if question_tokens & {"coordinator", "coordinators", "graduate", "grad", "undergraduate", "undergrad", "supervisor", "supervisors", "handoff", "handoffs", "roles"}:
+        if question_tokens & {
+            "coordinator",
+            "coordinators",
+            "graduate",
+            "grad",
+            "undergraduate",
+            "undergrad",
+            "supervisor",
+            "supervisors",
+            "handoff",
+            "handoffs",
+            "roles",
+        }:
             roles = facts.get("lab_operations_roles") or []
             if isinstance(roles, list) and roles:
                 return "Role handoffs: " + " ".join(
@@ -2859,7 +3078,14 @@ class DashboardChatAssistant:
                     if isinstance(row, dict)
                 )
 
-        if question_tokens & {"metric", "metrics", "standardize", "standardized", "coding", "scoring"}:
+        if question_tokens & {
+            "metric",
+            "metrics",
+            "standardize",
+            "standardized",
+            "coding",
+            "scoring",
+        }:
             metrics = facts.get("lab_operations_metrics") or []
             if isinstance(metrics, list) and metrics:
                 return "Draft aligned metrics: " + " ".join(
@@ -2868,7 +3094,14 @@ class DashboardChatAssistant:
                     if isinstance(row, dict)
                 )
 
-        if question_tokens & {"family", "families", "share", "sharing", "visualization", "visualizations"}:
+        if question_tokens & {
+            "family",
+            "families",
+            "share",
+            "sharing",
+            "visualization",
+            "visualizations",
+        }:
             family = facts.get("lab_operations_family") or {}
             if isinstance(family, dict) and family:
                 return (
@@ -2878,9 +3111,32 @@ class DashboardChatAssistant:
                     f"Future option: {family.get('future_option')}"
                 )
 
-        if question_tokens & {"shown", "showing", "dashboard", "website", "surface", "surfaces", "feature", "features", "status"}:
+        if question_tokens & {
+            "shown",
+            "showing",
+            "dashboard",
+            "website",
+            "surface",
+            "surfaces",
+            "feature",
+            "features",
+            "status",
+        }:
             surfaces = facts.get("lab_operations_surfaces") or []
-            if question_tokens & {"shown", "showing", "surface", "surfaces", "feature", "features", "status"} and isinstance(surfaces, list) and surfaces:
+            if (
+                question_tokens
+                & {
+                    "shown",
+                    "showing",
+                    "surface",
+                    "surfaces",
+                    "feature",
+                    "features",
+                    "status",
+                }
+                and isinstance(surfaces, list)
+                and surfaces
+            ):
                 return "Dashboard surface status: " + " ".join(
                     f"{row.get('area')} is {row.get('status')}: {row.get('shown')}"
                     for row in surfaces
@@ -3225,18 +3481,37 @@ class DashboardChatAssistant:
             cutoffs = facts.get("clinical_cutoffs") or {}
             epds = clinical.get("epds_trajectory") if isinstance(clinical, dict) else []
             if isinstance(epds, list) and epds:
-                positive = sum(as_number(row.get("screen_positive")) for row in epds if isinstance(row, dict))
-                high = sum(as_number(row.get("high_concern")) for row in epds if isinstance(row, dict))
-                self_harm = sum(as_number(row.get("self_harm_flags")) for row in epds if isinstance(row, dict))
+                positive = sum(
+                    as_number(row.get("screen_positive"))
+                    for row in epds
+                    if isinstance(row, dict)
+                )
+                high = sum(
+                    as_number(row.get("high_concern"))
+                    for row in epds
+                    if isinstance(row, dict)
+                )
+                self_harm = sum(
+                    as_number(row.get("self_harm_flags"))
+                    for row in epds
+                    if isinstance(row, dict)
+                )
                 return (
                     f"EPDS has {int(positive)} screen-positive summaries at cutoff >= {cutoffs.get('epds_positive', 10)}, "
                     f"{int(high)} high-concern summaries at cutoff >= {cutoffs.get('epds_high', 13)}, "
                     f"and {int(self_harm)} self-harm item flags. Coordinator review should start with high-concern and self-harm flags, then cross-check upcoming visit burden."
                 )
 
-        if question_tokens & {"forecast", "upcoming", "overdue", "next"} and question_tokens & {"visit", "visits", "days", "30"}:
+        if question_tokens & {
+            "forecast",
+            "upcoming",
+            "overdue",
+            "next",
+        } and question_tokens & {"visit", "visits", "days", "30"}:
             schedule = facts.get("redcap_schedule") or {}
-            upcoming = schedule.get("upcoming_visits") if isinstance(schedule, dict) else []
+            upcoming = (
+                schedule.get("upcoming_visits") if isinstance(schedule, dict) else []
+            )
             if isinstance(upcoming, list):
                 overdue = [
                     row
@@ -3244,22 +3519,53 @@ class DashboardChatAssistant:
                     if isinstance(row, dict) and as_number(row.get("due_in_days")) < 0
                 ]
                 approaching = len(upcoming) - len(overdue)
-                first = upcoming[0] if upcoming and isinstance(upcoming[0], dict) else {}
+                first = (
+                    upcoming[0] if upcoming and isinstance(upcoming[0], dict) else {}
+                )
                 return (
                     f"The next-30-days REDCap forecast has {len(upcoming)} hashed records: {len(overdue)} overdue and {approaching} approaching. "
                     f"The first listed window is {first.get('recordId', 'n/a')} at {first.get('label') or first.get('event') or 'unknown visit'} with due_in_days={first.get('due_in_days', 'n/a')}."
                 )
 
-        if question_tokens & {"integrity", "nullity", "diff", "double", "branching", "validation", "sentinel"}:
+        if question_tokens & {
+            "integrity",
+            "nullity",
+            "diff",
+            "double",
+            "branching",
+            "validation",
+            "sentinel",
+        }:
             integrity = facts.get("redcap_integrity") or {}
-            nullity = integrity.get("nullity_matrix") if isinstance(integrity, dict) else []
-            diffs = integrity.get("double_entry_diffs") if isinstance(integrity, dict) else []
-            quality = integrity.get("response_quality") if isinstance(integrity, dict) else []
-            branching = integrity.get("branching_violations") if isinstance(integrity, dict) else []
-            radar = integrity.get("validation_radar") if isinstance(integrity, dict) else []
-            if any(isinstance(item, list) for item in [nullity, diffs, quality, branching, radar]):
+            nullity = (
+                integrity.get("nullity_matrix") if isinstance(integrity, dict) else []
+            )
+            diffs = (
+                integrity.get("double_entry_diffs")
+                if isinstance(integrity, dict)
+                else []
+            )
+            quality = (
+                integrity.get("response_quality") if isinstance(integrity, dict) else []
+            )
+            branching = (
+                integrity.get("branching_violations")
+                if isinstance(integrity, dict)
+                else []
+            )
+            radar = (
+                integrity.get("validation_radar") if isinstance(integrity, dict) else []
+            )
+            if any(
+                isinstance(item, list)
+                for item in [nullity, diffs, quality, branching, radar]
+            ):
                 mean_nullity = (
-                    sum(as_number(row.get("missing_fraction")) for row in nullity if isinstance(row, dict))
+                    sum(
+                        as_number(row.get("missing_fraction"))
+                        for row in nullity
+                        if isinstance(row, dict)
+                    )
                     / max(1, len(nullity))
                     if isinstance(nullity, list)
                     else 0
@@ -3274,7 +3580,11 @@ class DashboardChatAssistant:
 
         if question_tokens & {"caregiver", "respondent", "burden", "fatigue"}:
             respondent = facts.get("redcap_respondent") or {}
-            burden = respondent.get("caregiver_burden") if isinstance(respondent, dict) else []
+            burden = (
+                respondent.get("caregiver_burden")
+                if isinstance(respondent, dict)
+                else []
+            )
             if isinstance(burden, list) and burden:
                 text = "; ".join(
                     f"{row.get('label') or row.get('respondent')}: {row.get('completed', 0)}/{row.get('assigned', 0)} completed, fatigue_index={row.get('fatigue_index', 0)}"
@@ -3283,38 +3593,91 @@ class DashboardChatAssistant:
                 )
                 return f"Caregiver burden summary: {text}."
 
-        if question_tokens & {"platform", "logging", "log", "report", "reports", "repository", "users", "dag"}:
+        if question_tokens & {
+            "platform",
+            "logging",
+            "log",
+            "report",
+            "reports",
+            "repository",
+            "users",
+            "dag",
+        }:
             platform = facts.get("redcap_platform") or {}
             if isinstance(platform, dict):
-                audit = platform.get("audit_log") if isinstance(platform.get("audit_log"), list) else []
-                reports = platform.get("reports") if isinstance(platform.get("reports"), list) else []
-                files = platform.get("file_repository") if isinstance(platform.get("file_repository"), list) else []
-                users = platform.get("users") if isinstance(platform.get("users"), list) else []
+                audit = (
+                    platform.get("audit_log")
+                    if isinstance(platform.get("audit_log"), list)
+                    else []
+                )
+                reports = (
+                    platform.get("reports")
+                    if isinstance(platform.get("reports"), list)
+                    else []
+                )
+                files = (
+                    platform.get("file_repository")
+                    if isinstance(platform.get("file_repository"), list)
+                    else []
+                )
+                users = (
+                    platform.get("users")
+                    if isinstance(platform.get("users"), list)
+                    else []
+                )
                 return (
                     f"REDCap platform surfaces indexed: audit_log={len(audit)}, reports={len(reports)}, file_repository={len(files)}, users={len(users)}. "
                     "These are designed for server-side scheduled pulls; the browser proxy still blocks token-backed platform access."
                 )
 
-        if question_tokens & {"attrition", "incompletion", "risk", "early", "warning", "predictive"} and question_tokens & {"redcap", "risk", "attrition", "incompletion"}:
+        if question_tokens & {
+            "attrition",
+            "incompletion",
+            "risk",
+            "early",
+            "warning",
+            "predictive",
+        } and question_tokens & {"redcap", "risk", "attrition", "incompletion"}:
             predictive = facts.get("redcap_predictive") or {}
-            risks = predictive.get("attrition_risk") if isinstance(predictive, dict) else []
+            risks = (
+                predictive.get("attrition_risk") if isinstance(predictive, dict) else []
+            )
             if isinstance(risks, list):
-                high = [row for row in risks if isinstance(row, dict) and row.get("risk_band") == "high"]
+                high = [
+                    row
+                    for row in risks
+                    if isinstance(row, dict) and row.get("risk_band") == "high"
+                ]
                 top = risks[0] if risks and isinstance(risks[0], dict) else {}
-                drivers = top.get("drivers") if isinstance(top.get("drivers"), list) else []
+                drivers = (
+                    top.get("drivers") if isinstance(top.get("drivers"), list) else []
+                )
                 return (
                     f"Attrition early-warning has {len(risks)} hashed risk scores and {len(high)} high-risk records. "
                     f"The top listed record is {top.get('recordId', 'n/a')} with score {top.get('risk_score', 'n/a')} and drivers {', '.join(map(str, drivers)) or 'not listed'}."
                 )
 
-        if question_tokens & {"memo", "weekly", "narrative"} and question_tokens & {"redcap", "study", "status"}:
+        if question_tokens & {"memo", "weekly", "narrative"} and question_tokens & {
+            "redcap",
+            "study",
+            "status",
+        }:
             predictive = facts.get("redcap_predictive") or {}
             memo = predictive.get("weekly_memo") if isinstance(predictive, dict) else {}
             if isinstance(memo, dict) and memo:
-                highlights = memo.get("highlights") if isinstance(memo.get("highlights"), list) else []
+                highlights = (
+                    memo.get("highlights")
+                    if isinstance(memo.get("highlights"), list)
+                    else []
+                )
                 return (
                     f"{memo.get('title') or 'Weekly REDCap study memo'} is {memo.get('status') or 'available'}. "
-                    + (" Highlights: " + "; ".join(str(item) for item in highlights[:4]) if highlights else "")
+                    + (
+                        " Highlights: "
+                        + "; ".join(str(item) for item in highlights[:4])
+                        if highlights
+                        else ""
+                    )
                 )
 
         redcap_tokens = {
@@ -3531,6 +3894,55 @@ class DashboardChatAssistant:
             )
 
         return None
+
+    def _format_local_model_policy_response(self) -> str:
+        model_label = self.config.model_label or self.config.model_file
+        model_id = self.config.model_id or self.config.model_file
+        license_label = (
+            self.config.model_license or "local license metadata unavailable"
+        )
+        tier = self.config.model_tier or "configured"
+
+        return (
+            "Local assistant model policy:\n\n"
+            f"- Configured/active model: {model_label} ({tier} tier; {license_label}; {model_id}).\n"
+            "- Why selected: it runs as a no-API local GGUF, keeps study prompts off external APIs, and balances biomedical accuracy with local latency.\n"
+            "- Smaller fallback: the catalog falls back when the selected GGUF is missing or the host does not meet memory/disk requirements; constrained Docker or laptop hosts can use the tiny SmolLM2 tier.\n"
+            "- Busy behavior: live requests now wait for the in-flight local generation instead of rejecting overlapping chats."
+        )
+
+    def _format_rmssd_response(self, latest_by_group: dict[str, Any]) -> str:
+        definition = (
+            "RMSSD is the root mean square of successive IBI differences; "
+            "in this dashboard it is an aggregate HRV/vagal-tone marker from accepted ECG windows."
+        )
+
+        if not isinstance(latest_by_group, dict) or not latest_by_group:
+            return definition
+
+        lines: list[str] = []
+        for group in sorted(latest_by_group):
+            item = latest_by_group.get(group)
+            if not isinstance(item, dict):
+                continue
+            value = item.get("value")
+            month = item.get("month")
+            if not isinstance(value, (int, float)):
+                continue
+            month_text = _format_scalar_value(month)
+            lines.append(
+                f"- {group}: {_format_scalar_value(value)} ms at {month_text} months CGA."
+            )
+
+        if not lines:
+            return definition
+
+        return (
+            f"{definition}\n\n"
+            "Current indexed RMSSD values:\n"
+            + "\n".join(lines)
+            + "\n\nI read `rmss` as RMSSD; these are aggregate trajectory values, not participant-level PHI."
+        )
 
     def _format_reading_metadata_response(self, matches: list[dict[str, Any]]) -> str:
         if not matches:

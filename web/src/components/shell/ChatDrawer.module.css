@@ -138,11 +138,13 @@
   display: flex;
   gap: 10px;
   max-width: 95%;
+  min-width: 0;
 }
 
 .you {
   align-self: flex-end;
   flex-direction: row-reverse;
+  max-width: min(82%, 560px);
 }
 
 .avatar {
@@ -169,6 +171,7 @@
 }
 
 .bubble {
+  max-width: min(100%, 560px);
   padding: 10px 14px;
   border-radius: 16px;
   font-size: 13.5px;
@@ -176,14 +179,39 @@
   color: var(--ink);
   background: var(--glass-300);
   border: 1px solid var(--glass-stroke-soft);
-  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: normal;
   min-width: 0;
 }
 
 .youBubble {
+  width: fit-content;
+  min-width: 2.75rem;
   background: var(--you-bubble-bg);
   color: var(--you-bubble-fg);
   border-color: var(--you-bubble-bg);
+}
+
+.messageText {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.messageParagraph {
+  margin: 0;
+}
+
+.messageList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.messageList li {
+  padding-left: 2px;
 }
 
 .thinking {

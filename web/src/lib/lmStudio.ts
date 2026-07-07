@@ -23,7 +23,8 @@ const SYSTEM_PROMPT =
   "Speak in clinical NANO terminology: HRV (RMSSD/SDNN/HF/pNN50), HDA phases, " +
   "ADOS-2 calibrated severity, Bayley-4, RSA via continuous wavelet transform, " +
   "Actiheart-5 1024 Hz ECG, HeRO HRC, DataVyu, dual-thermistor thermal " +
-  "gradients, MICE imputation, latent growth curve models. Be terse.";
+  "gradients, MICE imputation, latent growth curve models. " +
+  "Be fast and concise: use 2-4 short bullets or sentences, with line breaks between bullets.";
 
 export interface LMRequest {
   prompt: string;
@@ -121,7 +122,7 @@ export async function* streamCompletion(
         { role: "user", content: scrub.text },
       ],
       temperature: 0.2,
-      max_tokens: 512,
+      max_tokens: 256,
     }),
   });
 

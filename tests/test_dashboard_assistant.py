@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 
 from dashboard.assistant.local_chat_assistant import (
     AssistantConfig,
@@ -122,6 +124,147 @@ def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
     assert response is not None
     assert "CGA Milestone River" in response
     assert "hda_composition" in response
+
+
+def test_assistant_answers_local_model_policy_before_leaderboard(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {"data_source": "repo_demo_inputs"},
+                "ml_performance": {
+                    "models": [{"model_name": "1D-CNN + LSTM", "auroc": 0.899}]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(
+            model_dir=tmp_path / "missing-model",
+            model_id="bartowski/SmolLM2-1.7B-Instruct-GGUF",
+            model_tier="balanced",
+            model_label="SmolLM2 1.7B Q4",
+            model_license="Apache-2.0",
+        ),
+        data_dir=data_dir,
+    )
+
+    question = (
+        "Which local no-API model is configured for ESD Buddy, why was it "
+        "selected, and when will the dashboard fall back to a smaller model?"
+    )
+    context = assistant.build_context(question)
+    response = assistant._maybe_short_circuit_response(question, context)
+
+    assert response is not None
+    assert "Local assistant model policy:" in response
+    assert "- Configured/active model: SmolLM2 1.7B Q4" in response
+    assert "no-API local GGUF" in response
+    assert "model leaderboard" not in response.lower()
+
+
+def test_assistant_answers_rmss_typo_with_rmssd_trajectory_values(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {"data_source": "repo_demo_inputs"},
+                "trajectories": {
+                    "months": [3, 6, 12],
+                    "by_group": {
+                        "PT": {"mean": {"RMSSD": [31.2, 34.2, None]}},
+                        "TD": {"mean": {"RMSSD": [32.6, 36.5, 44.9]}},
+                    },
+                    "biomarkers": ["RMSSD"],
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("what is rmss median")
+    response = assistant._maybe_short_circuit_response("what is rmss median", context)
+
+    assert response is not None
+    assert "RMSSD is the root mean square" in response
+    assert "- PT: 34.2 ms at 6 months CGA." in response
+    assert "- TD: 44.9 ms at 12 months CGA." in response
+
+
+def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
+    class SingleFlightGenerator:
+        def __init__(self) -> None:
+            self.active = False
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def create_chat_completion(self, **kwargs):
+            assert kwargs.get("stream") is True
+
+            def chunks():
+                if self.active:
+                    raise RuntimeError("model busy - another request in flight")
+                self.active = True
+                self.started.set()
+                self.release.wait(timeout=1)
+                try:
+                    yield {"choices": [{"delta": {"content": "ok"}}]}
+                finally:
+                    self.active = False
+
+            return chunks()
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(
+            model_dir=tmp_path / "missing-model",
+            generation_queue_timeout_seconds=1.0,
+        ),
+        data_dir=tmp_path,
+    )
+    generator = SingleFlightGenerator()
+    assistant._generator = generator
+    monkeypatch.setattr(
+        assistant,
+        "_prepare_request",
+        lambda message, history=None: (
+            {"citations": [], "facts": {}, "grounded": True},
+            [{"role": "user", "content": message}],
+        ),
+    )
+    monkeypatch.setattr(assistant, "_maybe_short_circuit_response", lambda *_: None)
+
+    replies: list[str] = []
+    errors: list[str] = []
+
+    def run_stream() -> None:
+        try:
+            replies.append("".join(assistant.stream("status?")))
+        except Exception as exc:  # pragma: no cover - assertion reports details
+            errors.append(str(exc))
+
+    first = threading.Thread(target=run_stream)
+    second = threading.Thread(target=run_stream)
+    first.start()
+    assert generator.started.wait(timeout=1)
+    second.start()
+    time.sleep(0.05)
+    generator.release.set()
+    first.join(timeout=1)
+    second.join(timeout=1)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert errors == []
+    assert replies == ["ok", "ok"]
 
 
 def test_status_reports_missing_model_when_dependencies_are_available(
@@ -475,7 +618,9 @@ def test_assistant_answers_lab_reporting_from_payload(tmp_path):
         data_dir=data_dir,
     )
 
-    context = assistant.build_context("Which reporting needs and budget data should we prioritize?")
+    context = assistant.build_context(
+        "Which reporting needs and budget data should we prioritize?"
+    )
     response = assistant._maybe_short_circuit_response(
         "Which reporting needs and budget data should we prioritize?",
         context,

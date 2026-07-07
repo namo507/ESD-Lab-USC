@@ -77,6 +77,11 @@ interface Message {
   streaming?: boolean;
 }
 
+type MessageTextBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "bullets"; items: string[] }
+  | { kind: "numbers"; items: string[] };
+
 function makeId(prefix: string): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return `${prefix}-${crypto.randomUUID()}`;
@@ -89,6 +94,105 @@ function normalizeHistory(messages: Message[]): ChatMessage[] {
     role: message.role === "you" ? "user" : "assistant",
     content: message.text,
   }));
+}
+
+export function parseMessageText(text: string): MessageTextBlock[] {
+  const blocks: MessageTextBlock[] = [];
+  let paragraph: string[] = [];
+  let bullets: string[] = [];
+  let numbers: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push({ kind: "paragraph", text: paragraph.join(" ") });
+    paragraph = [];
+  };
+
+  const flushBullets = () => {
+    if (!bullets.length) return;
+    blocks.push({ kind: "bullets", items: bullets });
+    bullets = [];
+  };
+
+  const flushNumbers = () => {
+    if (!numbers.length) return;
+    blocks.push({ kind: "numbers", items: numbers });
+    numbers = [];
+  };
+
+  const flushLists = () => {
+    flushBullets();
+    flushNumbers();
+  };
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushLists();
+      continue;
+    }
+
+    const bullet = line.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      flushNumbers();
+      bullets.push(bullet[1] ?? "");
+      continue;
+    }
+
+    const numbered = line.match(/^\d+[\.)]\s+(.+)$/);
+    if (numbered) {
+      flushParagraph();
+      flushBullets();
+      numbers.push(numbered[1] ?? "");
+      continue;
+    }
+
+    flushLists();
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  flushLists();
+
+  return blocks;
+}
+
+export function MessageText({ text }: { text: string }) {
+  const blocks = parseMessageText(text);
+
+  return (
+    <div className={styles.messageText}>
+      {blocks.map((block, index) => {
+        if (block.kind === "bullets") {
+          return (
+            <ul key={`bullets-${index}`} className={styles.messageList}>
+              {block.items.map((item, itemIndex) => (
+                <li key={`${index}-${itemIndex}`}>{item}</li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (block.kind === "numbers") {
+          return (
+            <ol key={`numbers-${index}`} className={styles.messageList}>
+              {block.items.map((item, itemIndex) => (
+                <li key={`${index}-${itemIndex}`}>{item}</li>
+              ))}
+            </ol>
+          );
+        }
+
+        return (
+          <p key={`paragraph-${index}`} className={styles.messageParagraph}>
+            {block.text}
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ChatDrawer() {
@@ -338,7 +442,9 @@ export function ChatDrawer() {
                 {message.role === "you" ? "You" : "AI"}
               </div>
               <div className={`${styles.bubble} ${message.role === "you" ? styles.youBubble : ""} ${message.streaming ? styles.thinking : ""}`}>
-                {message.text || (
+                {message.text ? (
+                  <MessageText text={message.text} />
+                ) : (
                   <span className={styles.dots} aria-label="Assistant is thinking">
                     <span />
                     <span />
