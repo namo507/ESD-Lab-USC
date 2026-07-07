@@ -8,7 +8,7 @@ vi.mock("@/lib/audit", () => ({
   logAudit: logAuditMock,
 }));
 
-import { fetchAssistantStatus, streamChat } from "@/api/chatApi";
+import { fetchAssistantStatus, fetchLiveAssistantStatus, streamChat } from "@/api/chatApi";
 
 function makeNdjsonResponse(lines: string[]): Response {
   const encoder = new TextEncoder();
@@ -119,8 +119,12 @@ describe("chatApi", () => {
       status: "ready",
       error: null,
       model: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+      endpoint: null,
+      transport: "edge",
       fallback: false,
+      freshness: undefined,
       message: null,
+      origin: null,
       reason: null,
     });
   });
@@ -145,9 +149,101 @@ describe("chatApi", () => {
       status: "fallback",
       error: "Pages fallback assistant is active because the live assistant origin is unavailable.",
       model: "pages://fallback-assistant",
+      endpoint: null,
+      transport: "edge",
       fallback: true,
+      freshness: undefined,
       message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+      origin: null,
       reason: "upstream-530",
     });
+  });
+
+  it("prefers LM Studio before the local backend when the edge assistant is only fallback", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          status: "ready",
+          ready: true,
+          model: "pages://fallback-assistant",
+          reason: "upstream-530",
+          message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          data: [{ id: "lmstudio/Qwen3-8B-GGUF" }],
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({
+          ready: true,
+          state: "ready",
+          model_id: "BioMistral/BioMistral-7B-GGUF",
+          model_label: "BioMistral 7B",
+        }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+
+    global.fetch = fetchMock as typeof global.fetch;
+
+    await expect(fetchLiveAssistantStatus()).resolves.toEqual({
+      status: "ready",
+      error: null,
+      model: "lmstudio/Qwen3-8B-GGUF",
+      model_label: "Qwen3-8B-GGUF",
+      transport: "lmstudio",
+      endpoint: "http://localhost:1234/v1",
+      fallback: false,
+      message: null,
+      reason: "direct-lmstudio",
+    });
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/assistant/status");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("http://localhost:1234/v1/models");
+  });
+
+  it("routes chat through the local backend when the edge assistant is only fallback", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (input === "http://127.0.0.1:8080/api/assistant/chat") {
+        const body = JSON.parse(String(init?.body));
+        expect(body.message).toBe("What is HDA?");
+        return makeNdjsonResponse([
+          JSON.stringify({ delta: "Local " }),
+          JSON.stringify({ delta: "backend" }),
+          JSON.stringify({ done: true }),
+        ]);
+      }
+      throw new Error(`Unexpected request: ${String(input)}`);
+    });
+
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const chunks: string[] = [];
+    for await (const chunk of streamChat(
+      "What is HDA?",
+      [],
+      undefined,
+      {
+        status: "ready",
+        error: null,
+        model: "BioMistral/BioMistral-7B-GGUF",
+        transport: "local-backend",
+      },
+    )) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks.join("")).toBe("Local backend");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

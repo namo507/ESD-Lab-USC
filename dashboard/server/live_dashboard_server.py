@@ -3740,8 +3740,26 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         return str(repo_candidate)
 
     def end_headers(self) -> None:
+        request_path = urlparse(self.path).path
+        if request_path.startswith("/api/"):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header(
+                "Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS"
+            )
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Accept")
+            self.send_header("Access-Control-Allow-Private-Network", "true")
+            self.send_header("Access-Control-Max-Age", "600")
+            self.send_header("Vary", "Origin")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
+
+    def do_OPTIONS(self) -> None:
+        request_path = urlparse(self.path).path
+        if request_path.startswith("/api/"):
+            self.send_response(HTTPStatus.NO_CONTENT)
+            self.end_headers()
+            return
+        self.send_error(HTTPStatus.METHOD_NOT_ALLOWED, "OPTIONS not allowed")
 
     def log_message(self, format: str, *args: Any) -> None:
         logger.info("http | " + format, *args)

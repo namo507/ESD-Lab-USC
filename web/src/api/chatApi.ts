@@ -1,5 +1,6 @@
 import { logAudit } from "@/lib/audit";
 import { scrubPhi } from "@/lib/phiScrub";
+import { defaultLmStudioEndpoint, probeLmStudio, streamCompletion } from "@/lib/lmStudio";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -10,6 +11,9 @@ export interface AssistantStatus {
   status: "ready" | "unloaded" | "fallback" | "error";
   error: string | null;
   model: string | null;
+  transport?: "edge" | "local-backend" | "lmstudio";
+  endpoint?: string | null;
+  origin?: string | null;
   reason?: string | null;
   message?: string | null;
   fallback?: boolean;
@@ -66,6 +70,55 @@ interface ChatStreamChunk {
   error?: string;
 }
 
+const LOCAL_ASSISTANT_ORIGIN =
+  (import.meta.env.VITE_LOCAL_ASSISTANT_URL as string | undefined) ?? "http://127.0.0.1:8080";
+
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function alternateLocalOrigin(origin: string): string | null {
+  if (origin.includes("127.0.0.1")) return origin.replace("127.0.0.1", "localhost");
+  if (origin.includes("localhost")) return origin.replace("localhost", "127.0.0.1");
+  return null;
+}
+
+function localAssistantOrigins(): string[] {
+  return uniqueStrings([LOCAL_ASSISTANT_ORIGIN, alternateLocalOrigin(LOCAL_ASSISTANT_ORIGIN)]);
+}
+
+function alternateLmStudioEndpoint(endpoint: string): string | null {
+  if (endpoint.includes("127.0.0.1")) return endpoint.replace("127.0.0.1", "localhost");
+  if (endpoint.includes("localhost")) return endpoint.replace("localhost", "127.0.0.1");
+  return null;
+}
+
+function lmStudioEndpoints(): string[] {
+  const primary = defaultLmStudioEndpoint();
+  return uniqueStrings([primary, alternateLmStudioEndpoint(primary)]);
+}
+
+function isAbsoluteUrl(path: string): boolean {
+  return /^[a-z][a-z\d+\-.]*:\/\//i.test(path);
+}
+
+function withOrigin(origin: string | null, path: string): string {
+  if (!origin) return path;
+  return `${origin.replace(/\/$/, "")}${path}`;
+}
+
+function requestCredentials(path: string): RequestCredentials {
+  return isAbsoluteUrl(path) ? "omit" : "include";
+}
+
+function liveAssistantUnavailable(status?: AssistantStatus | null): Error {
+  return new Error(
+    status?.error
+      ?? status?.message
+      ?? "No live assistant is available. Start the local dashboard runtime or LM Studio.",
+  );
+}
+
 function isFallbackStatus(
   payload: AssistantStatusPayload,
   model: string | null,
@@ -78,7 +131,11 @@ function isFallbackStatus(
     || (typeof message === "string" && message.toLowerCase().includes("fallback assistant"));
 }
 
-function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
+function normalizeStatus(
+  payload: AssistantStatusPayload,
+  transport: AssistantStatus["transport"] = "edge",
+  target?: { endpoint?: string | null; origin?: string | null },
+): AssistantStatus {
   const model =
     typeof payload.model === "string"
       ? payload.model
@@ -107,6 +164,9 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
             ? payload.error
             : message,
       model,
+      transport,
+      endpoint: target?.endpoint ?? null,
+      origin: target?.origin ?? null,
       reason,
       message,
       fallback,
@@ -141,6 +201,9 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
     status,
     error: status === "ready" ? null : error,
     model,
+    transport,
+    endpoint: target?.endpoint ?? null,
+    origin: target?.origin ?? null,
     reason,
     message,
     fallback,
@@ -168,7 +231,7 @@ function scrubHistory(history: ChatMessage[]): ChatMessage[] {
 async function requestJson(path: string, init?: RequestInit): Promise<Response> {
   return fetch(path, {
     ...init,
-    credentials: "include",
+    credentials: requestCredentials(path),
     headers: {
       accept: "application/json",
       ...(init?.headers ?? {}),
@@ -179,7 +242,7 @@ async function requestJson(path: string, init?: RequestInit): Promise<Response> 
 async function requestNdjson(path: string, init?: RequestInit): Promise<Response> {
   return fetch(path, {
     ...init,
-    credentials: "include",
+    credentials: requestCredentials(path),
     headers: {
       accept: "application/x-ndjson",
       ...(init?.headers ?? {}),
@@ -209,14 +272,35 @@ export async function* streamChat(
   message: string,
   history: ChatMessage[],
   signal?: AbortSignal,
+  preferredStatus?: AssistantStatus | null,
 ): AsyncGenerator<string> {
+  if (preferredStatus && preferredStatus.status !== "ready") {
+    throw liveAssistantUnavailable(preferredStatus);
+  }
+
+  if (preferredStatus?.transport === "lmstudio") {
+    for await (const chunk of streamCompletion({
+      prompt: message,
+      history,
+      signal,
+      endpoint: preferredStatus.endpoint ?? defaultLmStudioEndpoint(),
+      model: preferredStatus.model ?? "local-model",
+    })) {
+      if (chunk.delta) yield chunk.delta;
+    }
+    return;
+  }
+
+  const backendOrigin = preferredStatus?.transport === "local-backend"
+    ? (preferredStatus.origin ?? LOCAL_ASSISTANT_ORIGIN)
+    : null;
   const cleanMessage = scrubPhi(message).text;
   const cleanHistory = scrubHistory(history);
 
   await logAudit({ action: "run.trigger", scope: "/assistant/chat" });
 
   const body = JSON.stringify({ message: cleanMessage, history: cleanHistory });
-  let response = await requestNdjson("/api/assistant/chat", {
+  let response = await requestNdjson(withOrigin(backendOrigin, "/api/assistant/chat"), {
     method: "POST",
     body,
     signal,
@@ -224,7 +308,7 @@ export async function* streamChat(
   });
 
   if (response.status === 404 || response.status === 405) {
-    response = await requestJson("/api/chat", {
+    response = await requestJson(withOrigin(backendOrigin, "/api/chat"), {
       method: "POST",
       body,
       signal,
@@ -276,11 +360,14 @@ export async function* streamChat(
   }
 }
 
-export async function fetchAssistantStatus(): Promise<AssistantStatus> {
-  let response = await requestJson("/api/assistant/status");
+async function fetchStatusAt(
+  origin: string | null,
+  transport: AssistantStatus["transport"],
+): Promise<AssistantStatus> {
+  let response = await requestJson(withOrigin(origin, "/api/assistant/status"));
 
   if (response.status === 404 || response.status === 405) {
-    response = await requestJson("/api/chat/status");
+    response = await requestJson(withOrigin(origin, "/api/chat/status"));
   }
 
   if (!response.ok) {
@@ -288,5 +375,83 @@ export async function fetchAssistantStatus(): Promise<AssistantStatus> {
   }
 
   const payload = (await response.json()) as AssistantStatusPayload;
-  return normalizeStatus(payload);
+  return normalizeStatus(payload, transport, { origin });
+}
+
+export async function fetchLmStudioAssistantStatus(endpoint?: string): Promise<AssistantStatus> {
+  const resolvedEndpoint = endpoint ?? defaultLmStudioEndpoint();
+  const status = await probeLmStudio(resolvedEndpoint);
+  return {
+    status: status.ready ? "ready" : "error",
+    error: status.ready ? null : "LM Studio is not reachable.",
+    model: status.model ?? "lmstudio://local-model",
+    model_label: status.modelLabel,
+    transport: "lmstudio",
+    endpoint: status.endpoint,
+    message: status.ready ? null : "LM Studio is not reachable.",
+    reason: status.ready ? "direct-lmstudio" : "lmstudio-unavailable",
+    fallback: false,
+  };
+}
+
+export async function fetchLiveAssistantStatus(): Promise<AssistantStatus> {
+  let edgeStatus: AssistantStatus | null = null;
+  try {
+    edgeStatus = await fetchStatusAt(null, "edge");
+    if (edgeStatus.status === "ready" && !edgeStatus.fallback) {
+      return edgeStatus;
+    }
+  } catch (error) {
+    edgeStatus = {
+      status: "error",
+      error: error instanceof Error ? error.message : "Assistant unavailable.",
+      model: null,
+      transport: "edge",
+      fallback: false,
+      message: error instanceof Error ? error.message : "Assistant unavailable.",
+      reason: "edge-unavailable",
+    };
+  }
+
+  for (const endpoint of lmStudioEndpoints()) {
+    try {
+      return await fetchLmStudioAssistantStatus(endpoint);
+    } catch {
+      // try next local LM Studio endpoint candidate
+    }
+  }
+
+  for (const origin of localAssistantOrigins()) {
+    try {
+      const localStatus = await fetchStatusAt(origin, "local-backend");
+      if (localStatus.status === "ready" && !localStatus.fallback) {
+        return localStatus;
+      }
+    } catch {
+      // local backend optional
+    }
+  }
+
+  if (edgeStatus) {
+    const message = liveAssistantUnavailable(edgeStatus).message;
+    return {
+      ...edgeStatus,
+      error: message,
+      message,
+    };
+  }
+
+  return {
+    status: "error",
+    error: "No live assistant is available. Start the local dashboard runtime or LM Studio.",
+    model: null,
+    transport: "edge",
+    fallback: false,
+    message: "No live assistant is available. Start the local dashboard runtime or LM Studio.",
+    reason: "no-live-assistant",
+  };
+}
+
+export async function fetchAssistantStatus(): Promise<AssistantStatus> {
+  return fetchStatusAt(null, "edge");
 }

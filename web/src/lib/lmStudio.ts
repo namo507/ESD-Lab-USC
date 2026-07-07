@@ -28,6 +28,14 @@ const SYSTEM_PROMPT =
 export interface LMRequest {
   prompt: string;
   signal?: AbortSignal;
+  history?: LMMessage[];
+  endpoint?: string;
+  model?: string;
+}
+
+export interface LMMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface LMStreamEvent {
@@ -40,6 +48,44 @@ export interface LMResult {
   endpoint: string;
 }
 
+export interface LMStatus {
+  ready: boolean;
+  endpoint: string;
+  model: string | null;
+  modelLabel: string | null;
+}
+
+function scrubHistory(history: LMMessage[] | undefined): LMMessage[] {
+  return (history ?? []).map((message) => {
+    if (message.role !== "user") return message;
+    return {
+      ...message,
+      content: scrubPhi(message.content).text,
+    };
+  });
+}
+
+export function defaultLmStudioEndpoint(): string {
+  return DEFAULT_ENDPOINT;
+}
+
+export async function probeLmStudio(endpoint = DEFAULT_ENDPOINT): Promise<LMStatus> {
+  const res = await fetch(`${endpoint}/models`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) {
+    throw new Error(`LM Studio: ${res.status} ${res.statusText}`);
+  }
+  const payload = await res.json() as { data?: Array<{ id?: string }> };
+  const model = typeof payload.data?.[0]?.id === "string" ? payload.data[0].id : null;
+  return {
+    ready: true,
+    endpoint,
+    model,
+    modelLabel: model ? model.split("/").pop() ?? model : "LM Studio local model",
+  };
+}
+
 /**
  * Stream a prompt through LM Studio. The async iterator yields incremental
  * deltas suitable for typewriter rendering. Returns the scrub result so the
@@ -49,7 +95,9 @@ export async function* streamCompletion(
   req: LMRequest,
 ): AsyncGenerator<LMStreamEvent, LMResult, void> {
   const scrub = scrubPhi(req.prompt);
-  const endpoint = `${DEFAULT_ENDPOINT}/chat/completions`;
+  const endpointRoot = req.endpoint ?? DEFAULT_ENDPOINT;
+  const endpoint = `${endpointRoot}/chat/completions`;
+  const history = scrubHistory(req.history);
   void logAudit({
     action: "run.trigger",
     scope: "/agentic/lmstudio",
@@ -65,10 +113,11 @@ export async function* streamCompletion(
     signal: req.signal,
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      model: "local-model",
+      model: req.model ?? "local-model",
       stream: true,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
+        ...history,
         { role: "user", content: scrub.text },
       ],
       temperature: 0.2,

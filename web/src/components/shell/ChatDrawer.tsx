@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { Send, Sparkles, X } from "lucide-react";
-import { fetchAssistantStatus, streamChat, type AssistantStatus, type ChatMessage } from "@/api/chatApi";
+import { fetchLiveAssistantStatus, streamChat, type AssistantStatus, type ChatMessage } from "@/api/chatApi";
 import { FastPaths, type FastPathPrompt } from "@/components/warm/FastPaths";
 import { AmbientOrbit } from "@/components/warm/AmbientOrbit";
 import { HELP_ASSISTANT_FAST_PATHS } from "@/data/helpContent";
@@ -116,7 +116,7 @@ export function ChatDrawer() {
   const refreshStatus = useCallback(async () => {
     setStatusBusy(true);
     try {
-      setStatus(await fetchAssistantStatus());
+      setStatus(await fetchLiveAssistantStatus());
     } catch (error) {
       setStatus({
         status: "error",
@@ -143,6 +143,24 @@ export function ChatDrawer() {
     const question = (text ?? input).trim();
     if (!question || busy) return;
 
+    let liveStatus = status;
+    if (!liveStatus || statusBusy || liveStatus.status !== "ready") {
+      setStatusBusy(true);
+      try {
+        liveStatus = await fetchLiveAssistantStatus();
+        setStatus(liveStatus);
+      } catch (error) {
+        liveStatus = {
+          status: "error",
+          error: error instanceof Error ? error.message : "Assistant unavailable.",
+          model: null,
+        };
+        setStatus(liveStatus);
+      } finally {
+        setStatusBusy(false);
+      }
+    }
+
     const history = normalizeHistory(messages);
     const assistantId = makeId("assistant");
     const controller = new AbortController();
@@ -161,7 +179,7 @@ export function ChatDrawer() {
 
     try {
       let reply = "";
-      for await (const delta of streamChat(question, history, controller.signal)) {
+      for await (const delta of streamChat(question, history, controller.signal, liveStatus)) {
         reply += delta;
         setMessages((current) =>
           current.map((message) => (
@@ -203,7 +221,7 @@ export function ChatDrawer() {
       setBusy(false);
       abortRef.current = null;
     }
-  }, [busy, input, messages, refreshStatus]);
+  }, [busy, input, messages, refreshStatus, status, statusBusy]);
 
   useEffect(() => {
     sendRef.current = send;
@@ -214,6 +232,8 @@ export function ChatDrawer() {
       abortRef.current?.abort();
       return;
     }
+
+    void refreshStatus();
 
     const timer = window.setTimeout(() => textareaRef.current?.focus(), 80);
     const seed = consumeChatSeed();
@@ -240,11 +260,18 @@ export function ChatDrawer() {
   }, []);
 
   const statusTone = statusBusy ? "loading" : status?.status === "ready" ? "ready" : "error";
-  const modelDisplay = status?.model_label || status?.model?.split("/").pop() || "model";
+  const modelDisplay = status?.model_label
+    || (status?.transport === "lmstudio" ? "LM Studio local model" : null)
+    || status?.model?.split("/").pop()
+    || "model";
   const statusLabel = statusBusy
     ? "loading…"
     : status?.status === "ready"
-      ? `ready · ${modelDisplay}`
+      ? status.transport === "lmstudio"
+        ? `ready · ${modelDisplay}`
+        : status.transport === "local-backend"
+          ? `ready · ${modelDisplay}`
+          : `ready · ${modelDisplay}`
       : status?.status === "fallback"
         ? "fallback · live origin unavailable"
       : status?.status === "unloaded"
