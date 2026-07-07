@@ -149,13 +149,15 @@ async function redcapProxy(request, env) {
 
 function assistantStatus(reason = "upstream-unavailable") {
   return {
-    status: "ready",
-    ready: true,
-    state: "ready",
-    error: null,
+    status: "fallback",
+    ready: false,
+    state: "fallback",
+    error:
+      "Pages fallback assistant is active because the live assistant origin is unavailable.",
     model: "pages://fallback-assistant",
     message:
-      "Pages fallback assistant is active because the optional live Python assistant origin is unavailable.",
+      "Pages fallback assistant is active because the live assistant origin is unavailable.",
+    fallback: true,
     reason,
     freshness: {
       readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },

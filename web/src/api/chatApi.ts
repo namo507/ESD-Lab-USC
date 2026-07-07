@@ -7,9 +7,12 @@ export interface ChatMessage {
 }
 
 export interface AssistantStatus {
-  status: "ready" | "unloaded" | "error";
+  status: "ready" | "unloaded" | "fallback" | "error";
   error: string | null;
   model: string | null;
+  reason?: string | null;
+  message?: string | null;
+  fallback?: boolean;
   model_tier?: string | null;
   model_label?: string | null;
   model_license?: string | null;
@@ -39,6 +42,8 @@ interface AssistantStatusPayload {
   status?: unknown;
   error?: unknown;
   model?: unknown;
+  reason?: unknown;
+  fallback?: unknown;
   model_tier?: unknown;
   model_label?: unknown;
   model_license?: unknown;
@@ -61,21 +66,50 @@ interface ChatStreamChunk {
   error?: string;
 }
 
+function isFallbackStatus(
+  payload: AssistantStatusPayload,
+  model: string | null,
+  message: string | null,
+  reason: string | null,
+): boolean {
+  return payload.fallback === true
+    || model === "pages://fallback-assistant"
+    || (typeof reason === "string" && reason.startsWith("upstream-"))
+    || (typeof message === "string" && message.toLowerCase().includes("fallback assistant"));
+}
+
 function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
+  const model =
+    typeof payload.model === "string"
+      ? payload.model
+      : typeof payload.model_id === "string"
+        ? payload.model_id
+        : null;
+  const message = typeof payload.message === "string" ? payload.message : null;
+  const reason = typeof payload.reason === "string" ? payload.reason : null;
+  const fallback = isFallbackStatus(payload, model, message, reason);
+
   if (
     payload.status === "ready"
     || payload.status === "unloaded"
+    || payload.status === "fallback"
     || payload.status === "error"
   ) {
+    const normalizedStatus: AssistantStatus["status"] = fallback && payload.status === "ready"
+      ? "fallback"
+      : payload.status;
     const status: AssistantStatus = {
-      status: payload.status,
-      error: typeof payload.error === "string" ? payload.error : null,
-      model:
-        typeof payload.model === "string"
-          ? payload.model
-          : typeof payload.model_id === "string"
-            ? payload.model_id
-            : null,
+      status: normalizedStatus,
+      error:
+        normalizedStatus === "ready"
+          ? null
+          : typeof payload.error === "string"
+            ? payload.error
+            : message,
+      model,
+      reason,
+      message,
+      fallback,
       freshness:
         payload.freshness && typeof payload.freshness === "object"
           ? (payload.freshness as AssistantStatus["freshness"])
@@ -92,14 +126,12 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
   const error =
     typeof payload.last_error === "string"
       ? payload.last_error
-      : typeof payload.message === "string"
-        ? payload.message
-        : typeof payload.error === "string"
-          ? payload.error
-          : null;
+      : message ?? (typeof payload.error === "string" ? payload.error : null);
 
   let status: AssistantStatus["status"] = "error";
-  if (ready) {
+  if (fallback) {
+    status = "fallback";
+  } else if (ready) {
     status = "ready";
   } else if (state && ["disabled", "model-missing", "unloaded"].includes(state)) {
     status = "unloaded";
@@ -108,12 +140,10 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
   const statusPayload: AssistantStatus = {
     status,
     error: status === "ready" ? null : error,
-    model:
-      typeof payload.model === "string"
-        ? payload.model
-        : typeof payload.model_id === "string"
-          ? payload.model_id
-          : null,
+    model,
+    reason,
+    message,
+    fallback,
     freshness:
       payload.freshness && typeof payload.freshness === "object"
         ? (payload.freshness as AssistantStatus["freshness"])

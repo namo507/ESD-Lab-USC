@@ -48,6 +48,7 @@ jobs:
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
       CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
+      PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || '' }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -134,4 +135,5 @@ jobs:
             --canonical-url https://esd-lab-namo.pages.dev/ \
             --runtime-url https://runtime-share.esd-lab-namo.pages.dev/ \
             --timeout 30 \
-            --max-stamp-age-hours 24
+            --max-stamp-age-hours 24 \
+            --probe-api-origin

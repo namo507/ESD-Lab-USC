@@ -76,6 +76,8 @@ export function PresentationMaker() {
     ? "checking assistant…"
     : assistantReady
       ? `assistant ready · ${status.data?.model?.split("/").pop() ?? "local model"}`
+      : status.data?.status === "fallback"
+        ? "assistant fallback active"
       : status.data?.status === "unloaded"
         ? "assistant model unavailable"
         : "assistant offline";

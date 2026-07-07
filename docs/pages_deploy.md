@@ -24,7 +24,7 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 
 - The public Pages site serves the React SPA from `web/build/`.
 - Dashboard data is intentionally mocked in production by building with `VITE_USE_MOCKS=true`.
-- Live assistant chat still works because the build emits a Cloudflare Pages `_worker.js` file that proxies `/api/*` to the currently shared assistant backend.
+- Live assistant chat works only when the build emits a Cloudflare Pages `_worker.js` file that proxies `/api/*` to a healthy live assistant origin. The health checks now treat the Pages fallback assistant as a failure instead of a healthy ready state.
 - External `200` rewrites in `_redirects` are not enough for this on Cloudflare Pages because Pages only supports proxy-style rewrites to relative paths on the same site.
 
 ## How a change reaches production
@@ -49,6 +49,12 @@ Start a live assistant backend and quick tunnel:
 
 ```bash
 bash scripts/share_dashboard.sh --continuous --mode quick
+```
+
+For a one-shot share, publish the canonical Pages worker in the same run:
+
+```bash
+AUTO_DEPLOY_CANONICAL_PAGES=true bash scripts/share_dashboard.sh --mode quick
 ```
 
 Package the Pages artifact against a known backend origin explicitly:
@@ -94,6 +100,8 @@ The workflows require two repo secrets:
 - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID for that Pages project.
 
 If you want unattended assistant proxying from GitHub Actions, also set a repo variable such as `PAGES_API_ORIGIN` to a stable backend origin. Without that, manual deploys can still package against the latest tunnel origin or manifest.
+
+Do not set `DASHBOARD_PUBLIC_HOSTNAME` to a `*.pages.dev` domain. Named tunnels require a hostname on a DNS zone you control in Cloudflare.
 
 ## Why this design
 

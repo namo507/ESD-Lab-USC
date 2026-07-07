@@ -235,8 +235,13 @@ make share-live
 
 `make share-live` runs in continuous quick-tunnel mode, keeps the local dashboard
 runtime and cloudflared tunnel alive, auto-restarts them if they stop, and rewrites
-the Pages wrapper target whenever the quick-tunnel hostname rotates so
-`https://esd-lab-namo.pages.dev/` stays current.
+the Pages wrapper target whenever the quick-tunnel hostname rotates, then
+republishes the canonical Pages worker when needed so
+`https://esd-lab-namo.pages.dev/` keeps pointing at a live assistant origin.
+
+If you use the one-shot share command instead, add
+`AUTO_DEPLOY_CANONICAL_PAGES=true` so the canonical Pages site is republished in
+that same run; otherwise only the runtime-share preview wrapper is refreshed.
 
 That command starts the local website runtime, starts the tunnel sidecar, and
 prints the active public site URL for the current session.

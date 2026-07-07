@@ -245,6 +245,8 @@ export function ChatDrawer() {
     ? "loading…"
     : status?.status === "ready"
       ? `ready · ${modelDisplay}`
+      : status?.status === "fallback"
+        ? "fallback · live origin unavailable"
       : status?.status === "unloaded"
         ? "model unavailable"
         : "offline";

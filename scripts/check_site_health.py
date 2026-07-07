@@ -85,6 +85,27 @@ def _extract_api_origin(body: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _assistant_is_fallback(payload: dict[str, object]) -> bool:
+    model = payload.get("model")
+    model_id = payload.get("model_id")
+    reason = payload.get("reason")
+    message = (
+        payload.get("message")
+        or payload.get("error")
+        or payload.get("last_error")
+    )
+    return (
+        payload.get("fallback") is True
+        or model == "pages://fallback-assistant"
+        or model_id == "pages://fallback-assistant"
+        or (isinstance(reason, str) and reason.startswith("upstream-"))
+        or (
+            isinstance(message, str)
+            and "fallback assistant" in message.lower()
+        )
+    )
+
+
 def _probe_assistant_status(
     base_url: str,
     assistant_status_path: str,
@@ -125,9 +146,10 @@ def _probe_assistant_status(
     message = (
         payload.get("message") if isinstance(payload.get("message"), str) else None
     )
+    fallback = _assistant_is_fallback(payload)
 
     status = payload.get("status") if isinstance(payload.get("status"), str) else None
-    if status in {"ready", "unloaded", "error"}:
+    if status in {"ready", "unloaded", "fallback", "error"}:
         state = status
         ready = status == "ready"
         if not message:
@@ -135,6 +157,12 @@ def _probe_assistant_status(
                 payload.get("error") if isinstance(payload.get("error"), str) else None
             )
             message = error
+
+    if fallback:
+        ready = False
+        state = "fallback"
+        if not message:
+            message = "Pages fallback assistant is active because the live assistant origin is unavailable."
 
     if require_ready and ready is not True:
         detail = message or state or "assistant not ready"

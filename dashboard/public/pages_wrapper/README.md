@@ -1,9 +1,9 @@
-# Cloudflare Pages wrapper — `esd-lab-namo.pages.dev`
+# Cloudflare Pages runtime wrapper — `runtime-share.esd-lab-namo.pages.dev`
 
 This folder is the **canonical, tracked source** for the Cloudflare Pages
 runtime-preview wrapper that the team uses for a stable tunnel-backed preview URL:
 
-> Canonical public URL: **https://esd-lab-namo.pages.dev/**
+> Runtime preview URL: **https://runtime-share.esd-lab-namo.pages.dev/**
 
 The wrapper is a tiny static page that iframes whichever local site origin is
 currently live (named tunnel or quick tunnel). The wrapper's **own URL never

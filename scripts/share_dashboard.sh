@@ -127,6 +127,10 @@ case "$mode" in
     ;;
 esac
 
+if [[ -z "${AUTO_DEPLOY_CANONICAL_PAGES:-}" && "$use_named" == "true" ]]; then
+  publish_canonical_pages="true"
+fi
+
 if [[ "$use_named" == "true" ]]; then
   share_service="dashboard-share-named"
 fi
@@ -325,13 +329,111 @@ auto_deploy_canonical_pages_site() {
 }
 
 canonical_pages_assistant_healthy() {
-  curl -fsS --max-time 20 "${PAGES_CANONICAL_URL}api/assistant/status" >/dev/null 2>&1
+  assistant_status_healthy "${PAGES_CANONICAL_URL}"
 }
 
 origin_healthy() {
   local origin="$1"
   local base="${origin%/}"
   curl -fsS --max-time 15 "${base}/api/healthz" >/dev/null 2>&1
+}
+
+assistant_status_healthy() {
+  local origin="$1"
+  local base="${origin%/}"
+  local status_url="${base}/api/assistant/status"
+  local python_bin
+  python_bin="$(resolve_python 2>/dev/null || true)"
+
+  if [[ -n "$python_bin" ]]; then
+    ASSISTANT_STATUS_URL="$status_url" "$python_bin" - <<'PY' >/dev/null 2>&1
+import json
+import os
+import sys
+import urllib.request
+
+
+def is_fallback(payload: dict[str, object]) -> bool:
+    model = payload.get("model") or payload.get("model_id") or ""
+    message = payload.get("message") or payload.get("error") or payload.get("last_error") or ""
+    reason = payload.get("reason") or ""
+    return (
+        payload.get("fallback") is True
+        or model == "pages://fallback-assistant"
+        or (isinstance(reason, str) and reason.startswith("upstream-"))
+        or (isinstance(message, str) and "fallback assistant" in message.lower())
+    )
+
+
+url = os.environ["ASSISTANT_STATUS_URL"]
+with urllib.request.urlopen(url, timeout=20) as response:
+    payload = json.load(response)
+
+status = payload.get("status")
+state = payload.get("state")
+ready = payload.get("ready") is True or status == "ready"
+
+if is_fallback(payload):
+    raise SystemExit(2)
+if ready or state == "ready":
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+    return $?
+  fi
+
+  local payload
+  payload="$(curl -fsS --max-time 20 "$status_url" 2>/dev/null || true)"
+  [[ -n "$payload" ]] \
+    && [[ "$payload" != *'pages://fallback-assistant'* ]] \
+    && [[ "$payload" == *'"status":"ready"'* || "$payload" == *'"ready":true'* ]]
+}
+
+runtime_preview_healthy() {
+  curl -fsS --max-time 20 "$PAGES_RUNTIME_PREVIEW" >/dev/null 2>&1
+}
+
+run_share_health_checks() {
+  local origin_url="$1"
+  local kind="$2"
+  local failed=0
+
+  echo
+  echo "Health checks:"
+
+  if origin_healthy "$origin_url" && assistant_status_healthy "$origin_url"; then
+    echo "  PASS origin assistant → ${origin_url}"
+  else
+    echo "  FAIL origin assistant → ${origin_url}"
+    failed=1
+  fi
+
+  if [[ "$kind" == "quick" ]]; then
+    if runtime_preview_healthy; then
+      echo "  PASS runtime preview shell → ${PAGES_RUNTIME_PREVIEW}"
+    else
+      echo "  FAIL runtime preview shell → ${PAGES_RUNTIME_PREVIEW}"
+      failed=1
+    fi
+  fi
+
+  if canonical_pages_assistant_healthy; then
+    echo "  PASS canonical Pages assistant → ${PAGES_CANONICAL_URL}"
+  else
+    echo "  FAIL canonical Pages assistant → ${PAGES_CANONICAL_URL}"
+    if [[ "$publish_canonical_pages" != "true" ]]; then
+      echo "       Hint: rerun with AUTO_DEPLOY_CANONICAL_PAGES=true or use 'make share-live'."
+    fi
+    failed=1
+  fi
+
+  if [[ "$failed" -eq 0 ]]; then
+    echo "Share health: PASS"
+    return 0
+  fi
+
+  echo "Share health: FAIL"
+  return 1
 }
 
 # Print the result block. `origin_url` is the cloudflared origin (https://...).
@@ -446,6 +548,8 @@ EOF
 The named-tunnel hostname stays the same as long as the tunnel keeps running.
 EOF
   fi
+
+  run_share_health_checks "$origin_url" "$kind"
 }
 
 print_host_tunnel_result() {
@@ -480,7 +584,7 @@ print_host_tunnel_result() {
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
       named_registered="true"
       if named_hostname_ready; then
-        emit_result "https://${public_hostname}/" "named"
+        emit_result "https://${public_hostname}/" "named" || return 1
         return 0
       fi
     fi
@@ -488,7 +592,7 @@ print_host_tunnel_result() {
       quick_url="$url"
       quick_registered="true"
       if origin_healthy "${url}/"; then
-        emit_result "${url}/" "quick"
+        emit_result "${url}/" "quick" || return 1
         return 0
       fi
     fi
@@ -502,7 +606,7 @@ print_host_tunnel_result() {
   elif [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
     echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
     echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
-    emit_result "${quick_url}/" "quick"
+    emit_result "${quick_url}/" "quick" || return 1
     return 0
   else
     echo "Timed out waiting for the tunnel URL." >&2
@@ -534,7 +638,7 @@ share_with_docker() {
     registered="$(printf '%s\n' "$recent_logs" | grep -F 'Registered tunnel connection' | tail -n 1 || true)"
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
       if origin_healthy "https://${public_hostname}/"; then
-        emit_result "https://${public_hostname}/" "named"
+        emit_result "https://${public_hostname}/" "named" || return 1
         return 0
       fi
     fi
@@ -542,7 +646,7 @@ share_with_docker() {
       quick_url="$url"
       quick_registered="true"
       if origin_healthy "${url}/"; then
-        emit_result "${url}/" "quick"
+        emit_result "${url}/" "quick" || return 1
         return 0
       fi
     fi
@@ -552,7 +656,7 @@ share_with_docker() {
   if [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
     echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
     echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
-    emit_result "${quick_url}/" "quick"
+    emit_result "${quick_url}/" "quick" || return 1
     return 0
   fi
 

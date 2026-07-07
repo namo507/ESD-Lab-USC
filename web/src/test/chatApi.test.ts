@@ -119,6 +119,35 @@ describe("chatApi", () => {
       status: "ready",
       error: null,
       model: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+      fallback: false,
+      message: null,
+      reason: null,
+    });
+  });
+
+  it("marks the Pages fallback assistant as unhealthy even when the edge says ready", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "ready",
+        ready: true,
+        model: "pages://fallback-assistant",
+        reason: "upstream-530",
+        message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    global.fetch = fetchMock as typeof global.fetch;
+
+    await expect(fetchAssistantStatus()).resolves.toEqual({
+      status: "fallback",
+      error: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+      model: "pages://fallback-assistant",
+      fallback: true,
+      message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+      reason: "upstream-530",
     });
   });
 });

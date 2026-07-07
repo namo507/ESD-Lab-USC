@@ -40,6 +40,7 @@ jobs:
             --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
             --timeout 25 \
             --max-stamp-age-hours 168 \
+            --probe-api-origin \
             >> probe.log 2>&1
           rc=$?
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
@@ -74,6 +75,7 @@ jobs:
             --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
             --timeout 25 \
             --max-stamp-age-hours 168 \
+            --probe-api-origin \
             >> probe.log 2>&1
           recovery_rc=$?
           if [ "$recovery_rc" -eq 0 ]; then
@@ -102,7 +104,7 @@ jobs:
               "",
               "A redeploy has been requested automatically.",
               "If the failing probe references a stale trycloudflare api-origin,",
-              "restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin.",
+              "restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin, or update the `PAGES_API_ORIGIN` repo variable to a stable named tunnel.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
