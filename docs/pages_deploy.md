@@ -51,6 +51,14 @@ Start a live assistant backend and quick tunnel:
 bash scripts/share_dashboard.sh --continuous --mode quick
 ```
 
+The share scripts default Cloudflare Tunnel to HTTP/2 transport because the
+current quick-tunnel path can stall on QUIC when outbound UDP 7844 is blocked or
+unstable. Override only when the network is known-good:
+
+```bash
+CLOUDFLARE_TUNNEL_PROTOCOL=auto bash scripts/share_dashboard.sh --mode quick
+```
+
 For a one-shot share, publish the canonical Pages worker in the same run:
 
 ```bash
@@ -90,6 +98,20 @@ curl https://esd-lab-namo.pages.dev/api/assistant/status
 curl -X POST https://esd-lab-namo.pages.dev/api/chat \
   -H 'Content-Type: application/json' \
   --data '{"message":"How many indexed readings are available?","history":[]}'
+```
+
+If the status returns `pages://fallback-assistant`, inspect the live
+`esd-api-origin` meta tag and verify that origin directly:
+
+```bash
+curl https://esd-lab-namo.pages.dev/ | tr '<' '\n' | grep esd-api-origin
+curl https://<origin-host>/api/assistant/status
+```
+
+Then republish with a healthy origin:
+
+```bash
+AUTO_DEPLOY_CANONICAL_PAGES=true bash scripts/share_dashboard.sh --mode quick
 ```
 
 ## One-time setup

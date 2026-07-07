@@ -67,6 +67,16 @@ Opt into a different tier for one run:
 DASHBOARD_ASSISTANT_TIER=balanced make assistant-bootstrap
 ```
 
+The public Pages dashboard does not call LM Studio directly. The browser calls
+same-origin `/api/assistant/*`; the Pages worker proxies that to the current
+local dashboard backend origin. If the baked worker origin is stale, the UI will
+show `fallback-assistant` even when the local llama-cpp assistant is healthy.
+Refresh the tunnel and republish the worker with:
+
+```bash
+AUTO_DEPLOY_CANONICAL_PAGES=true bash scripts/share_dashboard.sh --mode quick
+```
+
 No `HF_TOKEN` is needed for the default public BioMistral GGUF file. `HF_TOKEN`
 is only read if someone intentionally points the config at a gated or private
 Hugging Face repo.

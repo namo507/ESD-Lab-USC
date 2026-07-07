@@ -14,6 +14,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 import check_docker_health  # noqa: E402
+import check_compose_config  # noqa: E402
 import check_live_surfaces  # noqa: E402
 
 
@@ -88,6 +89,17 @@ def test_compose_health_requires_every_requested_service(monkeypatch, tmp_path):
             ["dashboard", "dashboard-share"],
             [],
         )
+
+
+def test_share_compose_defaults_cloudflared_to_http2():
+    root = Path(__file__).resolve().parents[1]
+    for compose_file in [
+        root / "docker-compose.yml",
+        root / "docker" / "compose.dev.yml",
+        root / "docker" / "compose.prod.yml",
+    ]:
+        errors = check_compose_config.validate_compose(compose_file)
+        assert errors == []
 
 
 def test_repair_compose_services_targets_requested_services(monkeypatch, tmp_path):

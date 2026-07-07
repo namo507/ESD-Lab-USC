@@ -188,14 +188,14 @@ resolve_python() {
   do
     if [[ -n "$candidate" && -x "$candidate" ]] && "$candidate" - <<'PY' >/dev/null 2>&1; then
 import sys
-raise SystemExit(0 if sys.version_info >= (3, 10) else 1)
+raise SystemExit(0 if sys.version_info >= (3, 9) else 1)
 PY
       printf '%s\n' "$candidate"
       return 0
     fi
   done
 
-  echo "No Python 3.10+ interpreter was found. Set DASHBOARD_PYTHON to a compatible runtime." >&2
+  echo "No Python 3.9+ interpreter was found. Set DASHBOARD_PYTHON to a compatible runtime." >&2
   return 1
 }
 
@@ -273,6 +273,7 @@ ensure_cloudflared() {
 
 start_cloudflared() {
   local cloudflared_bin="$1"
+  local tunnel_protocol="${CLOUDFLARE_TUNNEL_PROTOCOL:-${TUNNEL_TRANSPORT_PROTOCOL:-http2}}"
   local cloudflared_env=(
     env
     -u CLOUDFLARE_TUNNEL_TOKEN
@@ -281,6 +282,7 @@ start_cloudflared() {
     -u CLOUDFLARE_TUNNEL_NAME
     -u TUNNEL_TOKEN
     -u TUNNEL_ORIGIN_CERT
+    "TUNNEL_TRANSPORT_PROTOCOL=${tunnel_protocol}"
   )
 
   if [[ "$use_named" == "true" ]]; then
@@ -384,9 +386,11 @@ PY
 
   local payload
   payload="$(curl -fsS --max-time 20 "$status_url" 2>/dev/null || true)"
-  [[ -n "$payload" ]] \
-    && [[ "$payload" != *'pages://fallback-assistant'* ]] \
-    && [[ "$payload" == *'"status":"ready"'* || "$payload" == *'"ready":true'* ]]
+  local compact
+  compact="$(printf '%s' "$payload" | tr -d '[:space:]')"
+  [[ -n "$compact" ]] \
+    && [[ "$compact" != *'pages://fallback-assistant'* ]] \
+    && [[ "$compact" == *'"status":"ready"'* || "$compact" == *'"ready":true'* ]]
 }
 
 runtime_preview_healthy() {
@@ -605,9 +609,9 @@ print_host_tunnel_result() {
     echo "Check that the zone for ${public_hostname#*.} is active in Cloudflare and that public DNS for ${public_hostname} points to ${CLOUDFLARE_TUNNEL_ID:-<tunnel-id>}.cfargotunnel.com." >&2
   elif [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
     echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
-    echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
-    emit_result "${quick_url}/" "quick" || return 1
-    return 0
+    echo "Refusing to deploy Pages against an origin that failed local health checks. Rerun to rotate the quick tunnel." >&2
+    safe_tail_tunnel_log 120 >&2
+    return 1
   else
     echo "Timed out waiting for the tunnel URL." >&2
   fi
@@ -655,9 +659,9 @@ share_with_docker() {
 
   if [[ "$use_named" == "false" && "$quick_registered" == "true" && -n "$quick_url" ]]; then
     echo "Quick tunnel registered, but local validation could not reach ${quick_url} before timeout." >&2
-    echo "Continuing with the registered quick-tunnel URL; verify reachability from the browser or with the Pages health check." >&2
-    emit_result "${quick_url}/" "quick" || return 1
-    return 0
+    echo "Refusing to deploy Pages against an origin that failed local health checks. Rerun to rotate the quick tunnel." >&2
+    docker compose -f "$COMPOSE_FILE" logs --tail=80 "$share_service" 2>&1 | redact_sensitive_output >&2 || true
+    return 1
   fi
 
   echo "Timed out waiting for the tunnel URL." >&2

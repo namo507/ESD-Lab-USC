@@ -1,7 +1,7 @@
 {
-  "dashboard_url": "https://screening-congressional-entered-sql.trycloudflare.com/",
-  "origin_host": "screening-congressional-entered-sql.trycloudflare.com",
+  "dashboard_url": "https://spend-wage-graham-congressional.trycloudflare.com/",
+  "origin_host": "spend-wage-graham-congressional.trycloudflare.com",
   "tunnel_kind": "quick",
-  "generated_at": "2026-07-07T17:40:15+00:00",
+  "generated_at": "2026-07-07T19:31:41+00:00",
   "wrapper_canonical": "https://runtime-share.esd-lab-namo.pages.dev/"
 }

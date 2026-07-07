@@ -87,6 +87,21 @@ def _service_volumes(service: dict[str, Any]) -> list[tuple[str, str, str]]:
     return parsed
 
 
+def _service_environment(service: dict[str, Any]) -> dict[str, str]:
+    environment = service.get("environment") or {}
+    if isinstance(environment, dict):
+        return {str(key): str(value) for key, value in environment.items()}
+    if isinstance(environment, list):
+        parsed: dict[str, str] = {}
+        for entry in environment:
+            if not isinstance(entry, str) or "=" not in entry:
+                continue
+            key, value = entry.split("=", 1)
+            parsed[key] = value
+        return parsed
+    return {}
+
+
 def validate_compose(path: Path) -> list[str]:
     errors: list[str] = []
     data = _load_yaml(path)
@@ -161,6 +176,17 @@ def validate_compose(path: Path) -> list[str]:
         image = str(service.get("image") or "")
         if not image.startswith("cloudflare/cloudflared:"):
             errors.append(f"{path}: {service_name} image should pin cloudflare/cloudflared")
+        if service.get("env_file"):
+            errors.append(
+                f"{path}: {service_name} must not load env_file; "
+                "cloudflared logs environment keys and can expose secrets"
+            )
+        environment = _service_environment(service)
+        if environment.get("TUNNEL_TRANSPORT_PROTOCOL") != "${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}":
+            errors.append(
+                f"{path}: {service_name} must default TUNNEL_TRANSPORT_PROTOCOL "
+                "to ${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}"
+            )
 
     return errors
 

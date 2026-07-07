@@ -61,9 +61,8 @@ services:
   dashboard-share:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
-    env_file:
-      - path: ../.env
-        required: false
+    environment:
+      TUNNEL_TRANSPORT_PROTOCOL: ${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}
     cpus: "0.5"
     mem_limit: 256m
     pids_limit: 128
@@ -78,9 +77,8 @@ services:
   dashboard-share-named:
     profiles: ["share"]
     image: cloudflare/cloudflared:2026.5.2
-    env_file:
-      - path: ../.env
-        required: false
+    environment:
+      TUNNEL_TRANSPORT_PROTOCOL: ${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}
     cpus: "0.5"
     mem_limit: 256m
     pids_limit: 128

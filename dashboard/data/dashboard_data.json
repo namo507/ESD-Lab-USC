@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-07-07T17:26:00",
+    "generated_at": "2026-07-07T19:23:29",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2236,7 +2236,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-07-07T17:26:00",
+      "generated_at": "2026-07-07T19:23:29",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8817,7 +8817,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-07-07T17:25:57",
+      "generated_at": "2026-07-07T19:23:25",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9779,7 +9779,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-07-07T17:26:00",
+      "generated_at": "2026-07-07T19:23:29",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9810,7 +9810,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-07-07T17:01:00",
+        "last_run": "2026-07-07T18:58:29",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9818,7 +9818,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-07-07T17:01:00",
+        "last_run": "2026-07-07T18:58:29",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9826,7 +9826,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-07-07T17:16:00",
+        "last_run": "2026-07-07T19:13:29",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9834,7 +9834,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-07-07T17:06:00",
+        "last_run": "2026-07-07T19:03:29",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9842,8 +9842,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "18:00",
-        "19:00",
         "20:00",
         "21:00",
         "22:00",
@@ -9865,7 +9863,9 @@
         "14:00",
         "15:00",
         "16:00",
-        "17:00"
+        "17:00",
+        "18:00",
+        "19:00"
       ],
       "rows": [
         526,
@@ -10590,13 +10590,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-07-07T17:25:59Z",
+    "generated_at": "2026-07-07T19:23:27Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-07-07T17:25:59Z"
+    "payload_version": "2026-07-07T19:23:27Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -26376,7 +26376,6 @@
         "module_counts": {
           "T": 82,
           "1": 81,
-          "unknown": 26,
           "2": 21
         },
         "score_field": "ados2_css_total",
@@ -26392,7 +26391,6 @@
         "module_counts": {
           "T": 77,
           "1": 77,
-          "unknown": 36,
           "2": 20
         },
         "score_field": "ados2_css_total",
@@ -26408,7 +26406,6 @@
         "module_counts": {
           "1": 80,
           "T": 69,
-          "unknown": 44,
           "2": 15
         },
         "score_field": "ados2_css_total",
@@ -26424,7 +26421,6 @@
         "module_counts": {
           "1": 78,
           "T": 75,
-          "unknown": 31,
           "2": 20
         },
         "score_field": "ados2_css_total",
@@ -26440,7 +26436,6 @@
         "module_counts": {
           "1": 81,
           "T": 60,
-          "unknown": 43,
           "2": 13
         },
         "score_field": "ados2_css_total",
@@ -26456,7 +26451,6 @@
         "module_counts": {
           "T": 64,
           "1": 64,
-          "unknown": 40,
           "2": 11
         },
         "score_field": "ados2_css_total",
@@ -26472,7 +26466,6 @@
         "module_counts": {
           "1": 53,
           "T": 46,
-          "unknown": 45,
           "2": 14
         },
         "score_field": "ados2_css_total",
@@ -26486,7 +26479,6 @@
         "assessed": 12,
         "classified": 0,
         "module_counts": {
-          "unknown": 14,
           "T": 7,
           "1": 5
         },
@@ -33213,21 +33205,21 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-07-07T17:25:59Z",
+      "generated_at": "2026-07-07T19:23:27Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
       "sla_hours": 48.0
     },
     "runtime_parity": {
-      "pages": "0036ef9b1169",
-      "docker": "0036ef9b1169",
-      "k8s": "0036ef9b1169"
+      "pages": "e89223f24043",
+      "docker": "e89223f24043",
+      "k8s": "e89223f24043"
     },
     "run_ledger": [
       {
-        "run_id": "redcap-0036ef9b1169",
-        "started_at": "2026-07-07T17:25:59Z",
+        "run_id": "redcap-e89223f24043",
+        "started_at": "2026-07-07T19:23:27Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33267,7 +33259,7 @@
     }
   },
   "lab_operations": {
-    "generated_at": "2026-07-07T17:25:59Z",
+    "generated_at": "2026-07-07T19:23:27Z",
     "source_documents": [
       {
         "study": "NANO",
@@ -33803,7 +33795,7 @@
       "pt": 31,
       "td": 19,
       "total": 76,
-      "last_updated": "2026-07-07T17:25:59Z",
+      "last_updated": "2026-07-07T19:23:27Z",
       "by_ga_stratum": {
         "24_26w": 9,
         "27_29w": 11,
@@ -34624,7 +34616,7 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-07-07T17:25:59Z"
+      "last_updated": "2026-07-07T19:23:27Z"
     },
     "participants": [
       {
@@ -34988,7 +34980,7 @@
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-07-07T17:25:59Z",
+      "last_success": "2026-07-07T19:23:27Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35076,7 +35068,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-07-07T17:25:59Z",
+        "timestamp": "2026-07-07T19:23:27Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }
