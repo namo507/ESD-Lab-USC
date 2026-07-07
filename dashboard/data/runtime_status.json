@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-01T21:50:48",
+  "generated_at": "2026-07-07T14:17:42",
   "status": "ok",
-  "build_count": 5,
+  "build_count": 6,
   "last_build_reason": "source-change",
-  "last_build_started_at": "2026-07-01T21:50:34",
-  "last_build_finished_at": "2026-07-01T21:50:48",
-  "last_successful_build_finished_at": "2026-07-01T21:50:48",
+  "last_build_started_at": "2026-07-07T14:17:03",
+  "last_build_finished_at": "2026-07-07T14:17:40",
+  "last_successful_build_finished_at": "2026-07-07T14:17:40",
   "watch_interval_seconds": 20,
   "fallback_synthetic": true,
   "dashboard": {
-    "generated_at": "2026-07-01T21:50:45",
+    "generated_at": "2026-07-07T14:17:30",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -23,13 +23,13 @@
     }
   },
   "readings": {
-    "generated_at": "2026-07-01T21:50:48",
+    "generated_at": "2026-07-07T14:17:40",
     "source_dir": "esd-lab-readings",
-    "total_readings": 22,
-    "latest_modified_at": "2026-07-01T18:24:29",
+    "total_readings": 24,
+    "latest_modified_at": "2026-07-07T14:16:52",
     "pdf_metadata_enabled": true,
-    "total_size_mb": 33.77,
-    "total_pages": 846,
+    "total_size_mb": 34.49,
+    "total_pages": 900,
     "categories": [
       {
         "label": "Front Matter",
@@ -37,7 +37,11 @@
       },
       {
         "label": "Grant Materials",
-        "count": 7
+        "count": 8
+      },
+      {
+        "label": "Autism and Development",
+        "count": 1
       }
     ],
     "years": [
@@ -57,17 +61,21 @@
       },
       {
         "label": "Grant Materials",
-        "count": 5
+        "count": 6
       },
       {
         "label": "Child Development Perspectives",
+        "count": 1
+      },
+      {
+        "label": "ESD Lab Reading Library",
         "count": 1
       }
     ],
     "formats": [
       {
         "label": "pdf",
-        "count": 22
+        "count": 24
       }
     ]
   },

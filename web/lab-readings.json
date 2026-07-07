@@ -1,23 +1,25 @@
 {
-  "generated_at": "2026-07-01T21:50:48",
+  "generated_at": "2026-07-07T14:17:40",
   "summary": {
-    "count": 22,
-    "total_pages": 846,
-    "total_size_mb": 33.77,
+    "count": 24,
+    "total_pages": 900,
+    "total_size_mb": 34.49,
     "by_category": {
       "Front Matter": 15,
-      "Grant Materials": 7
+      "Grant Materials": 8,
+      "Autism and Development": 1
     },
     "by_year": {
       "2025": 15,
       "2022": 1,
-      "None": 6
+      "None": 8
     },
     "by_bucket": {
       "Front Matter · 2025": 14,
       "Grant Materials · 2025": 1,
       "Grant Materials · 2022": 1,
-      "Grant Materials · n/a": 5,
+      "Grant Materials · n/a": 6,
+      "Autism and Development · n/a": 1,
       "Front Matter · n/a": 1
     }
   },
@@ -337,6 +339,46 @@
       "size_mb": 0.62,
       "href": "../esd-lab-readings/Child%20Dev%20Perspectives%20-%202022%20-%20Bradshaw%20-%20Capturing%20the%20complexity%20of%20autism%20%20Applying%20a%20developmental%20cascades%20framework.pdf",
       "bucket": "Grant Materials · 2022"
+    },
+    {
+      "id": "specific-aims-autism-spectrum-disorder-asd-is-a-lifelong-neurodevelopmental-disorder-ndd-that-affects-2-7-of-the-popul-ation-and-significantly-impacts-in",
+      "title": "SPECIFIC AIMS Autism spectrum disorder (ASD) is a lifelong, neurodevelopmental disorder (NDD) that affects ~2.7% of the popul ation and significantly impacts in",
+      "year": null,
+      "category": "Grant Materials",
+      "source": "Grant Materials",
+      "keywords": [
+        "intervention",
+        "infant",
+        "will",
+        "that",
+        "disorder",
+        "aims"
+      ],
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 11,
+      "size_mb": 0.4,
+      "href": "../esd-lab-readings/Aims_ResearchStrategy_BradshawR21.pdf",
+      "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "infant-autism-screening-redcap",
+      "title": "Infant Autism Screening | REDCap",
+      "year": null,
+      "category": "Autism and Development",
+      "source": "ESD Lab Reading Library",
+      "keywords": [
+        "elig",
+        "field",
+        "knee",
+        "time",
+        "text",
+        "secs"
+      ],
+      "abstract": "Indexed reading from ESD Lab Reading Library focused on autism and development.",
+      "page_count": 43,
+      "size_mb": 0.32,
+      "href": "../esd-lab-readings/Infant%20Autism%20Screening%20_%20REDCap.pdf",
+      "bucket": "Autism and Development · n/a"
     },
     {
       "id": "nico",

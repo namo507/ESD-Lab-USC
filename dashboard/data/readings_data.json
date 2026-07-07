@@ -1,16 +1,16 @@
 {
   "meta": {
-    "generated_at": "2026-07-01T21:50:48",
+    "generated_at": "2026-07-07T14:17:40",
     "source_dir": "esd-lab-readings",
-    "total_readings": 22,
-    "latest_modified_at": "2026-07-01T18:24:29",
+    "total_readings": 24,
+    "latest_modified_at": "2026-07-07T14:16:52",
     "pdf_metadata_enabled": true
   },
   "summary": {
-    "total_readings": 22,
-    "total_size_mb": 33.77,
-    "total_pages": 846,
-    "latest_modified_at": "2026-07-01T18:24:29",
+    "total_readings": 24,
+    "total_size_mb": 34.49,
+    "total_pages": 900,
+    "latest_modified_at": "2026-07-07T14:16:52",
     "categories": [
       {
         "label": "Front Matter",
@@ -18,7 +18,11 @@
       },
       {
         "label": "Grant Materials",
-        "count": 7
+        "count": 8
+      },
+      {
+        "label": "Autism and Development",
+        "count": 1
       }
     ],
     "years": [
@@ -38,17 +42,21 @@
       },
       {
         "label": "Grant Materials",
-        "count": 5
+        "count": 6
       },
       {
         "label": "Child Development Perspectives",
+        "count": 1
+      },
+      {
+        "label": "ESD Lab Reading Library",
         "count": 1
       }
     ],
     "formats": [
       {
         "label": "pdf",
-        "count": 22
+        "count": 24
       }
     ]
   },
@@ -112,6 +120,42 @@
       "is_recent": true
     },
     {
+      "id": "infant-autism-screening-redcap",
+      "title": "Infant Autism Screening | REDCap",
+      "display_name": "Infant Autism Screening _ REDCap.pdf",
+      "relative_path": "esd-lab-readings/Infant Autism Screening _ REDCap.pdf",
+      "relative_href": "../esd-lab-readings/Infant%20Autism%20Screening%20_%20REDCap.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "ESD Lab Reading Library",
+      "category": "Autism and Development",
+      "keywords": [
+        "elig",
+        "field",
+        "knee",
+        "time",
+        "text",
+        "secs"
+      ],
+      "authors": [
+        "Instruments Instrument Form Name",
+        "Family Information Formfamily",
+        "Data Dictionary Codebook Infant",
+        "Autism Screening",
+        "Field NameField Label Field",
+        "Note Field Attributes"
+      ],
+      "authors_display": "Instruments Instrument Form Name, Family Information Formfamily, +4 more",
+      "subject": "",
+      "page_count": 43,
+      "is_packet": false,
+      "excerpt": "Indexed reading from ESD Lab Reading Library focused on autism and development.",
+      "search_text": "Infant Autism Screening | REDCap Indexed reading from ESD Lab Reading Library focused on autism and development. ESD Lab Reading Library Autism and Development Instruments Instrument Form Name Family Information Formfamily Data Dictionary Codebook Infant Autism Screening Field NameField Label Field Note Field Attributes elig field knee time text secs",
+      "size_mb": 0.32,
+      "modified_at": "2026-07-07T14:16:45",
+      "is_recent": true
+    },
+    {
       "id": "preparing-for-equitable-family-and-community-engagement-through-home-visiting-linking-culturally-responsive-sustaining-pedagogy-and-developmental-frameworks",
       "title": "Preparing for equitable family and community engagement through home visiting: linking culturally responsive/sustaining pedagogy and developmental frameworks",
       "display_name": "Preparing-for-equitable-family-and-community-engagement-_2025_Advances-in-Ch.pdf",
@@ -137,37 +181,6 @@
       "excerpt": "Indexed reading from Advances in Child Development and Behavior focused on grant materials.",
       "search_text": "Preparing for equitable family and community engagement through home visiting: linking culturally responsive/sustaining pedagogy and developmental frameworks Indexed reading from Advances in Child Development and Behavior focused on grant materials. Advances in Child Development and Behavior Grant Materials home visiting family responsive engagement developmental",
       "size_mb": 0.43,
-      "modified_at": "2026-04-18T01:12:08",
-      "is_recent": false
-    },
-    {
-      "id": "significance-earlier-intervention",
-      "title": "SIGNIFICANCE Earlier Intervention",
-      "display_name": "ResearchStrategy_BradshawR01_A1.pdf",
-      "relative_path": "esd-lab-readings/ResearchStrategy_BradshawR01_A1.pdf",
-      "relative_href": "../esd-lab-readings/ResearchStrategy_BradshawR01_A1.pdf",
-      "extension": "pdf",
-      "year": null,
-      "source": "Grant Materials",
-      "category": "Grant Materials",
-      "keywords": [
-        "attention",
-        "that",
-        "intervention",
-        "early",
-        "earlier",
-        "lifelong"
-      ],
-      "authors": [
-        "Jessica Bradshaw"
-      ],
-      "authors_display": "Jessica Bradshaw",
-      "subject": "",
-      "page_count": 12,
-      "is_packet": false,
-      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
-      "search_text": "SIGNIFICANCE Earlier Intervention Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials Jessica Bradshaw attention that intervention early earlier lifelong",
-      "size_mb": 1.03,
       "modified_at": "2026-04-18T01:12:08",
       "is_recent": false
     }
@@ -665,6 +678,73 @@
       "size_mb": 0.62,
       "modified_at": "2026-04-18T01:12:08",
       "is_recent": false
+    },
+    {
+      "id": "specific-aims-autism-spectrum-disorder-asd-is-a-lifelong-neurodevelopmental-disorder-ndd-that-affects-2-7-of-the-popul-ation-and-significantly-impacts-in",
+      "title": "SPECIFIC AIMS Autism spectrum disorder (ASD) is a lifelong, neurodevelopmental disorder (NDD) that affects ~2.7% of the popul ation and significantly impacts in",
+      "display_name": "Aims_ResearchStrategy_BradshawR21.pdf",
+      "relative_path": "esd-lab-readings/Aims_ResearchStrategy_BradshawR21.pdf",
+      "relative_href": "../esd-lab-readings/Aims_ResearchStrategy_BradshawR21.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "Grant Materials",
+      "category": "Grant Materials",
+      "keywords": [
+        "intervention",
+        "infant",
+        "will",
+        "that",
+        "disorder",
+        "aims"
+      ],
+      "authors": [
+        "Jessica Bradshaw"
+      ],
+      "authors_display": "Jessica Bradshaw",
+      "subject": "",
+      "page_count": 11,
+      "is_packet": false,
+      "excerpt": "Indexed reading from Grant Materials focused on grant materials.",
+      "search_text": "SPECIFIC AIMS Autism spectrum disorder (ASD) is a lifelong, neurodevelopmental disorder (NDD) that affects ~2.7% of the popul ation and significantly impacts in Indexed reading from Grant Materials focused on grant materials. Grant Materials Grant Materials Jessica Bradshaw intervention infant will that disorder aims",
+      "size_mb": 0.4,
+      "modified_at": "2026-07-07T14:16:52",
+      "is_recent": true
+    },
+    {
+      "id": "infant-autism-screening-redcap",
+      "title": "Infant Autism Screening | REDCap",
+      "display_name": "Infant Autism Screening _ REDCap.pdf",
+      "relative_path": "esd-lab-readings/Infant Autism Screening _ REDCap.pdf",
+      "relative_href": "../esd-lab-readings/Infant%20Autism%20Screening%20_%20REDCap.pdf",
+      "extension": "pdf",
+      "year": null,
+      "source": "ESD Lab Reading Library",
+      "category": "Autism and Development",
+      "keywords": [
+        "elig",
+        "field",
+        "knee",
+        "time",
+        "text",
+        "secs"
+      ],
+      "authors": [
+        "Instruments Instrument Form Name",
+        "Family Information Formfamily",
+        "Data Dictionary Codebook Infant",
+        "Autism Screening",
+        "Field NameField Label Field",
+        "Note Field Attributes"
+      ],
+      "authors_display": "Instruments Instrument Form Name, Family Information Formfamily, +4 more",
+      "subject": "",
+      "page_count": 43,
+      "is_packet": false,
+      "excerpt": "Indexed reading from ESD Lab Reading Library focused on autism and development.",
+      "search_text": "Infant Autism Screening | REDCap Indexed reading from ESD Lab Reading Library focused on autism and development. ESD Lab Reading Library Autism and Development Instruments Instrument Form Name Family Information Formfamily Data Dictionary Codebook Infant Autism Screening Field NameField Label Field Note Field Attributes elig field knee time text secs",
+      "size_mb": 0.32,
+      "modified_at": "2026-07-07T14:16:45",
+      "is_recent": true
     },
     {
       "id": "nico",
