@@ -14,6 +14,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 export type PipelineView = "dag" | "sankey" | "kanban";
 export type Density = "comfortable" | "compact";
 export type ThemeMode = "light" | "dark" | "system";
+export type BrandSkin = "default" | "esd-2026";
 
 /** Global study scope for the NANO + NICO dual-study dashboard. */
 export type StudyFilter = "NANO" | "NICO" | "BOTH";
@@ -54,6 +55,7 @@ interface UiState {
   selectedStageId: string;
   qaSelectedEpoch: number;
   theme: ThemeMode;
+  brand: BrandSkin;
   lastSyncAt: string | null;
   activeStudy: StudyFilter;
   setActiveStudy: (s: StudyFilter) => void;
@@ -67,6 +69,7 @@ interface UiState {
   setStage: (id: string) => void;
   setQaEpoch: (idx: number) => void;
   setTheme: (t: ThemeMode) => void;
+  setBrand: (b: BrandSkin) => void;
   cycleTheme: () => void;
   setLastSyncAt: (ts: string) => void;
 }
@@ -82,6 +85,7 @@ export const useUi = create<UiState>()(
       selectedStageId: "hrv",
       qaSelectedEpoch: 0,
       theme: "system",
+      brand: "default",
       lastSyncAt: null,
       activeStudy: loadInitialStudy(),
       setActiveStudy: (s) => {
@@ -102,6 +106,7 @@ export const useUi = create<UiState>()(
       setStage: (id: string) => set({ selectedStageId: id }),
       setQaEpoch: (idx: number) => set({ qaSelectedEpoch: idx }),
       setTheme: (t) => set({ theme: t }),
+      setBrand: (b) => set({ brand: b }),
       setLastSyncAt: (ts) => set({ lastSyncAt: ts }),
       cycleTheme: () =>
         set((s) => ({
@@ -116,6 +121,7 @@ export const useUi = create<UiState>()(
         density: s.density,
         showHipaa: s.showHipaa,
         lastSyncAt: s.lastSyncAt,
+        brand: s.brand,
       }),
     },
   ),

@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, BookOpen, HelpCircle, Sparkles } from "lucide-react";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
+import { SkinToggle } from "@/components/shell/SkinToggle";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { startNanoTour } from "@/components/help/tourEvents";
 import {
@@ -14,6 +15,7 @@ import {
   TODO_GLOSSARY_TERMS,
 } from "@/data/helpContent";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
+import { fromDiscoveryPath, isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
 import styles from "./Docs.module.css";
 
@@ -42,7 +44,9 @@ function HelpNav() {
   const location = useLocation();
   const setChatOpen = useUi((state) => state.setChatOpen);
   const setChatSeed = useUi((state) => state.setChatSeed);
-  const current = location.pathname;
+  const current = fromDiscoveryPath(location.pathname);
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
   function askDocs() {
     setChatSeed("Explain how to use the NANO dashboard documentation and how-to tour.");
@@ -51,7 +55,7 @@ function HelpNav() {
 
   return (
     <nav className={styles.nav} aria-label="Documentation navigation">
-      <Link to="/" className={styles.brand}>
+      <Link to={route("/")} className={styles.brand}>
         <span className={styles.mark}>e</span>
         <span className={styles.brandText}>
           <strong>ESD Lab</strong>
@@ -59,16 +63,16 @@ function HelpNav() {
         </span>
       </Link>
       <div className={styles.links}>
-        <Link className={styles.link} to="/">Landing</Link>
-        <Link className={`${styles.link} ${current === DOC_ROUTE ? styles.active : ""}`} to={DOC_ROUTE}>
+        <Link className={styles.link} to={route("/")}>Landing</Link>
+        <Link className={`${styles.link} ${current === DOC_ROUTE ? styles.active : ""}`} to={route(DOC_ROUTE)}>
           <BookOpen size={14} strokeWidth={1.5} />
           Docs
         </Link>
-        <Link className={`${styles.link} ${current === HOW_TO_ROUTE ? styles.active : ""}`} to={HOW_TO_ROUTE}>
+        <Link className={`${styles.link} ${current === HOW_TO_ROUTE ? styles.active : ""}`} to={route(HOW_TO_ROUTE)}>
           <HelpCircle size={14} strokeWidth={1.5} />
           How-to
         </Link>
-        <Link className={styles.link} to="/overview">Operator</Link>
+        <Link className={styles.link} to={route("/overview")}>Operator</Link>
       </div>
       <button type="button" className={styles.navButton} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
         <Sparkles size={14} strokeWidth={1.5} />
@@ -77,6 +81,7 @@ function HelpNav() {
       <button type="button" className={styles.primaryButton} onClick={askDocs}>
         Ask the lab
       </button>
+      <SkinToggle variant="pill" />
       <ThemeToggle variant="pill" />
     </nav>
   );
@@ -143,6 +148,7 @@ function OperatorReferenceList() {
 }
 
 export function Docs() {
+  const location = useLocation();
   const { data: study } = useStudySummary();
   const { data: stages = [] } = useStages();
   const { data: runs = [] } = useRuns(12);
@@ -157,6 +163,8 @@ export function Docs() {
   const hdaWindows = hda
     ? Object.values(hda).reduce((sum, group) => sum + group.orienting + group.sustained + group.inattention + group.termination, 0)
     : undefined;
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
   return (
     <div className={styles.page}>
@@ -233,12 +241,12 @@ export function Docs() {
                   <tr>
                     <td>Public narrative landing</td>
                     <td>You want the study story, cohort questions, live pipeline summary, Model Studio, assistant, and library without the operator shell.</td>
-                    <td>Open <a href="/">Landing</a> or use the Landing button from the console.</td>
+                    <td>Open <a href={route("/")}>Landing</a> or use the Landing button from the console.</td>
                   </tr>
                   <tr>
                     <td>Operator console</td>
                     <td>You need the lab cockpit: sidebar routes, compliance banner, Force Sync, run history, REDCap sync, QA, and infrastructure panels.</td>
-                    <td>Use Operator view from the landing dock or open <a href="/overview">Overview</a>.</td>
+                    <td>Use Operator view from the landing dock or open <a href={route("/overview")}>Overview</a>.</td>
                   </tr>
                 </tbody>
               </table>

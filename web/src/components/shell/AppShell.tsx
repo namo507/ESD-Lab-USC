@@ -19,7 +19,11 @@ export interface ShellContext {
   syncing: boolean;
 }
 
-export function AppShell() {
+interface AppShellProps {
+  brand?: "esd-2026";
+}
+
+export function AppShell({ brand }: AppShellProps = {}) {
   const showHipaa = useUi((s) => s.showHipaa);
   const setHipaa = useUi((s) => s.setHipaa);
   const toggleChat = useUi((s) => s.toggleChat);
@@ -95,7 +99,7 @@ export function AppShell() {
   void runs;
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-brand={brand}>
       <a href="#main-content" className={styles.skipNav}>Skip to main content</a>
       <button type="button" className={styles.mobileMenuButton} onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
         Menu

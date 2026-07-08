@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, ChevronDown, Presentation, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
+import { SkinToggle } from "@/components/shell/SkinToggle";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { startNanoTour } from "@/components/help/tourEvents";
 import { AmbientOrbit } from "@/components/warm";
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { READING_CORPUS } from "@/data/readingLibrary";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
+import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
@@ -872,8 +874,11 @@ const HERO_PHASES = [
 
 export function Landing() {
   const navigate = useNavigate();
+  const location = useLocation();
   const setChatOpen = useUi((state) => state.setChatOpen);
   const setChatSeed = useUi((state) => state.setChatSeed);
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
   const progressRef = useRef<HTMLDivElement>(null);
   const activeSectionRef = useRef<SectionId>("overview");
   const scrollFrameRef = useRef<number | null>(null);
@@ -1189,10 +1194,10 @@ export function Landing() {
               {section.label}
             </button>
           ))}
-          <button type="button" className={styles.navLink} onClick={() => navigate(DOC_ROUTE)}>
+          <button type="button" className={styles.navLink} onClick={() => navigate(route(DOC_ROUTE))}>
             Docs
           </button>
-          <button type="button" className={styles.navLink} onClick={() => navigate(HOW_TO_ROUTE)}>
+          <button type="button" className={styles.navLink} onClick={() => navigate(route(HOW_TO_ROUTE))}>
             How-to
           </button>
           <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
@@ -1205,6 +1210,7 @@ export function Landing() {
           Ask the lab
         </button>
 
+        <SkinToggle variant="pill" />
         <ThemeToggle variant="pill" />
       </nav>
 
@@ -1241,7 +1247,7 @@ export function Landing() {
                   Open assistant
                   <Sparkles size={14} strokeWidth={1.5} />
                 </button>
-                <button type="button" className={styles.secondaryButton} onClick={() => navigate("/presentation-maker")}>
+                <button type="button" className={styles.secondaryButton} onClick={() => navigate(route("/presentation-maker"))}>
                   Make an explainer
                   <Presentation size={14} strokeWidth={1.5} />
                 </button>
@@ -1271,7 +1277,7 @@ export function Landing() {
             </div>
 
             <a
-              href="/results"
+              href={route("/results")}
               className={`${styles.heroSignalCard} ${styles.heroSignalButton}`}
               data-insight="landing-attention-pulse"
               data-tour="attention-pulse"
@@ -1366,7 +1372,7 @@ export function Landing() {
                 </div>
               </div>
               <div className={styles.heroActions}>
-                <button type="button" className={styles.secondaryButton} onClick={() => navigate("/overview")}>
+                <button type="button" className={styles.secondaryButton} onClick={() => navigate(route("/overview"))}>
                   Operator detail
                   <ArrowRight size={14} strokeWidth={1.5} />
                 </button>
@@ -1430,7 +1436,7 @@ export function Landing() {
                   key={item.to}
                   type="button"
                   className={styles.dynamicsCard}
-                  onClick={() => navigate(item.to)}
+                  onClick={() => navigate(route(item.to))}
                   data-insight="dyn-discovery-card"
                   aria-label={`Launch ${item.title}. ${item.body}`}
                 >
@@ -1468,7 +1474,7 @@ export function Landing() {
               {dynLandingItems.length < 4 ? (
                 <DyadSyncPreview
                   rmssd={totals.rmssdLatest}
-                  onOpen={() => navigate(dynLandingItems[0]?.to ?? "/dyad-coregulation")}
+                  onOpen={() => navigate(route(dynLandingItems[0]?.to ?? "/dyad-coregulation"))}
                 />
               ) : null}
             </div>
@@ -1573,11 +1579,11 @@ export function Landing() {
                 ))}
               </div>
               <div className={styles.heroActions}>
-                <button type="button" className={styles.secondaryButton} onClick={() => navigate("/runs")}>
+                <button type="button" className={styles.secondaryButton} onClick={() => navigate(route("/runs"))}>
                   Open pipeline detail
                   <ArrowRight size={14} strokeWidth={1.5} />
                 </button>
-                <button type="button" className={styles.secondaryButton} onClick={() => navigate("/redcap")}>
+                <button type="button" className={styles.secondaryButton} onClick={() => navigate(route("/redcap"))}>
                   Open REDCap sync
                   <ArrowRight size={14} strokeWidth={1.5} />
                 </button>
@@ -1592,7 +1598,7 @@ export function Landing() {
               <span className={styles.sectionEyebrow}>Pipeline</span>
               <h2>The NANO pipeline, live.</h2>
             </div>
-            <button type="button" className={styles.ghostButton} onClick={() => navigate("/runs")}>
+            <button type="button" className={styles.ghostButton} onClick={() => navigate(route("/runs"))}>
               Open run history
               <ArrowRight size={14} strokeWidth={1.5} />
             </button>
@@ -1603,7 +1609,7 @@ export function Landing() {
                 key={stage.id}
                 type="button"
                 className={styles.pipelineCard}
-                onClick={() => navigate("/runs")}
+                onClick={() => navigate(route("/runs"))}
                 data-insight={`stage-${stage.id}`}
                 data-tour={index === 0 ? "pipeline-stage" : undefined}
               >
@@ -1677,7 +1683,7 @@ export function Landing() {
                 <ul className={styles.flowList}>
                   {participants.slice(0, 7).map((participant) => (
                     <li key={participant.id}>
-                      <button type="button" onClick={() => navigate(`/participants/${participant.id}`)}>
+                      <button type="button" onClick={() => navigate(route(`/participants/${participant.id}`))}>
                         <strong>{participant.id}</strong>
                         <span>{participant.group} · {participant.visit} · {participant.site}</span>
                       </button>
@@ -1700,7 +1706,7 @@ export function Landing() {
               <span className={styles.sectionEyebrow}>Cohort snapshot</span>
               <h2>Every infant, every visit.</h2>
             </div>
-            <button type="button" className={styles.ghostButton} onClick={() => navigate("/participants")}>
+            <button type="button" className={styles.ghostButton} onClick={() => navigate(route("/participants"))}>
               Open participant table
               <ArrowRight size={14} strokeWidth={1.5} />
             </button>
@@ -1735,7 +1741,7 @@ export function Landing() {
                   {filteredParticipants.map((participant) => (
                     <tr key={participant.id}>
                       <td>
-                        <button type="button" className={styles.rowLink} onClick={() => navigate(`/participants/${participant.id}`)}>
+                        <button type="button" className={styles.rowLink} onClick={() => navigate(route(`/participants/${participant.id}`))}>
                           {participant.id}
                         </button>
                       </td>
@@ -1761,7 +1767,7 @@ export function Landing() {
               <span className={styles.sectionEyebrow}>Model performance</span>
               <h2>Calibrated, not just accurate.</h2>
             </div>
-            <button type="button" className={styles.ghostButton} onClick={() => navigate("/results")}>
+            <button type="button" className={styles.ghostButton} onClick={() => navigate(route("/results"))}>
               Open results
               <ArrowRight size={14} strokeWidth={1.5} />
             </button>
@@ -1988,7 +1994,7 @@ export function Landing() {
         <span><ShieldCheck size={14} strokeWidth={1.5} /> HIPAA session</span>
         <span>{runs[0]?.id ?? "run_2026_115_a"}</span>
         <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-        <button type="button" onClick={() => navigate("/overview")} data-tour="operator-toggle">Operator view</button>
+        <button type="button" onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">Operator view</button>
       </div>
 
       <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()}>

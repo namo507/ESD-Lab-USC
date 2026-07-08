@@ -15,9 +15,9 @@ const STUDY: StudySummary = {
   },
 };
 
-function renderSidebar() {
+function renderSidebar(initialEntry = "/overview") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Sidebar study={STUDY} qaPending={3} enrolled={231} />
     </MemoryRouter>,
   );
@@ -35,5 +35,21 @@ describe("Sidebar navigation", () => {
     expect(screen.getByRole("link", { name: /matlab bridge/i })).toHaveAttribute("href", "/matlab");
     expect(screen.getByRole("link", { name: /redcap sync/i })).toHaveAttribute("href", "/redcap");
     expect(screen.getByRole("link", { name: /window qa/i })).toBeInTheDocument();
+  });
+
+  it("shows the feature-gated Discovery preview section", () => {
+    renderSidebar();
+
+    expect(screen.getByText(/brand preview/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /discovery landing/i })).toHaveAttribute("href", "/discovery");
+    expect(screen.getByRole("link", { name: /discovery overview/i })).toHaveAttribute("href", "/discovery/overview");
+  });
+
+  it("keeps existing navigation inside the Discovery route subtree", () => {
+    renderSidebar("/discovery/overview");
+
+    expect(screen.getByRole("link", { name: /^overview/i })).toHaveAttribute("href", "/discovery/overview");
+    expect(screen.getByRole("link", { name: /redcap sync/i })).toHaveAttribute("href", "/discovery/redcap");
+    expect(screen.getByRole("link", { name: /home study/i })).toHaveAttribute("href", "/discovery/participants?study=home");
   });
 });

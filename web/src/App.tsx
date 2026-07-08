@@ -1,9 +1,12 @@
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrandScope } from "@/components/brand/BrandScope";
 import { AppShell } from "@/components/shell/AppShell";
 import { RouteErrorBoundary } from "@/components/shell/RouteErrorBoundary";
 import { GuidedTourHost } from "@/components/help/GuidedTour";
+import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
+import { isDiscoveryPath } from "@/lib/discoveryRoutes";
 import { applyTheme, loadInitialTheme, persistTheme, useUi } from "@/store/ui";
 
 const Landing = lazy(() => import("@/routes/Landing").then((m) => ({ default: m.Landing })));
@@ -89,6 +92,71 @@ function KeyedBoundary({ children }: { children: ReactNode }) {
   return <RouteErrorBoundary key={pathname}>{children}</RouteErrorBoundary>;
 }
 
+function dashboardRoutes(prefix = "") {
+  const path = (route: string) => `${prefix}${route}`;
+
+  return (
+    <>
+      <Route path={path("/overview")} element={<Overview />} />
+      <Route path={path("/participants")} element={<Participants />} />
+      <Route path={path("/participants/:id")} element={<ParticipantDetail />} />
+      <Route path={path("/qa")} element={<QA />} />
+      <Route path={path("/qa/:id")} element={<QA />} />
+      <Route path={path("/results")} element={<Results />} />
+      <Route path={path("/runs")} element={<Runs />} />
+      <Route path={path("/redcap")} element={<Redcap />} />
+      <Route path={path("/pipeline-health")} element={<PipelineHealth />} />
+      <Route path={path("/matlab")} element={<Matlab />} />
+      <Route path={path("/data-explorer")} element={<DataExplorer />} />
+      <Route path={path("/publications")} element={<Publications />} />
+      <Route path={path("/publications/:pmid")} element={<PublicationDetail />} />
+      <Route path={path("/changelog")} element={<Changelog />} />
+      <Route path={path("/presentation-maker")} element={<PresentationMaker />} />
+      <Route path={path("/hda-player")} element={<HdaPlayer />} />
+      <Route path={path("/thermal-heatmap")} element={<ThermalHeatmap />} />
+      <Route path={path("/swimmer-plot")} element={<SwimmerPlot />} />
+      <Route path={path("/attrition")} element={<Attrition />} />
+      <Route path={path("/sdoh-map")} element={<SdohMap />} />
+      <Route path={path("/shap-explorer")} element={<ShapExplorer />} />
+      <Route path={path("/cluster-viewer")} element={<ClusterViewer />} />
+      <Route path={path("/model-leaderboard")} element={<ModelLeaderboard />} />
+      <Route path={path("/cascade-dag")} element={<CascadeDag />} />
+      <Route path={path("/ecg-quality")} element={<EcgQuality />} />
+      <Route path={path("/spatial-assessments")} element={<SpatialAssessmentMatrix />} />
+      <Route path={path("/attachment-heatmap")} element={<AttachmentHeatmap />} />
+      <Route path={path("/dyad-coregulation")} element={<CoRegulation />} />
+      <Route path={path("/multimodal")} element={<MultimodalSynchrony />} />
+      <Route path={path("/phase-portrait")} element={<PhasePortrait />} />
+      <Route path={path("/cva-theater")} element={<CvaTheater />} />
+      <Route path={path("/hr-deceleration")} element={<HrDeceleration />} />
+      <Route path={path("/stillface")} element={<StillFace />} />
+      <Route path={path("/hda-bypass")} element={<HdaBypass />} />
+      <Route path={path("/passport")} element={<Passport />} />
+      <Route path={path("/archetypes")} element={<Archetypes />} />
+      <Route path={path("/cascade-sim")} element={<CascadeSimulator />} />
+      <Route path={path("/eco-validity")} element={<EcoValidity />} />
+      <Route path={path("/stream-coverage")} element={<StreamCoverage />} />
+      <Route path={path("/cga-river")} element={<CgaMilestoneRiver />} />
+      <Route path={path("/county-comparator")} element={<CountyComparator />} />
+      <Route path={path("/participant-timeline")} element={<ParticipantTimeline />} />
+      <Route path={path("/model-terrain")} element={<ModelConfidenceTerrain />} />
+      <Route path={path("/attrition-funnel")} element={<AttritionFunnel />} />
+      <Route path={path("/guided-explorer")} element={<GuidedExplorer />} />
+      <Route path={path("/public-insights")} element={<PublicInsights />} />
+      <Route path={path("/executive")} element={<ExecutiveMode />} />
+      <Route path={path("/nano/lgcm-trajectories")} element={<LgcmTrajectories />} />
+      <Route path={path("/nico/aim3-clusters")} element={<Aim3Clusters />} />
+      <Route path={path("/nano")} element={<Navigate to={path("/nano/lgcm-trajectories")} replace />} />
+      <Route path={path("/nico")} element={<Navigate to={path("/nico/aim3-clusters")} replace />} />
+    </>
+  );
+}
+
+function DiscoveryGate({ children }: { children: ReactNode }) {
+  if (!isFeatureFlagEnabled("BRAND_ESD_2026")) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 /**
  * Hydrate theme into the zustand store + keep <html data-theme> synced.
  * Listens to system colour-scheme changes while user pref is "system".
@@ -124,71 +192,72 @@ function ThemeBoot() {
   return null;
 }
 
+function BrandRouteBoot() {
+  const { pathname } = useLocation();
+  const setBrand = useUi((s) => s.setBrand);
+
+  useEffect(() => {
+    setBrand(isDiscoveryPath(pathname) ? "esd-2026" : "default");
+  }, [pathname, setBrand]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeBoot />
+      <BrandRouteBoot />
       <Suspense fallback={<PageFallback />}>
         <KeyedBoundary>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="/how-to" element={<HowTo />} />
-          <Route element={<AppShell />}>
-            <Route path="/overview" element={<Overview />} />
-            <Route path="/participants" element={<Participants />} />
-            <Route path="/participants/:id" element={<ParticipantDetail />} />
-            <Route path="/qa" element={<QA />} />
-            <Route path="/qa/:id" element={<QA />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/runs" element={<Runs />} />
-            <Route path="/redcap" element={<Redcap />} />
-            <Route path="/pipeline-health" element={<PipelineHealth />} />
-            <Route path="/matlab" element={<Matlab />} />
-            <Route path="/data-explorer" element={<DataExplorer />} />
-            <Route path="/publications" element={<Publications />} />
-            <Route path="/publications/:pmid" element={<PublicationDetail />} />
-            <Route path="/changelog" element={<Changelog />} />
-            <Route path="/presentation-maker" element={<PresentationMaker />} />
-            <Route path="/hda-player" element={<HdaPlayer />} />
-            <Route path="/thermal-heatmap" element={<ThermalHeatmap />} />
-            <Route path="/swimmer-plot" element={<SwimmerPlot />} />
-            <Route path="/attrition" element={<Attrition />} />
-            <Route path="/sdoh-map" element={<SdohMap />} />
-            <Route path="/shap-explorer" element={<ShapExplorer />} />
-            <Route path="/cluster-viewer" element={<ClusterViewer />} />
-            <Route path="/model-leaderboard" element={<ModelLeaderboard />} />
-            <Route path="/cascade-dag" element={<CascadeDag />} />
-            <Route path="/ecg-quality" element={<EcgQuality />} />
-            <Route path="/spatial-assessments" element={<SpatialAssessmentMatrix />} />
-            <Route path="/attachment-heatmap" element={<AttachmentHeatmap />} />
-            <Route path="/dyad-coregulation" element={<CoRegulation />} />
-            <Route path="/multimodal" element={<MultimodalSynchrony />} />
-            <Route path="/phase-portrait" element={<PhasePortrait />} />
-            <Route path="/cva-theater" element={<CvaTheater />} />
-            <Route path="/hr-deceleration" element={<HrDeceleration />} />
-            <Route path="/stillface" element={<StillFace />} />
-            <Route path="/hda-bypass" element={<HdaBypass />} />
-            <Route path="/passport" element={<Passport />} />
-            <Route path="/archetypes" element={<Archetypes />} />
-            <Route path="/cascade-sim" element={<CascadeSimulator />} />
-            <Route path="/eco-validity" element={<EcoValidity />} />
-            <Route path="/stream-coverage" element={<StreamCoverage />} />
-            <Route path="/cga-river" element={<CgaMilestoneRiver />} />
-            <Route path="/county-comparator" element={<CountyComparator />} />
-            <Route path="/participant-timeline" element={<ParticipantTimeline />} />
-            <Route path="/model-terrain" element={<ModelConfidenceTerrain />} />
-            <Route path="/attrition-funnel" element={<AttritionFunnel />} />
-            <Route path="/guided-explorer" element={<GuidedExplorer />} />
-            <Route path="/public-insights" element={<PublicInsights />} />
-            <Route path="/executive" element={<ExecutiveMode />} />
-            <Route path="/nano/lgcm-trajectories" element={<LgcmTrajectories />} />
-            <Route path="/nico/aim3-clusters" element={<Aim3Clusters />} />
-            <Route path="/nano" element={<Navigate to="/nano/lgcm-trajectories" replace />} />
-            <Route path="/nico" element={<Navigate to="/nico/aim3-clusters" replace />} />
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/docs" element={<Docs />} />
+            <Route path="/how-to" element={<HowTo />} />
+            <Route
+              path="/discovery"
+              element={
+                <DiscoveryGate>
+                  <BrandScope>
+                    <Landing />
+                  </BrandScope>
+                </DiscoveryGate>
+              }
+            />
+            <Route
+              path="/discovery/docs"
+              element={
+                <DiscoveryGate>
+                  <BrandScope>
+                    <Docs />
+                  </BrandScope>
+                </DiscoveryGate>
+              }
+            />
+            <Route
+              path="/discovery/how-to"
+              element={
+                <DiscoveryGate>
+                  <BrandScope>
+                    <HowTo />
+                  </BrandScope>
+                </DiscoveryGate>
+              }
+            />
+            <Route element={<AppShell />}>
+              {dashboardRoutes()}
+            </Route>
+            <Route
+              element={
+                <DiscoveryGate>
+                  <AppShell brand="esd-2026" />
+                </DiscoveryGate>
+              }
+            >
+              {dashboardRoutes("/discovery")}
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
+          </Routes>
         </KeyedBoundary>
         <GuidedTourHost />
       </Suspense>

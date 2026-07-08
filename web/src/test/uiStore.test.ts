@@ -4,6 +4,7 @@ import { useUi } from "@/store/ui";
 describe("ui store assistant state", () => {
   beforeEach(() => {
     useUi.setState({
+      brand: "default",
       chatOpen: false,
       chatSeed: null,
     });
@@ -25,5 +26,13 @@ describe("ui store assistant state", () => {
 
     expect(useUi.getState().consumeChatSeed()).toBe("Explain RMSSD");
     expect(useUi.getState().consumeChatSeed()).toBeNull();
+  });
+
+  it("tracks the selected dashboard brand skin", () => {
+    expect(useUi.getState().brand).toBe("default");
+
+    useUi.getState().setBrand("esd-2026");
+
+    expect(useUi.getState().brand).toBe("esd-2026");
   });
 });

@@ -1,10 +1,11 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Badge, Icon } from "@/components/primitives";
 import { StudySelector } from "./StudySelector";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
 import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
+import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 
 interface SidebarProps {
   study: StudySummary;
@@ -128,6 +129,15 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/changelog", label: "Change History", icon: "clock", flag: "DATA_CHANGELOG" },
     ],
   },
+  {
+    id: "brand-preview",
+    title: "Brand Preview · 2026",
+    items: [
+      { to: "/discovery", label: "Discovery Landing", icon: "wand-sparkles", flag: "BRAND_ESD_2026" },
+      { to: "/discovery/overview", label: "Discovery Overview", icon: "layout-dashboard", flag: "BRAND_ESD_2026" },
+      { to: "/discovery/public-insights", label: "Discovery Insights", icon: "bar-chart-3", flag: "BRAND_ESD_2026" },
+    ],
+  },
 ];
 
 const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
@@ -147,7 +157,9 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
 ];
 
 export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: SidebarProps) {
+  const location = useLocation();
   const groups = executiveMode ? EXECUTIVE_NAV_GROUPS : NAV_GROUPS;
+  const inDiscovery = isDiscoveryPath(location.pathname);
   const isNew = (flag?: FeatureFlag) => {
     if (!flag) return false;
     const releaseDate = FEATURE_FLAG_RELEASE_DATES[flag];
@@ -163,10 +175,11 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
       <div className="px-2">
         <div className="flex items-center gap-2.5">
           <div
+            data-brand-mark="esd"
             className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-serif font-bold text-lg"
             style={{
-              background: "linear-gradient(135deg, var(--usc-garnet) 0%, #a51124 100%)",
-              boxShadow: "0 4px 12px rgba(115,0,10,0.25)",
+              background: "var(--brand-mark-bg, linear-gradient(135deg, var(--usc-garnet) 0%, #a51124 100%))",
+              boxShadow: "var(--brand-mark-shadow, 0 4px 12px rgba(115,0,10,0.25))",
             }}
             aria-hidden
           >
@@ -192,6 +205,7 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
           </div>
           <div className="flex flex-col gap-px">
             {g.items.filter((it) => !it.flag || isFeatureFlagEnabled(it.flag)).map((it, i) => {
+              const to = inDiscovery ? toDiscoveryRoute(it.to) : it.to;
               const badge =
                 it.label === "Window QA" && qaPending > 0
                   ? qaPending
@@ -201,8 +215,8 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
               return (
                 <NavLink
                   key={`${g.id}-${i}`}
-                  to={it.to}
-                  end={it.to === "/overview"}
+                  to={to}
+                  end={it.to === "/overview" || to === "/discovery/overview"}
                   data-tour={
                     it.label === "Documentation"
                       ? "operator-docs"

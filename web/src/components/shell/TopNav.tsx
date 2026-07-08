@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@/components/primitives";
+import { SkinToggle } from "@/components/shell/SkinToggle";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
+import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
 
 interface TopNavProps {
@@ -20,6 +22,7 @@ interface TopNavProps {
  */
 export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, lastSyncAt }: TopNavProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [now, setNow] = useState(new Date());
   const setChatOpen = useUi((state) => state.setChatOpen);
   const setChatSeed = useUi((state) => state.setChatSeed);
@@ -33,6 +36,8 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
   const syncLabel = lastSyncAt ? formatRelativeTime(lastSyncAt, now) : "not synced";
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
   function openChatWithQuery(nextQuery: string) {
     const trimmed = nextQuery.trim();
@@ -80,7 +85,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
 
       <button
         type="button"
-        onClick={() => navigate("/runs")}
+        onClick={() => navigate(route("/runs"))}
         data-tour="operator-session"
         className="hidden lg:inline-flex items-center gap-1.5 text-[11px] font-mono text-[color:var(--warm-fg3)] hover:text-[color:var(--warm-fg1)] transition"
         title="Idle countdown · 30 m HIPAA gate"
@@ -91,7 +96,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
 
       <button
         type="button"
-        onClick={() => navigate("/")}
+        onClick={() => navigate(route("/"))}
         data-tour="operator-landing"
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-[color:var(--warm-fg2)] bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)] hover:text-[color:var(--usc-garnet)] hover:border-[color:var(--usc-garnet)] transition"
         title="Back to public landing site"
@@ -101,6 +106,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
         Landing
       </button>
 
+      <SkinToggle variant="pill" />
       <ThemeToggle variant="pill" />
 
       <div className="text-right">

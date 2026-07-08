@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { Card, Gloss, SectionLabel } from "@/components/primitives";
 import {
   AnimatedDAG,
@@ -31,6 +31,7 @@ import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
 import type { ShellContext } from "@/components/shell/AppShell";
 import type { StudySummary } from "@/api/schemas";
+import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 
 /**
  * Overview — the warm "Lab Pulse" page.
@@ -47,7 +48,10 @@ import type { StudySummary } from "@/api/schemas";
  */
 export function Overview() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { syncTick, syncing } = useOutletContext<ShellContext>();
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
   const selected = useUi((s) => s.selectedStageId);
   const setStage = useUi((s) => s.setStage);
 
@@ -194,14 +198,14 @@ export function Overview() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => navigate("/results")}
+            onClick={() => navigate(route("/results"))}
             className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
           >
             Trajectories
           </button>
           <button
             type="button"
-            onClick={() => navigate("/runs")}
+            onClick={() => navigate(route("/runs"))}
             className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
           >
             Last 24 h
@@ -280,6 +284,9 @@ const DYN_DISCOVERY: Array<{ flag: FeatureFlag; to: string; title: string; body:
 
 function DynamicsDiscovery() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
   const items = DYN_DISCOVERY.filter((item) => isFeatureFlagEnabled(item.flag));
   if (!items.length) return null;
   return (
@@ -296,7 +303,7 @@ function DynamicsDiscovery() {
             <button
               key={item.to}
               type="button"
-              onClick={() => navigate(item.to)}
+              onClick={() => navigate(route(item.to))}
               className="text-left rounded-[var(--r-card)] border border-[color:var(--warm-border)] bg-[color:var(--bg-subtle)] p-4 hover:bg-[color:var(--warm-pill)] transition"
               data-insight="dyn-discovery-card"
             >

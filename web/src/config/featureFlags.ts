@@ -41,6 +41,7 @@ export const FEATURE_FLAGS = {
   MULTIMODAL_SYNCHRONY: true,
   NANO_LGCM_TRAJECTORIES: true,
   NICO_AIM3_CLUSTERS: true,
+  BRAND_ESD_2026: true,
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
@@ -57,4 +58,5 @@ export const FEATURE_FLAG_RELEASE_DATES: Partial<Record<FeatureFlag, string>> = 
   DYN_INFANT_PASSPORT: "2026-06-15",
   NANO_LGCM_TRAJECTORIES: "2026-07-01",
   NICO_AIM3_CLUSTERS: "2026-07-01",
+  BRAND_ESD_2026: "2026-07-08",
 };

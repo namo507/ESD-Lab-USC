@@ -1,0 +1,386 @@
+@font-face {
+  font-family: "Libre Franklin";
+  src: url("../assets/brand-esd/fonts/librefranklin-medium.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Libre Franklin";
+  src: url("../assets/brand-esd/fonts/librefranklin-mediumitalic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Libre Franklin";
+  src: url("../assets/brand-esd/fonts/librefranklin-bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Libre Franklin";
+  src: url("../assets/brand-esd/fonts/librefranklin-bolditalic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+}
+
+[data-brand="esd-2026"] {
+  --bg-page: #f4f4f6;
+  --bg-surface: #ffffff;
+  --bg-subtle: #e6eefc;
+  --bg-hover: #e6eefc;
+  --bg-active: #d8e5fb;
+  --paper: #f4f4f6;
+  --white: #ffffff;
+
+  --warm-bg: #f4f4f6;
+  --warm-card: #ffffff;
+  --warm-border: #dce6f7;
+  --warm-rule: #e7edf8;
+  --warm-pill: #e6eefc;
+  --warm-fg1: #0a0a0a;
+  --warm-fg2: #22303f;
+  --warm-fg3: #55606b;
+  --warm-fg4: #758091;
+  --warm-fg5: #a8b4c5;
+
+  --ink: #0a0a0a;
+  --slate-900: #0a0a0a;
+  --slate-800: #22303f;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-500: #64748b;
+  --slate-400: #94a3b8;
+  --slate-300: #c5d3e7;
+  --slate-200: #dce6f7;
+  --slate-100: #e6eefc;
+  --slate-75: #eef4ff;
+  --slate-50: #f7faff;
+
+  --fg1: var(--warm-fg1);
+  --fg2: var(--warm-fg2);
+  --fg3: var(--warm-fg3);
+  --fg-muted: var(--warm-fg4);
+  --fg-link: #3366ff;
+  --fg-on-brand: #ffffff;
+
+  --brand: #3366ff;
+  --brand-600: #2450e6;
+  --brand-800: #1b3dbf;
+  --usc-garnet: #3366ff;
+  --usc-garnet-600: #2450e6;
+  --usc-garnet-800: #1b3dbf;
+  --usc-gold: #f4da26;
+  --usc-gold-tint: #fff7b7;
+  --border-focus: #f4da26;
+  --vpt-bg: #e6eefc;
+  --vpt-fg: #1b3dbf;
+
+  --blue: #3366ff;
+  --blue-tint: #e6eefc;
+  --green: #2fa36b;
+  --green-tint: #e5f5ed;
+  --red: #d74e2d;
+  --red-tint: #fae7e0;
+  --purple: #8172b2;
+  --purple-tint: #edeaf6;
+
+  --accent-orange: #f57f00;
+  --accent-red: #d74e2d;
+  --accent-yellow: #f4da26;
+  --accent-pink: #f8b2b1;
+
+  --sage: #2fa36b;
+  --sage-tint: #e5f5ed;
+  --sage-ring: #7ac69b;
+  --ocean: #91baf4;
+  --ocean-tint: #e6eefc;
+  --ocean-ring: #b8d2fb;
+  --sand: #f57f00;
+  --sand-tint: #fff0dc;
+  --sand-ring: #f9b15c;
+  --mint: #2fa36b;
+  --mint-tint: #e5f5ed;
+  --mint-ring: #7ac69b;
+
+  --hipaa-bg: #f7faff;
+  --hipaa-notice-bg: linear-gradient(90deg, rgba(51, 102, 255, 0.1) 0%, rgba(51, 102, 255, 0.03) 100%);
+  --hipaa-fg: #1b3dbf;
+  --hipaa-border: rgba(51, 102, 255, 0.22);
+  --hipaa-icon: #3366ff;
+
+  --font-serif: "Libre Franklin", "Source Sans 3", system-ui, sans-serif;
+  --font-sans: "Libre Franklin", "Source Sans 3", system-ui, sans-serif;
+  --text-display: 48px;
+  --text-h1: 32px;
+  --text-h2: 24px;
+  --text-h3: 19px;
+  --text-h4: 16px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-micro: 11px;
+  --lh-display: 1.08;
+  --lh-heading: 1.16;
+  --lh-body: 1.48;
+  --tracking-tight: 0;
+  --tracking-caps: 0.08em;
+  --r-2: 6px;
+  --r-4: 6px;
+  --r-card: 8px;
+  --r-input: 8px;
+  --r-glass: 8px;
+  --shadow-overlay:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 28px rgba(51, 102, 255, 0.08);
+  --shadow-focus-ring: 0 0 0 2px var(--bg-page), 0 0 0 4px #f4da26;
+  --glass-100: rgba(255, 255, 255, 0.55);
+  --glass-200: rgba(255, 255, 255, 0.68);
+  --glass-300: rgba(255, 255, 255, 0.8);
+  --glass-400: rgba(255, 255, 255, 0.92);
+  --glass-stroke: rgba(51, 102, 255, 0.18);
+  --glass-stroke-soft: rgba(51, 102, 255, 0.12);
+  --brand-pattern-url: url("../assets/brand-esd/patterns/brain-duck-pattern-discovery-blue.png");
+  --brand-mark-bg: linear-gradient(135deg, rgba(51, 102, 255, 0.96) 0%, rgba(27, 61, 191, 0.96) 100%), var(--brand-pattern-url);
+  --brand-mark-shadow: 0 4px 16px rgba(51, 102, 255, 0.25);
+}
+
+[data-brand="esd-2026"][data-theme="dark"],
+:root[data-theme="dark"] [data-brand="esd-2026"] {
+  --bg-page: #071126;
+  --bg-surface: #0d1931;
+  --bg-subtle: #102244;
+  --bg-hover: #142b55;
+  --bg-active: #183466;
+  --paper: #071126;
+  --white: #0d1931;
+
+  --warm-bg: #071126;
+  --warm-card: #0d1931;
+  --warm-border: #233a66;
+  --warm-rule: #182b50;
+  --warm-pill: #102244;
+  --warm-fg1: #f7faff;
+  --warm-fg2: #dce8ff;
+  --warm-fg3: #adc2e6;
+  --warm-fg4: #8098c0;
+  --warm-fg5: #50678e;
+
+  --ink: #f7faff;
+  --slate-900: #f7faff;
+  --slate-800: #dce8ff;
+  --slate-700: #c7d8f8;
+  --slate-600: #adc2e6;
+  --slate-500: #8098c0;
+  --slate-400: #61779d;
+  --slate-300: #3d5480;
+  --slate-200: #233a66;
+  --slate-100: #172b50;
+  --slate-75: #112341;
+  --slate-50: #0c1a33;
+
+  --fg1: var(--warm-fg1);
+  --fg2: var(--warm-fg2);
+  --fg3: var(--warm-fg3);
+  --fg-link: #91baf4;
+  --usc-garnet: #91baf4;
+  --usc-garnet-600: #73a5f5;
+  --usc-garnet-800: #c7dbff;
+  --usc-gold: #f4da26;
+  --usc-gold-tint: #4a4212;
+  --vpt-bg: #102244;
+  --vpt-fg: #c7dbff;
+  --blue: #91baf4;
+  --blue-tint: #102244;
+  --green-tint: #0d2c21;
+  --red-tint: #3a1a17;
+  --purple-tint: #211c3a;
+  --hipaa-bg: #0d1931;
+  --hipaa-notice-bg: linear-gradient(90deg, rgba(145, 186, 244, 0.16) 0%, rgba(145, 186, 244, 0.05) 100%);
+  --hipaa-fg: #dce8ff;
+  --hipaa-border: rgba(145, 186, 244, 0.25);
+  --hipaa-icon: #91baf4;
+  --glass-100: rgba(13, 25, 49, 0.55);
+  --glass-200: rgba(13, 25, 49, 0.68);
+  --glass-300: rgba(13, 25, 49, 0.82);
+  --glass-400: rgba(13, 25, 49, 0.92);
+  --glass-stroke: rgba(145, 186, 244, 0.22);
+  --glass-stroke-soft: rgba(145, 186, 244, 0.12);
+  --brand-mark-bg: linear-gradient(135deg, rgba(51, 102, 255, 0.96) 0%, rgba(145, 186, 244, 0.78) 100%), var(--brand-pattern-url);
+  --brand-mark-shadow: 0 4px 18px rgba(145, 186, 244, 0.22);
+  color-scheme: dark;
+}
+
+.esd-brand-scope,
+[data-brand="esd-2026"] {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(51, 102, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, var(--warm-bg) 0%, var(--bg-page) 100%);
+  color: var(--warm-fg1);
+  font-family: var(--font-sans);
+}
+
+[data-brand="esd-2026"] [class*="-tracking"] {
+  letter-spacing: 0 !important;
+}
+
+[data-brand="esd-2026"] .font-serif,
+[data-brand="esd-2026"] .t-display,
+[data-brand="esd-2026"] .t-h1,
+[data-brand="esd-2026"] h1,
+[data-brand="esd-2026"] h2,
+[data-brand="esd-2026"] h3 {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+[data-brand="esd-2026"] .glass-header,
+[data-brand="esd-2026"] .glass-panel {
+  border-color: var(--warm-border);
+  background: var(--glass-300);
+  box-shadow: var(--shadow-overlay);
+}
+
+[data-brand="esd-2026"] header.glass-header[role="banner"] .truncate {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+@media (min-width: 768px) {
+  [data-brand="esd-2026"] header.glass-header[role="banner"] {
+    gap: 12px;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > div:first-child {
+    flex: 0 0 282px;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] h1 {
+    font-size: 18px;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > label {
+    flex: 0 1 280px;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] [data-tour="operator-session"],
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > span:last-child {
+    display: none !important;
+  }
+}
+
+[data-brand="esd-2026"] .surface-card,
+[data-brand="esd-2026"] .bg-white {
+  background-color: var(--warm-card) !important;
+}
+
+[data-brand="esd-2026"] .shadow-card,
+[data-brand="esd-2026"] .shadow-garnet {
+  box-shadow: var(--shadow-overlay) !important;
+}
+
+[data-brand="esd-2026"] [data-brand-mark="esd"] {
+  background: var(--brand-mark-bg) !important;
+  background-size: cover, 135px auto !important;
+  background-position: center !important;
+  box-shadow: var(--brand-mark-shadow) !important;
+}
+
+[data-brand="esd-2026"] [data-brand-switch="discovery"] {
+  border-color: color-mix(in srgb, var(--usc-garnet) 40%, var(--warm-border));
+  background: color-mix(in srgb, var(--usc-garnet) 12%, var(--warm-pill));
+  color: var(--usc-garnet);
+}
+
+[data-brand="esd-2026"] .app-main {
+  position: relative;
+}
+
+[data-brand="esd-2026"] .app-main::before {
+  content: "";
+  position: absolute;
+  inset: 16px 32px auto;
+  height: 72px;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(51, 102, 255, 0.92), rgba(51, 102, 255, 0.58)),
+    var(--brand-pattern-url);
+  background-size: cover, 320px auto;
+  background-position: center;
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+[data-brand="esd-2026"] .app-main > * {
+  position: relative;
+}
+
+/* Secondary brand colors are decorative support only; primary surfaces stay Discovery Blue-led. */
+[data-brand="esd-2026"] .accent-wash-sand {
+  background: linear-gradient(135deg, rgba(51, 102, 255, 0.12) 0%, rgba(245, 127, 0, 0.1) 100%);
+}
+
+[data-brand="esd-2026"] .accent-wash-ocean,
+[data-brand="esd-2026"] .accent-wash-sage,
+[data-brand="esd-2026"] .accent-wash-mint {
+  background: linear-gradient(135deg, rgba(230, 238, 252, 0.9) 0%, rgba(145, 186, 244, 0.16) 100%);
+}
+
+@media (max-width: 767px) {
+  [data-brand="esd-2026"] header.glass-header[role="banner"] {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 12px 14px 84px;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > div:first-child {
+    flex: 1 1 100%;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] h1 {
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > label {
+    flex: 1 1 100%;
+    min-width: 0;
+    order: 10;
+  }
+
+  [data-brand="esd-2026"] header.glass-header[role="banner"] > span:last-child {
+    display: none;
+  }
+
+  [data-brand="esd-2026"] .app-main {
+    max-width: 100vw;
+    padding: 24px 16px;
+  }
+
+  [data-brand="esd-2026"] .app-main > div > header:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  [data-brand="esd-2026"] .app-main > div > header:first-child > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  [data-brand="esd-2026"] .app-main > div > header:first-child > div:last-child button {
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+}

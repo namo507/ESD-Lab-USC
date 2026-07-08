@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, BookOpen, HelpCircle, Play, Sparkles } from "lucide-react";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
+import { SkinToggle } from "@/components/shell/SkinToggle";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { HowToFigure } from "@/components/help/HowToFigure";
 import { startNanoTour } from "@/components/help/tourEvents";
@@ -15,6 +16,7 @@ import {
   type HowToCard,
   type TourStep,
 } from "@/data/helpContent";
+import { fromDiscoveryPath, isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
 import styles from "./Docs.module.css";
 import local from "./HowTo.module.css";
@@ -23,7 +25,9 @@ function HelpNav() {
   const location = useLocation();
   const setChatOpen = useUi((state) => state.setChatOpen);
   const setChatSeed = useUi((state) => state.setChatSeed);
-  const current = location.pathname;
+  const current = fromDiscoveryPath(location.pathname);
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
   function askHelp() {
     setChatSeed("Help me choose the right NANO dashboard how-to card for my current task.");
@@ -32,7 +36,7 @@ function HelpNav() {
 
   return (
     <nav className={styles.nav} aria-label="How-to navigation">
-      <Link to="/" className={styles.brand}>
+      <Link to={route("/")} className={styles.brand}>
         <span className={styles.mark}>e</span>
         <span className={styles.brandText}>
           <strong>ESD Lab</strong>
@@ -40,16 +44,16 @@ function HelpNav() {
         </span>
       </Link>
       <div className={styles.links}>
-        <Link className={styles.link} to="/">Landing</Link>
-        <Link className={`${styles.link} ${current === DOC_ROUTE ? styles.active : ""}`} to={DOC_ROUTE}>
+        <Link className={styles.link} to={route("/")}>Landing</Link>
+        <Link className={`${styles.link} ${current === DOC_ROUTE ? styles.active : ""}`} to={route(DOC_ROUTE)}>
           <BookOpen size={14} strokeWidth={1.5} />
           Docs
         </Link>
-        <Link className={`${styles.link} ${current === HOW_TO_ROUTE ? styles.active : ""}`} to={HOW_TO_ROUTE}>
+        <Link className={`${styles.link} ${current === HOW_TO_ROUTE ? styles.active : ""}`} to={route(HOW_TO_ROUTE)}>
           <HelpCircle size={14} strokeWidth={1.5} />
           How-to
         </Link>
-        <Link className={styles.link} to="/overview">Operator</Link>
+        <Link className={styles.link} to={route("/overview")}>Operator</Link>
       </div>
       <button type="button" className={styles.navButton} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
         <Sparkles size={14} strokeWidth={1.5} />
@@ -58,6 +62,7 @@ function HelpNav() {
       <button type="button" className={styles.primaryButton} onClick={askHelp}>
         Ask the lab
       </button>
+      <SkinToggle variant="pill" />
       <ThemeToggle variant="pill" />
     </nav>
   );
