@@ -92,8 +92,8 @@ function StatRow({ label, value }: { label: React.ReactNode; value: React.ReactN
 
 function PrelimCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[var(--r-card)] border border-amber-400 bg-amber-50 text-amber-900 p-3.5 mt-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 flex items-center gap-1.5">
+    <div className="rounded-[var(--r-card)] border border-amber-400 bg-amber-50 text-amber-900 p-3.5 mt-3" data-study-prelim-card>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 flex items-center gap-1.5" data-study-prelim-title>
         <span aria-hidden>★</span> Preliminary Finding — Pilot Data
       </div>
       {children}
@@ -238,10 +238,19 @@ function MiniScatter({ points }: { points: ScatterPointData[] }) {
 
   if (!geom) return null;
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-none rounded bg-white/60" role="img" aria-label="Pilot HRC by SORF scatter">
-      <line x1={geom.line.x1} y1={geom.line.y1} x2={geom.line.x2} y2={geom.line.y2} stroke="#B45309" strokeWidth={1.5} strokeDasharray="3 2" />
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-none rounded bg-white/60" role="img" aria-label="Pilot HRC by SORF scatter" data-study-prelim-scatter>
+      <line
+        x1={geom.line.x1}
+        y1={geom.line.y1}
+        x2={geom.line.x2}
+        y2={geom.line.y2}
+        stroke="#B45309"
+        strokeWidth={1.5}
+        strokeDasharray="3 2"
+        data-study-prelim-trend
+      />
       {geom.dots.map((d, i) => (
-        <circle key={i} cx={d.cx} cy={d.cy} r={2.6} fill="#D97706" fillOpacity={0.8} />
+        <circle key={i} cx={d.cx} cy={d.cy} r={2.6} fill="#D97706" fillOpacity={0.8} data-study-prelim-dot />
       ))}
     </svg>
   );

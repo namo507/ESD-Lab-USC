@@ -235,9 +235,9 @@ const STUDIO_INPUTS = [
 ] as const;
 
 const GROUP_ACCENTS: Record<string, string> = {
-  VPT: "var(--usc-garnet)",
-  ASIB: "#5e3776",
-  TD: "#3d6650",
+  VPT: "var(--landing-group-vpt, var(--usc-garnet))",
+  ASIB: "var(--landing-group-asib, #5e3776)",
+  TD: "var(--landing-group-td, #3d6650)",
 };
 
 const LANDING_SCROLL_OFFSET = 112;
@@ -866,10 +866,30 @@ function Gauge({ value }: { value: number }) {
 }
 
 const HERO_PHASES = [
-  { key: "orienting", label: "Orienting", color: "#d5a253" },
-  { key: "sustained", label: "Sustained", color: "#7f9f73" },
-  { key: "inattention", label: "Inattention", color: "#c46c55" },
-  { key: "termination", label: "Termination", color: "#6c90b6" },
+  {
+    key: "orienting",
+    label: "Orienting",
+    color: "var(--landing-phase-orienting, #d5a253)",
+    colorSoft: "var(--landing-phase-orienting-soft, rgba(213, 162, 83, 0.8))",
+  },
+  {
+    key: "sustained",
+    label: "Sustained",
+    color: "var(--landing-phase-sustained, #7f9f73)",
+    colorSoft: "var(--landing-phase-sustained-soft, rgba(127, 159, 115, 0.8))",
+  },
+  {
+    key: "inattention",
+    label: "Inattention",
+    color: "var(--landing-phase-inattention, #c46c55)",
+    colorSoft: "var(--landing-phase-inattention-soft, rgba(196, 108, 85, 0.8))",
+  },
+  {
+    key: "termination",
+    label: "Termination",
+    color: "var(--landing-phase-termination, #6c90b6)",
+    colorSoft: "var(--landing-phase-termination-soft, rgba(108, 144, 182, 0.8))",
+  },
 ] as const;
 
 export function Landing() {
@@ -1166,24 +1186,26 @@ export function Landing() {
   ];
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-discovery-surface="landing">
       <div ref={progressRef} className={styles.progress} style={{ transform: "scaleX(0)" }} aria-hidden />
 
-      <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav">
+      <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav" data-discovery-part="landing-nav">
         <button
           type="button"
           className={styles.brand}
           onClick={() => jumpTo("overview")}
           aria-label="ESD Lab - return to home"
         >
-          <span className={styles.brandMark}>e</span>
+          <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
+            e
+          </span>
           <span className={styles.brandText}>
             <strong>ESD Lab</strong>
             <small>NANO · UofSC</small>
           </span>
         </button>
 
-        <div className={styles.navLinks}>
+        <div className={styles.navLinks} data-discovery-part="landing-links">
           {NAV_SECTIONS.map((section) => (
             <button
               key={section.id}
@@ -1302,7 +1324,7 @@ export function Landing() {
                   <span
                     key={phase.key}
                     className={styles.heroSignalRailSegment}
-                    style={{ width: `${phase.share}%`, background: `linear-gradient(90deg, ${phase.color}, ${phase.color}cc)` }}
+                    style={{ width: `${phase.share}%`, background: `linear-gradient(90deg, ${phase.color}, ${phase.colorSoft})` }}
                   />
                 ))}
               </div>
@@ -1990,14 +2012,14 @@ export function Landing() {
         </section>
       </main>
 
-      <div className={styles.dock}>
+      <div className={styles.dock} data-discovery-part="landing-dock">
         <span><ShieldCheck size={14} strokeWidth={1.5} /> HIPAA session</span>
         <span>{runs[0]?.id ?? "run_2026_115_a"}</span>
         <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
         <button type="button" onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">Operator view</button>
       </div>
 
-      <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()}>
+      <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()} data-discovery-part="landing-fab">
         <Sparkles size={20} strokeWidth={1.5} />
       </button>
 
