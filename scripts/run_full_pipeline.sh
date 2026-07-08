@@ -27,12 +27,14 @@ fi
 run_stage() {
     local name="$1"; shift
     log "--- Stage: ${name} START ---"
-    local start; start=$(date +%s)
-    if python "$@" ${DRY_RUN}; then
-        local end; end=$(date +%s)
+    local start exit_code
+    start=$(date +%s)
+    python "$@" ${DRY_RUN} && exit_code=0 || exit_code=$?
+    if [[ "${exit_code}" -eq 0 ]]; then
+        local end
+        end=$(date +%s)
         success "${name} completed in $((end - start))s"
     else
-        local exit_code=$?
         failure "${name} failed (exit ${exit_code})"
         exit "${exit_code}"
     fi

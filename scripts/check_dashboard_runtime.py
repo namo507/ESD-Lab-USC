@@ -17,6 +17,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -25,7 +26,9 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TOUCH_PATH = PROJECT_ROOT / "config" / "study_parameters.yml"
 DEFAULT_PAGES_URL = "https://esd-lab-namo.pages.dev/"
-SHARE_STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "esd-lab-usc-share"
+SHARE_STATE_DIR = (
+    Path(os.environ.get("XDG_RUNTIME_DIR", tempfile.gettempdir())) / "esd-lab-usc-share"
+)
 SHARE_ORIGIN_RECORD = SHARE_STATE_DIR / "last_origin.txt"
 EXPECTED_SPA_TITLE = "NANO Dashboard · ESD Lab"
 FRAME_URL_RE = re.compile(

@@ -15,7 +15,7 @@ import logging
 import os
 import smtplib
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
@@ -140,7 +140,7 @@ def send_summary_email(
     body = (
         f"NANO Study – REDCap Daily Sync Summary\n"
         f"{'=' * 45}\n"
-        f"Date/Time : {datetime.now().isoformat()}\n"
+        f"Date/Time : {datetime.now(timezone.utc).isoformat()}\n"
         f"Records pulled    : {n_records}\n"
         f"QC-flagged        : {n_flagged}\n"
         f"Incomplete (<80%) : {n_incomplete}\n"
@@ -156,7 +156,7 @@ def send_summary_email(
         return
 
     msg = MIMEText(body)
-    msg["Subject"] = f"[NANO] REDCap Daily Sync – {datetime.now().date()}"
+    msg["Subject"] = f"[NANO] REDCap Daily Sync – {datetime.now(timezone.utc).date()}"
     msg["From"] = smtp_user
     msg["To"] = pi_email
 

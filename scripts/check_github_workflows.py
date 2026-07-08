@@ -15,6 +15,8 @@ WORKFLOW_DIR = ROOT / ".github" / "workflows"
 REQUIRED_WORKFLOWS = {
     "ci.yml",
     "deploy-pages.yml",
+    "docker-build.yml",
+    "redcap_sync.yml",
     "uptime-monitor.yml",
     "k8s-validate.yml",
     "sync_local_llm.yml",

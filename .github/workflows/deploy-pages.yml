@@ -103,6 +103,10 @@ jobs:
           VITE_FEATURE_GUIDED_EXPLORER: "true"
           VITE_FEATURE_PUBLIC_INSIGHTS: "true"
           VITE_FEATURE_EXECUTIVE_MODE: "true"
+          VITE_FEATURE_DYN_INFANT_PASSPORT: "true"
+          VITE_FEATURE_DYN_CASCADE_SIMULATOR: "true"
+          VITE_FEATURE_MULTIMODAL_SYNCHRONY: "true"
+          VITE_FEATURE_DYN_CO_REGULATION_BRAID: "true"
           VITE_USE_MOCKS: "true"
           VITE_LIVE_ASSISTANT: "true"
         run: |

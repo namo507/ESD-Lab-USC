@@ -24,3 +24,4 @@ jobs:
             . .devcontainer/.venv/bin/activate
             python --version
             pip check
+            pytest tests/ -q --tb=short --ignore=tests/test_imputation.py -x

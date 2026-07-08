@@ -14,9 +14,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+from pathlib import Path
 from urllib.parse import urljoin
 
-from check_site_health import check
+# Ensure the scripts directory is on sys.path for sibling imports, so this
+# module works regardless of the current working directory or invocation style.
+_SCRIPTS_DIR = str(Path(__file__).resolve().parent)
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from check_site_health import check  # noqa: E402
 
 DEFAULT_CANONICAL_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_RUNTIME_URL = "https://runtime-share.esd-lab-namo.pages.dev/"

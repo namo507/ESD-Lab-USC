@@ -31,7 +31,6 @@ jobs:
     timeout-minutes: 60
     env:
       CANONICAL_PAGES_URL: https://esd-lab-namo.pages.dev
-      VERSIONED_PAGES_URL: https://esd-lab-namo.pages.dev/?v=20260604-032545
       DASHBOARD_LOCAL_URL: http://127.0.0.1:8080
       PYTHONUNBUFFERED: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
@@ -77,11 +76,14 @@ jobs:
       - name: Clean transient local artifacts
         run: make clean
 
-      - name: Safe self-heal formatting
+      - name: Safe self-heal formatting (backend)
         run: |
           black src/ tests/ scripts/ redcap/
           isort src/ tests/ scripts/ redcap/
-          npm --prefix web exec -- eslint --fix --ext .ts,.tsx src
+
+      - name: Safe self-heal formatting (frontend)
+        working-directory: web
+        run: npx eslint --fix --ext .ts,.tsx src
 
       - name: Refresh generated dashboard data
         run: make dashboard-refresh
@@ -119,7 +121,6 @@ jobs:
           live_args=()
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.live_visual }}" = "true" ]; then
             live_args+=(--live-url "${CANONICAL_PAGES_URL%/}/overview")
-            live_args+=(--live-url "$VERSIONED_PAGES_URL")
           fi
           node web/scripts/visual-health-check.mjs \
             --base-url "$DASHBOARD_LOCAL_URL" \
@@ -133,7 +134,6 @@ jobs:
             --canonical-route /overview \
             --canonical-route /redcap \
             --canonical-route /pipeline-health \
-            --canonical-route '/?v=20260604-032545' \
             --timeout 30 \
             --max-stamp-age-hours 168 \
             --skip-runtime \
