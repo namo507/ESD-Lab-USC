@@ -481,7 +481,12 @@ def _resolve_api_origin(api_origin: str | None, manifest_path: pathlib.Path) -> 
                 f"[build_pages_site] invalid manifest JSON at {manifest_path}: {exc}"
             )
 
-        dashboard_url = payload.get("dashboard_url") or payload.get("api_origin")
+        # Prefer the last confirmed deployed origin when available.
+        dashboard_url = (
+            payload.get("deployed_url")
+            or payload.get("dashboard_url")
+            or payload.get("api_origin")
+        )
         if dashboard_url:
             return _normalize_origin(str(dashboard_url))
 

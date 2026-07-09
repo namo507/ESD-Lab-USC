@@ -48,7 +48,7 @@ jobs:
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
       CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
-      PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || '' }}
+      PAGES_API_ORIGIN: ${{ github.event.client_payload.api_origin || vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || (vars.DASHBOARD_PUBLIC_HOSTNAME && format('https://{0}', vars.DASHBOARD_PUBLIC_HOSTNAME)) || '' }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
