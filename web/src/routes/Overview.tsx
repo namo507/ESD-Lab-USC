@@ -178,7 +178,7 @@ export function Overview() {
   }
 
   return (
-    <div className="flex flex-col gap-7 p-9 max-[768px]:px-4 max-[768px]:py-6">
+    <div className="flex flex-col gap-7 p-9 max-[768px]:px-4 max-[768px]:py-6" data-discovery-page={inDiscovery ? "overview" : undefined}>
       <header className="mb-1 flex items-end justify-between gap-6">
         <div>
           <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg3)]">

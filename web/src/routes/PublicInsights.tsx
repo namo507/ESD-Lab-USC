@@ -5,6 +5,7 @@
  * @hipaa-note: Public-facing route renders aggregate cohorts, county-level context, and model summaries only. No PHI present.
  */
 import { useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Share } from "lucide-react";
 import { Button, Card, Gloss } from "@/components/primitives";
 import { HDABarStack } from "@/components/charts/HDABarStack";
@@ -16,6 +17,7 @@ import { useHdaComposition, useRedcapData, useRsaTrajectories, useSdohMap, useSt
 import type { GroupCode, HdaDist, RsaTrajectoryResponse, Trajectory } from "@/api/schemas";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { CARRY_FORWARD } from "@/constants/redcapConfig";
+import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { CountyMap } from "./SdohMap";
 import shared from "./FeatureRoutes.module.css";
 import styles from "./PublicInsights.module.css";
@@ -23,9 +25,9 @@ import styles from "./PublicInsights.module.css";
 type Metric = "RSA" | "RMSSD" | "SDNN";
 
 const GROUP_COLOR: Record<GroupCode, string> = {
-  VPT: "var(--usc-garnet)",
-  ASIB: "var(--purple)",
-  TD: "var(--green)",
+  VPT: "var(--group-vpt, var(--usc-garnet))",
+  ASIB: "var(--group-asib, var(--purple))",
+  TD: "var(--group-td, var(--green))",
 };
 const REDCAP_EVENT_MONTH: Record<string, number> = {
   "6_months_arm_1": 6,
@@ -62,6 +64,9 @@ function trajectoryToSeries(metric: Metric, trajectory: Trajectory | undefined, 
 
 export function PublicInsights() {
   const enabled = useFeatureFlag("PUBLIC_INSIGHTS");
+  const location = useLocation();
+  const inDiscovery = isDiscoveryPath(location.pathname);
+  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
   const [metric, setMetric] = useState<Metric>("RMSSD");
   const [showCi, setShowCi] = useState(true);
   const [mapMetric, setMapMetric] = useState<"participants" | "completion">("participants");
@@ -154,7 +159,7 @@ export function PublicInsights() {
   }
 
   return (
-    <div className={`${shared.page} ${styles.page}`}>
+    <div className={`${shared.page} ${styles.page}`} data-discovery-page={inDiscovery ? "public-insights" : undefined}>
       <header className={shared.hero}>
         <div>
           <span className={`${shared.eyebrow} t-mono`}>Public aggregate insights</span>
@@ -180,7 +185,7 @@ export function PublicInsights() {
         label="Section 1"
         title="How infant heart rhythms change over development"
         description="Heart rhythm regulation is summarized across corrected-age months by cohort group."
-        learnMoreTo="/results"
+        learnMoreTo={route("/results")}
       >
         <Card
           pad={16}
@@ -189,7 +194,7 @@ export function PublicInsights() {
         >
           <div className={styles.calloutTitle}>
             {metric === "RSA" ? "RSA paradox context" : "Vagal-tone trajectory context"}
-            <a href="/publications/PMC13109926" className={styles.pmid}>PMID PMC13109926</a>
+            <a href={route("/publications/PMC13109926")} className={styles.pmid}>PMID PMC13109926</a>
           </div>
           <p>
             Infants later showing ASD traits may show elevated RSA across 9-24 months. The public chart frames that
@@ -214,12 +219,12 @@ export function PublicInsights() {
         label="Section 1b"
         title="How attention phases compose a visit"
         description="HDA phase composition summarizes orienting, sustained attention, inattention, and termination across aggregate cohorts."
-        learnMoreTo="/hda-player"
+        learnMoreTo={route("/hda-player")}
       >
         <Card pad={16} className={styles.callout} style={{ borderLeftColor: "var(--usc-garnet)" }}>
           <div className={styles.calloutTitle}>
             Sustained attention as the bridge
-            <a href="/results" className={styles.pmid}>HDA composition</a>
+            <a href={route("/results")} className={styles.pmid}>HDA composition</a>
           </div>
           <p>
             The stacked phase view makes the autonomic-attention story concrete: maturation should shift more time
@@ -233,7 +238,7 @@ export function PublicInsights() {
         label="Section 2"
         title="Where our families live - geographic overview"
         description="County-level context helps the lab plan outreach without displaying exact family locations."
-        learnMoreTo="/sdoh-map"
+        learnMoreTo={route("/sdoh-map")}
       >
         <div className={styles.controls}>
           <select className={styles.select} value={mapMetric} onChange={(event) => setMapMetric(event.target.value as "participants" | "completion")} aria-label="Map color metric">
@@ -248,7 +253,7 @@ export function PublicInsights() {
         label="Section 3"
         title="Who is in the study - group breakdown"
         description="Study families are summarized by infant type and birth characteristics."
-        learnMoreTo="/participants"
+        learnMoreTo={route("/participants")}
       >
         <div className={styles.bars}>
           {groupBars.map((row) => (
@@ -265,7 +270,7 @@ export function PublicInsights() {
         label="Section 4"
         title="When developmental milestones first appear"
         description="This curve shows the share of infants first showing sustained attention windows by corrected age."
-        learnMoreTo="/cga-river"
+        learnMoreTo={route("/cga-river")}
       >
         <CumulativeCurve series={milestoneSeries} />
       </InsightSection>
@@ -275,7 +280,7 @@ export function PublicInsights() {
           label="Section 4b"
           title="How CSBS survey completeness is moving"
           description="REDCap CSBS caregiver completeness is summarized across the monitored 6m, 9m, 12m, and 24m visit events."
-          learnMoreTo="/redcap"
+          learnMoreTo={route("/redcap")}
         >
           <Card pad={16} className={styles.callout} style={{ borderLeftColor: "var(--status-amber)" }}>
             <div className={styles.calloutTitle}>
@@ -326,7 +331,7 @@ export function PublicInsights() {
         label="Section 5"
         title="Compare two groups"
         description="Pick two aggregate groups to compare common study progress and physiology metrics."
-        learnMoreTo="/guided-explorer"
+        learnMoreTo={route("/guided-explorer")}
       >
         <div className={styles.controls}>
           <select className={styles.select} value={leftGroup} onChange={(event) => setLeftGroup(event.target.value as GroupCode)} aria-label="Left group">

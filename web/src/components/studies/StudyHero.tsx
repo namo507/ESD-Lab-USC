@@ -133,9 +133,9 @@ function NanoPanel({ nano }: { nano: NanoData }) {
         </div>
         <ProgressBar value={e.total} target={m.n_target} color="var(--color-indigo-500, #6366F1)" />
         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] font-mono text-[color:var(--warm-fg3)]">
-          <span><span style={{ color: "#F59E0B" }}>■</span> ASIB {e.asib}/{m.n_target_asib}</span>
-          <span><span style={{ color: "#14B8A6" }}>■</span> PT {e.pt}/{m.n_target_pt}</span>
-          <span><span style={{ color: "#6366F1" }}>■</span> TD {e.td}/{m.n_target_td}</span>
+          <span><span style={{ color: "var(--study-asib-color, #F59E0B)" }}>■</span> ASIB {e.asib}/{m.n_target_asib}</span>
+          <span><span style={{ color: "var(--study-pt-color, #14B8A6)" }}>■</span> PT {e.pt}/{m.n_target_pt}</span>
+          <span><span style={{ color: "var(--study-td-color, #6366F1)" }}>■</span> TD {e.td}/{m.n_target_td}</span>
         </div>
       </div>
 
@@ -244,13 +244,13 @@ function MiniScatter({ points }: { points: ScatterPointData[] }) {
         y1={geom.line.y1}
         x2={geom.line.x2}
         y2={geom.line.y2}
-        stroke="#B45309"
+        stroke="var(--study-prelim-trend, #B45309)"
         strokeWidth={1.5}
         strokeDasharray="3 2"
         data-study-prelim-trend
       />
       {geom.dots.map((d, i) => (
-        <circle key={i} cx={d.cx} cy={d.cy} r={2.6} fill="#D97706" fillOpacity={0.8} data-study-prelim-dot />
+        <circle key={i} cx={d.cx} cy={d.cy} r={2.6} fill="var(--study-prelim-dot, #D97706)" fillOpacity={0.8} data-study-prelim-dot />
       ))}
     </svg>
   );
