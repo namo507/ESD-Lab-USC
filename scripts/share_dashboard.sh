@@ -337,7 +337,29 @@ canonical_pages_assistant_healthy() {
 origin_healthy() {
   local origin="$1"
   local base="${origin%/}"
-  curl -fsS --max-time 15 "${base}/api/healthz" >/dev/null 2>&1
+  curl_public_url "${base}/api/healthz" 15 >/dev/null 2>&1
+}
+
+curl_public_url() {
+  local url="$1"
+  local max_time="${2:-20}"
+  local host="${url#https://}"
+  host="${host%%/*}"
+
+  if curl -fsS --max-time "$max_time" "$url"; then
+    return 0
+  fi
+
+  # Quick-tunnel DNS can briefly lag behind Cloudflare's public resolver.
+  # Retry only that short-lived host class through DoH before declaring it down.
+  if [[ "$host" != *.trycloudflare.com ]] \
+    || ! curl --help all 2>/dev/null | grep -Fq -- "--doh-url"; then
+    return 1
+  fi
+
+  curl -fsS --max-time "$max_time" \
+    --doh-url "https://dns.google/dns-query" \
+    "$url"
 }
 
 assistant_status_healthy() {
@@ -348,7 +370,7 @@ assistant_status_healthy() {
   python_bin="$(resolve_python 2>/dev/null || true)"
 
   if [[ -n "$python_bin" ]]; then
-    ASSISTANT_STATUS_URL="$status_url" "$python_bin" - <<'PY' >/dev/null 2>&1
+    if ASSISTANT_STATUS_URL="$status_url" "$python_bin" - <<'PY' >/dev/null 2>&1
 import json
 import os
 import sys
@@ -381,16 +403,22 @@ if ready or state == "ready":
     raise SystemExit(0)
 raise SystemExit(1)
 PY
-    return $?
+    then
+      return 0
+    fi
   fi
 
   local payload
-  payload="$(curl -fsS --max-time 20 "$status_url" 2>/dev/null || true)"
+  payload="$(curl_public_url "$status_url" 20 2>/dev/null || true)"
   local compact
   compact="$(printf '%s' "$payload" | tr -d '[:space:]')"
-  [[ -n "$compact" ]] \
+  if [[ -n "$compact" ]] \
     && [[ "$compact" != *'pages://fallback-assistant'* ]] \
-    && [[ "$compact" == *'"status":"ready"'* || "$compact" == *'"ready":true'* ]]
+    && [[ "$compact" == *'"status":"ready"'* || "$compact" == *'"ready":true'* ]]; then
+    return 0
+  fi
+
+  return 1
 }
 
 runtime_preview_healthy() {

@@ -141,7 +141,7 @@ export function parseMessageText(text: string): MessageTextBlock[] {
       continue;
     }
 
-    const numbered = line.match(/^\d+[\.)]\s+(.+)$/);
+    const numbered = line.match(/^\d+[.)]\s+(.+)$/);
     if (numbered) {
       flushParagraph();
       flushBullets();
@@ -348,7 +348,7 @@ export function ChatDrawer() {
     }
 
     return () => window.clearTimeout(timer);
-  }, [chatOpen, consumeChatSeed]);
+  }, [chatOpen, consumeChatSeed, refreshStatus]);
 
   const onKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {

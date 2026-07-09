@@ -6,6 +6,7 @@ import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
+import discoveryLogoUrl from "@/assets/brand-esd/logos/esd-lab-discovery-blue.png";
 
 interface SidebarProps {
   study: StudySummary;
@@ -174,25 +175,35 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
     >
       <div className="px-2">
         <div className="flex items-center gap-2.5">
-          <div
-            data-brand-mark="esd"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-serif font-bold text-lg"
-            style={{
-              background: "var(--brand-mark-bg, linear-gradient(135deg, var(--usc-garnet) 0%, #a51124 100%))",
-              boxShadow: "var(--brand-mark-shadow, 0 4px 12px rgba(115,0,10,0.25))",
-            }}
-            aria-hidden
-          >
-            e
-          </div>
-          <div>
-            <div className="font-serif text-[15px] font-semibold text-[color:var(--warm-fg1)] -tracking-[0.01em]">
-              ESD Lab
-            </div>
-            <div className="text-[10px] font-mono text-[color:var(--warm-fg4)] tracking-[0.04em]">
-              UofSC · IMB
-            </div>
-          </div>
+          {inDiscovery ? (
+            <img
+              src={discoveryLogoUrl}
+              alt="Early Social Development Lab at UofSC"
+              data-discovery-part="sidebar-brand-logo"
+            />
+          ) : (
+            <>
+              <div
+                data-brand-mark="esd"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-serif font-bold text-lg"
+                style={{
+                  background: "var(--brand-mark-bg, linear-gradient(135deg, var(--usc-garnet) 0%, #a51124 100%))",
+                  boxShadow: "var(--brand-mark-shadow, 0 4px 12px rgba(115,0,10,0.25))",
+                }}
+                aria-hidden
+              >
+                e
+              </div>
+              <div>
+                <div className="font-serif text-[15px] font-semibold text-[color:var(--warm-fg1)] -tracking-[0.01em]">
+                  ESD Lab
+                </div>
+                <div className="text-[10px] font-mono text-[color:var(--warm-fg4)] tracking-[0.04em]">
+                  UofSC · IMB
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

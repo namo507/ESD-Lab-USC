@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, Presentation, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Activity, ArrowRight, ChevronDown, HeartPulse, Presentation, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles, UsersRound } from "lucide-react";
 import { Gloss } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
@@ -15,6 +15,9 @@ import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
+import discoveryLogoUrl from "@/assets/brand-esd/logos/esd-lab-discovery-blue.png";
+import discoverySunburstUrl from "@/assets/brand-esd/icons/sunburst-discovery-blue.png";
+import discoveryStarUrl from "@/assets/brand-esd/icons/star-discovery-blue.png";
 import styles from "./Landing.module.css";
 
 type SectionId = "overview" | "metrics" | "aims" | "architecture" | "pipeline" | "qa" | "cohort" | "ml" | "studio" | "assistant" | "library";
@@ -31,6 +34,15 @@ const NAV_SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: "studio", label: "Studio" },
   { id: "assistant", label: "Assistant" },
   { id: "library", label: "Library" },
+];
+
+const DISCOVERY_PRIMARY_SECTIONS: readonly SectionId[] = [
+  "overview",
+  "metrics",
+  "aims",
+  "architecture",
+  "pipeline",
+  "cohort",
 ];
 
 const AIMS = [
@@ -912,6 +924,7 @@ export function Landing() {
   const { data: hda } = useHdaDist();
 
   const [active, setActive] = useState<SectionId>("overview");
+  const [discoveryNavOpen, setDiscoveryNavOpen] = useState(false);
   const [openAim, setOpenAim] = useState(0);
   const [activeLayer, setActiveLayer] = useState<(typeof ARCHITECTURE)[number]["id"]>(ARCHITECTURE[0].id);
   const [groupFilter, setGroupFilter] = useState<string>("all");
@@ -962,6 +975,13 @@ export function Landing() {
       );
     });
   }, [libraryQuery]);
+
+  const visibleNavSections = inDiscovery
+    ? NAV_SECTIONS.filter((section) => DISCOVERY_PRIMARY_SECTIONS.includes(section.id))
+    : NAV_SECTIONS;
+  const discoveryOverflowSections = inDiscovery
+    ? NAV_SECTIONS.filter((section) => !DISCOVERY_PRIMARY_SECTIONS.includes(section.id))
+    : [];
 
   const trajectorySeries = useMemo(() => {
     const series = rmssd?.series;
@@ -1186,7 +1206,11 @@ export function Landing() {
   ];
 
   return (
-    <div className={styles.page} data-discovery-surface="landing">
+    <div
+      className={styles.page}
+      data-discovery-surface="landing"
+      data-discovery-layout={inDiscovery ? "signal-ledger" : undefined}
+    >
       <div ref={progressRef} className={styles.progress} style={{ transform: "scaleX(0)" }} aria-hidden />
 
       <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav" data-discovery-part="landing-nav">
@@ -1196,17 +1220,23 @@ export function Landing() {
           onClick={() => jumpTo("overview")}
           aria-label="ESD Lab - return to home"
         >
-          <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
-            e
-          </span>
-          <span className={styles.brandText}>
-            <strong>ESD Lab</strong>
-            <small>NANO · UofSC</small>
-          </span>
+          {inDiscovery ? (
+            <img src={discoveryLogoUrl} alt="" aria-hidden="true" data-discovery-part="brand-logo" />
+          ) : (
+            <>
+              <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
+                e
+              </span>
+              <span className={styles.brandText}>
+                <strong>ESD Lab</strong>
+                <small>NANO · UofSC</small>
+              </span>
+            </>
+          )}
         </button>
 
         <div className={styles.navLinks} data-discovery-part="landing-links">
-          {NAV_SECTIONS.map((section) => (
+          {visibleNavSections.map((section) => (
             <button
               key={section.id}
               type="button"
@@ -1216,15 +1246,83 @@ export function Landing() {
               {section.label}
             </button>
           ))}
-          <button type="button" className={styles.navLink} onClick={() => navigate(route(DOC_ROUTE))}>
-            Docs
-          </button>
-          <button type="button" className={styles.navLink} onClick={() => navigate(route(HOW_TO_ROUTE))}>
-            How-to
-          </button>
-          <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
-            Tour
-          </button>
+          {inDiscovery ? (
+            <div data-discovery-part="nav-overflow">
+              <button
+                type="button"
+                className={styles.navLink}
+                data-discovery-part="nav-overflow-trigger"
+                aria-expanded={discoveryNavOpen}
+                aria-controls="discovery-navigation-more"
+                aria-haspopup="menu"
+                onClick={() => setDiscoveryNavOpen((open) => !open)}
+              >
+                More
+                <ChevronDown size={14} strokeWidth={1.5} aria-hidden />
+              </button>
+              {discoveryNavOpen && (
+                <div id="discovery-navigation-more" role="menu" data-discovery-part="nav-overflow-menu">
+                  {discoveryOverflowSections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        jumpTo(section.id);
+                        setDiscoveryNavOpen(false);
+                      }}
+                    >
+                      {section.label}
+                    </button>
+                  ))}
+                  <span aria-hidden="true" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      navigate(route(DOC_ROUTE));
+                      setDiscoveryNavOpen(false);
+                    }}
+                  >
+                    Docs
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      navigate(route(HOW_TO_ROUTE));
+                      setDiscoveryNavOpen(false);
+                    }}
+                  >
+                    How-to
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-insight="tour-trigger"
+                    onClick={() => {
+                      startNanoTour("public");
+                      setDiscoveryNavOpen(false);
+                    }}
+                  >
+                    Tour
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <button type="button" className={styles.navLink} onClick={() => navigate(route(DOC_ROUTE))}>
+                Docs
+              </button>
+              <button type="button" className={styles.navLink} onClick={() => navigate(route(HOW_TO_ROUTE))}>
+                How-to
+              </button>
+              <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
+                Tour
+              </button>
+            </>
+          )}
         </div>
 
         <button type="button" className={styles.askButton} onClick={() => openAssistant()}>
@@ -1237,6 +1335,7 @@ export function Landing() {
       </nav>
 
       <div className={styles.statusBanner}>
+        {inDiscovery && <img src={discoveryStarUrl} alt="" aria-hidden="true" data-discovery-part="study-star" />}
         <span className={styles.statusDot} aria-hidden />
         <span>NANO Study · Actively Enrolling · {study?.enrolled ?? 231} / {study?.target ?? 260} participants</span>
         <a href="https://www.esdlabsc.com" target="_blank" rel="noopener noreferrer">
@@ -1316,7 +1415,7 @@ export function Landing() {
                 <span>labeled windows in sustained attention</span>
               </div>
               <p className={styles.cardBody}>
-                A quick operational read on whether the visible HDA stream is spending more time in sustained attention than in orienting, inattention, or termination.
+                Share of labeled study windows classified as sustained attention. Compare it with the phase bar and cohort rows below.
               </p>
 
               <div className={styles.heroSignalRail} aria-hidden="true">
@@ -1324,7 +1423,10 @@ export function Landing() {
                   <span
                     key={phase.key}
                     className={styles.heroSignalRailSegment}
-                    style={{ width: `${phase.share}%`, background: `linear-gradient(90deg, ${phase.color}, ${phase.colorSoft})` }}
+                    style={{
+                      width: `${phase.share}%`,
+                      background: inDiscovery ? phase.color : `linear-gradient(90deg, ${phase.color}, ${phase.colorSoft})`,
+                    }}
                   />
                 ))}
               </div>
@@ -1369,7 +1471,7 @@ export function Landing() {
               </div>
             </a>
 
-            <aside className={styles.heroCard} data-insight="landing-study">
+            <aside className={styles.heroCard} data-insight="landing-study" data-discovery-part={inDiscovery ? "study-summary" : undefined}>
               <span className={styles.cardEyebrow}>About the study</span>
               <h2 className={styles.cardTitle}>Longitudinal infant neurodevelopment, grounded in live operations.</h2>
               <p className={styles.cardBody}>
@@ -1402,10 +1504,78 @@ export function Landing() {
             </aside>
           </div>
 
+          {inDiscovery && (
+            <div data-discovery-part="signal-kpi-strip" aria-label="NANO study key metrics">
+              <article data-discovery-part="signal-kpi">
+                <span data-discovery-part="signal-kpi-icon"><UsersRound size={19} strokeWidth={1.5} aria-hidden /></span>
+                <div>
+                  <span>Infants enrolled</span>
+                  <strong>{study?.enrolled ?? 231} / {study?.target ?? 260}</strong>
+                  <p>Participation progress across the study.</p>
+                </div>
+              </article>
+              <article data-discovery-part="signal-kpi">
+                <span data-discovery-part="signal-kpi-icon"><HeartPulse size={19} strokeWidth={1.5} aria-hidden /></span>
+                <div>
+                  <span>Median RMSSD</span>
+                  <strong>{stat(totals.rmssdLatest, 1)} ms</strong>
+                  <p>A short-term heart rhythm measure.</p>
+                </div>
+              </article>
+              <article data-discovery-part="signal-kpi">
+                <span data-discovery-part="signal-kpi-icon"><Activity size={19} strokeWidth={1.5} aria-hidden /></span>
+                <div>
+                  <span>Labeled epochs</span>
+                  <strong>{stat(totals.done)}</strong>
+                  <p>Data windows ready for analysis.</p>
+                </div>
+              </article>
+              <article data-discovery-part="signal-kpi">
+                <span data-discovery-part="signal-kpi-icon"><ShieldCheck size={19} strokeWidth={1.5} aria-hidden /></span>
+                <div>
+                  <span>QA pass rate</span>
+                  <strong>{stat(heroSignal.passRate, 1)}%</strong>
+                  <p>Windows cleared before analysis.</p>
+                </div>
+              </article>
+            </div>
+          )}
+
           <div data-insight="landing-waveform">
             <WaveRibbon rmssd={totals.rmssdLatest} epochs={totals.done} passRate={heroSignal.passRate} />
           </div>
         </section>
+
+        {inDiscovery && (
+          <section data-discovery-part="metric-guide" aria-labelledby="discovery-reading-guide">
+            <div data-discovery-part="metric-guide-lead">
+              <img src={discoverySunburstUrl} alt="" aria-hidden="true" />
+              <div>
+                <span>How to read this page</span>
+                <h2 id="discovery-reading-guide">Clear signals, plain language.</h2>
+                <p>These are aggregate study trends. They do not show individual records or make clinical decisions.</p>
+              </div>
+            </div>
+            <div data-discovery-part="metric-definitions">
+              <article data-discovery-part="metric-definition">
+                <strong>RMSSD</strong>
+                <p>How much time changes between heartbeats. It helps describe short-term flexibility in heart rhythm.</p>
+              </article>
+              <article data-discovery-part="metric-definition">
+                <strong>HDA</strong>
+                <p>An attention phase label derived from heart-rate patterns. Sustained means the window was classified as focused attention.</p>
+              </article>
+              <article data-discovery-part="metric-definition">
+                <strong>QA pass rate</strong>
+                <p>The share of recorded windows that cleared automated quality checks before analysis.</p>
+              </article>
+            </div>
+            <button type="button" data-discovery-part="metric-guide-action" onClick={() => openAssistant("Explain the core NANO metrics in plain language.")}>
+              Ask ESD Buddy to explain a metric
+              <Sparkles size={14} strokeWidth={1.5} aria-hidden />
+            </button>
+          </section>
+        )}
 
         <section id="metrics" className={styles.section} data-insight="landing-metrics">
           <header className={styles.sectionHeader}>
