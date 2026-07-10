@@ -1,0 +1,40 @@
+.chart {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.track,
+.segment {
+  fill: none;
+}
+
+.track {
+  stroke: rgba(255, 255, 255, 0.18);
+}
+
+.segment {
+  stroke-linecap: butt;
+  animation: donut-segment-reveal 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: opacity 160ms ease, filter 160ms ease;
+}
+
+.chart:hover .segment {
+  filter: brightness(1.06);
+}
+
+@keyframes donut-segment-reveal {
+  from {
+    opacity: 0.2;
+    stroke-dasharray: 0 100;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    animation: none;
+  }
+}

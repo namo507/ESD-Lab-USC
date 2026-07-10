@@ -1,14 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronDown, Presentation, RotateCcw, Search, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
-import { Gloss } from "@/components/primitives";
+import {
+  ArrowRight,
+  BadgeCheck,
+  ChevronDown,
+  Download,
+  HeartPulse,
+  MessageCircle,
+  MoreHorizontal,
+  Presentation,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Tags,
+  Users,
+} from "lucide-react";
+import { DonutChart } from "@/components/charts/DonutChart";
+import { Gloss, Segmented } from "@/components/primitives";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { SkinToggle } from "@/components/shell/SkinToggle";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
 import { startNanoTour } from "@/components/help/tourEvents";
-import { AmbientOrbit } from "@/components/warm";
-import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
+import { AmbientOrbit, Counter } from "@/components/warm";
+import {
+  useHdaComposition,
+  useHdaDist,
+  useParticipants,
+  useRuns,
+  useStages,
+  useStudySummary,
+  useTrajectory,
+} from "@/api/hooks";
 import { READING_CORPUS } from "@/data/readingLibrary";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
@@ -18,6 +44,7 @@ import type { FeatureFlag } from "@/config/featureFlags";
 import styles from "./Landing.module.css";
 
 type SectionId = "overview" | "metrics" | "aims" | "architecture" | "pipeline" | "qa" | "cohort" | "ml" | "studio" | "assistant" | "library";
+type AttentionAgeRange = "0–3m" | "0–12m" | "All";
 
 const NAV_SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -32,6 +59,10 @@ const NAV_SECTIONS: Array<{ id: SectionId; label: string }> = [
   { id: "assistant", label: "Assistant" },
   { id: "library", label: "Library" },
 ];
+
+const DISCOVERY_NAV_SECTIONS = NAV_SECTIONS.filter(({ id }) =>
+  (["overview", "metrics", "aims", "pipeline", "cohort", "library"] as SectionId[]).includes(id),
+);
 
 const AIMS = [
   {
@@ -248,6 +279,19 @@ function stat(value: number, digits = 0): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+function formatPipelineSnapshot(value: string | undefined): string {
+  if (!value) return "Snapshot pending";
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(value);
+  if (!match) return value;
+
+  const [, year, month, day, hour, minute] = match;
+  const monthName = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][
+    Number(month) - 1
+  ];
+  return `${monthName} ${Number(day)}, ${year} · ${hour}:${minute}`;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -910,12 +954,15 @@ export function Landing() {
   const { data: participants = [] } = useParticipants();
   const { data: rmssd } = useTrajectory("rmssd");
   const { data: hda } = useHdaDist();
+  const { data: hdaComposition } = useHdaComposition();
 
   const [active, setActive] = useState<SectionId>("overview");
   const [openAim, setOpenAim] = useState(0);
   const [activeLayer, setActiveLayer] = useState<(typeof ARCHITECTURE)[number]["id"]>(ARCHITECTURE[0].id);
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [libraryQuery, setLibraryQuery] = useState("");
+  const [attentionAgeRange, setAttentionAgeRange] = useState<AttentionAgeRange>("0–12m");
+  const [attentionCohort, setAttentionCohort] = useState("all");
   const [studioValues, setStudioValues] = useState<Record<string, number>>(() =>
     Object.fromEntries(STUDIO_INPUTS.map((input) => [input.id, input.defaultValue])),
   );
@@ -1076,6 +1123,56 @@ export function Landing() {
     };
   }, [hda, totals.done, totals.fail]);
 
+  const discoveryQa = useMemo(() => {
+    const qaStage = stages.find((stage) => stage.id === "qa");
+    const reviewed = (qaStage?.done ?? 0) + (qaStage?.fail ?? 0);
+    return {
+      passRate: reviewed > 0 ? ((qaStage?.done ?? 0) / reviewed) * 100 : 0,
+      flagged: qaStage?.fail ?? 0,
+    };
+  }, [stages]);
+
+  const latestSnapshotLabel = useMemo(
+    () => formatPipelineSnapshot(runs[0]?.triggered),
+    [runs],
+  );
+
+  const attentionTimeline = useMemo(() => {
+    const phaseKeys = ["sustained", "orienting", "inattention", "termination"] as const;
+    const groupCodes = attentionCohort === "all"
+      ? (["VPT", "ASIB", "TD"] as const)
+      : ([attentionCohort as "VPT" | "ASIB" | "TD"] as const);
+    const groupSeries = groupCodes.flatMap((group) => {
+      const rows = hdaComposition?.byGroup[group];
+      return rows?.length ? [rows] : [];
+    });
+    const maxMonth = attentionAgeRange === "0–3m" ? 3 : attentionAgeRange === "0–12m" ? 12 : Number.POSITIVE_INFINITY;
+    const months = [...new Set(groupSeries.flatMap((rows) => rows.map((row) => row.month)))]
+      .filter((month) => month <= maxMonth)
+      .sort((left, right) => left - right);
+
+    return months.flatMap((month) => {
+      const rows = groupSeries.flatMap((series) => {
+        const row = series.find((point) => point.month === month);
+        return row ? [row] : [];
+      });
+      if (!rows.length) return [];
+
+      const average = Object.fromEntries(
+        phaseKeys.map((phase) => [phase, rows.reduce((sum, row) => sum + row[phase], 0) / rows.length]),
+      ) as Record<(typeof phaseKeys)[number], number>;
+      const total = phaseKeys.reduce((sum, phase) => sum + average[phase], 0);
+
+      return {
+        label: month === 0 ? "Birth" : `${month} mo`,
+        sustained: (average.sustained / total) * 100,
+        orienting: (average.orienting / total) * 100,
+        inattention: (average.inattention / total) * 100,
+        termination: (average.termination / total) * 100,
+      };
+    });
+  }, [attentionAgeRange, attentionCohort, hdaComposition]);
+
   useEffect(() => {
     const sections = NAV_SECTIONS.flatMap((section) => {
       const element = document.getElementById(section.id);
@@ -1179,6 +1276,25 @@ export function Landing() {
     setChatOpen(true);
   }
 
+  function exportDiscoveryDashboard() {
+    const rows = [
+      ["Metric", "Value"],
+      ["Enrolled infants", `${study?.enrolled ?? 231} / ${study?.target ?? 260}`],
+      ["Median RMSSD", `${stat(totals.rmssdLatest, 1)} ms`],
+      ["HDA windows labeled", stat(heroSignal.totalLabeled)],
+      ["Window QA pass rate", `${stat(discoveryQa.passRate, 1)}%`],
+      ["Latest pipeline run", latestSnapshotLabel],
+      ...heroSignal.phaseMix.map((phase) => [`Attention phase: ${phase.label}`, `${stat(phase.share, 1)}%`]),
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nano-discovery-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const groupCards = [
     { code: "ASIB", label: "Autism sibling cohort", count: study?.groups.ASIB.count ?? 30, target: study?.groups.ASIB.target ?? 65 },
     { code: "VPT", label: "Very preterm cohort", count: study?.groups.VPT.count ?? 105, target: study?.groups.VPT.target ?? 130 },
@@ -1189,62 +1305,404 @@ export function Landing() {
     <div className={styles.page} data-discovery-surface="landing">
       <div ref={progressRef} className={styles.progress} style={{ transform: "scaleX(0)" }} aria-hidden />
 
-      <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav" data-discovery-part="landing-nav">
-        <button
-          type="button"
-          className={styles.brand}
-          onClick={() => jumpTo("overview")}
-          aria-label="ESD Lab - return to home"
+      {inDiscovery ? (
+        <nav
+          className={`${styles.nav} ${styles.discoveryNav}`}
+          aria-label="Discovery dashboard sections"
+          data-tour="public-nav"
+          data-discovery-part="landing-nav"
         >
-          <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
-            e
-          </span>
-          <span className={styles.brandText}>
-            <strong>ESD Lab</strong>
-            <small>NANO · UofSC</small>
-          </span>
-        </button>
+          <button
+            type="button"
+            className={`${styles.brand} ${styles.discoveryBrand}`}
+            onClick={() => jumpTo("overview")}
+            aria-label="ESD Lab - return to discovery overview"
+          >
+            <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
+              e
+            </span>
+            <span className={styles.brandText}>
+              <strong>ESD Lab</strong>
+              <small>NANO · UofSC</small>
+            </span>
+          </button>
 
-        <div className={styles.navLinks} data-discovery-part="landing-links">
-          {NAV_SECTIONS.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={`${styles.navLink} ${active === section.id ? styles.navLinkActive : ""}`}
-              onClick={() => jumpTo(section.id)}
-            >
-              {section.label}
+          <div className={styles.discoveryNavLinks} data-discovery-part="landing-links">
+            {DISCOVERY_NAV_SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                className={`${styles.discoveryNavLink} ${active === section.id ? styles.discoveryNavLinkActive : ""}`}
+                onClick={() => jumpTo(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+
+          <form
+            className={styles.navSearch}
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              jumpTo("library");
+            }}
+          >
+            <Search size={15} strokeWidth={1.5} aria-hidden />
+            <input
+              value={libraryQuery}
+              onChange={(event) => setLibraryQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                jumpTo("library");
+              }}
+              placeholder="Search the lab..."
+              aria-label="Search the discovery dashboard and reading library"
+            />
+          </form>
+
+          <button type="button" className={`${styles.askButton} ${styles.discoveryAskButton}`} onClick={() => openAssistant()}>
+            <Sparkles size={15} strokeWidth={1.5} />
+            Ask the lab
+          </button>
+
+          <div className={styles.navUtilities} aria-label="Display settings">
+            <SkinToggle variant="ghost" className={styles.utilityToggle} />
+            <ThemeToggle variant="ghost" className={styles.utilityToggle} />
+          </div>
+        </nav>
+      ) : (
+        <nav className={styles.nav} aria-label="Landing sections" data-tour="public-nav" data-discovery-part="landing-nav">
+          <button
+            type="button"
+            className={styles.brand}
+            onClick={() => jumpTo("overview")}
+            aria-label="ESD Lab - return to home"
+          >
+            <span className={styles.brandMark} data-brand-mark="esd" aria-hidden>
+              e
+            </span>
+            <span className={styles.brandText}>
+              <strong>ESD Lab</strong>
+              <small>NANO · UofSC</small>
+            </span>
+          </button>
+
+          <div className={styles.navLinks} data-discovery-part="landing-links">
+            {NAV_SECTIONS.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                className={`${styles.navLink} ${active === section.id ? styles.navLinkActive : ""}`}
+                onClick={() => jumpTo(section.id)}
+              >
+                {section.label}
+              </button>
+            ))}
+            <button type="button" className={styles.navLink} onClick={() => navigate(route(DOC_ROUTE))}>
+              Docs
             </button>
-          ))}
-          <button type="button" className={styles.navLink} onClick={() => navigate(route(DOC_ROUTE))}>
-            Docs
+            <button type="button" className={styles.navLink} onClick={() => navigate(route(HOW_TO_ROUTE))}>
+              How-to
+            </button>
+            <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
+              Tour
+            </button>
+          </div>
+
+          <button type="button" className={styles.askButton} onClick={() => openAssistant()}>
+            <Sparkles size={14} strokeWidth={1.5} />
+            Ask the lab
           </button>
-          <button type="button" className={styles.navLink} onClick={() => navigate(route(HOW_TO_ROUTE))}>
-            How-to
-          </button>
-          <button type="button" className={styles.navLink} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
-            Tour
+
+          <SkinToggle variant="pill" />
+          <ThemeToggle variant="pill" />
+        </nav>
+      )}
+
+      {inDiscovery ? (
+        <div className={`${styles.statusBanner} ${styles.discoveryStatus}`}>
+          <span className={styles.statusDot} aria-hidden />
+          <span>
+            <strong>NANO Study</strong> · Actively Enrolling · {study?.enrolled ?? 231} / {study?.target ?? 260} infants
+          </span>
+          <span className={styles.statusDate}>Latest run {latestSnapshotLabel}</span>
+          <button type="button" onClick={() => jumpTo("aims")}>
+            View study details <ArrowRight size={14} aria-hidden />
           </button>
         </div>
+      ) : (
+        <div className={styles.statusBanner}>
+          <span className={styles.statusDot} aria-hidden />
+          <span>NANO Study · Actively Enrolling · {study?.enrolled ?? 231} / {study?.target ?? 260} participants</span>
+          <a href="https://www.esdlabsc.com" target="_blank" rel="noopener noreferrer">
+            Learn more about participating <ArrowRight size={14} aria-hidden />
+          </a>
+        </div>
+      )}
 
-        <button type="button" className={styles.askButton} onClick={() => openAssistant()}>
-          <Sparkles size={14} strokeWidth={1.5} />
-          Ask the lab
-        </button>
+      <main className={`${styles.main} ${inDiscovery ? styles.discoveryMain : ""}`}>
+        {inDiscovery ? (
+          <>
+            <section id="overview" className={styles.discoveryOverview} data-insight="landing-overview">
+              <div className={styles.heroSplit}>
+                <div className={styles.editorialHero}>
+                  <span className={styles.discoveryEyebrow}>
+                    <Sparkles size={14} strokeWidth={1.5} aria-hidden />
+                    NANO Study
+                  </span>
+                  <h1>The heartbeat of every baby&apos;s first year.</h1>
+                  <p>
+                    The NANO Study follows infants across their first years of life to understand how autonomic regulation,
+                    attention, and everyday interaction shape development. This dashboard turns the live research pipeline
+                    into a clear, shared view of progress.
+                  </p>
+                  <button type="button" className={styles.editorialLink} onClick={() => jumpTo("aims")}>
+                    Learn more about the NANO Study <ArrowRight size={15} strokeWidth={1.5} aria-hidden />
+                  </button>
+                </div>
 
-        <SkinToggle variant="pill" />
-        <ThemeToggle variant="pill" />
-      </nav>
+                <article className={styles.attentionCard} data-insight="landing-attention-pulse" data-tour="attention-pulse">
+                  <div className={styles.attentionCardHeader}>
+                    <span className={styles.discoveryCardEyebrow}>Attention pulse</span>
+                    <span className={styles.liveBadge}><span aria-hidden /> Live</span>
+                  </div>
+                  <div className={styles.attentionCardGrid}>
+                    <div className={styles.attentionSummary}>
+                      <strong><Counter to={heroSignal.sustainedShare} decimals={1} duration={900} />%</strong>
+                      <span>Labeled windows in sustained attention</span>
+                      <p>
+                        Sustained attention remains the dominant phase across the currently labeled NANO windows.
+                      </p>
+                    </div>
+                    <div className={styles.attentionVisual}>
+                      <DonutChart
+                        className={styles.attentionDonut}
+                        size={158}
+                        strokeWidth={24}
+                        segments={heroSignal.phaseMix.map((phase) => ({
+                          label: phase.label,
+                          value: phase.share,
+                          color:
+                            phase.key === "sustained"
+                              ? "#1B3DBF"
+                              : phase.key === "termination"
+                                ? "#F4DA26"
+                                : phase.key === "inattention"
+                                  ? "#F57F00"
+                                  : "#91BAF4",
+                        }))}
+                        ariaLabel={`Attention phase distribution: ${heroSignal.phaseMix
+                          .map((phase) => `${phase.label} ${stat(phase.share, 1)} percent`)
+                          .join(", ")}`}
+                      />
+                      <div className={styles.attentionLegend}>
+                        {heroSignal.phaseMix.map((phase) => (
+                          <div key={phase.key}>
+                            <span
+                              aria-hidden
+                              style={{
+                                backgroundColor:
+                                  phase.key === "sustained"
+                                    ? "#1B3DBF"
+                                    : phase.key === "termination"
+                                      ? "#F4DA26"
+                                      : phase.key === "inattention"
+                                        ? "#F57F00"
+                                        : "#91BAF4",
+                              }}
+                            />
+                            <span>{phase.label}</span>
+                            <strong>{stat(phase.share, 0)}%</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.vptProgress}>
+                    <div>
+                      <span>VPT sustained attention</span>
+                      <strong>{stat(heroSignal.cohortBands.find((cohort) => cohort.code === "VPT")?.sustainedShare ?? 70, 0)}%</strong>
+                    </div>
+                    <span className={styles.vptTrack}>
+                      <span
+                        className={styles.vptFill}
+                        style={{ width: `${heroSignal.cohortBands.find((cohort) => cohort.code === "VPT")?.sustainedShare ?? 70}%` }}
+                      />
+                    </span>
+                  </div>
+                  <button type="button" className={styles.attentionCardLink} onClick={() => navigate(route("/results"))}>
+                    Open attention analytics <ArrowRight size={14} strokeWidth={1.5} aria-hidden />
+                  </button>
+                </article>
+              </div>
+            </section>
 
-      <div className={styles.statusBanner}>
-        <span className={styles.statusDot} aria-hidden />
-        <span>NANO Study · Actively Enrolling · {study?.enrolled ?? 231} / {study?.target ?? 260} participants</span>
-        <a href="https://www.esdlabsc.com" target="_blank" rel="noopener noreferrer">
-          Learn more about participating <ArrowRight size={14} aria-hidden />
-        </a>
-      </div>
+            <section id="metrics" className={styles.discoveryMetrics} data-insight="landing-metrics">
+              <div className={styles.kpiStrip}>
+                <article className={styles.kpiCard} data-insight="kpi-enroll">
+                  <div className={styles.kpiIcon}><Users size={21} strokeWidth={1.5} aria-hidden /></div>
+                  <div className={styles.kpiContent}>
+                    <strong><Counter to={study?.enrolled ?? 231} duration={820} /> <span>/ {study?.target ?? 260}</span></strong>
+                    <p>Enrolled infants</p>
+                    <button type="button" onClick={() => jumpTo("cohort")}>View cohort <ArrowRight size={13} aria-hidden /></button>
+                  </div>
+                </article>
+                <article className={styles.kpiCard} data-insight="landing-rmssd">
+                  <div className={styles.kpiIcon}><HeartPulse size={21} strokeWidth={1.5} aria-hidden /></div>
+                  <div className={styles.kpiContent}>
+                    <strong><Counter to={totals.rmssdLatest} decimals={1} duration={900} /> <span>ms</span></strong>
+                    <p>RMSSD (median)</p>
+                    <button type="button" onClick={() => navigate(route("/results"))}>View HRV metrics <ArrowRight size={13} aria-hidden /></button>
+                  </div>
+                </article>
+                <article className={styles.kpiCard} data-insight="kpi-epochs">
+                  <div className={styles.kpiIcon}><Tags size={21} strokeWidth={1.5} aria-hidden /></div>
+                  <div className={styles.kpiContent}>
+                    <strong><Counter to={heroSignal.totalLabeled} duration={1000} /></strong>
+                    <p>HDA windows labeled</p>
+                    <button type="button" onClick={() => navigate(route("/runs"))}>View pipeline <ArrowRight size={13} aria-hidden /></button>
+                  </div>
+                </article>
+                <article className={styles.kpiCard} data-insight="landing-qa-rate">
+                  <div className={styles.kpiIcon}><BadgeCheck size={21} strokeWidth={1.5} aria-hidden /></div>
+                  <div className={styles.kpiContent}>
+                    <strong><Counter to={discoveryQa.passRate} decimals={1} duration={950} />%</strong>
+                    <p>Window QA pass rate</p>
+                    <button type="button" onClick={() => jumpTo("qa")}>View QA <ArrowRight size={13} aria-hidden /></button>
+                  </div>
+                </article>
+              </div>
 
-      <main className={styles.main}>
+              <div className={styles.analyticsZone}>
+                <article className={`${styles.analyticsCard} ${styles.timelineCard}`}>
+                  <header className={styles.analyticsHeader}>
+                    <div>
+                      <span className={styles.discoveryCardEyebrow}>Attention by corrected age</span>
+                      <p>Mean share of labeled windows by phase</p>
+                    </div>
+                    <div className={styles.timelineControls}>
+                      <label>
+                        <span className={styles.srOnly}>Cohort</span>
+                        <select value={attentionCohort} onChange={(event) => setAttentionCohort(event.target.value)}>
+                          <option value="all">All infants</option>
+                          <option value="VPT">VPT</option>
+                          <option value="ASIB">ASIB</option>
+                          <option value="TD">TD</option>
+                        </select>
+                      </label>
+                      <Segmented
+                        options={["0–3m", "0–12m", "All"] as AttentionAgeRange[]}
+                        value={attentionAgeRange}
+                        onChange={setAttentionAgeRange}
+                        size="sm"
+                        ariaLabel="Attention chart corrected-age range"
+                      />
+                      <button type="button" className={styles.iconButton} onClick={() => navigate(route("/results"))} aria-label="Open full attention analytics">
+                        <MoreHorizontal size={17} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </header>
+                  <div className={styles.timelineChart}>
+                    <div className={styles.timelineYAxis} aria-hidden>
+                      <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0</span>
+                    </div>
+                    <div className={styles.timelinePlot}>
+                      {attentionTimeline.map((point, index) => (
+                        <div key={point.label} className={styles.timelineColumn}>
+                          <div
+                            className={styles.stackedBar}
+                            role="img"
+                            aria-label={`${point.label}: sustained ${stat(point.sustained, 0)} percent, orienting ${stat(point.orienting, 0)} percent, inattention ${stat(point.inattention, 0)} percent, termination ${stat(point.termination, 0)} percent`}
+                            style={{ animationDelay: `${index * 55}ms` }}
+                          >
+                            <span style={{ height: `${point.sustained}%`, background: "var(--landing-phase-sustained)" }} />
+                            <span style={{ height: `${point.orienting}%`, background: "var(--landing-phase-orienting)" }} />
+                            <span style={{ height: `${point.inattention}%`, background: "var(--landing-phase-inattention)" }} />
+                            <span style={{ height: `${point.termination}%`, background: "var(--landing-phase-termination)" }} />
+                          </div>
+                          <span>{point.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.phaseLegend}>
+                    {[
+                      ["Sustained", "var(--landing-phase-sustained)"],
+                      ["Orienting", "var(--landing-phase-orienting)"],
+                      ["Inattention", "var(--landing-phase-inattention)"],
+                      ["Termination", "var(--landing-phase-termination)"],
+                    ].map(([label, color]) => (
+                      <span key={label}><i style={{ background: color }} aria-hidden />{label}</span>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.analyticsLink} onClick={() => navigate(route("/results"))}>
+                    See full attention analytics <ArrowRight size={14} aria-hidden />
+                  </button>
+                </article>
+
+                <article className={`${styles.analyticsCard} ${styles.pipelineWatch}`} data-insight="pipeline-svg">
+                  <header className={styles.compactCardHeader}>
+                    <span className={styles.discoveryCardEyebrow}>Pipeline watch</span>
+                    <button type="button" onClick={() => navigate(route("/runs"))}>View pipeline</button>
+                  </header>
+                  <div className={styles.pipelineTableWrap}>
+                    <table className={styles.pipelineTable}>
+                      <thead>
+                        <tr><th>Stage</th><th>Complete</th><th>In flight</th></tr>
+                      </thead>
+                      <tbody>
+                        {stages.slice(0, 6).map((stage) => (
+                          <tr key={stage.id} tabIndex={0}>
+                            <td>{stage.label}</td>
+                            <td>{stat(stage.done)}</td>
+                            <td>
+                              <span className={stage.inflight > 0 ? styles.positiveDelta : styles.neutralDelta}>
+                                {stage.inflight > 0 ? stat(stage.inflight) : "—"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button type="button" className={styles.analyticsLink} onClick={() => navigate(route("/runs"))}>
+                    See pipeline metrics <ArrowRight size={14} aria-hidden />
+                  </button>
+                </article>
+
+                <article className={`${styles.analyticsCard} ${styles.assistantInsight}`} data-insight="landing-assistant-context">
+                  <header className={styles.compactCardHeader}>
+                    <span className={styles.discoveryCardEyebrow}>Assistant insight</span>
+                    <span className={styles.newBadge}>New</span>
+                  </header>
+                  <div className={styles.insightIcon}><Sparkles size={24} strokeWidth={1.5} aria-hidden /></div>
+                  <p>
+                    Sustained attention represents <strong>{stat(heroSignal.sustainedShare, 1)}%</strong> of labeled windows,
+                    leading orienting by {stat(heroSignal.sustainedShare - (heroSignal.phaseMix.find((phase) => phase.key === "orienting")?.share ?? 0), 1)} points.
+                  </p>
+                  <p>
+                    Median RMSSD is holding at <strong>{stat(totals.rmssdLatest, 1)} ms</strong>, while Window QA is passing
+                    <strong> {stat(discoveryQa.passRate, 1)}%</strong> of reviewed windows with {stat(discoveryQa.flagged)} flagged.
+                  </p>
+                  <button type="button" className={styles.followUpButton} onClick={() => openAssistant("What is driving the current sustained-attention composition?")}>
+                    <MessageCircle size={15} strokeWidth={1.5} aria-hidden /> Ask a follow-up
+                  </button>
+                  <small>Latest pipeline run: {latestSnapshotLabel}.</small>
+                </article>
+              </div>
+
+              <footer className={styles.dashboardFooterRibbon}>
+                <span><RefreshCw size={13} strokeWidth={1.5} aria-hidden /> Latest pipeline run {latestSnapshotLabel}</span>
+                <button type="button" onClick={exportDiscoveryDashboard}>
+                  <Download size={14} strokeWidth={1.5} aria-hidden /> Export dashboard
+                </button>
+              </footer>
+            </section>
+          </>
+        ) : (
+          <>
         <section id="overview" className={styles.hero} data-insight="landing-overview">
           <div className={styles.heroEyebrow} data-insight="pipeline-svg">
             <span className={styles.liveDot} />
@@ -1442,6 +1900,9 @@ export function Landing() {
             </article>
           </div>
         </section>
+
+          </>
+        )}
 
         {dynLandingItems.length > 0 && (
           <section className={`${styles.section} ${styles.dynamicsSection}`} data-insight="dyn-discovery">
@@ -2012,18 +2473,22 @@ export function Landing() {
         </section>
       </main>
 
-      <div className={styles.dock} data-discovery-part="landing-dock">
-        <span><ShieldCheck size={14} strokeWidth={1.5} /> HIPAA session</span>
-        <span>{runs[0]?.id ?? "run_2026_115_a"}</span>
-        <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-        <button type="button" onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">Operator view</button>
-      </div>
+      {!inDiscovery ? (
+        <>
+          <div className={styles.dock} data-discovery-part="landing-dock">
+            <span><ShieldCheck size={14} strokeWidth={1.5} /> HIPAA session</span>
+            <span>{runs[0]?.id ?? "run_2026_115_a"}</span>
+            <span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+            <button type="button" onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">Operator view</button>
+          </div>
 
-      <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()} data-discovery-part="landing-fab">
-        <Sparkles size={20} strokeWidth={1.5} />
-      </button>
+          <button type="button" className={styles.fab} aria-label="Open assistant" onClick={() => openAssistant()} data-discovery-part="landing-fab">
+            <Sparkles size={20} strokeWidth={1.5} />
+          </button>
 
-      <Buddy anchor="page" />
+          <Buddy anchor="page" />
+        </>
+      ) : null}
       <ChatDrawer />
     </div>
   );
