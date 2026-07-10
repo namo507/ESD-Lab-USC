@@ -242,8 +242,9 @@ ensure_cloudflared() {
   local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/esd-lab-usc/bin"
   mkdir -p "$cache_dir"
 
-  local arch raw_arch download_url
+  local arch os raw_arch raw_os download_url
   raw_arch="$(uname -m)"
+  raw_os="$(uname -s)"
   case "$raw_arch" in
     x86_64|amd64)
       arch="amd64"
@@ -257,17 +258,54 @@ ensure_cloudflared() {
       ;;
   esac
 
-  local cloudflared_bin="$cache_dir/cloudflared-${CLOUDFLARED_VERSION}-linux-${arch}"
-  if [[ -x "$cloudflared_bin" ]]; then
+  case "$raw_os" in
+    Darwin)
+      os="darwin"
+      ;;
+    Linux)
+      os="linux"
+      ;;
+    *)
+      echo "Unsupported operating system for automatic cloudflared download: ${raw_os}" >&2
+      exit 1
+      ;;
+  esac
+
+  local cloudflared_bin="$cache_dir/cloudflared-${CLOUDFLARED_VERSION}-${os}-${arch}"
+  if [[ -x "$cloudflared_bin" ]] && "$cloudflared_bin" version >/dev/null 2>&1; then
     printf '%s\n' "$cloudflared_bin"
     return 0
   fi
+  rm -f "$cloudflared_bin"
 
-  download_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-${arch}"
-  echo "Downloading cloudflared ${CLOUDFLARED_VERSION} for ${raw_arch}..." >&2
-  curl -fsSL "$download_url" -o "${cloudflared_bin}.tmp"
-  chmod +x "${cloudflared_bin}.tmp"
-  mv "${cloudflared_bin}.tmp" "$cloudflared_bin"
+  echo "Downloading cloudflared ${CLOUDFLARED_VERSION} for ${raw_os}/${raw_arch}..." >&2
+  if [[ "$os" == "darwin" ]]; then
+    local temp_dir archive_path
+    temp_dir="$(mktemp -d "${cache_dir}/cloudflared.XXXXXX")"
+    archive_path="${temp_dir}/cloudflared.tgz"
+    download_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-darwin-${arch}.tgz"
+    curl -fsSL "$download_url" -o "$archive_path"
+    tar -xzf "$archive_path" -C "$temp_dir"
+    if [[ ! -f "${temp_dir}/cloudflared" ]]; then
+      rm -rf "$temp_dir"
+      echo "Downloaded cloudflared archive did not contain the expected binary." >&2
+      exit 1
+    fi
+    chmod +x "${temp_dir}/cloudflared"
+    mv "${temp_dir}/cloudflared" "$cloudflared_bin"
+    rm -rf "$temp_dir"
+  else
+    download_url="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-${arch}"
+    curl -fsSL "$download_url" -o "${cloudflared_bin}.tmp"
+    chmod +x "${cloudflared_bin}.tmp"
+    mv "${cloudflared_bin}.tmp" "$cloudflared_bin"
+  fi
+
+  if ! "$cloudflared_bin" version >/dev/null 2>&1; then
+    rm -f "$cloudflared_bin"
+    echo "Downloaded cloudflared binary cannot run on ${raw_os}/${raw_arch}." >&2
+    exit 1
+  fi
   printf '%s\n' "$cloudflared_bin"
 }
 
@@ -616,7 +654,12 @@ print_host_tunnel_result() {
     if [[ "$use_named" == "true" && -n "$registered" ]]; then
       named_registered="true"
       if named_hostname_ready; then
-        emit_result "https://${public_hostname}/" "named" || return 1
+        if ! emit_result "https://${public_hostname}/" "named"; then
+          if [[ "$continuous" != "true" ]]; then
+            return 1
+          fi
+          echo "Initial share health is still converging; the continuous supervisor will keep probing and republishing."
+        fi
         return 0
       fi
     fi
@@ -624,7 +667,12 @@ print_host_tunnel_result() {
       quick_url="$url"
       quick_registered="true"
       if origin_healthy "${url}/"; then
-        emit_result "${url}/" "quick" || return 1
+        if ! emit_result "${url}/" "quick"; then
+          if [[ "$continuous" != "true" ]]; then
+            return 1
+          fi
+          echo "Initial share health is still converging; the continuous supervisor will keep probing and republishing."
+        fi
         return 0
       fi
     fi
