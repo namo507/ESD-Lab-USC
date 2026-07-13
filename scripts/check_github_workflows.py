@@ -207,7 +207,7 @@ def check_deploy_pages(data: dict[str, Any], errors: list[str]) -> None:
     for snippet in (
         "scripts/build_pages_site.py",
         "scripts/check_live_surfaces.py",
-        "cloudflare/wrangler-action",
+        "cloudflare/wrangler-action@v4",
     ):
         if snippet not in text:
             errors.append(f"deploy-pages.yml: missing {snippet!r}")
