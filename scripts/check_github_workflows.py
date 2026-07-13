@@ -61,6 +61,20 @@ def check_required_files(errors: list[str]) -> None:
         errors.append("ci.yml: pinned actionlint release is required")
 
 
+def check_ci(data: dict[str, Any], errors: list[str]) -> None:
+    text = (WORKFLOW_DIR / "ci.yml").read_text(encoding="utf-8")
+    for snippet in (
+        "Prepare writable bind-mount paths",
+        "mkdir -p logs web/build dashboard/data",
+        "chmod -R a+rwX logs web dashboard/data",
+    ):
+        if snippet not in text:
+            errors.append(
+                "ci.yml: dashboard Docker job must prepare writable bind mounts; "
+                f"missing {snippet!r}"
+            )
+
+
 def check_secret_conditions(
     workflow_name: str, data: dict[str, Any], errors: list[str]
 ) -> None:
@@ -213,6 +227,8 @@ def main() -> int:
 
     if "daily-health-sweep.yml" in workflows:
         check_daily_health_sweep(workflows["daily-health-sweep.yml"], errors)
+    if "ci.yml" in workflows:
+        check_ci(workflows["ci.yml"], errors)
     if "uptime-monitor.yml" in workflows:
         check_uptime_monitor(workflows["uptime-monitor.yml"], errors)
     if "deploy-pages.yml" in workflows:
