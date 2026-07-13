@@ -65,8 +65,8 @@ def check_ci(data: dict[str, Any], errors: list[str]) -> None:
     text = (WORKFLOW_DIR / "ci.yml").read_text(encoding="utf-8")
     for snippet in (
         "Prepare writable bind-mount paths",
-        "mkdir -p logs web/build dashboard/data",
-        "chmod -R a+rwX logs web dashboard/data",
+        "mkdir -p logs web/build dashboard/data data/processed models",
+        "chmod -R a+rwX logs web dashboard/data data models",
     ):
         if snippet not in text:
             errors.append(

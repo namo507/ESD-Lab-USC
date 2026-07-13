@@ -81,8 +81,8 @@ jobs:
 
       - name: Prepare writable bind-mount paths
         run: |
-          mkdir -p logs web/build dashboard/data
-          chmod -R a+rwX logs web dashboard/data
+          mkdir -p logs web/build dashboard/data data/processed models
+          chmod -R a+rwX logs web dashboard/data data models
 
       - name: Build dashboard image
         run: docker compose -f docker/compose.dev.yml build dashboard
