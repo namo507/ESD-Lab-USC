@@ -109,7 +109,7 @@ Then republish with a healthy durable origin. If none is available, leave
 `PAGES_API_ORIGIN` unset and deploy fallback-only mode:
 
 ```bash
-PAGES_API_ORIGIN=https://dashboard-api.example.org make pages-deploy
+PAGES_API_ORIGIN= DASHBOARD_API_ORIGIN= make pages-deploy
 ```
 
 ## One-time setup
