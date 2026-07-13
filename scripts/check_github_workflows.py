@@ -145,6 +145,7 @@ def check_daily_health_sweep(data: dict[str, Any], errors: list[str]) -> None:
         "scripts/check_dashboard_runtime.py",
         "web/scripts/visual-health-check.mjs",
         "scripts/check_live_surfaces.py",
+        "Close recovered sweep issue",
     ]
     for snippet in required_snippets:
         if snippet not in step_text:
