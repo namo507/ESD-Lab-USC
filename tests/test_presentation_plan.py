@@ -233,6 +233,8 @@ def test_spa_route_whitelist_includes_new_and_existing_routes():
     # Existing routes still resolve (regression guard, incl. /matlab).
     assert is_spa_route("/matlab")
     assert is_spa_route("/overview")
+    assert is_spa_route("/docs")
+    assert is_spa_route("/how-to")
     assert is_spa_route("/redcap")
     # API endpoints are never treated as SPA document routes.
     assert not is_spa_route("/api/presentation/plan")

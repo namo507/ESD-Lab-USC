@@ -69,6 +69,8 @@ SPA_BUILD_DIR = PROJECT_ROOT / "web" / "build"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
 SPA_ROUTE_PREFIXES = (
     "/overview",
+    "/docs",
+    "/how-to",
     "/participants",
     "/qa",
     "/results",
@@ -2994,8 +2996,7 @@ class PresentationJobStore:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """
+            conn.execute("""
                 CREATE TABLE IF NOT EXISTS presentation_jobs (
                     job_id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -3010,8 +3011,7 @@ class PresentationJobStore:
                     worker_id TEXT,
                     heartbeat_at REAL
                 )
-                """
-            )
+                """)
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_status ON presentation_jobs(status)"
             )
@@ -3257,14 +3257,12 @@ class PresentationJobStore:
         with self._connect() as conn:
             self._prune(conn)
             self._release_stale_claims(conn)
-            rows = conn.execute(
-                """
+            rows = conn.execute("""
                 SELECT job_id FROM presentation_jobs
                 WHERE status IN ('queued', 'running')
                   AND worker_id IS NULL
                 ORDER BY created_ts ASC
-                """
-            ).fetchall()
+                """).fetchall()
         return [str(row["job_id"]) for row in rows]
 
     def should_recover(self, job: dict[str, Any]) -> bool:
