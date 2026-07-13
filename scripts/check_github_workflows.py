@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,14 @@ REQUIRED_WORKFLOWS = {
     "uptime-monitor.yml",
     "k8s-validate.yml",
     "daily-health-sweep.yml",
+}
+
+REQUIRED_ACTION_MAJORS = {
+    "checkout": "v7",
+    "github-script": "v9",
+    "setup-node": "v6",
+    "setup-python": "v6",
+    "upload-artifact": "v7",
 }
 
 
@@ -59,6 +68,22 @@ def check_required_files(errors: list[str]) -> None:
     ci_text = (WORKFLOW_DIR / "ci.yml").read_text(encoding="utf-8")
     if "docker://rhysd/actionlint:1.7.7" not in ci_text:
         errors.append("ci.yml: pinned actionlint release is required")
+
+
+def check_official_action_runtimes(
+    workflow_name: str, path: Path, errors: list[str]
+) -> None:
+    text = path.read_text(encoding="utf-8")
+    for action, major in re.findall(
+        r"uses:\s+actions/(checkout|github-script|setup-node|setup-python|upload-artifact)@(v\d+)",
+        text,
+    ):
+        required = REQUIRED_ACTION_MAJORS[action]
+        if major != required:
+            errors.append(
+                f"{workflow_name}: actions/{action}@{major} targets an obsolete "
+                f"runtime; use actions/{action}@{required}"
+            )
 
 
 def check_ci(data: dict[str, Any], errors: list[str]) -> None:
@@ -222,6 +247,7 @@ def main() -> int:
     for path in sorted(WORKFLOW_DIR.glob("*.yml")):
         try:
             workflows[path.name] = load_workflow(path)
+            check_official_action_runtimes(path.name, path, errors)
             check_secret_conditions(path.name, workflows[path.name], errors)
         except ValueError as exc:
             errors.append(str(exc))
