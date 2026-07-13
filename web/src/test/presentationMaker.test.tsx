@@ -6,7 +6,8 @@ const { fetchAssistantStatusMock } = vi.hoisted(() => ({
   fetchAssistantStatusMock: vi.fn(),
 }));
 
-vi.mock("@/api/chatApi", () => ({
+vi.mock("@/api/chatApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/chatApi")>()),
   fetchAssistantStatus: fetchAssistantStatusMock,
 }));
 
@@ -35,7 +36,7 @@ describe("PresentationMaker", () => {
   });
 
   it("renders the feature and accepts a concept input when the assistant is ready", async () => {
-    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "local/qwen2.5" });
+    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "nvidia/nemotron-3-super-120b-a12b" });
 
     renderPage();
 
@@ -53,8 +54,8 @@ describe("PresentationMaker", () => {
 
   it("disables generation and surfaces a message when the assistant is unavailable", async () => {
     fetchAssistantStatusMock.mockResolvedValue({
-      status: "unloaded",
-      error: "The local GGUF model file is not present yet.",
+      status: "credentials-missing",
+      error: "The assistant is not configured for this deployment.",
       model: null,
     });
 
@@ -66,10 +67,29 @@ describe("PresentationMaker", () => {
     const generate = screen.getByRole("button", { name: /generate presentation/i });
 
     await waitFor(() => {
-      expect(screen.getByText(/assistant model unavailable/i)).toBeInTheDocument();
+      expect(screen.getByText(/assistant setup required/i)).toBeInTheDocument();
     });
     // Even with a concept typed, generation stays disabled while unavailable.
     expect(generate).toBeDisabled();
     expect(screen.getByText(/generation is paused/i)).toBeInTheDocument();
+  });
+
+  it("keeps presentation generation available in the safe Pages fallback", async () => {
+    fetchAssistantStatusMock.mockResolvedValue({
+      status: "fallback",
+      error: "The live assistant is unavailable; a limited dashboard fallback is active.",
+      model: "pages://fallback-assistant",
+      fallback: true,
+    });
+
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/what should this deck explain/i), {
+      target: { value: "Explain RMSSD" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/limited fallback active/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /generate presentation/i })).not.toBeDisabled();
+    });
   });
 });

@@ -39,19 +39,21 @@ import requests
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
 from dashboard.pipelines import build_dashboard_data, build_readings_index
 from dashboard.pipelines.participant_operations import (
     build_participant_operations,
     operation_lookup,
 )
-from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
-from k8s.pipeline import PipelineConfig
-from k8s.pipeline import assistant_freshness_payload
-from k8s.pipeline import cluster_topology_payload
-from k8s.pipeline import pipeline_status_payload
-from k8s.pipeline import readings_freshness_payload
-from k8s.pipeline.ledger import read_json as read_optional_json
 from dashboard.server import data_features
+from k8s.pipeline import (
+    PipelineConfig,
+    assistant_freshness_payload,
+    cluster_topology_payload,
+    pipeline_status_payload,
+    readings_freshness_payload,
+)
+from k8s.pipeline.ledger import read_json as read_optional_json
 from src.utils.logging_utils import get_pipeline_logger
 
 DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
@@ -129,7 +131,7 @@ ASSISTANT_REQUEST_QUEUE_TIMEOUT_SECONDS = max(
     _float_env("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS", 90.0),
 )
 ASSISTANT_QUEUE_TIMEOUT_MESSAGE = (
-    "The local assistant is still finishing another response. "
+    "The assistant is still finishing another response. "
     "Please try again in a few seconds."
 )
 
@@ -3141,7 +3143,7 @@ class PresentationJobStore:
                     now,
                     concept,
                     self._encode_json(options),
-                    "Queued — waiting for the local model.",
+                    "Queued — waiting for the assistant provider.",
                 ),
             )
             self._prune(conn)
@@ -3162,7 +3164,7 @@ class PresentationJobStore:
                     worker_id = ?,
                     heartbeat_at = ?,
                     updated_ts = ?,
-                    progress_message = 'Queued — waiting for the local model.'
+                    progress_message = 'Queued — waiting for the assistant provider.'
                 WHERE job_id = ?
                   AND status IN ('queued', 'running')
                   AND worker_id IS NULL
@@ -3361,7 +3363,7 @@ def _run_presentation_job(
             store.complete_failure(
                 job_id,
                 worker_id,
-                "The local assistant stayed busy too long. Please try again in a moment.",
+                "The assistant stayed busy too long. Please try again in a moment.",
             )
             return
 
@@ -3700,7 +3702,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         except Exception as exc:  # pragma: no cover - defensive API path
             logger.exception("Chat request failed")
             self._send_json(
-                {"error": f"Unexpected chat failure: {exc}"},
+                {"error": "Unexpected chat failure. Please try again."},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
@@ -4095,10 +4097,11 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def _assistant_status_payload(self) -> dict[str, Any]:
         payload = self.assistant.get_status()
-        if payload.get("ready"):
+        provider_state = str(payload.get("state") or "degraded")
+        if provider_state == "ready" and payload.get("ready"):
             status = "ready"
             error = None
-        elif payload.get("state") in {"disabled", "model-missing", "unloaded"}:
+        elif provider_state in {"disabled", "credentials-missing", "unloaded"}:
             status = "unloaded"
             error = payload.get("message")
         else:
@@ -4108,7 +4111,9 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         config = PipelineConfig.from_env()
         status_payload = {
             "status": status,
+            "state": provider_state,
             "error": error,
+            "provider": payload.get("provider"),
             "model": payload.get("model_id"),
             "model_tier": payload.get("model_tier"),
             "model_label": payload.get("model_label"),
@@ -4381,34 +4386,52 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             )
             return
 
+        response_stream = None
         try:
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
 
-            for delta in self.assistant.stream(message, history=history):
+            response_stream = self.assistant.stream(message, history=history)
+            for delta in response_stream:
                 self.wfile.write(json.dumps({"delta": delta}).encode("utf-8") + b"\n")
                 self.wfile.flush()
             self.wfile.write(json.dumps({"done": True}).encode("utf-8") + b"\n")
             self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            # Browser cancellation is expected. Closing the iterator propagates
+            # cancellation to the provider so the remote stream is closed and the
+            # circuit breaker is not poisoned by a disconnected client.
+            logger.debug("Streaming assistant client disconnected")
         except AssistantUnavailable as exc:
-            self.wfile.write(json.dumps({"error": str(exc)}).encode("utf-8") + b"\n")
-            self.wfile.flush()
+            try:
+                self.wfile.write(
+                    json.dumps({"error": str(exc)}).encode("utf-8") + b"\n"
+                )
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         except Exception as exc:  # pragma: no cover - defensive API path
             logger.exception("Streaming chat request failed")
-            self.wfile.write(
-                json.dumps({"error": f"Unexpected chat failure: {exc}"}).encode("utf-8")
-                + b"\n"
-            )
-            self.wfile.flush()
+            try:
+                self.wfile.write(
+                    json.dumps({"error": "Unexpected chat failure."}).encode("utf-8")
+                    + b"\n"
+                )
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         finally:
+            close_stream = getattr(response_stream, "close", None)
+            if callable(close_stream):
+                close_stream()
             ASSISTANT_CHAT_LOCK.release()
 
     def _handle_presentation_plan(self) -> None:
-        """Generate a structured slide-deck plan via the local assistant.
+        """Generate a structured slide-deck plan via the assistant provider.
 
-        Reuses the same generator and the shared model lock as the chat
+        Reuses the same provider and the shared request lock as the chat
         endpoint, but returns a single structured JSON deck plan rather than a
         free-form streamed reply. Errors mirror the operational style of the
         existing assistant endpoints and never leak raw model text.
@@ -4451,7 +4474,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         except Exception as exc:  # pragma: no cover - defensive API path
             logger.exception("Presentation plan request failed")
             self._send_json(
-                {"error": f"Unexpected presentation failure: {exc}"},
+                {"error": "Unexpected presentation failure. Please try again."},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
         finally:

@@ -1,6 +1,17 @@
 """Dashboard assistant package."""
 
-from .local_chat_assistant import AssistantUnavailable
-from .local_chat_assistant import DashboardChatAssistant
+from .local_chat_assistant import (
+    AssistantConfig,
+    AssistantUnavailable,
+    DashboardChatAssistant,
+)
+from .provider import NVIDIAOpenAIProvider, ProviderConfig, ProviderError
 
-__all__ = ["AssistantUnavailable", "DashboardChatAssistant"]
+__all__ = [
+    "AssistantConfig",
+    "AssistantUnavailable",
+    "DashboardChatAssistant",
+    "NVIDIAOpenAIProvider",
+    "ProviderConfig",
+    "ProviderError",
+]

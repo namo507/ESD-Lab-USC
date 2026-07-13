@@ -2,6 +2,7 @@
 
 > **Generated**: 2026-07-08  
 > **Scope**: All automation scripts, CI/CD workflows, Docker configs, backend/frontend integration, and live dashboard pipeline health.
+> **Status note (2026-07-13):** This is a historical audit snapshot, not the current workflow contract. The obsolete `sync_local_llm.yml` workflow has been removed; current policy is enforced by `scripts/check_github_workflows.py` and the NVIDIA assistant runbook.
 
 This document catalogues every bug, broken pipeline path, and integration inconsistency found across the repository that could affect the live dashboard websites at `https://esd-lab-namo.pages.dev/` and the local Docker-based runtime.
 

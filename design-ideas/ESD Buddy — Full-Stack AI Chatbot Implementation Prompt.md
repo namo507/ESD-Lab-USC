@@ -1,5 +1,7 @@
 # ESD Buddy — Full-Stack AI Chatbot: Complete Implementation Prompt
 
+> **Superseded runtime design (July 2026):** Keep this file only as historical UI context. Do not implement its local GGUF, llama.cpp, Hugging Face selector, or `sync_local_llm.yml` tasks. The supported assistant runtime and deployment contract are now defined by `NVIDIA.md` and `docs/dashboard_ai_assistant.md`: NVIDIA Nemotron hosted by default, with self-hosted NIM explicitly opt-in.
+
 > **Target repository:** `namo507/ESD-Lab-USC` · **Live site:** https://esd-lab-namo.pages.dev/  
 > **Design reference:** `design-ideas/dashboard-esd-buddy-feature/` in the repo  
 > **Scope:** 10 sequential implementation tasks across Phase 1 (Backend/Automation) and Phase 2 (Frontend/UI), fused with the exact visual language from `v2/buddy.jsx`, `v2/scenes-chat.jsx`, and `v2/styles.css`.

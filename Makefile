@@ -17,7 +17,7 @@ ROOT_COMPOSE := docker compose -f docker-compose.yml
 MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 
-.PHONY: help install test lint clean clean-python docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-select-model assistant-status assistant-prepare assistant-bootstrap pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean clean-python docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -152,17 +152,18 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-assistant-select-model:  ## Refresh config/llm_model.json from the local no-API model catalog
-	$(PYTHON) scripts/select_best_local_llm.py --tier $${DASHBOARD_ASSISTANT_TIER:-clinical}
+assistant-status:  ## Show NVIDIA provider configuration and non-billable readiness state
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config
 
-assistant-status:  ## Inspect local assistant dependencies, model file, memory, and readiness
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto}
+assistant-prepare:  ## Validate provider config and rebuild repository grounding indexes
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config --reindex
 
-assistant-prepare:  ## Write local model config and download the selected public GGUF file
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-clinical} --write-config --download
+assistant-bootstrap: $(VENV)/bin/activate  ## Install hosted-provider dependencies and require configured credentials
+	$(VENV)/bin/pip install -r dashboard/requirements.txt
+	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --require-ready
 
-assistant-bootstrap: $(VENV)/bin/activate  ## Install assistant deps, download the selected GGUF, and validate readiness
-	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --tier $${DASHBOARD_ASSISTANT_TIER:-auto} --write-config --install-deps --download --validate-ready
+assistant-probe:  ## Probe the configured NVIDIA OpenAI-compatible endpoint without generating text
+	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config --probe-provider --require-ready
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	@if command -v docker >/dev/null 2>&1; then \
@@ -207,7 +208,7 @@ pages-runtime-watch:  ## Continuously regen + redeploy the tunnel runtime wrappe
 pages-runtime-watch-once:  ## One-shot runtime wrapper sync to the preview branch
 	$(PYTHON) scripts/watch_pages_wrapper.py --once
 
-share-live:  ## Continuously supervise dashboard sharing and keep the canonical Pages assistant worker pointed at the current live origin
+share-live:  ## Supervise the dashboard and tunnel; canonical Pages only adopts a healthy named origin
 	bash scripts/share_dashboard.sh --continuous --mode auto
 
 # ─── Backup ──────────────────────────────────────────────────────────────────
@@ -226,8 +227,13 @@ clean-python:  ## Remove Python cache files and test artifacts
 	find . -type f -name ".coverage" -delete 2>/dev/null; true
 	@echo "✓ Cleaned Python cache and test artifacts."
 
-clean:  ## Prune unused Docker images, containers, networks, and volumes
-	docker system prune -f && docker volume prune -f
+clean: clean-python  ## Remove project containers/orphans without global Docker or volume pruning
+	@if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then \
+		$(ROOT_COMPOSE) down --remove-orphans; \
+	else \
+		echo "Docker unavailable; project container cleanup skipped."; \
+	fi
+	@echo "✓ Project cleanup complete; named volumes and unrelated Docker data were preserved."
 
 docker-clean: clean  ## Alias for Docker cleanup
 

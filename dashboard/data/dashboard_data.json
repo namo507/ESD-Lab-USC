@@ -33315,7 +33315,7 @@
       {
         "area": "Assistant",
         "status": "live",
-        "shown": "Hover-aware Buddy glossary, local GGUF chat drawer, assistant status, REDCap freshness, and fast-path prompts.",
+        "shown": "Hover-aware Buddy glossary, NVIDIA-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
         "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard."
       }
     ],

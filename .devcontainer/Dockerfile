@@ -4,7 +4,8 @@ LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
     version="0.1.0" \
     description="Development container for the ESD Lab USC NANO dashboard and pipelines"
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    R_LIBS_USER=/home/vscode/R/library
 
 RUN rm -f /etc/apt/sources.list.d/yarn.list /etc/apt/sources.list.d/yarn.list.save \
     && apt-get update \
@@ -37,6 +38,8 @@ RUN rm -f /etc/apt/sources.list.d/yarn.list /etc/apt/sources.list.d/yarn.list.sa
         r-base-dev \
         nodejs \
     && npm install -g npm@10.9.8 \
+    && mkdir -p /home/vscode/R/library \
+    && chown -R vscode:vscode /home/vscode/R \
     && rm -rf /var/lib/apt/lists/*
 
 USER vscode

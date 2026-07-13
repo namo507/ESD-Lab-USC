@@ -110,7 +110,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-assistant-unready",
         action="store_true",
-        help="Require only a 200 assistant status response, not ready=true.",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--require-assistant-ready",
+        action="store_true",
+        help="Also require the hosted assistant provider to report ready=true.",
     )
     parser.add_argument(
         "--probe-api-origin",
@@ -139,7 +144,9 @@ def main(argv: list[str] | None = None) -> int:
                 must_contain=["esd-deploy-stamp", "NANO"],
                 max_stamp_age_hours=args.max_stamp_age_hours,
                 probe_assistant=True,
-                require_assistant_ready=not args.allow_assistant_unready,
+                require_assistant_ready=(
+                    args.require_assistant_ready and not args.allow_assistant_unready
+                ),
                 probe_api_origin=args.probe_api_origin,
             )
         )

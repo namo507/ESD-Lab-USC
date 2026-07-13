@@ -16,6 +16,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +70,5 @@ jobs:
           git push || true
 
       - name: Trigger Pages deploy hook
-        if: ${{ secrets.PAGES_DEPLOY_HOOK_URL != '' }}
-        env:
-          PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
+        if: env.PAGES_DEPLOY_HOOK_URL != ''
         run: curl -fsS -X POST "$PAGES_DEPLOY_HOOK_URL"

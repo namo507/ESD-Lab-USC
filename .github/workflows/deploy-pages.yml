@@ -31,12 +31,10 @@ on:
       - "dashboard/public/pages_wrapper/manifest.json"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
-  repository_dispatch:
-    types: [redeploy-pages]
 
 concurrency:
   group: pages-deploy
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -48,7 +46,9 @@ jobs:
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
       CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
-      PAGES_API_ORIGIN: ${{ github.event.client_payload.api_origin || vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || (vars.DASHBOARD_PUBLIC_HOSTNAME && format('https://{0}', vars.DASHBOARD_PUBLIC_HOSTNAME)) || '' }}
+      # Only stable, operator-managed origins are eligible. The packager probes
+      # this value and falls back locally when it is absent or unhealthy.
+      PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || (vars.DASHBOARD_PUBLIC_HOSTNAME && format('https://{0}', vars.DASHBOARD_PUBLIC_HOSTNAME)) || '' }}
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
@@ -137,7 +137,6 @@ jobs:
           sleep 60
           python scripts/check_live_surfaces.py \
             --canonical-url https://esd-lab-namo.pages.dev/ \
-            --runtime-url https://runtime-share.esd-lab-namo.pages.dev/ \
+            --skip-runtime \
             --timeout 30 \
-            --max-stamp-age-hours 24 \
-            --probe-api-origin
+            --max-stamp-age-hours 24

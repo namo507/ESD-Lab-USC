@@ -25,7 +25,7 @@ const KIND_META: Record<InsightKind, { color: string }> = {
 /**
  * Typewriter for the dark `AgenticQAPanel`. Reads a queue of insights and
  * renders them line-by-line with a blinking cursor. Caller passes either
- * the LM Studio stream output (one big chunk) or the static fallback queue.
+ * the assistant stream output (one big chunk) or the static fallback queue.
  */
 export function Typewriter({ items, speed = 18, resetTick = 0 }: Props) {
   const [shown, setShown] = useState(0);

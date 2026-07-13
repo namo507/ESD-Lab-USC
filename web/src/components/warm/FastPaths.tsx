@@ -6,7 +6,7 @@ import { Icon } from "@/components/primitives";
  *
  * Three lanes (QA · Model perf · REDCap) each hold 2–3 tightly scoped prompts
  * that the operator hits often. Picking a chip fires `onSelect(prompt)`, which
- * the parent routes to LM Studio (AgenticQAPanel) or ESD Buddy (ChatDrawer).
+ * the parent routes through the shared assistant API.
  *
  * The lane labels are fixed-width so chip rows align column-wise — symmetry
  * stays intact across surfaces. Tone variants (`dark` / `light`) keep contrast
@@ -86,7 +86,7 @@ const LANE_META: Record<FastPathLane, { label: string; iconKind: string; dot: st
 };
 
 interface Props {
-  /** Prompt selected — parent should route to LM Studio or Buddy. */
+  /** Prompt selected — parent should route through the shared assistant API. */
   onSelect: (prompt: string) => void;
   /** Tone variant. `dark` for terminal-style surfaces, `light` for glass panels. */
   tone?: "dark" | "light";

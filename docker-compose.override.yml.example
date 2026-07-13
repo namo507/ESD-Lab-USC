@@ -6,8 +6,10 @@ services:
     ports:
       - "${DASHBOARD_HOST_PORT:-18080}:8080"
     environment:
-      DASHBOARD_ASSISTANT_TIER: auto
-      DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: "false"
+      # Put the real key in the untracked .env file, never in this override.
+      DASHBOARD_ASSISTANT_API_KEY: ${DASHBOARD_ASSISTANT_API_KEY:-}
+      DASHBOARD_ASSISTANT_PROVIDER: nvidia
+      DASHBOARD_ASSISTANT_RUNTIME: nvidia-build-api
     mem_limit: 2g
 
   dashboard-share:

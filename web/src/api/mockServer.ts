@@ -1507,7 +1507,7 @@ interface MockPresentationOptions {
 /**
  * Deterministic, schema-valid deck plan for development + the public Pages
  * demo (where there is no live Python assistant). The real route is driven by
- * the local GGUF model via the Python server; this mirror keeps the page fully
+ * the backend-routed NVIDIA assistant; this mirror keeps the page fully
  * functional offline without fabricating lab citations.
  */
 function mockPresentationPlan(concept: string, options: MockPresentationOptions) {
@@ -1580,7 +1580,7 @@ function mockPresentationPlan(concept: string, options: MockPresentationOptions)
       generated_at: new Date().toISOString().slice(0, 19),
       slides,
     },
-    status: { status: "ready", error: null, model: "mock://qwen2.5-1.5b" },
+    status: { status: "fallback", error: null, model: "mock://offline-assistant", fallback: true },
   };
 }
 
@@ -1635,7 +1635,7 @@ function mockJobView(job: MockJob): Record<string, unknown> {
     poll_after_ms: job.status === "queued" ? 900 : job.status === "running" ? 1400 : undefined,
     progress_message:
       job.status === "queued"
-        ? "Queued — waiting for the local model."
+        ? "Queued — waiting for the assistant."
         : job.status === "running"
           ? "Composing your deck…"
           : null,
@@ -1652,7 +1652,7 @@ const LIVE_ASSISTANT_ROUTES = new Set([
   "/api/assistant/chat",
   "/api/chat/status",
   "/api/chat",
-  // Presentation planning reuses the same local assistant stack, so it must
+  // Presentation planning reuses the same backend assistant stack, so it must
   // reach the real Python server (or the Pages /api worker proxy) when the
   // live assistant is enabled rather than the in-browser mock below.
   "/api/presentation/plan",
@@ -1896,9 +1896,11 @@ export function installMockServer() {
     }
     if (p === "/api/assistant/status") {
       return reply({
-        status: "ready",
+        status: "fallback",
         error: null,
-        model: "mock://qwen2.5-1.5b",
+        model: "mock://offline-assistant",
+        fallback: true,
+        message: "The offline dashboard assistant is active.",
         freshness: {
           readings: {
             last_indexed_at: MOCK_READINGS_FRESHNESS.last_indexed_at,
@@ -1933,7 +1935,7 @@ export function installMockServer() {
           created_at: job.created_at,
           updated_at: job.updated_at,
           poll_after_ms: 900,
-          progress_message: "Queued — waiting for the local model.",
+          progress_message: "Queued — waiting for the assistant.",
         },
         202,
       );

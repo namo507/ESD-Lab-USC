@@ -12,7 +12,7 @@ import {
 import { api } from "./client";
 import * as S from "./schemas";
 import { z, type ZodType } from "zod";
-import { fetchAssistantStatus } from "./chatApi";
+import { fetchAssistantStatus, publicAssistantMessage } from "./chatApi";
 import { CARRY_FORWARD, EVENT_LABELS, REDCAP_DASHBOARD_DATA_URL } from "@/constants/redcapConfig";
 import {
   RedcapOps,
@@ -871,7 +871,7 @@ export function useTriggerRun() {
 }
 
 /**
- * Local assistant readiness, shared by the Presentation Maker gate.
+ * Assistant readiness, shared by the Presentation Maker gate.
  * Reuses the same status endpoint (with legacy fallback) as the chat drawer.
  */
 export function useAssistantStatus() {
@@ -994,18 +994,22 @@ export function usePresentationJob(): PresentationJobView {
   const isPending = !isError && (phase === "queued" || phase === "running");
   const data = status === "succeeded" ? poll.data?.result : undefined;
 
+  const defaultError = "Generation didn’t complete. Please try again.";
   const error = isError
-    ? poll.data?.error
-      ?? (create.error instanceof Error ? create.error.message : null)
-      ?? "Generation didn’t complete. Please try again."
+    ? publicAssistantMessage(
+      poll.data?.error ?? (create.error instanceof Error ? create.error.message : null),
+      defaultError,
+    )
     : null;
 
-  const progressMessage = poll.data?.progress_message
-    ?? (phase === "queued"
-      ? "Queued — waiting for the local model…"
-      : phase === "running"
-        ? "Composing your deck…"
-        : null);
+  const defaultProgress = phase === "queued"
+    ? "Queued — waiting for the assistant…"
+    : phase === "running"
+      ? "Composing your deck…"
+      : null;
+  const progressMessage = defaultProgress
+    ? publicAssistantMessage(poll.data?.progress_message, defaultProgress)
+    : null;
 
   return { phase, isPending, isError, data, progressMessage, error, start, reset };
 }

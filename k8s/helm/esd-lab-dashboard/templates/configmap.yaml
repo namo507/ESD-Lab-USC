@@ -20,9 +20,12 @@ data:
   WEB_PACKAGE_TRIGGER_PATH: "/app/dashboard/data/web_package_trigger.json"
   READINGS_EVENT_DEBOUNCE_SECONDS: {{ .Values.pipeline.debounceSeconds | quote }}
   READINGS_WATCHER_POLL_SECONDS: {{ .Values.watcher.pollSeconds | quote }}
+  READINGS_WATCHER_HEARTBEAT_PATH: {{ .Values.watcher.heartbeatPath | quote }}
+  READINGS_WATCHER_HEARTBEAT_MAX_AGE_SECONDS: {{ .Values.watcher.heartbeatMaxAgeSeconds | quote }}
   PIPELINE_MAX_RETRIES: {{ .Values.worker.maxRetries | quote }}
   PIPELINE_RETRY_BASE_SECONDS: {{ .Values.worker.retryBaseSeconds | quote }}
   PIPELINE_RETRY_MAX_SECONDS: {{ .Values.worker.retryMaxSeconds | quote }}
+  K8S_WORKER_TTL_SECONDS_AFTER_FINISHED: {{ .Values.worker.ttlSecondsAfterFinished | quote }}
   PIPELINE_LEASE_TTL_SECONDS: {{ .Values.pipeline.leaseTtlSeconds | quote }}
   K8S_API_TIMEOUT_SECONDS: {{ .Values.pipeline.k8sApiTimeoutSeconds | quote }}
   K8S_WORKER_IMAGE: {{ include "esd-lab-dashboard.image" . | quote }}
@@ -31,10 +34,28 @@ data:
   K8S_DATA_PVC: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}
   CLUSTER_VISUALIZATION_ENABLED: {{ .Values.pipeline.clusterVisualizationEnabled | quote }}
   ASSISTANT_CLUSTER_CONTEXT_ENABLED: {{ .Values.pipeline.assistantClusterContextEnabled | quote }}
-  DASHBOARD_ASSISTANT_TIER: {{ .Values.assistant.tier | quote }}
-  DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: {{ .Values.assistant.autoDownload | quote }}
-  DASHBOARD_ASSISTANT_CONTEXT_WINDOW: {{ .Values.assistant.contextWindow | quote }}
-  DASHBOARD_ASSISTANT_THREADS: {{ .Values.assistant.threads | quote }}
+  DASHBOARD_ASSISTANT_ENABLED: {{ .Values.assistant.enabled | quote }}
+  DASHBOARD_ASSISTANT_PROVIDER: {{ .Values.assistant.provider | quote }}
+  DASHBOARD_ASSISTANT_RUNTIME: {{ .Values.assistant.runtime | quote }}
+  DASHBOARD_ASSISTANT_API_BASE: {{ .Values.assistant.apiBase | quote }}
+  DASHBOARD_ASSISTANT_MODEL: {{ .Values.assistant.model | quote }}
+  DASHBOARD_ASSISTANT_MODEL_ID: {{ .Values.assistant.model | quote }}
+  DASHBOARD_ASSISTANT_ENABLE_THINKING: {{ .Values.assistant.enableThinking | quote }}
+  DASHBOARD_ASSISTANT_REASONING_BUDGET: {{ .Values.assistant.reasoningBudget | quote }}
   DASHBOARD_ASSISTANT_MAX_NEW_TOKENS: {{ .Values.assistant.maxNewTokens | quote }}
-  DASHBOARD_ASSISTANT_MIN_MEMORY_GIB: {{ .Values.assistant.minMemoryGiB | quote }}
-  HF_HOME: "/app/models/.cache/huggingface"
+  DASHBOARD_ASSISTANT_TEMPERATURE: {{ .Values.assistant.temperature | quote }}
+  DASHBOARD_ASSISTANT_TOP_P: {{ .Values.assistant.topP | quote }}
+  DASHBOARD_ASSISTANT_STREAM: {{ .Values.assistant.stream | quote }}
+  DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS: {{ .Values.assistant.requestTimeoutSeconds | quote }}
+  DASHBOARD_ASSISTANT_MAX_RETRIES: {{ .Values.assistant.maxRetries | quote }}
+  DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS: {{ .Values.assistant.retryBaseSeconds | quote }}
+  DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS: {{ .Values.assistant.retryMaxSeconds | quote }}
+  DASHBOARD_ASSISTANT_RETRY_JITTER: {{ .Values.assistant.retryJitter | quote }}
+  DASHBOARD_ASSISTANT_MAX_CONCURRENCY: {{ .Values.assistant.maxConcurrency | quote }}
+  DASHBOARD_ASSISTANT_CIRCUIT_FAILURE_THRESHOLD: {{ .Values.assistant.circuitFailureThreshold | quote }}
+  DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS: {{ .Values.assistant.circuitRecoverySeconds | quote }}
+  DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS: {{ .Values.assistant.queueTimeoutSeconds | quote }}
+  DASHBOARD_ASSISTANT_CONTEXT_BUDGET: {{ .Values.assistant.contextBudget | quote }}
+  DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED: {{ .Values.assistant.selfHostedEnabled | quote }}
+  DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL: {{ .Values.assistant.selfHostedBaseUrl | quote }}
+  OPENAI_BASE_URL: {{ .Values.assistant.apiBase | quote }}

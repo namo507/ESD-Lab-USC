@@ -85,6 +85,9 @@ class PipelineConfig:
     k8s_readings_pvc: str
     k8s_data_pvc: str
     pages_deploy_hook_url: str | None
+    watcher_heartbeat_path: Path = DATA_DIR / "readings_watcher_heartbeat.json"
+    watcher_heartbeat_max_age_seconds: float = 30.0
+    worker_ttl_seconds_after_finished: int = 86400
 
     @classmethod
     def from_env(cls) -> "PipelineConfig":
@@ -148,6 +151,17 @@ class PipelineConfig:
                 os.getenv("READINGS_WATCHER_POLL_SECONDS"),
                 default=2.0,
             ),
+            watcher_heartbeat_path=resolve_path(
+                os.getenv("READINGS_WATCHER_HEARTBEAT_PATH"),
+                data_dir / "readings_watcher_heartbeat.json",
+            ),
+            watcher_heartbeat_max_age_seconds=max(
+                5.0,
+                parse_float(
+                    os.getenv("READINGS_WATCHER_HEARTBEAT_MAX_AGE_SECONDS"),
+                    default=30.0,
+                ),
+            ),
             max_retries=max(1, parse_int(os.getenv("PIPELINE_MAX_RETRIES"), default=3)),
             retry_base_seconds=parse_float(
                 os.getenv("PIPELINE_RETRY_BASE_SECONDS"),
@@ -172,6 +186,13 @@ class PipelineConfig:
             ),
             k8s_readings_pvc=os.getenv("K8S_READINGS_PVC", ""),
             k8s_data_pvc=os.getenv("K8S_DATA_PVC", ""),
+            worker_ttl_seconds_after_finished=max(
+                60,
+                parse_int(
+                    os.getenv("K8S_WORKER_TTL_SECONDS_AFTER_FINISHED"),
+                    default=86400,
+                ),
+            ),
             pages_deploy_hook_url=os.getenv("PAGES_DEPLOY_HOOK_URL") or None,
         )
 

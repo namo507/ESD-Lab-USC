@@ -1,25 +1,34 @@
 import { logAudit } from "@/lib/audit";
 import { scrubPhi } from "@/lib/phiScrub";
-import { defaultLmStudioEndpoint, probeLmStudio, streamCompletion } from "@/lib/lmStudio";
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+/**
+ * Provider-oriented assistant states exposed by the dashboard API.
+ *
+ * Legacy local-model states are normalized at the boundary so UI components do
+ * not need to know whether a deployment used an older server contract.
+ */
+export type AssistantState =
+  | "ready"
+  | "disabled"
+  | "credentials-missing"
+  | "provider-unreachable"
+  | "rate-limited"
+  | "degraded"
+  | "timeout"
+  | "fallback"
+  | "error";
+
 export interface AssistantStatus {
-  status: "ready" | "unloaded" | "fallback" | "error";
+  status: AssistantState;
   error: string | null;
   model: string | null;
-  transport?: "edge" | "local-backend" | "lmstudio";
-  endpoint?: string | null;
-  origin?: string | null;
-  reason?: string | null;
   message?: string | null;
   fallback?: boolean;
-  model_tier?: string | null;
-  model_label?: string | null;
-  model_license?: string | null;
   freshness?: {
     readings?: {
       last_indexed_at?: string | null;
@@ -46,16 +55,13 @@ interface AssistantStatusPayload {
   status?: unknown;
   error?: unknown;
   model?: unknown;
-  reason?: unknown;
-  fallback?: unknown;
-  model_tier?: unknown;
-  model_label?: unknown;
-  model_license?: unknown;
   ready?: unknown;
   state?: unknown;
   last_error?: unknown;
   message?: unknown;
   model_id?: unknown;
+  reason?: unknown;
+  fallback?: unknown;
   freshness?: unknown;
 }
 
@@ -65,189 +71,202 @@ interface LegacyChatPayload {
 }
 
 interface ChatStreamChunk {
-  delta?: string;
-  done?: boolean;
-  error?: string;
+  /** Only visible answer text is rendered. Provider reasoning fields are ignored. */
+  delta?: unknown;
+  done?: unknown;
+  error?: unknown;
 }
 
-const LOCAL_ASSISTANT_ORIGIN =
-  (import.meta.env.VITE_LOCAL_ASSISTANT_URL as string | undefined) ?? "http://127.0.0.1:8080";
+const ASSISTANT_STATUS_ENDPOINT = "/api/assistant/status";
+const LEGACY_STATUS_ENDPOINT = "/api/chat/status";
+const ASSISTANT_CHAT_ENDPOINT = "/api/assistant/chat";
+const LEGACY_CHAT_ENDPOINT = "/api/chat";
 
-function uniqueStrings(values: Array<string | null | undefined>): string[] {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+const SAFE_STATUS_MESSAGES: Record<Exclude<AssistantState, "ready">, string> = {
+  disabled: "The assistant is disabled for this deployment.",
+  "credentials-missing": "The assistant is not configured for this deployment.",
+  "provider-unreachable": "The assistant service is temporarily unreachable.",
+  "rate-limited": "The assistant is busy right now. Please try again shortly.",
+  degraded: "The assistant is operating in a limited mode.",
+  timeout: "The assistant took too long to respond. Please try again.",
+  fallback: "The live assistant is unavailable; a limited dashboard fallback is active.",
+  error: "The assistant is temporarily unavailable.",
+};
+
+const PROVIDER_INTERNAL_DETAIL =
+  /(https?:\/\/|api[_ -]?key|authorization:|bearer\s|nvapi-|traceback|stack trace|openai\.|integrate\.api|request[- _]?id|reasoning[- _]?content)/i;
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
-function alternateLocalOrigin(origin: string): string | null {
-  if (origin.includes("127.0.0.1")) return origin.replace("127.0.0.1", "localhost");
-  if (origin.includes("localhost")) return origin.replace("localhost", "127.0.0.1");
-  return null;
+function normalizedStateName(value: unknown): string | null {
+  return stringValue(value)?.trim().toLowerCase().replaceAll("_", "-") ?? null;
 }
 
-function localAssistantOrigins(): string[] {
-  return uniqueStrings([LOCAL_ASSISTANT_ORIGIN, alternateLocalOrigin(LOCAL_ASSISTANT_ORIGIN)]);
-}
-
-function alternateLmStudioEndpoint(endpoint: string): string | null {
-  if (endpoint.includes("127.0.0.1")) return endpoint.replace("127.0.0.1", "localhost");
-  if (endpoint.includes("localhost")) return endpoint.replace("localhost", "127.0.0.1");
-  return null;
-}
-
-function lmStudioEndpoints(): string[] {
-  const primary = defaultLmStudioEndpoint();
-  return uniqueStrings([primary, alternateLmStudioEndpoint(primary)]);
-}
-
-function isAbsoluteUrl(path: string): boolean {
-  return /^[a-z][a-z\d+\-.]*:\/\//i.test(path);
-}
-
-function withOrigin(origin: string | null, path: string): string {
-  if (!origin) return path;
-  return `${origin.replace(/\/$/, "")}${path}`;
-}
-
-function requestCredentials(path: string): RequestCredentials {
-  return isAbsoluteUrl(path) ? "omit" : "include";
-}
-
-function liveAssistantUnavailable(status?: AssistantStatus | null): Error {
-  return new Error(
-    status?.error
-      ?? status?.message
-      ?? "No live assistant is available. Start the local dashboard runtime or LM Studio.",
-  );
-}
-
-function isFallbackStatus(
-  payload: AssistantStatusPayload,
-  model: string | null,
-  message: string | null,
-  reason: string | null,
-): boolean {
+function isFallbackStatus(payload: AssistantStatusPayload, model: string | null): boolean {
+  const reason = normalizedStateName(payload.reason);
+  const message = stringValue(payload.message)?.toLowerCase() ?? "";
   return payload.fallback === true
     || model === "pages://fallback-assistant"
-    || (typeof reason === "string" && reason.startsWith("upstream-"))
-    || (typeof message === "string" && message.toLowerCase().includes("fallback assistant"));
+    || Boolean(reason?.startsWith("upstream-"))
+    || message.includes("fallback assistant");
 }
 
-function normalizeStatus(
-  payload: AssistantStatusPayload,
-  transport: AssistantStatus["transport"] = "edge",
-  target?: { endpoint?: string | null; origin?: string | null },
-): AssistantStatus {
-  const model =
-    typeof payload.model === "string"
-      ? payload.model
-      : typeof payload.model_id === "string"
-        ? payload.model_id
-        : null;
-  const message = typeof payload.message === "string" ? payload.message : null;
-  const reason = typeof payload.reason === "string" ? payload.reason : null;
-  const fallback = isFallbackStatus(payload, model, message, reason);
+function normalizeAssistantState(payload: AssistantStatusPayload, model: string | null): AssistantState {
+  if (isFallbackStatus(payload, model)) return "fallback";
 
-  if (
-    payload.status === "ready"
-    || payload.status === "unloaded"
-    || payload.status === "fallback"
-    || payload.status === "error"
-  ) {
-    const normalizedStatus: AssistantStatus["status"] = fallback && payload.status === "ready"
-      ? "fallback"
-      : payload.status;
-    const status: AssistantStatus = {
-      status: normalizedStatus,
-      error:
-        normalizedStatus === "ready"
-          ? null
-          : typeof payload.error === "string"
-            ? payload.error
-            : message,
-      model,
-      transport,
-      endpoint: target?.endpoint ?? null,
-      origin: target?.origin ?? null,
-      reason,
-      message,
-      fallback,
-      freshness:
-        payload.freshness && typeof payload.freshness === "object"
-          ? (payload.freshness as AssistantStatus["freshness"])
-          : undefined,
-    };
-    if (typeof payload.model_tier === "string") status.model_tier = payload.model_tier;
-    if (typeof payload.model_label === "string") status.model_label = payload.model_label;
-    if (typeof payload.model_license === "string") status.model_license = payload.model_license;
-    return status;
+  const statusState = normalizedStateName(payload.status);
+  const providerState = normalizedStateName(payload.state);
+  const raw = providerState ?? statusState;
+  if (raw === "ready" || (!raw && payload.ready === true)) return "ready";
+
+  switch (raw) {
+    case "disabled":
+    case "unloaded":
+    case "model-missing":
+      return "disabled";
+    case "credentials-missing":
+    case "credential-missing":
+    case "missing-credentials":
+      return "credentials-missing";
+    case "provider-unreachable":
+    case "provider-unavailable":
+    case "unreachable":
+      return "provider-unreachable";
+    case "rate-limited":
+    case "rate-limit":
+      return "rate-limited";
+    case "degraded":
+      return "degraded";
+    case "timeout":
+    case "timed-out":
+      return "timeout";
+    case "fallback":
+      return "fallback";
+    default:
+      return "error";
   }
+}
 
-  const ready = payload.ready === true;
-  const state = typeof payload.state === "string" ? payload.state : null;
-  const error =
-    typeof payload.last_error === "string"
-      ? payload.last_error
-      : message ?? (typeof payload.error === "string" ? payload.error : null);
+function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
+  const model = stringValue(payload.model) ?? stringValue(payload.model_id);
+  const status = normalizeAssistantState(payload, model);
+  const message = status === "ready" ? null : SAFE_STATUS_MESSAGES[status];
 
-  let status: AssistantStatus["status"] = "error";
-  if (fallback) {
-    status = "fallback";
-  } else if (ready) {
-    status = "ready";
-  } else if (state && ["disabled", "model-missing", "unloaded"].includes(state)) {
-    status = "unloaded";
-  }
-
-  const statusPayload: AssistantStatus = {
+  return {
     status,
-    error: status === "ready" ? null : error,
+    error: message,
     model,
-    transport,
-    endpoint: target?.endpoint ?? null,
-    origin: target?.origin ?? null,
-    reason,
     message,
-    fallback,
+    fallback: status === "fallback",
     freshness:
       payload.freshness && typeof payload.freshness === "object"
         ? (payload.freshness as AssistantStatus["freshness"])
         : undefined,
   };
-  if (typeof payload.model_tier === "string") statusPayload.model_tier = payload.model_tier;
-  if (typeof payload.model_label === "string") statusPayload.model_label = payload.model_label;
-  if (typeof payload.model_license === "string") statusPayload.model_license = payload.model_license;
-  return statusPayload;
 }
 
-function scrubHistory(history: ChatMessage[]): ChatMessage[] {
-  return history.map((message) => {
+/** Ready, degraded, and fallback modes can all answer through the same API. */
+export function isAssistantUsable(status: AssistantStatus | null | undefined): boolean {
+  return status?.status === "ready" || status?.status === "degraded" || status?.status === "fallback";
+}
+
+/** Short status copy shared by assistant surfaces; never includes raw provider errors. */
+export function assistantStatusLabel(status: AssistantStatus | null | undefined): string {
+  switch (status?.status) {
+    case "ready":
+      return "NVIDIA assistant ready";
+    case "degraded":
+      return "Assistant degraded · limited mode";
+    case "fallback":
+      return "Limited fallback active";
+    case "disabled":
+      return "Assistant disabled";
+    case "credentials-missing":
+      return "Assistant setup required";
+    case "provider-unreachable":
+      return "Assistant temporarily unreachable";
+    case "rate-limited":
+      return "Assistant busy · retry shortly";
+    case "timeout":
+      return "Assistant response timed out";
+    case "error":
+      return "Assistant unavailable";
+    default:
+      return "Checking assistant…";
+  }
+}
+
+/**
+ * Keep server-authored user guidance while refusing provider diagnostics,
+ * credentials, endpoints, stack traces, and reasoning metadata.
+ */
+export function publicAssistantMessage(value: unknown, fallback: string): string {
+  const message = stringValue(value);
+  if (!message || message.length > 300 || PROVIDER_INTERNAL_DETAIL.test(message)) return fallback;
+  return message;
+}
+
+function safeRequestError(status?: number): Error {
+  if (status === 429) return new Error(SAFE_STATUS_MESSAGES["rate-limited"]);
+  if (status === 408 || status === 504) return new Error(SAFE_STATUS_MESSAGES.timeout);
+  if (status === 401 || status === 403) return new Error(SAFE_STATUS_MESSAGES["credentials-missing"]);
+  if (status && status >= 500) return new Error(SAFE_STATUS_MESSAGES["provider-unreachable"]);
+  return new Error("The assistant request could not be completed.");
+}
+
+function safeStreamError(value: unknown): Error {
+  const normalized = stringValue(value)?.toLowerCase() ?? "";
+  if (normalized.includes("rate") && normalized.includes("limit")) return safeRequestError(429);
+  if (normalized.includes("timeout") || normalized.includes("timed out")) return safeRequestError(504);
+  if (normalized.includes("credential") || normalized.includes("api key")) return safeRequestError(401);
+  return new Error("The assistant stream ended unexpectedly. Please try again.");
+}
+
+function isAbortError(error: unknown): boolean {
+  return Boolean(
+    error
+      && typeof error === "object"
+      && "name" in error
+      && (error as { name?: unknown }).name === "AbortError",
+  );
+}
+
+function scrubHistory(history: ChatMessage[]): { messages: ChatMessage[]; redactions: number } {
+  let redactions = 0;
+  const messages = history.map((message) => {
     if (message.role !== "user") return message;
-    return {
-      ...message,
-      content: scrubPhi(message.content).text,
-    };
+    const scrubbed = scrubPhi(message.content);
+    redactions += scrubbed.redactions.reduce((total, item) => total + item.count, 0);
+    return { ...message, content: scrubbed.text };
   });
+  return { messages, redactions };
+}
+
+async function requestProxy(path: string, accept: string, init?: RequestInit): Promise<Response> {
+  if (!path.startsWith("/api/")) throw new Error("Assistant requests must use the dashboard API proxy.");
+  try {
+    return await fetch(path, {
+      ...init,
+      credentials: "include",
+      headers: {
+        accept,
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    throw safeRequestError(503);
+  }
 }
 
 async function requestJson(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(path, {
-    ...init,
-    credentials: requestCredentials(path),
-    headers: {
-      accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  return requestProxy(path, "application/json", init);
 }
 
 async function requestNdjson(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(path, {
-    ...init,
-    credentials: requestCredentials(path),
-    headers: {
-      accept: "application/x-ndjson",
-      ...(init?.headers ?? {}),
-    },
-  });
+  return requestProxy(path, "application/x-ndjson", init);
 }
 
 function parseChunks(buffer: string): { remainder: string; deltas: string[]; done: boolean } {
@@ -259,48 +278,53 @@ function parseChunks(buffer: string): { remainder: string; deltas: string[]; don
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    const chunk = JSON.parse(trimmed) as ChatStreamChunk;
-    if (chunk.error) throw new Error(chunk.error);
-    if (chunk.delta) deltas.push(chunk.delta);
-    if (chunk.done) done = true;
+
+    let chunk: ChatStreamChunk;
+    try {
+      chunk = JSON.parse(trimmed) as ChatStreamChunk;
+    } catch {
+      throw new Error("The assistant returned an invalid stream. Please try again.");
+    }
+
+    if (chunk.error) throw safeStreamError(chunk.error);
+    if (typeof chunk.delta === "string" && chunk.delta) deltas.push(chunk.delta);
+    if (chunk.done === true) done = true;
   }
 
   return { remainder, deltas, done };
 }
 
+/**
+ * Stream a grounded assistant answer through the same-origin dashboard API.
+ *
+ * The browser never talks to NVIDIA (or any other model provider) directly.
+ * `/api` is handled by Vite's local backend proxy, the dashboard server, or the
+ * Cloudflare Pages worker. The legacy JSON endpoint remains a compatibility
+ * fallback for older deployments.
+ */
 export async function* streamChat(
   message: string,
   history: ChatMessage[],
   signal?: AbortSignal,
   preferredStatus?: AssistantStatus | null,
 ): AsyncGenerator<string> {
-  if (preferredStatus && preferredStatus.status !== "ready") {
-    throw liveAssistantUnavailable(preferredStatus);
+  if (preferredStatus && !isAssistantUsable(preferredStatus)) {
+    throw new Error(preferredStatus.error ?? SAFE_STATUS_MESSAGES.error);
   }
 
-  if (preferredStatus?.transport === "lmstudio") {
-    for await (const chunk of streamCompletion({
-      prompt: message,
-      history,
-      signal,
-      endpoint: preferredStatus.endpoint ?? defaultLmStudioEndpoint(),
-      model: preferredStatus.model ?? "local-model",
-    })) {
-      if (chunk.delta) yield chunk.delta;
-    }
-    return;
-  }
-
-  const backendOrigin = preferredStatus?.transport === "local-backend"
-    ? (preferredStatus.origin ?? LOCAL_ASSISTANT_ORIGIN)
-    : null;
-  const cleanMessage = scrubPhi(message).text;
+  const cleanMessage = scrubPhi(message);
   const cleanHistory = scrubHistory(history);
+  const redactions = cleanMessage.redactions.reduce((total, item) => total + item.count, 0)
+    + cleanHistory.redactions;
 
-  await logAudit({ action: "run.trigger", scope: "/assistant/chat" });
+  await logAudit({
+    action: "run.trigger",
+    scope: "/assistant/chat",
+    detail: { redactions },
+  });
 
-  const body = JSON.stringify({ message: cleanMessage, history: cleanHistory });
-  let response = await requestNdjson(withOrigin(backendOrigin, "/api/assistant/chat"), {
+  const body = JSON.stringify({ message: cleanMessage.text, history: cleanHistory.messages });
+  let response = await requestNdjson(ASSISTANT_CHAT_ENDPOINT, {
     method: "POST",
     body,
     signal,
@@ -308,150 +332,86 @@ export async function* streamChat(
   });
 
   if (response.status === 404 || response.status === 405) {
-    response = await requestJson(withOrigin(backendOrigin, "/api/chat"), {
+    response = await requestJson(LEGACY_CHAT_ENDPOINT, {
       method: "POST",
       body,
       signal,
       headers: { "content-type": "application/json" },
     });
 
-    if (!response.ok) {
-      throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
-    }
+    if (!response.ok) throw safeRequestError(response.status);
 
-    const payload = (await response.json()) as LegacyChatPayload;
-    if (typeof payload.error === "string") throw new Error(payload.error);
-    if (typeof payload.reply !== "string") throw new Error("Assistant reply was empty.");
+    let payload: LegacyChatPayload;
+    try {
+      payload = (await response.json()) as LegacyChatPayload;
+    } catch {
+      throw new Error("The assistant returned an invalid reply. Please try again.");
+    }
+    if (payload.error) throw safeStreamError(payload.error);
+    if (typeof payload.reply !== "string" || !payload.reply) {
+      throw new Error("The assistant returned an empty reply. Please try again.");
+    }
     yield payload.reply;
     return;
   }
 
-  if (!response.ok) {
-    throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
-  }
+  if (!response.ok) throw safeRequestError(response.status);
 
   const reader = response.body?.getReader();
-  if (!reader) throw new Error("No response body");
+  if (!reader) throw new Error("The assistant returned an empty stream. Please try again.");
 
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const parsed = parseChunks(buffer);
-    buffer = parsed.remainder;
+      buffer += decoder.decode(value, { stream: true });
+      const parsed = parseChunks(buffer);
+      buffer = parsed.remainder;
 
-    for (const delta of parsed.deltas) {
-      yield delta;
+      for (const delta of parsed.deltas) yield delta;
+      if (parsed.done) return;
     }
-    if (parsed.done) return;
+  } catch (error) {
+    if (isAbortError(error)) throw error;
+    if (error instanceof Error && error.message.startsWith("The assistant")) throw error;
+    throw new Error("The assistant stream ended unexpectedly. Please try again.");
   }
 
-  const tail = decoder.decode();
-  if (tail) buffer += tail;
+  buffer += decoder.decode();
   if (!buffer.trim()) return;
 
   const parsed = parseChunks(`${buffer}\n`);
-  for (const delta of parsed.deltas) {
-    yield delta;
-  }
+  for (const delta of parsed.deltas) yield delta;
 }
 
-async function fetchStatusAt(
-  origin: string | null,
-  transport: AssistantStatus["transport"],
-): Promise<AssistantStatus> {
-  let response = await requestJson(withOrigin(origin, "/api/assistant/status"));
-
-  if (response.status === 404 || response.status === 405) {
-    response = await requestJson(withOrigin(origin, "/api/chat/status"));
-  }
-
-  if (!response.ok) {
-    throw new Error(`Status check failed: ${response.status} ${response.statusText}`);
-  }
-
-  const payload = (await response.json()) as AssistantStatusPayload;
-  return normalizeStatus(payload, transport, { origin });
-}
-
-export async function fetchLmStudioAssistantStatus(endpoint?: string): Promise<AssistantStatus> {
-  const resolvedEndpoint = endpoint ?? defaultLmStudioEndpoint();
-  const status = await probeLmStudio(resolvedEndpoint);
-  return {
-    status: status.ready ? "ready" : "error",
-    error: status.ready ? null : "LM Studio is not reachable.",
-    model: status.model ?? "lmstudio://local-model",
-    model_label: status.modelLabel,
-    transport: "lmstudio",
-    endpoint: status.endpoint,
-    message: status.ready ? null : "LM Studio is not reachable.",
-    reason: status.ready ? "direct-lmstudio" : "lmstudio-unavailable",
-    fallback: false,
-  };
-}
-
-export async function fetchLiveAssistantStatus(): Promise<AssistantStatus> {
-  let edgeStatus: AssistantStatus | null = null;
+async function fetchStatusAt(path: string): Promise<AssistantStatus> {
+  const response = await requestJson(path);
+  if (!response.ok) throw safeRequestError(response.status);
   try {
-    edgeStatus = await fetchStatusAt(null, "edge");
-    if (edgeStatus.status === "ready" && !edgeStatus.fallback) {
-      return edgeStatus;
-    }
-  } catch (error) {
-    edgeStatus = {
-      status: "error",
-      error: error instanceof Error ? error.message : "Assistant unavailable.",
-      model: null,
-      transport: "edge",
-      fallback: false,
-      message: error instanceof Error ? error.message : "Assistant unavailable.",
-      reason: "edge-unavailable",
-    };
+    return normalizeStatus((await response.json()) as AssistantStatusPayload);
+  } catch {
+    throw new Error("The assistant returned an invalid status response.");
   }
-
-  for (const endpoint of lmStudioEndpoints()) {
-    try {
-      return await fetchLmStudioAssistantStatus(endpoint);
-    } catch {
-      // try next local LM Studio endpoint candidate
-    }
-  }
-
-  for (const origin of localAssistantOrigins()) {
-    try {
-      const localStatus = await fetchStatusAt(origin, "local-backend");
-      if (localStatus.status === "ready" && !localStatus.fallback) {
-        return localStatus;
-      }
-    } catch {
-      // local backend optional
-    }
-  }
-
-  if (edgeStatus) {
-    const message = liveAssistantUnavailable(edgeStatus).message;
-    return {
-      ...edgeStatus,
-      error: message,
-      message,
-    };
-  }
-
-  return {
-    status: "error",
-    error: "No live assistant is available. Start the local dashboard runtime or LM Studio.",
-    model: null,
-    transport: "edge",
-    fallback: false,
-    message: "No live assistant is available. Start the local dashboard runtime or LM Studio.",
-    reason: "no-live-assistant",
-  };
 }
 
 export async function fetchAssistantStatus(): Promise<AssistantStatus> {
-  return fetchStatusAt(null, "edge");
+  const response = await requestJson(ASSISTANT_STATUS_ENDPOINT);
+  if (response.status === 404 || response.status === 405) {
+    return fetchStatusAt(LEGACY_STATUS_ENDPOINT);
+  }
+  if (!response.ok) throw safeRequestError(response.status);
+  try {
+    return normalizeStatus((await response.json()) as AssistantStatusPayload);
+  } catch {
+    throw new Error("The assistant returned an invalid status response.");
+  }
+}
+
+/** Kept as the UI-facing name; it now uses only the dashboard/Pages proxy. */
+export async function fetchLiveAssistantStatus(): Promise<AssistantStatus> {
+  return fetchAssistantStatus();
 }

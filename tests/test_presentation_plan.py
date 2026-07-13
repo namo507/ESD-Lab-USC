@@ -2,8 +2,8 @@
 
 These cover the model-independent pieces: option normalization, deck-plan
 normalization / response shape, JSON extraction, prompt construction, and the
-SPA route whitelist regression for the new route. The local GGUF generator is
-never invoked here.
+SPA route whitelist regression for the new route. The NVIDIA provider is never
+contacted here.
 """
 
 from __future__ import annotations
@@ -58,7 +58,9 @@ class _OkAssistant:
 class _UnavailableAssistant:
     def plan_presentation(self, concept, options=None):
         raise AssistantUnavailable(
-            "model-missing: download the GGUF asset", {"ready": False}, http_status=503
+            "credentials-missing: configure the provider secret",
+            {"ready": False},
+            http_status=503,
         )
 
 
@@ -280,7 +282,7 @@ def test_job_worker_assistant_unavailable_is_clean_failure(tmp_path):
     )
     view = store.public_view(store.get(job["job_id"]))
     assert view["status"] == "failed"
-    assert "download the GGUF" in view["error"]
+    assert "configure the provider secret" in view["error"]
     assert "result" not in view
     # Lock must be released even on failure.
     assert lock.acquire(blocking=False)

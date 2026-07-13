@@ -33,6 +33,8 @@ def make_config(tmp_path: Path) -> PipelineConfig:
         assistant_cluster_context_enabled=True,
         debounce_seconds=5.0,
         watcher_poll_seconds=1.0,
+        watcher_heartbeat_path=data_dir / "readings_watcher_heartbeat.json",
+        watcher_heartbeat_max_age_seconds=30.0,
         max_retries=3,
         retry_base_seconds=1.0,
         retry_max_seconds=30.0,
@@ -42,6 +44,7 @@ def make_config(tmp_path: Path) -> PipelineConfig:
         k8s_worker_service_account="esd-lab-dashboard",
         k8s_readings_pvc="",
         k8s_data_pvc="",
+        worker_ttl_seconds_after_finished=86400,
         pages_deploy_hook_url=None,
     )
 

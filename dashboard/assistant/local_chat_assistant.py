@@ -1,8 +1,8 @@
-"""Local GGUF-backed dashboard assistant.
+"""Grounded ESD Lab dashboard assistant backed by NVIDIA Nemotron.
 
-The assistant integrates with the live dashboard without affecting the rest of
-the runtime. Model loading is lazy and optional, and the default local model is
-small enough to run inside this dev container.
+Grounding and deterministic dashboard answers remain local to this module.  A
+small, lazy provider seam handles hosted NVIDIA generation so provider failures
+never prevent the rest of the dashboard from starting or serving data.
 """
 
 from __future__ import annotations
@@ -11,31 +11,33 @@ import json
 import os
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
-from dashboard.assistant.model_catalog import (
-    available_memory_gib as _catalog_available_memory_gib,
-    find_existing_model_path as _catalog_find_existing_model_path,
-    model_dir_for as _catalog_model_dir_for,
-    read_llm_config as _catalog_read_llm_config,
-    select_runtime_model_config,
+from dashboard.assistant.provider import (
+    NVIDIA_HOSTED_API_BASE,
+    NVIDIA_HOSTED_RUNTIME,
+    NVIDIA_NEMOTRON_MODEL,
+    AssistantProvider,
+    ProviderConfig,
+    ProviderError,
+    build_provider,
+    completion_content,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
-DEFAULT_MODEL_ID = "bartowski/SmolLM2-1.7B-Instruct-GGUF"
-DEFAULT_MODEL_DIR = (
-    PROJECT_ROOT / "models" / "local_llms" / "SmolLM2-1.7B-Instruct-GGUF"
-)
-DEFAULT_MODEL_FILE = "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
-DEFAULT_CONTEXT_WINDOW = 4096
-DEFAULT_BATCH_SIZE = 256
-DEFAULT_MAX_NEW_TOKENS = 320
-DEFAULT_THREAD_COUNT = max(1, min(os.cpu_count() or 4, 4))
+DEFAULT_MODEL_ID = NVIDIA_NEMOTRON_MODEL
+# Nullable legacy fields remain in status responses for older dashboard clients.
+DEFAULT_MODEL_DIR: Path | None = None
+DEFAULT_MODEL_FILE: str | None = None
+DEFAULT_CONTEXT_WINDOW = 32768
+DEFAULT_BATCH_SIZE = 0
+DEFAULT_MAX_NEW_TOKENS = 16384
+DEFAULT_THREAD_COUNT = 0
 CONTEXT_WINDOW_TOKEN_RESERVE = 320
 APPROX_CONTEXT_CHARS_PER_TOKEN = 2
 SUMMARY_KEYS = (
@@ -687,24 +689,12 @@ PRESENTATION_GENERAL_DISCLAIMER = (
 )
 
 
-def _read_llm_model_config() -> dict[str, Any]:
-    return _catalog_read_llm_config(DEFAULT_LLM_CONFIG_PATH)
-
-
-def _find_existing_model_path(filename: str) -> Path | None:
-    if not filename:
-        return None
-    return _catalog_find_existing_model_path({"filename": filename}, PROJECT_ROOT)
-
-
-def _select_llm_model_config(llm_config: dict[str, Any]) -> dict[str, Any]:
-    if not llm_config:
-        return {}
-    return select_runtime_model_config(
-        llm_config,
-        requested_tier=os.getenv("DASHBOARD_ASSISTANT_TIER"),
-        project_root=PROJECT_ROOT,
-    )
+def _env_first(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name)
+        if value is not None and value.strip():
+            return value.strip()
+    return None
 
 
 class AssistantUnavailable(RuntimeError):
@@ -719,24 +709,42 @@ class AssistantUnavailable(RuntimeError):
 @dataclass
 class AssistantConfig:
     enabled: bool = True
+    provider: str = "nvidia"
+    runtime: str = NVIDIA_HOSTED_RUNTIME
+    api_base: str = NVIDIA_HOSTED_API_BASE
+    api_key: str | None = field(default=None, repr=False)
     model_id: str = DEFAULT_MODEL_ID
-    model_dir: Path = DEFAULT_MODEL_DIR
-    model_file: str = DEFAULT_MODEL_FILE
-    model_tier: str = "balanced"
-    model_label: str = "SmolLM2 1.7B Q4"
-    model_license: str = "Apache-2.0"
+    model_dir: Path | None = DEFAULT_MODEL_DIR
+    model_file: str | None = DEFAULT_MODEL_FILE
+    model_tier: str = "hosted"
+    model_label: str = "NVIDIA Nemotron 3 Super 120B A12B"
+    model_license: str = "NVIDIA API terms"
     auto_download: bool = False
-    device_preference: str = "cpu"
+    device_preference: str = "provider-managed"
+    enable_thinking: bool = True
+    reasoning_budget: int = 16384
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
-    temperature: float = 0.05
-    top_p: float = 0.9
-    context_char_budget: int = 6000
-    min_available_memory_gib: float = 1.2
+    temperature: float = 1.0
+    top_p: float = 0.95
+    stream_enabled: bool = True
+    request_timeout_seconds: float = 180.0
+    max_retries: int = 6
+    retry_base_seconds: float = 2.0
+    retry_max_seconds: float = 30.0
+    retry_jitter: float = 0.25
+    max_concurrency: int = 2
+    circuit_failure_threshold: int = 3
+    circuit_recovery_seconds: float = 60.0
+    self_hosted_enabled: bool = False
+    self_hosted_base_url: str = "http://nemotron-nim:8000/v1"
+    context_char_budget: int = 12000
+    # Deprecated local-runtime knobs remain constructor-compatible only.
+    min_available_memory_gib: float = 0.0
     history_turns: int = 6
     context_window: int = DEFAULT_CONTEXT_WINDOW
     batch_size: int = DEFAULT_BATCH_SIZE
     thread_count: int = DEFAULT_THREAD_COUNT
-    generation_queue_timeout_seconds: float = DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS
+    generation_queue_timeout_seconds: float = 180.0
     # Presentation-planner specific knobs (tunable without touching chat).
     presentation_max_new_tokens: int = PRESENTATION_MAX_NEW_TOKENS
     presentation_context_char_cap: int = PRESENTATION_CONTEXT_CHAR_CAP
@@ -744,97 +752,114 @@ class AssistantConfig:
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
-        llm_config = _select_llm_model_config(_read_llm_model_config())
-        resolved_model_path = (
-            Path(str(llm_config.get("resolved_path")))
-            if llm_config.get("resolved_path")
-            else None
+        provider = _env_first("DASHBOARD_ASSISTANT_PROVIDER") or "nvidia"
+        normalized_provider = provider.strip().lower()
+        provider_requests_self_hosted = normalized_provider in {
+            "nim",
+            "nvidia-nim",
+            "self-hosted",
+            "self-hosted-nim",
+        }
+        self_hosted_enabled = _parse_bool(
+            os.getenv("DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED"), default=False
         )
-        config_model_dir = (
-            resolved_model_path.parent
-            if resolved_model_path is not None
-            else (
-                _catalog_model_dir_for(llm_config, PROJECT_ROOT)
-                if llm_config
-                else DEFAULT_MODEL_DIR
-            )
-        )
+        use_self_hosted = provider_requests_self_hosted or self_hosted_enabled
+        effective_provider = "nvidia-nim" if use_self_hosted else provider
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
+            provider=effective_provider,
+            runtime=(
+                "nvidia-nim"
+                if use_self_hosted
+                else (
+                    _env_first("DASHBOARD_ASSISTANT_RUNTIME") or NVIDIA_HOSTED_RUNTIME
+                )
+            ),
+            api_base=(
+                _env_first("DASHBOARD_ASSISTANT_API_BASE", "OPENAI_BASE_URL")
+                or NVIDIA_HOSTED_API_BASE
+            ),
+            api_key=_env_first("DASHBOARD_ASSISTANT_API_KEY", "OPENAI_API_KEY"),
             model_id=(
-                os.getenv("DASHBOARD_ASSISTANT_MODEL_ID")
-                or llm_config.get("repo_id")
+                _env_first("DASHBOARD_ASSISTANT_MODEL", "DASHBOARD_ASSISTANT_MODEL_ID")
                 or DEFAULT_MODEL_ID
             ),
-            model_dir=Path(
-                os.getenv("DASHBOARD_ASSISTANT_MODEL_DIR")
-                or os.getenv("LLM_MODEL_DIR")
-                or str(config_model_dir)
+            model_dir=None,
+            model_file=None,
+            model_tier="self-hosted" if use_self_hosted else "hosted",
+            model_label="NVIDIA Nemotron 3 Super 120B A12B",
+            model_license="NVIDIA API terms",
+            auto_download=False,
+            device_preference=(
+                "self-hosted-gpu" if use_self_hosted else "provider-managed"
             ),
-            model_file=(
-                os.getenv("DASHBOARD_ASSISTANT_MODEL_FILE")
-                or (
-                    resolved_model_path.name
-                    if resolved_model_path is not None
-                    else None
-                )
-                or llm_config.get("filename")
-                or DEFAULT_MODEL_FILE
+            enable_thinking=_parse_bool(
+                os.getenv("DASHBOARD_ASSISTANT_ENABLE_THINKING"), default=True
             ),
-            model_tier=str(
-                os.getenv("DASHBOARD_ASSISTANT_TIER")
-                or llm_config.get("tier")
-                or "balanced"
+            reasoning_budget=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_REASONING_BUDGET"), default=16384
             ),
-            model_label=str(llm_config.get("label") or "local GGUF"),
-            model_license=str(llm_config.get("license") or ""),
-            auto_download=_parse_bool(
-                os.getenv("DASHBOARD_ASSISTANT_AUTO_DOWNLOAD"),
-                default=False,
-            ),
-            device_preference=os.getenv("DASHBOARD_ASSISTANT_DEVICE", "cpu"),
             max_new_tokens=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS")
-                or os.getenv("LLM_MAX_TOKENS"),
-                default=int(llm_config.get("max_tokens") or DEFAULT_MAX_NEW_TOKENS),
+                os.getenv("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS"),
+                default=DEFAULT_MAX_NEW_TOKENS,
             ),
             temperature=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE")
-                or os.getenv("LLM_TEMPERATURE"),
-                default=float(llm_config.get("temperature") or 0.05),
+                os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE"),
+                default=1.0,
             ),
             top_p=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_TOP_P"),
-                default=float(llm_config.get("top_p") or 0.9),
+                default=0.95,
+            ),
+            stream_enabled=_parse_bool(
+                os.getenv("DASHBOARD_ASSISTANT_STREAM"), default=True
+            ),
+            request_timeout_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS"),
+                default=180.0,
+            ),
+            max_retries=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_MAX_RETRIES"), default=6
+            ),
+            retry_base_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS"), default=2.0
+            ),
+            retry_max_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS"), default=30.0
+            ),
+            retry_jitter=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_JITTER"), default=0.25
+            ),
+            max_concurrency=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_MAX_CONCURRENCY"), default=2
+            ),
+            circuit_failure_threshold=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_CIRCUIT_FAILURE_THRESHOLD"), default=3
+            ),
+            circuit_recovery_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS"),
+                default=60.0,
+            ),
+            self_hosted_enabled=self_hosted_enabled,
+            self_hosted_base_url=(
+                _env_first("DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL")
+                or "http://nemotron-nim:8000/v1"
             ),
             context_char_budget=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_CONTEXT_BUDGET"),
-                default=6000,
-            ),
-            min_available_memory_gib=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_MIN_MEMORY_GIB"),
-                default=float(llm_config.get("min_memory_gib") or 1.2),
+                default=12000,
             ),
             history_turns=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_HISTORY_TURNS"),
                 default=6,
             ),
             context_window=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_CONTEXT_WINDOW")
-                or os.getenv("LLM_N_CTX"),
-                default=int(llm_config.get("context_length") or DEFAULT_CONTEXT_WINDOW),
-            ),
-            batch_size=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_BATCH_SIZE"),
-                default=int(llm_config.get("batch_size") or DEFAULT_BATCH_SIZE),
-            ),
-            thread_count=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_THREADS") or os.getenv("LLM_N_THREADS"),
-                default=int(llm_config.get("thread_count") or DEFAULT_THREAD_COUNT),
+                os.getenv("DASHBOARD_ASSISTANT_CONTEXT_WINDOW"),
+                default=DEFAULT_CONTEXT_WINDOW,
             ),
             generation_queue_timeout_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS"),
-                default=DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS,
+                default=180.0,
             ),
             presentation_max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
@@ -850,95 +875,109 @@ class AssistantConfig:
             ),
         )
 
+    def provider_config(self) -> ProviderConfig:
+        provider = "nvidia-nim" if self.self_hosted_enabled else self.provider
+        runtime = "nvidia-nim" if self.self_hosted_enabled else self.runtime
+        return ProviderConfig(
+            enabled=self.enabled,
+            provider=provider,
+            runtime=runtime,
+            api_base=self.api_base,
+            api_key=self.api_key,
+            model=self.model_id,
+            enable_thinking=self.enable_thinking,
+            reasoning_budget=max(0, self.reasoning_budget),
+            request_timeout_seconds=max(0.1, self.request_timeout_seconds),
+            max_retries=max(0, self.max_retries),
+            retry_base_seconds=max(0.0, self.retry_base_seconds),
+            retry_max_seconds=max(0.0, self.retry_max_seconds),
+            retry_jitter=max(0.0, self.retry_jitter),
+            queue_timeout_seconds=max(0.0, self.generation_queue_timeout_seconds),
+            max_concurrency=max(1, self.max_concurrency),
+            circuit_failure_threshold=max(1, self.circuit_failure_threshold),
+            circuit_recovery_seconds=max(0.0, self.circuit_recovery_seconds),
+            self_hosted_enabled=self.self_hosted_enabled,
+            self_hosted_base_url=self.self_hosted_base_url,
+        )
+
 
 class DashboardChatAssistant:
-    """Chat assistant that uses a local GGUF checkpoint when available."""
+    """Grounded assistant with a lazy, injectable generation provider."""
 
     def __init__(
         self,
         *,
         config: AssistantConfig | None = None,
         data_dir: Path = DEFAULT_DATA_DIR,
+        provider: AssistantProvider | None = None,
+        client: Any | None = None,
+        client_factory: Callable[..., Any] | None = None,
     ) -> None:
         self.data_dir = data_dir
         self._lock = threading.Lock()
-        self._generation_lock = threading.Lock()
+        # ``_generator`` is retained as a deprecated fake-client injection hook.
+        # Production generation always flows through ``_provider``.
         self._generator = None
         self._last_error: str | None = None
         self._json_cache: dict[Path, tuple[int, Any]] = {}
 
         self._maybe_load_dotenv()
         self.config = config or AssistantConfig.from_env()
+        self._provider = provider or build_provider(
+            self.config.provider_config(),
+            client=client,
+            client_factory=client_factory,
+        )
 
     def get_status(self) -> dict[str, Any]:
-        deps = self._probe_dependencies()
-        available_memory_gib = _available_memory_gib()
-        memory_gib = round(available_memory_gib, 2)
-        model_path = self._resolve_model_path()
-        model_ready = model_path is not None
-
-        state = "ready"
-        message = "Assistant is ready to answer dashboard questions."
-        can_chat = True
-
-        if not self.config.enabled:
-            state = "disabled"
-            message = "Assistant is disabled by configuration."
-            can_chat = False
-        elif not deps["available"]:
-            state = "dependencies-missing"
-            message = (
-                "Assistant dependencies are missing. Install the assistant setup "
-                "requirements on the target machine before enabling chat."
-            )
-            can_chat = False
-        elif (
-            available_memory_gib
-            and available_memory_gib < self.config.min_available_memory_gib
-        ):
-            state = "memory-insufficient"
-            message = (
-                "The current machine does not have enough free memory for the "
-                f"configured model. At least {self.config.min_available_memory_gib:.1f} GiB "
-                "free memory is recommended."
-            )
-            can_chat = False
-        elif not model_ready:
-            state = "model-missing"
-            message = (
-                "The local GGUF model file is not present yet. Run the assistant "
-                f"preparation script to download {self.config.model_file}."
-            )
-            can_chat = False
-        elif self._last_error:
-            state = "degraded"
-            message = self._last_error
-            can_chat = False
-
-        return {
+        provider_status = self._provider.status()
+        status = {
             "enabled": self.config.enabled,
-            "state": state,
-            "ready": can_chat,
-            "message": message,
-            "runtime": "llama-cpp-python",
+            "state": provider_status.get("state", "degraded"),
+            "ready": bool(provider_status.get("ready")),
+            "can_attempt": bool(
+                provider_status.get("can_attempt", provider_status.get("ready"))
+            ),
+            "message": provider_status.get("message")
+            or "Assistant provider status is unavailable.",
+            "provider": provider_status.get("provider") or self.config.provider,
+            "runtime": provider_status.get("runtime") or self.config.runtime,
+            "api_base": provider_status.get("api_base") or self.config.api_base,
             "model_id": self.config.model_id,
             "model_tier": self.config.model_tier,
             "model_label": self.config.model_label,
             "model_license": self.config.model_license,
-            "model_dir": str(self.config.model_dir),
+            "model_dir": (
+                str(self.config.model_dir)
+                if self.config.model_dir is not None
+                else None
+            ),
             "model_file": self.config.model_file,
-            "model_path": str(model_path) if model_path else None,
-            "auto_download": self.config.auto_download,
+            "model_path": None,
+            "auto_download": False,
             "device_preference": self.config.device_preference,
-            "dependencies": deps,
-            "available_memory_gib": memory_gib,
-            "recommended_memory_gib": self.config.min_available_memory_gib,
-            "generator_loaded": self._generator is not None,
-            "inference_busy": self._generation_lock.locked(),
-            "queue_timeout_seconds": self.config.generation_queue_timeout_seconds,
-            "last_error": self._last_error,
+            "dependencies": provider_status.get("dependencies")
+            or self._probe_dependencies(),
+            "available_memory_gib": None,
+            "recommended_memory_gib": None,
+            "generator_loaded": bool(
+                self._generator is not None
+                or getattr(self._provider, "_client", None) is not None
+            ),
+            "provider_loaded": self._provider is not None,
+            "inference_busy": bool(provider_status.get("active_requests", 0)),
+            "active_requests": provider_status.get("active_requests", 0),
+            "max_concurrency": provider_status.get("max_concurrency"),
+            "queue_timeout_seconds": provider_status.get("queue_timeout_seconds"),
+            "request_timeout_seconds": provider_status.get("request_timeout_seconds"),
+            "max_retries": provider_status.get("max_retries"),
+            "circuit_breaker": provider_status.get("circuit_breaker"),
+            "self_hosted": provider_status.get("self_hosted", False),
+            "failure_state": provider_status.get("failure_state"),
+            "last_error": provider_status.get("last_error") or self._last_error,
             "freshness": self._assistant_freshness_status(),
         }
+        return status
 
     def _prepare_request(
         self,
@@ -952,10 +991,6 @@ class DashboardChatAssistant:
                 self.get_status(),
                 http_status=400,
             )
-
-        status = self.get_status()
-        if not status["ready"]:
-            raise AssistantUnavailable(status["message"], status, http_status=503)
 
         context = self.build_context(prompt)
         messages = self._build_messages(
@@ -977,29 +1012,16 @@ class DashboardChatAssistant:
                 "status": self.get_status(),
             }
 
-        generator = self._ensure_generator()
-
-        self._acquire_generation_slot()
         try:
-            output = generator.create_chat_completion(
+            provider = self._ensure_provider()
+            reply = provider.complete(
                 messages=messages,
                 max_tokens=self._response_token_limit(message),
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
             )
-        except Exception as exc:  # pragma: no cover - depends on runtime model stack
-            self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(
-                self._last_error, self.get_status(), http_status=503
-            ) from exc
-        finally:
-            self._generation_lock.release()
-
-        reply = ""
-        choices = (output or {}).get("choices") or []
-        if choices:
-            message_payload = choices[0].get("message") or {}
-            reply = (message_payload.get("content") or "").strip()
+        except ProviderError as exc:
+            self._raise_provider_unavailable(exc)
 
         if not reply:
             reply = (
@@ -1020,32 +1042,30 @@ class DashboardChatAssistant:
             yield quick_reply
             return
 
-        generator = self._ensure_generator()
-
-        self._acquire_generation_slot()
         try:
-            chunks = generator.create_chat_completion(
+            provider = self._ensure_provider()
+            if not self.config.stream_enabled:
+                content = provider.complete(
+                    messages=messages,
+                    max_tokens=self._response_token_limit(message),
+                    temperature=self.config.temperature,
+                    top_p=self.config.top_p,
+                )
+                if content:
+                    yield content
+                return
+            yield from provider.stream(
                 messages=messages,
                 max_tokens=self._response_token_limit(message),
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
-                stream=True,
             )
-            for chunk in chunks:
-                choices = (chunk or {}).get("choices") or []
-                if not choices:
-                    continue
-                delta = choices[0].get("delta") or {}
-                content = delta.get("content") or ""
-                if content:
-                    yield str(content)
-        except Exception as exc:  # pragma: no cover - depends on runtime model stack
-            self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(
-                self._last_error, self.get_status(), http_status=503
-            ) from exc
-        finally:
-            self._generation_lock.release()
+        except GeneratorExit:
+            # Closing this generator propagates into the provider, which closes the
+            # remote stream without recording a model-health failure.
+            raise
+        except ProviderError as exc:
+            self._raise_provider_unavailable(exc)
 
     def plan_presentation(
         self,
@@ -1054,7 +1074,7 @@ class DashboardChatAssistant:
     ) -> dict[str, Any]:
         """Generate a strict, structured slide-deck plan for ``concept``.
 
-        Reuses the same local generator, readiness checks, and grounding
+        Reuses the same provider, readiness checks, and grounding
         context as the chat assistant, but drives a dedicated
         presentation-planning prompt that must return a single JSON object.
 
@@ -1073,7 +1093,7 @@ class DashboardChatAssistant:
             )
 
         status = self.get_status()
-        if not status["ready"]:
+        if not status.get("can_attempt", status.get("ready")):
             raise AssistantUnavailable(status["message"], status, http_status=503)
 
         opts = normalize_presentation_options(options or {})
@@ -1087,7 +1107,7 @@ class DashboardChatAssistant:
         context_block = (context.get("context") or "")[:context_cap]
         max_tokens = max(256, int(self.config.presentation_max_new_tokens))
 
-        generator = self._ensure_generator()
+        generator = self._ensure_provider()
         messages = build_presentation_messages(topic, opts, context_block, grounding)
         raw_text = self._complete_text(
             generator, messages, max_tokens=max_tokens, json_mode=True
@@ -1134,53 +1154,49 @@ class DashboardChatAssistant:
         max_tokens: int,
         json_mode: bool = False,
     ) -> str:
-        """Run a non-streaming completion and return the assistant text.
+        """Run a non-streaming provider completion and return visible content.
 
-        When ``json_mode`` is requested and enabled in config, the call uses
-        llama-cpp-python's ``response_format={"type": "json_object"}`` grammar
-        constraint so the model is forced to emit syntactically valid JSON. If
-        the installed runtime predates that kwarg, we transparently fall back to
-        a plain completion (the extract-and-repair path still applies).
+        OpenAI-compatible JSON mode is attempted first.  The narrow legacy
+        branch exists only for deterministic fake clients and older compatible
+        gateways; it does not load or select a local model runtime.
         """
+        use_json = json_mode and self.config.presentation_json_mode
+        response_format = {"type": "json_object"} if use_json else None
+
+        complete = getattr(generator, "complete", None)
+        if callable(complete):
+            try:
+                return complete(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=self.config.temperature,
+                    top_p=self.config.top_p,
+                    response_format=response_format,
+                )
+            except ProviderError as exc:
+                self._raise_provider_unavailable(exc)
+
+        create = getattr(generator, "create_chat_completion", None)
+        if not callable(create):
+            raise AssistantUnavailable(
+                "The assistant client does not expose chat completions.",
+                self.get_status(),
+                http_status=503,
+            )
         kwargs: dict[str, Any] = {
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": self.config.temperature,
             "top_p": self.config.top_p,
         }
-        use_json = json_mode and self.config.presentation_json_mode
-        if use_json:
-            kwargs["response_format"] = {"type": "json_object"}
-
-        acquired_generation_slot = False
+        if response_format is not None:
+            kwargs["response_format"] = response_format
         try:
-            self._acquire_generation_slot()
-            acquired_generation_slot = True
-            output = generator.create_chat_completion(**kwargs)
+            output = create(**kwargs)
         except TypeError:
-            # Older llama-cpp-python without response_format support.
             kwargs.pop("response_format", None)
-            try:
-                output = generator.create_chat_completion(**kwargs)
-            except Exception as exc:  # pragma: no cover - runtime model stack
-                self._last_error = f"Assistant generation failed: {exc}"
-                raise AssistantUnavailable(
-                    self._last_error, self.get_status(), http_status=503
-                ) from exc
-        except Exception as exc:  # pragma: no cover - depends on runtime model stack
-            self._last_error = f"Assistant generation failed: {exc}"
-            raise AssistantUnavailable(
-                self._last_error, self.get_status(), http_status=503
-            ) from exc
-        finally:
-            if acquired_generation_slot:
-                self._generation_lock.release()
-
-        choices = (output or {}).get("choices") or []
-        if not choices:
-            return ""
-        message_payload = choices[0].get("message") or {}
-        return (message_payload.get("content") or "").strip()
+            output = create(**kwargs)
+        return completion_content(output)
 
     def build_context(self, question: str) -> dict[str, Any]:
         payload = self._load_dashboard_payload()
@@ -1378,69 +1394,63 @@ class DashboardChatAssistant:
             "facts": self._build_fact_map(payload, readings),
         }
 
-    def _ensure_generator(self):
-        if self._generator is not None:
-            return self._generator
+    def _ensure_provider(self) -> AssistantProvider:
+        """Return the configured provider without contacting it."""
+        # Historical tests and downstream scripts sometimes assign a fake client
+        # to ``_generator``.  Preserve that injection seam by placing the fake
+        # behind the provider adapter instead of calling it directly.
+        if (
+            self._generator is not None
+            and getattr(self._provider, "_client", None) is None
+        ):
+            with self._lock:
+                if getattr(self._provider, "_client", None) is None:
+                    self._provider = build_provider(
+                        self.config.provider_config(), client=self._generator
+                    )
 
-        with self._lock:
-            if self._generator is not None:
-                return self._generator
+        status = self._provider.status()
+        if not status.get("can_attempt", status.get("ready")):
+            raise AssistantUnavailable(
+                str(status.get("message") or "Assistant provider is unavailable."),
+                self.get_status(),
+                http_status=503,
+            )
+        return self._provider
 
-            status = self.get_status()
-            if not status["ready"]:
-                raise AssistantUnavailable(status["message"], status, http_status=503)
+    def _ensure_generator(self) -> AssistantProvider:
+        """Deprecated name retained for import/runtime compatibility."""
+        return self._ensure_provider()
 
-            try:
-                from llama_cpp import Llama
-            except Exception as exc:  # pragma: no cover - optional runtime path
-                self._last_error = (
-                    f"Assistant dependencies could not be imported: {exc}"
-                )
-                raise AssistantUnavailable(
-                    self._last_error, self.get_status(), http_status=503
-                ) from exc
-
-            model_path = self._resolve_model_path()
-            if model_path is None:
-                self._last_error = "Assistant model file is missing. Download the configured GGUF asset first."
-                raise AssistantUnavailable(
-                    self._last_error, self.get_status(), http_status=503
-                )
-
-            try:
-                self._generator = Llama(
-                    model_path=str(model_path),
-                    n_ctx=max(512, self.config.context_window),
-                    n_batch=max(
-                        32, min(self.config.batch_size, self.config.context_window)
-                    ),
-                    n_threads=max(
-                        1, min(self.config.thread_count, os.cpu_count() or 1)
-                    ),
-                    verbose=False,
-                )
-                self._last_error = None
-            except Exception as exc:  # pragma: no cover - depends on local GGUF stack
-                self._last_error = f"Assistant model failed to initialize: {exc}"
-                raise AssistantUnavailable(
-                    self._last_error, self.get_status(), http_status=503
-                ) from exc
-
-        return self._generator
-
-    def _acquire_generation_slot(self) -> None:
-        timeout = max(0.0, float(self.config.generation_queue_timeout_seconds))
-        if self._generation_lock.acquire(timeout=timeout):
-            return
-
+    def _raise_provider_unavailable(self, exc: ProviderError) -> None:
+        self._last_error = str(exc)
         raise AssistantUnavailable(
-            (
-                "The local assistant is still finishing another response. "
-                "Please try again in a few seconds."
-            ),
-            self.get_status(),
-            http_status=429,
-        )
+            str(exc), self.get_status(), http_status=exc.http_status
+        ) from exc
+
+    def probe_provider(self) -> dict[str, Any]:
+        """Perform a sanitized, non-generation provider reachability probe."""
+        try:
+            provider = self._ensure_provider()
+            result = provider.probe()
+        except AssistantUnavailable as exc:
+            return {
+                "ok": False,
+                "state": exc.status.get("state", "degraded"),
+                "message": str(exc),
+                "http_status": exc.http_status,
+                "status": exc.status,
+            }
+        except ProviderError as exc:
+            self._last_error = str(exc)
+            return {
+                "ok": False,
+                "state": exc.state,
+                "message": str(exc),
+                "http_status": exc.http_status,
+                "status": self.get_status(),
+            }
+        return {**result, "status": self.get_status()}
 
     def _build_messages(
         self,
@@ -1465,10 +1475,13 @@ class DashboardChatAssistant:
                     "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
-                    "Local assistant runtime policy: the configured no-API model tier is "
-                    f"{self.config.model_tier}; the active model label is {self.config.model_label}; "
-                    f"the model license is {self.config.model_license or 'unspecified'}. "
-                    "If asked about model choice, explain that the dashboard uses the configured local GGUF model when present and has smaller local fallbacks for constrained hosts.\n\n"
+                    "Assistant runtime policy: generation uses the configured NVIDIA "
+                    f"OpenAI-compatible provider ({self.config.runtime}) with "
+                    f"{self.config.model_label} ({self.config.model_id}). "
+                    "The hosted NVIDIA endpoint is the default. Self-hosted NIM is "
+                    "optional, requires dedicated GPU infrastructure, and is disabled "
+                    "unless explicitly configured. Never claim unlimited provider "
+                    "capacity or expose credentials or hidden reasoning.\n\n"
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
                     "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
@@ -1489,18 +1502,8 @@ class DashboardChatAssistant:
         return messages
 
     def _resolve_model_path(self) -> Path | None:
-        model_dir = self.config.model_dir
-        if model_dir.is_file():
-            return model_dir
-
-        if self.config.model_file:
-            explicit_path = model_dir / self.config.model_file
-            if explicit_path.exists():
-                return explicit_path
-            return None
-
-        candidates = sorted(model_dir.glob("*.gguf")) if model_dir.exists() else []
-        return candidates[0] if candidates else None
+        """Compatibility helper: hosted/NIM providers do not use a model file."""
+        return None
 
     def _load_dashboard_payload(self) -> dict[str, Any]:
         path = self.data_dir / "dashboard_data.json"
@@ -2778,8 +2781,7 @@ class DashboardChatAssistant:
 
     def _readings_freshness_status(self) -> dict[str, Any]:
         try:
-            from k8s.pipeline import PipelineConfig
-            from k8s.pipeline import readings_freshness_payload
+            from k8s.pipeline import PipelineConfig, readings_freshness_payload
 
             config = PipelineConfig.from_env()
             return readings_freshness_payload(config)
@@ -2788,8 +2790,7 @@ class DashboardChatAssistant:
 
     def _cluster_pipeline_status(self) -> dict[str, Any]:
         try:
-            from k8s.pipeline import PipelineConfig
-            from k8s.pipeline import pipeline_status_payload
+            from k8s.pipeline import PipelineConfig, pipeline_status_payload
 
             config = PipelineConfig.from_env()
             if not config.assistant_cluster_context_enabled:
@@ -2830,8 +2831,7 @@ class DashboardChatAssistant:
     def _assistant_freshness_status(self) -> dict[str, Any]:
         freshness: dict[str, Any] = {}
         try:
-            from k8s.pipeline import PipelineConfig
-            from k8s.pipeline import assistant_freshness_payload
+            from k8s.pipeline import PipelineConfig, assistant_freshness_payload
 
             config = PipelineConfig.from_env()
             if config.assistant_cluster_context_enabled:
@@ -2845,7 +2845,7 @@ class DashboardChatAssistant:
 
     def _probe_dependencies(self) -> dict[str, Any]:
         missing: list[str] = []
-        for module_name in ("llama_cpp",):
+        for module_name in ("openai",):
             try:
                 __import__(module_name)
             except Exception:
@@ -2901,9 +2901,13 @@ class DashboardChatAssistant:
             "configured",
             "fallback",
             "gguf",
+            "hosted",
             "llm",
             "local",
+            "nemotron",
+            "nvidia",
             "no",
+            "provider",
             "selected",
             "smaller",
             "tier",
@@ -3896,19 +3900,17 @@ class DashboardChatAssistant:
         return None
 
     def _format_local_model_policy_response(self) -> str:
+        """Compatibility name for the current NVIDIA provider policy answer."""
         model_label = self.config.model_label or self.config.model_file
         model_id = self.config.model_id or self.config.model_file
-        license_label = (
-            self.config.model_license or "local license metadata unavailable"
-        )
-        tier = self.config.model_tier or "configured"
+        runtime = self.config.runtime or NVIDIA_HOSTED_RUNTIME
 
         return (
-            "Local assistant model policy:\n\n"
-            f"- Configured/active model: {model_label} ({tier} tier; {license_label}; {model_id}).\n"
-            "- Why selected: it runs as a no-API local GGUF, keeps study prompts off external APIs, and balances biomedical accuracy with local latency.\n"
-            "- Smaller fallback: the catalog falls back when the selected GGUF is missing or the host does not meet memory/disk requirements; constrained Docker or laptop hosts can use the tiny SmolLM2 tier.\n"
-            "- Busy behavior: live requests now wait for the in-flight local generation instead of rejecting overlapping chats."
+            "NVIDIA assistant provider policy:\n\n"
+            f"- Configured model: {model_label} ({model_id}) via {runtime}.\n"
+            "- Default runtime: NVIDIA's hosted OpenAI-compatible endpoint; an API key is required and external rate limits still apply.\n"
+            "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
+            "- Self-hosting: NVIDIA NIM is optional and disabled by default because this model requires dedicated high-end GPU infrastructure."
         )
 
     def _format_rmssd_response(self, latest_by_group: dict[str, Any]) -> str:
@@ -4007,7 +4009,8 @@ class DashboardChatAssistant:
 
 
 def _available_memory_gib() -> float:
-    return _catalog_available_memory_gib()
+    """Deprecated compatibility probe; provider readiness is host-memory agnostic."""
+    return 0.0
 
 
 def _parse_bool(value: str | None, *, default: bool) -> bool:

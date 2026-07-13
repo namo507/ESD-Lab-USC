@@ -1,98 +1,78 @@
-"""Tests for local assistant model catalog selection."""
+"""Tests for the NVIDIA assistant provider catalog."""
 
 from __future__ import annotations
 
 from dashboard.assistant.model_catalog import (
+    CATALOG_VERSION,
     build_llm_config,
+    find_existing_model_path,
+    normalize_tier,
     select_catalog_model,
     select_runtime_model_config,
 )
+from dashboard.assistant.provider import (
+    NVIDIA_HOSTED_API_BASE,
+    NVIDIA_HOSTED_RUNTIME,
+    NVIDIA_NEMOTRON_MODEL,
+)
 
 
-def test_auto_selection_prefers_balanced_when_host_fits():
-    selected = select_catalog_model(memory_gib=3.5, disk_free_gib=8.0)
+def test_catalog_selects_nvidia_hosted_independent_of_host_capacity():
+    constrained = select_catalog_model(memory_gib=0.25, disk_free_gib=0.1)
+    capable = select_catalog_model(memory_gib=256.0, disk_free_gib=1000.0)
 
-    assert selected["tier"] == "balanced"
-    assert selected["filename"] == "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
-
-
-def test_auto_selection_prefers_clinical_on_capable_host():
-    selected = select_catalog_model(memory_gib=12.0, disk_free_gib=12.0)
-
-    assert selected["tier"] == "clinical"
-    assert selected["filename"] == "ggml-model-Q4_K_M.gguf"
+    assert constrained == capable
+    assert constrained["provider"] == "nvidia"
+    assert constrained["runtime"] == NVIDIA_HOSTED_RUNTIME
+    assert constrained["api_base"] == NVIDIA_HOSTED_API_BASE
+    assert constrained["model_id"] == NVIDIA_NEMOTRON_MODEL
+    assert constrained["filename"] is None
 
 
-def test_explicit_clinical_selection_uses_biomistral():
-    selected = select_catalog_model(tier="medical", memory_gib=1.0, disk_free_gib=1.0)
-
-    assert selected["tier"] == "clinical"
-    assert selected["repo_id"] == "BioMistral/BioMistral-7B-GGUF"
+def test_historical_tier_names_normalize_to_hosted_provider():
+    for old_tier in ("tiny", "balanced", "quality", "clinical", "medical", "auto"):
+        assert normalize_tier(old_tier) == "hosted"
 
 
-def test_auto_selection_uses_tiny_when_memory_is_low():
-    selected = select_catalog_model(memory_gib=1.0, disk_free_gib=8.0)
+def test_provider_config_has_no_local_weight_fallbacks():
+    config = build_llm_config(select_catalog_model())
 
-    assert selected["tier"] == "tiny"
-    assert selected["filename"] == "SmolLM2-360M-Instruct-Q2_K.gguf"
-
-
-def test_runtime_selection_uses_present_tiny_fallback(tmp_path, monkeypatch):
-    primary = select_catalog_model(tier="balanced")
-    config = build_llm_config(primary)
-    tiny_dir = tmp_path / "models" / "local_llms" / "runtime"
-    tiny_dir.mkdir(parents=True)
-    tiny_path = tiny_dir / "SmolLM2-360M-Instruct-Q2_K.gguf"
-    tiny_path.write_bytes(b"GGUF")
-
-    monkeypatch.setattr(
-        "dashboard.assistant.model_catalog.available_memory_gib",
-        lambda: 1.0,
-    )
-
-    selected = select_runtime_model_config(config, project_root=tmp_path)
-
-    assert selected["tier"] == "tiny"
-    assert selected["resolved_path"] == str(tiny_path)
+    assert config["schema_version"] == CATALOG_VERSION
+    assert config["policy"] == "nvidia-hosted-default"
+    assert config["fallbacks"] == []
+    assert config["filename"] is None
+    assert config["self_hosted"]["enabled"] is False
 
 
-def test_runtime_selection_falls_back_when_clinical_missing(tmp_path, monkeypatch):
-    primary = select_catalog_model(tier="clinical")
-    config = build_llm_config(primary)
-    balanced_dir = tmp_path / "models" / "local_llms" / "SmolLM2-1.7B-Instruct-GGUF"
-    balanced_dir.mkdir(parents=True)
-    balanced_path = balanced_dir / "SmolLM2-1.7B-Instruct-Q4_K_M.gguf"
-    balanced_path.write_bytes(b"GGUF")
-
-    monkeypatch.setattr(
-        "dashboard.assistant.model_catalog.available_memory_gib",
-        lambda: 4.0,
-    )
-
-    selected = select_runtime_model_config(config, project_root=tmp_path)
-
-    assert selected["tier"] == "balanced"
-    assert selected["resolved_path"] == str(balanced_path)
-
-
-def test_runtime_selection_honors_requested_tier_when_present(tmp_path, monkeypatch):
-    primary = select_catalog_model(tier="balanced")
-    config = build_llm_config(primary)
-    accuracy_dir = tmp_path / "models" / "local_llms" / "Qwen2.5-1.5B-Instruct-GGUF"
-    accuracy_dir.mkdir(parents=True)
-    accuracy_path = accuracy_dir / "Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"
-    accuracy_path.write_bytes(b"GGUF")
-
-    monkeypatch.setattr(
-        "dashboard.assistant.model_catalog.available_memory_gib",
-        lambda: 4.0,
-    )
-
+def test_runtime_selection_migrates_legacy_gguf_config_without_path(tmp_path):
     selected = select_runtime_model_config(
-        config,
-        requested_tier="accuracy",
+        {
+            "repo_id": "historical/local-checkpoint",
+            "filename": "historical.gguf",
+            "tier": "balanced",
+        },
         project_root=tmp_path,
     )
 
-    assert selected["tier"] == "accuracy"
-    assert selected["resolved_path"] == str(accuracy_path)
+    assert selected["provider"] == "nvidia"
+    assert selected["model_id"] == NVIDIA_NEMOTRON_MODEL
+    assert selected["filename"] is None
+    assert "resolved_path" not in selected
+    assert find_existing_model_path(selected, tmp_path) is None
+
+
+def test_runtime_selection_preserves_explicit_nvidia_provider_values(tmp_path):
+    selected = select_runtime_model_config(
+        {
+            "provider": "nvidia",
+            "runtime": "custom-nvidia-runtime",
+            "api_base": "https://provider.example/v1",
+            "model_id": "nvidia/custom-model",
+        },
+        project_root=tmp_path,
+    )
+
+    assert selected["runtime"] == "custom-nvidia-runtime"
+    assert selected["api_base"] == "https://provider.example/v1"
+    assert selected["model_id"] == "nvidia/custom-model"
+    assert selected["repo_id"] == "nvidia/custom-model"

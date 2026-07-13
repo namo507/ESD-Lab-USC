@@ -3,9 +3,8 @@ import { Icon } from "@/components/primitives";
 import { Typewriter, type Insight } from "./Typewriter";
 import { FastPaths } from "./FastPaths";
 import { AmbientOrbit } from "./AmbientOrbit";
-import { streamCompletion } from "@/lib/lmStudio";
+import { fetchLiveAssistantStatus, isAssistantUsable, streamChat } from "@/api/chatApi";
 import { scrubPhi } from "@/lib/phiScrub";
-import { logAudit } from "@/lib/audit";
 
 const FALLBACK_BACKLOG: Insight[] = [
   { kind: "alert", text: "NANO-0173 · cga_6mo shows ectopic beats in 14 of 64 epochs — surfaced for human QA review (Pan-Tompkins R-peak audit)." },
@@ -23,16 +22,17 @@ interface Props {
  * Agentic QA panel. Default state cycles through the fallback insight backlog
  * via Typewriter. When the user submits a prompt:
  *   1. `scrubPhi` redacts likely PHI client-side (NANO-#### preserved).
- *   2. Stream comes from LM Studio's OpenAI-compatible endpoint.
+ *   2. The shared dashboard API streams the grounded assistant response.
  *   3. Visual indicators surface: scrubbed-redaction badge + streaming dot.
  *   4. Failure falls back to the typewriter feed; never silently drops.
  *
- * No participant data ever leaves the browser unscrubbed — the badge proves it.
+ * The browser never calls a model provider directly; the backend/Pages proxy is
+ * the only assistant transport and performs the authoritative server-side gate.
  */
 export function AgenticQAPanel({ syncTick = 0 }: Props) {
   const [prompt, setPrompt] = useState("");
   const [streamed, setStreamed] = useState("");
-  const [status, setStatus] = useState<"idle" | "streaming" | "error" | "fallback">("idle");
+  const [status, setStatus] = useState<"idle" | "streaming" | "fallback">("idle");
   const [redactionCount, setRedactionCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -40,14 +40,6 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
   const items = useMemo<Insight[]>(() => FALLBACK_BACKLOG, []);
 
   useEffect(() => () => abortRef.current?.abort(), []);
-
-  if (import.meta.env.VITE_USE_MOCKS === "true") {
-    return (
-      <div style={{ padding: "var(--s-16)", color: "var(--warm-fg3)", fontSize: "var(--text-small)" }}>
-        AI assistant requires a running local backend. Run <code>bash scripts/share_dashboard.sh</code> to enable.
-      </div>
-    );
-  }
 
   async function runPrompt(raw: string) {
     if (!raw.trim()) return;
@@ -58,23 +50,25 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
     setStatus("streaming");
     const probe = scrubPhi(raw);
     setRedactionCount(probe.redactions.reduce((s, r) => s + r.count, 0));
-    void logAudit({ action: "run.trigger", scope: "/agentic/prompt", detail: { redactions: probe.redactions.length } });
     try {
-      const stream = streamCompletion({ prompt: raw, signal: controller.signal });
+      const assistant = await fetchLiveAssistantStatus();
+      if (!isAssistantUsable(assistant)) {
+        throw new Error(assistant.error ?? "Assistant unavailable.");
+      }
+
+      const stream = streamChat(raw, [], controller.signal, assistant);
       let acc = "";
-      for await (const ev of stream) {
-        if (ev.delta) {
-          acc += ev.delta;
+      for await (const delta of stream) {
+        if (delta) {
+          acc += delta;
           setStreamed(acc);
         }
-        if (ev.done) break;
       }
-      setStatus(acc ? "idle" : "fallback");
-    } catch (err) {
+      setStatus(acc && assistant.status === "ready" ? "idle" : "fallback");
+    } catch {
       if (controller.signal.aborted) return;
-      setStatus("error");
-      if (import.meta.env.DEV) console.warn("LM Studio unreachable", err);
-      setTimeout(() => setStatus("fallback"), 800);
+      setStreamed("");
+      setStatus("fallback");
     }
   }
 
@@ -108,21 +102,21 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
                 aria-hidden
               />
               <span className="text-[11px] font-mono text-gold tracking-[0.08em] uppercase">
-                Agentic QA · {status === "streaming" ? "streaming" : status === "error" ? "offline" : "live"}
+                Agentic QA · {status === "streaming" ? "streaming" : status === "fallback" ? "limited" : "live"}
               </span>
             </div>
             <h2 className="font-serif text-h2 font-semibold -tracking-[0.01em]">
               Insights from the pipeline
             </h2>
             <p className="text-[12px] text-[color:#9c9893] mt-1">
-              Local LM Studio agent surveils run output, REDCap forms, and QA flags.
+              The backend-routed NVIDIA assistant reviews run output, REDCap forms, and QA flags.
               SHAP attributions, DBSCAN cluster shifts, and HDA phase ratios are summarised continuously.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono bg-gold/10 border border-gold/25 text-gold">
               <Icon name="shield-check" size={12} stroke={1.5} color="var(--usc-gold)" />
-              local · scrubbed
+              proxy · scrubbed
             </span>
             {redactionCount > 0 && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-red-500/15 border border-red-400/25 text-[#ff8a7c]">
@@ -158,7 +152,7 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
           {status === "streaming" && (
             <div className="flex items-center gap-2 text-[11px] text-[color:#9bb8e0] mb-2">
               <span className="pulse-dot inline-block w-1.5 h-1.5 rounded-full" style={{ background: "var(--ocean-ring)" }} aria-hidden />
-              streaming from local LM Studio…
+              streaming from the secure assistant proxy…
             </div>
           )}
           {streamed ? (
@@ -168,10 +162,10 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
           ) : (
             <Typewriter items={items} resetTick={syncTick} />
           )}
-          {status === "error" && (
+          {status === "fallback" && (
             <div className="mt-3 text-[11px] text-[#ff8a7c] flex items-center gap-2">
               <Icon name="triangle-alert" size={12} stroke={1.5} color="#ff8a7c" />
-              LM Studio unreachable at <code className="px-1">localhost:1234</code> — falling back to insights backlog.
+              Live AI is temporarily limited — showing the de-identified insights backlog.
             </div>
           )}
         </div>

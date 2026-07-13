@@ -8,15 +8,19 @@ vi.mock("@/lib/audit", () => ({
   logAudit: logAuditMock,
 }));
 
-import { fetchAssistantStatus, fetchLiveAssistantStatus, streamChat } from "@/api/chatApi";
+import {
+  assistantStatusLabel,
+  fetchAssistantStatus,
+  fetchLiveAssistantStatus,
+  isAssistantUsable,
+  streamChat,
+} from "@/api/chatApi";
 
 function makeNdjsonResponse(lines: string[]): Response {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      for (const line of lines) {
-        controller.enqueue(encoder.encode(`${line}\n`));
-      }
+      for (const line of lines) controller.enqueue(encoder.encode(`${line}\n`));
       controller.close();
     },
   });
@@ -38,14 +42,16 @@ describe("chatApi", () => {
     global.fetch = originalFetch;
   });
 
-  it("scrubs user prompts, logs audit before fetch, and parses NDJSON", async () => {
+  it("scrubs PHI, audits first, ignores reasoning fields, and parses NDJSON", async () => {
     const order: string[] = [];
     logAuditMock.mockImplementation(async () => {
       order.push("audit");
     });
 
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       order.push("fetch");
+      expect(input).toBe("/api/assistant/chat");
+      expect(init?.credentials).toBe("include");
 
       const body = JSON.parse(String(init?.body));
       expect(body.message).toContain("{{REDACTED:DATE}}");
@@ -53,6 +59,7 @@ describe("chatApi", () => {
       expect(body.history[0].content).toContain("{{REDACTED:MRN}}");
 
       return makeNdjsonResponse([
+        JSON.stringify({ reasoning: "private chain of thought" }),
         JSON.stringify({ delta: "Hello " }),
         JSON.stringify({ delta: "world" }),
         JSON.stringify({ done: true }),
@@ -70,11 +77,16 @@ describe("chatApi", () => {
     }
 
     expect(order).toEqual(["audit", "fetch"]);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(logAuditMock).toHaveBeenCalledWith({
+      action: "run.trigger",
+      scope: "/assistant/chat",
+      detail: { redactions: 2 },
+    });
     expect(chunks.join("")).toBe("Hello world");
+    expect(chunks.join("")).not.toContain("chain of thought");
   });
 
-  it("falls back to the legacy JSON chat endpoint", async () => {
+  it("falls back to the legacy same-origin JSON chat endpoint", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
@@ -88,17 +100,16 @@ describe("chatApi", () => {
     global.fetch = fetchMock as typeof global.fetch;
 
     const chunks: string[] = [];
-    for await (const chunk of streamChat("What is HDA?", [])) {
-      chunks.push(chunk);
-    }
+    for await (const chunk of streamChat("What is HDA?", [])) chunks.push(chunk);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/assistant/chat");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/chat");
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "/api/assistant/chat",
+      "/api/chat",
+    ]);
     expect(chunks).toEqual(["Legacy reply"]);
   });
 
-  it("normalizes legacy assistant status payloads", async () => {
+  it("normalizes the legacy status endpoint into an NVIDIA-ready state", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
@@ -106,7 +117,8 @@ describe("chatApi", () => {
         new Response(JSON.stringify({
           ready: true,
           state: "ready",
-          model_id: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
+          model_id: "nvidia/nemotron-3-super-120b-a12b",
+          runtime: "nvidia-build-api",
         }), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -115,28 +127,53 @@ describe("chatApi", () => {
 
     global.fetch = fetchMock as typeof global.fetch;
 
-    await expect(fetchAssistantStatus()).resolves.toEqual({
+    const status = await fetchAssistantStatus();
+    expect(status).toEqual({
       status: "ready",
       error: null,
-      model: "bartowski/Qwen2.5-1.5B-Instruct-GGUF",
-      endpoint: null,
-      transport: "edge",
+      model: "nvidia/nemotron-3-super-120b-a12b",
       fallback: false,
       freshness: undefined,
       message: null,
-      origin: null,
-      reason: null,
     });
+    expect(assistantStatusLabel(status)).toBe("NVIDIA assistant ready");
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "/api/assistant/status",
+      "/api/chat/status",
+    ]);
   });
 
-  it("marks the Pages fallback assistant as unhealthy even when the edge says ready", async () => {
+  it("maps provider states to safe copy without exposing raw provider errors", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        status: "error",
+        state: "rate_limited",
+        ready: true,
+        error: "NVCF 429 at integrate.api.nvidia.com with key nvapi-secret",
+        last_error: "private upstream response",
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const status = await fetchAssistantStatus();
+    expect(status.status).toBe("rate-limited");
+    expect(status.error).toBe("The assistant is busy right now. Please try again shortly.");
+    expect(JSON.stringify(status)).not.toContain("integrate.api.nvidia.com");
+    expect(JSON.stringify(status)).not.toContain("nvapi-secret");
+    expect(assistantStatusLabel(status)).toBe("Assistant busy · retry shortly");
+  });
+
+  it("keeps the Pages fallback usable without probing browser-local providers", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({
         status: "ready",
         ready: true,
         model: "pages://fallback-assistant",
         reason: "upstream-530",
-        message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
+        message: "Pages fallback assistant is active because the live origin is unavailable.",
       }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -145,105 +182,63 @@ describe("chatApi", () => {
 
     global.fetch = fetchMock as typeof global.fetch;
 
-    await expect(fetchAssistantStatus()).resolves.toEqual({
+    const status = await fetchLiveAssistantStatus();
+    expect(status).toMatchObject({
       status: "fallback",
-      error: "Pages fallback assistant is active because the live assistant origin is unavailable.",
-      model: "pages://fallback-assistant",
-      endpoint: null,
-      transport: "edge",
       fallback: true,
-      freshness: undefined,
-      message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
-      origin: null,
-      reason: "upstream-530",
+      error: "The live assistant is unavailable; a limited dashboard fallback is active.",
     });
-  });
-
-  it("prefers LM Studio before the local backend when the edge assistant is only fallback", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          status: "ready",
-          ready: true,
-          model: "pages://fallback-assistant",
-          reason: "upstream-530",
-          message: "Pages fallback assistant is active because the live assistant origin is unavailable.",
-        }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          data: [{ id: "lmstudio/Qwen3-8B-GGUF" }],
-        }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({
-          ready: true,
-          state: "ready",
-          model_id: "BioMistral/BioMistral-7B-GGUF",
-          model_label: "BioMistral 7B",
-        }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      );
-
-    global.fetch = fetchMock as typeof global.fetch;
-
-    await expect(fetchLiveAssistantStatus()).resolves.toEqual({
-      status: "ready",
-      error: null,
-      model: "lmstudio/Qwen3-8B-GGUF",
-      model_label: "Qwen3-8B-GGUF",
-      transport: "lmstudio",
-      endpoint: "http://localhost:1234/v1",
-      fallback: false,
-      message: null,
-      reason: "direct-lmstudio",
-    });
-
+    expect(isAssistantUsable(status)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/assistant/status");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("http://localhost:1234/v1/models");
   });
 
-  it("routes chat through the local backend when the edge assistant is only fallback", async () => {
+  it("routes ready and fallback chat through the same API and forwards the abort signal", async () => {
+    const controller = new AbortController();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (input === "http://127.0.0.1:8080/api/assistant/chat") {
-        const body = JSON.parse(String(init?.body));
-        expect(body.message).toBe("What is HDA?");
-        return makeNdjsonResponse([
-          JSON.stringify({ delta: "Local " }),
-          JSON.stringify({ delta: "backend" }),
-          JSON.stringify({ done: true }),
-        ]);
-      }
-      throw new Error(`Unexpected request: ${String(input)}`);
+      expect(input).toBe("/api/assistant/chat");
+      expect(init?.signal).toBe(controller.signal);
+      return makeNdjsonResponse([
+        JSON.stringify({ delta: "Limited answer" }),
+        JSON.stringify({ done: true }),
+      ]);
     });
-
     global.fetch = fetchMock as typeof global.fetch;
 
     const chunks: string[] = [];
     for await (const chunk of streamChat(
       "What is HDA?",
       [],
-      undefined,
+      controller.signal,
       {
-        status: "ready",
-        error: null,
-        model: "BioMistral/BioMistral-7B-GGUF",
-        transport: "local-backend",
+        status: "fallback",
+        error: "The live assistant is unavailable; a limited dashboard fallback is active.",
+        model: "pages://fallback-assistant",
+        fallback: true,
       },
     )) {
       chunks.push(chunk);
     }
 
-    expect(chunks.join("")).toBe("Local backend");
+    expect(chunks).toEqual(["Limited answer"]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves AbortError when a caller cancels an in-flight proxy request", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => (
+      new Promise<Response>((_resolve, reject) => {
+        const rejectAbort = () => reject(new DOMException("Aborted", "AbortError"));
+        if (init?.signal?.aborted) rejectAbort();
+        else init?.signal?.addEventListener("abort", rejectAbort, { once: true });
+      })
+    ));
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const pending = streamChat("What is HDA?", [], controller.signal).next();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
 });

@@ -131,6 +131,12 @@ if [[ -z "${AUTO_DEPLOY_CANONICAL_PAGES:-}" && "$use_named" == "true" ]]; then
   publish_canonical_pages="true"
 fi
 
+if [[ "$use_named" != "true" && "$publish_canonical_pages" == "true" ]]; then
+  echo "WARNING: canonical Pages publication is disabled for ephemeral quick tunnels." >&2
+  echo "         The stable runtime-share preview will be refreshed instead." >&2
+  publish_canonical_pages="false"
+fi
+
 if [[ "$use_named" == "true" ]]; then
   share_service="dashboard-share-named"
 fi
@@ -288,7 +294,7 @@ start_cloudflared() {
   if [[ "$use_named" == "true" ]]; then
     nohup "${cloudflared_env[@]}" "$cloudflared_bin" tunnel --metrics 127.0.0.1:20242 --no-autoupdate run --token "$named_tunnel_token" --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
   else
-    nohup "${cloudflared_env[@]}" "$cloudflared_bin" tunnel --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
+    nohup "${cloudflared_env[@]}" "$cloudflared_bin" tunnel --metrics 127.0.0.1:20242 --no-autoupdate --url "$DASHBOARD_URL" >"$TUNNEL_LOG_FILE" 2>&1 &
   fi
 
   echo $! >"$TUNNEL_PID_FILE"
@@ -314,6 +320,16 @@ auto_deploy_pages_wrapper() {
 auto_deploy_canonical_pages_site() {
   local origin_url="$1"
 
+  if [[ "$origin_url" == *.trycloudflare.com/* || "$origin_url" == *.trycloudflare.com ]]; then
+    echo "skipped: ephemeral trycloudflare origins are never published to canonical Pages"
+    return 0
+  fi
+
+  if ! origin_healthy "$origin_url"; then
+    echo "skipped: origin failed /api/healthz and canonical Pages will retain fallback mode"
+    return 0
+  fi
+
   if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
     echo "auto-deploy skipped because CLOUDFLARE_API_TOKEN is unset"
     return 0
@@ -330,8 +346,13 @@ auto_deploy_canonical_pages_site() {
   return 1
 }
 
-canonical_pages_assistant_healthy() {
-  assistant_status_healthy "${PAGES_CANONICAL_URL}"
+canonical_pages_healthy() {
+  curl -fsS --max-time 20 "$PAGES_CANONICAL_URL" >/dev/null 2>&1 \
+    && curl -fsS --max-time 20 "${PAGES_CANONICAL_URL%/}/api/assistant/status" >/dev/null 2>&1
+}
+
+cloudflared_ready() {
+  curl -fsS --max-time 5 http://127.0.0.1:20242/ready >/dev/null 2>&1
 }
 
 origin_healthy() {
@@ -405,11 +426,17 @@ run_share_health_checks() {
   echo
   echo "Health checks:"
 
-  if origin_healthy "$origin_url" && assistant_status_healthy "$origin_url"; then
-    echo "  PASS origin assistant → ${origin_url}"
+  if origin_healthy "$origin_url"; then
+    echo "  PASS origin dashboard → ${origin_url}"
   else
-    echo "  FAIL origin assistant → ${origin_url}"
+    echo "  FAIL origin dashboard → ${origin_url}"
     failed=1
+  fi
+
+  if assistant_status_healthy "$origin_url"; then
+    echo "  PASS NVIDIA assistant provider → ${origin_url}"
+  else
+    echo "  WARN NVIDIA assistant is degraded; dashboard remains healthy"
   fi
 
   if [[ "$kind" == "quick" ]]; then
@@ -421,10 +448,10 @@ run_share_health_checks() {
     fi
   fi
 
-  if canonical_pages_assistant_healthy; then
-    echo "  PASS canonical Pages assistant → ${PAGES_CANONICAL_URL}"
+  if canonical_pages_healthy; then
+    echo "  PASS canonical Pages shell/fallback API → ${PAGES_CANONICAL_URL}"
   else
-    echo "  FAIL canonical Pages assistant → ${PAGES_CANONICAL_URL}"
+    echo "  FAIL canonical Pages shell/fallback API → ${PAGES_CANONICAL_URL}"
     if [[ "$publish_canonical_pages" != "true" ]]; then
       echo "       Hint: rerun with AUTO_DEPLOY_CANONICAL_PAGES=true or use 'make share-live'."
     fi
@@ -695,13 +722,13 @@ share_without_docker() {
   echo
   echo "Continuous mode enabled: supervising local website runtime + tunnel (Ctrl-C to stop)."
   if [[ "$publish_canonical_pages" == "true" ]]; then
-    echo "Canonical Pages publication is enabled: ${PAGES_CANONICAL_URL} will be rechecked and republished automatically."
+    echo "Canonical Pages publication is enabled once for the healthy named origin: ${PAGES_CANONICAL_URL}."
   fi
 
   trap 'stop_pid_file "$TUNNEL_PID_FILE"; stop_pid_file "$DASHBOARD_PID_FILE"; exit 0' INT TERM
 
-  local last_pages_probe=0
-  local pages_probe_interval="${PAGES_CANONICAL_PROBE_INTERVAL:-60}"
+  local failed_tunnel_probes=0
+  local max_failed_tunnel_probes="${CLOUDFLARED_MAX_FAILED_PROBES:-3}"
 
   while true; do
     sleep 5
@@ -713,23 +740,25 @@ share_without_docker() {
 
     local tunnel_pid
     tunnel_pid="$(cat "$TUNNEL_PID_FILE" 2>/dev/null || true)"
-    if [[ -z "$tunnel_pid" ]] || ! kill -0 "$tunnel_pid" 2>/dev/null; then
-      echo "Tunnel process not running; restarting Cloudflare tunnel..."
+    local current_origin
+    current_origin="$(cat "$ORIGIN_RECORD" 2>/dev/null || true)"
+    if [[ -n "$tunnel_pid" ]] \
+      && kill -0 "$tunnel_pid" 2>/dev/null \
+      && cloudflared_ready \
+      && [[ -n "$current_origin" ]] \
+      && origin_healthy "$current_origin"; then
+      failed_tunnel_probes=0
+    else
+      failed_tunnel_probes=$((failed_tunnel_probes + 1))
+    fi
+
+    if (( failed_tunnel_probes >= max_failed_tunnel_probes )); then
+      echo "Cloudflare tunnel failed ${failed_tunnel_probes} consecutive readiness/origin probes; restarting..."
+      stop_pid_file "$TUNNEL_PID_FILE"
       : >"$TUNNEL_LOG_FILE"
       start_cloudflared "$cloudflared_bin"
       print_host_tunnel_result || true
-    fi
-
-    if [[ "$publish_canonical_pages" == "true" ]] && (( SECONDS - last_pages_probe >= pages_probe_interval )); then
-      last_pages_probe=$SECONDS
-      if ! canonical_pages_assistant_healthy; then
-        local current_origin
-        current_origin="$(cat "$ORIGIN_RECORD" 2>/dev/null || true)"
-        if [[ -n "$current_origin" ]]; then
-          echo "Canonical Pages assistant probe failed; republishing ${current_origin} ..."
-          auto_deploy_canonical_pages_site "$current_origin" || true
-        fi
-      fi
+      failed_tunnel_probes=0
     fi
   done
 }

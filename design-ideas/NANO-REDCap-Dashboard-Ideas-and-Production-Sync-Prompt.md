@@ -1,5 +1,7 @@
 # MASTER PROMPT: REDCap Dashboard Ideas, Tweak Controls, and Production Sync
 
+> **Runtime update (July 2026):** Assistant-specific local-model and `sync_local_llm.yml` references later in this historical prompt are superseded. The supported contract is NVIDIA Nemotron hosted by default, as documented in `NVIDIA.md` and `docs/dashboard_ai_assistant.md`.
+
 ## NANO Study · PID 5955 · github.com/namo507/ESD-Lab-USC · the experience and operations layer
 
 **This is the companion to `NANO-REDCap-Integration-Master-Prompt.md` (v2).** v2 built the data spine (pull, PHI scrub, the `redcap_*` JSON contract, the proxy, the auto-grounded assistant). This prompt builds the experience and operations layer on top: creative dashboards, three tiers of tweak controls, trackers and tables, and the synchronization of Docker, Kubernetes, and Cloudflare into one API production pipeline. **Safe to commit:** this file contains no token and no PHI. It may live at `docs/REDCAP_DASHBOARD_IDEAS.md`. The token still lives only in `.env`, `.dev.vars`, GitHub Secrets, Cloudflare env, and the K8s Secret. **Verified against the repo and the live API on 2026-06-24:** 12 events, 56 instruments, 3995 fields. Three runtimes already exist (Cloudflare Pages SPA, Dockerized `dashboard/server/live_dashboard_server.py`, K8s Helm chart `k8s/helm/esd-lab-dashboard`).

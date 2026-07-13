@@ -50,7 +50,7 @@ You are building and improving the research dashboard for the **NANO Study** (Ne
 | State | Zustand (`web/src/store/ui.ts` — `useUi` store) |
 | Charts | Recharts (RMSSD trajectories, HDA bar stacks); `@nivo/sankey` + full `d3` bundle already in `web/package.json` |
 | Maps | GeoJSON (`web/public/sc-counties.geojson`) + `web/src/components/warm/ReadingsGeoMap.tsx` |
-| AI assistant | Local LM Studio backend proxied via Cloudflare Pages `_worker.js`; chat in `web/src/components/shell/ChatDrawer.tsx`; hover-card INSIGHTS in `web/src/components/shell/Buddy.tsx` |
+| AI assistant | NVIDIA Nemotron hosted backend exposed through same-origin `/api`; chat in `web/src/components/shell/ChatDrawer.tsx`; hover-card INSIGHTS in `web/src/components/shell/Buddy.tsx` |
 | Deployment | Cloudflare Pages (project: `esd-lab-namo`), CI via `.github/workflows/deploy-pages.yml` |
 | Production data | `VITE_USE_MOCKS=true` — all production data is mocked; no PHI ever in repo |
 | Backend runtime | Python (`dashboard/server/live_dashboard_server.py`) on `127.0.0.1:8080`, Cloudflare Tunnel |
@@ -149,7 +149,7 @@ Runtime evaluation lives in `web/src/hooks/useFeatureFlag.ts` (`isFeatureFlagEna
 | /qa | ✅ Epoch grid with flagged/rejected filters | ✅ `web/src/routes/QA.tsx` + `web/src/components/qa/epochReducer.ts` | Demo visit only; no live ECG epoch streaming |
 | /redcap | Route accessible | ✅ `web/src/routes/Redcap.tsx` | REDCAP_COMPLETENESS flag off; completeness heatmap hidden |
 | All 30+ advanced routes | ❌ Not accessible via sidebar (flags = false) | ✅ All 50+ route components built under `web/src/routes/` | **Largest gap** — entire dynamics/dyads/insights/executive surface built but invisible |
-| AI Chat (Buddy) | Cmd+K opens drawer | ✅ `web/src/components/shell/ChatDrawer.tsx` + `Buddy.tsx` | Non-functional in static Pages build; LM Studio backend must run locally |
+| AI Chat (Buddy) | Cmd+K opens drawer | ✅ `web/src/components/shell/ChatDrawer.tsx` + `Buddy.tsx` | Uses the NVIDIA backend when a healthy stable API origin is packaged; otherwise shows the safe Pages fallback state |
 | Presentation Maker | Route accessible | ✅ `web/src/routes/PresentationMaker.tsx` | 3 of 5 slide types are content stubs |
 | Executive PPTX export | Flag off | ✅ `web/src/routes/ExecutiveMode.tsx` with pptxgenjs | 3 slide stubs need real data binding; helper at `web/src/lib/pptx.ts` |
 | Public Insights | Flag off | ✅ `web/src/routes/PublicInsights.tsx`; insight sub-components in `web/src/components/insights/` | Ready to enable — highest-value public feature waiting behind flag |

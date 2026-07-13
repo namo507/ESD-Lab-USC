@@ -126,7 +126,7 @@ def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
     assert "hda_composition" in response
 
 
-def test_assistant_answers_local_model_policy_before_leaderboard(tmp_path):
+def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
     data_dir = tmp_path / "dashboard-data"
     data_dir.mkdir()
     (data_dir / "dashboard_data.json").write_text(
@@ -143,26 +143,26 @@ def test_assistant_answers_local_model_policy_before_leaderboard(tmp_path):
 
     assistant = DashboardChatAssistant(
         config=AssistantConfig(
-            model_dir=tmp_path / "missing-model",
-            model_id="bartowski/SmolLM2-1.7B-Instruct-GGUF",
-            model_tier="balanced",
-            model_label="SmolLM2 1.7B Q4",
-            model_license="Apache-2.0",
+            model_id="nvidia/nemotron-3-super-120b-a12b",
+            model_tier="hosted",
+            model_label="NVIDIA Nemotron 3 Super 120B A12B",
+            runtime="nvidia-build-api",
         ),
         data_dir=data_dir,
     )
 
     question = (
-        "Which local no-API model is configured for ESD Buddy, why was it "
-        "selected, and when will the dashboard fall back to a smaller model?"
+        "Which NVIDIA model and provider are configured for ESD Buddy, and "
+        "what happens when the provider is rate limited?"
     )
     context = assistant.build_context(question)
     response = assistant._maybe_short_circuit_response(question, context)
 
     assert response is not None
-    assert "Local assistant model policy:" in response
-    assert "- Configured/active model: SmolLM2 1.7B Q4" in response
-    assert "no-API local GGUF" in response
+    assert "NVIDIA assistant provider policy:" in response
+    assert "NVIDIA Nemotron 3 Super 120B A12B" in response
+    assert "nvidia-build-api" in response
+    assert "external rate limits still apply" in response
     assert "model leaderboard" not in response.lower()
 
 
@@ -223,15 +223,16 @@ def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
 
             return chunks()
 
+    generator = SingleFlightGenerator()
     assistant = DashboardChatAssistant(
         config=AssistantConfig(
-            model_dir=tmp_path / "missing-model",
+            api_key="test-key",
+            max_concurrency=1,
             generation_queue_timeout_seconds=1.0,
         ),
         data_dir=tmp_path,
+        client=generator,
     )
-    generator = SingleFlightGenerator()
-    assistant._generator = generator
     monkeypatch.setattr(
         assistant,
         "_prepare_request",
@@ -267,56 +268,34 @@ def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
     assert replies == ["ok", "ok"]
 
 
-def test_status_reports_missing_model_when_dependencies_are_available(
-    tmp_path, monkeypatch
-):
+def test_status_reports_missing_provider_credentials(tmp_path):
     assistant = DashboardChatAssistant(
         config=AssistantConfig(model_dir=tmp_path / "missing-model"),
         data_dir=tmp_path,
     )
 
-    monkeypatch.setattr(
-        assistant,
-        "_probe_dependencies",
-        lambda: {"available": True, "missing": []},
-    )
-    monkeypatch.setattr(
-        "dashboard.assistant.local_chat_assistant._available_memory_gib",
-        lambda: 32.0,
-    )
-
     status = assistant.get_status()
 
     assert not status["ready"]
-    assert status["state"] == "model-missing"
-    assert "model" in status["message"].lower()
+    assert status["state"] == "credentials-missing"
+    assert "credentials" in status["message"].lower()
+    assert status["model_path"] is None
 
 
-def test_status_ready_when_local_gguf_exists(tmp_path, monkeypatch):
-    model_dir = tmp_path / "model"
-    model_dir.mkdir()
-    (model_dir / "demo.gguf").write_bytes(b"GGUF")
-
+def test_status_ready_with_injected_provider_client(tmp_path):
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(model_dir=model_dir, model_file="demo.gguf"),
+        config=AssistantConfig(),
         data_dir=tmp_path,
-    )
-
-    monkeypatch.setattr(
-        assistant,
-        "_probe_dependencies",
-        lambda: {"available": True, "missing": []},
-    )
-    monkeypatch.setattr(
-        "dashboard.assistant.local_chat_assistant._available_memory_gib",
-        lambda: 2.0,
+        client=object(),
     )
 
     status = assistant.get_status()
 
     assert status["ready"] is True
     assert status["state"] == "ready"
-    assert status["model_path"].endswith("demo.gguf")
+    assert status["provider"] == "nvidia"
+    assert status["runtime"] == "nvidia-build-api"
+    assert status["model_path"] is None
 
 
 def test_summary_derives_enrollment_total_from_groups(tmp_path):

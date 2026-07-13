@@ -90,7 +90,7 @@ web/src/lib/audit.ts                     # Audit logging (logAudit)
 web/src/lib/phiScrub.ts                  # PHI scrubbing (scrubPhi)
 web/src/lib/exportCsv.ts                 # CSV export utility (exportCsvFile)
 web/src/lib/participantOperations.ts     # Questionnaire status utilities, form policy helpers
-web/src/lib/lmStudio.ts                  # LM Studio local model streaming
+web/src/api/chatApi.ts                   # Same-origin NVIDIA assistant streaming
 web/src/lib/glossary.ts                  # Glossary term definitions
 
 # Styles

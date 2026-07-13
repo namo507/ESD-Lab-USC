@@ -23,33 +23,6 @@ spec:
       serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if and .Values.assistant.enabled .Values.assistant.autoDownload }}
-      initContainers:
-        - name: assistant-model-bootstrap
-          image: {{ include "esd-lab-dashboard.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          command:
-            - python
-            - scripts/prepare_dashboard_assistant.py
-            - --tier
-            - {{ .Values.assistant.tier | quote }}
-            - --download
-          envFrom:
-            - configMapRef:
-                name: {{ include "esd-lab-dashboard.fullname" . }}-config
-          env:
-            - name: HF_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secret.name }}
-                  key: hfToken
-                  optional: true
-          volumeMounts:
-            - name: assistant-model-cache
-              mountPath: "/app/models/local_llms"
-      {{- end }}
       containers:
         - name: dashboard
           image: {{ include "esd-lab-dashboard.image" . | quote }}
@@ -106,29 +79,44 @@ spec:
                   name: {{ .Values.secret.name }}
                   key: pagesDeployHookUrl
                   optional: true
-            - name: HF_TOKEN
+            - name: DASHBOARD_ASSISTANT_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secret.name }}
-                  key: hfToken
+                  key: {{ .Values.assistant.apiKeySecretKey }}
+                  optional: true
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.assistant.apiKeySecretKey }}
                   optional: true
           ports:
             - name: http
               containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 36
           readinessProbe:
             httpGet:
               path: /api/healthz
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 5
             periodSeconds: 15
-            timeoutSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /api/healthz
               port: http
-            initialDelaySeconds: 60
+            initialDelaySeconds: 15
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.dashboard.resources | nindent 12 }}
           volumeMounts:
@@ -136,10 +124,6 @@ spec:
               mountPath: "/app/esd-lab-readings"
             - name: dashboard-data
               mountPath: "/app/dashboard/data"
-            {{- if .Values.assistant.enabled }}
-            - name: assistant-model-cache
-              mountPath: "/app/models/local_llms"
-            {{- end }}
       volumes:
         - name: readings
           persistentVolumeClaim:
@@ -147,12 +131,3 @@ spec:
         - name: dashboard-data
           persistentVolumeClaim:
             claimName: {{ include "esd-lab-dashboard.requiredDataClaim" . | quote }}
-        {{- if .Values.assistant.enabled }}
-        - name: assistant-model-cache
-          {{- if .Values.assistant.modelCacheClaim }}
-          persistentVolumeClaim:
-            claimName: {{ .Values.assistant.modelCacheClaim | quote }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        {{- end }}

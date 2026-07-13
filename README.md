@@ -234,14 +234,10 @@ make share-live
 ```
 
 `make share-live` runs in continuous quick-tunnel mode, keeps the local dashboard
-runtime and cloudflared tunnel alive, auto-restarts them if they stop, and rewrites
-the Pages wrapper target whenever the quick-tunnel hostname rotates, then
-republishes the canonical Pages worker when needed so
-`https://esd-lab-namo.pages.dev/` keeps pointing at a live assistant origin.
-
-If you use the one-shot share command instead, add
-`AUTO_DEPLOY_CANONICAL_PAGES=true` so the canonical Pages site is republished in
-that same run; otherwise only the runtime-share preview wrapper is refreshed.
+runtime and cloudflared tunnel alive, auto-restarts them if they stop, and
+refreshes the runtime-share preview when the temporary hostname rotates. The
+canonical Pages worker accepts only a healthy durable API origin; otherwise it
+stays in fallback-only mode so stale tunnels cannot take the website down.
 
 That command starts the local website runtime, starts the tunnel sidecar, and
 prints the active public site URL for the current session.
@@ -255,14 +251,13 @@ The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
 depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
 hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
 Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
-is attached, the wrapper's `/api/*` proxy points at the currently active
-Cloudflare quick tunnel, which is temporary and rotates.
+is attached, the canonical site serves its safe fallback assistant while the
+current direct quick-tunnel URL exposes the live NVIDIA-backed runtime.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or
-bookmark a previous quick-tunnel URL as a permanent dashboard address, because
-it changes when the tunnel is recreated, and update the Pages wrapper if you
-need the embedded public page to keep working after a tunnel restart.
+bookmark a previous quick-tunnel URL as a permanent dashboard address because
+it changes whenever the tunnel is recreated.
 
 For temporary sharing, always rerun `make dashboard-share` and send only the
 latest quick-share URL printed by the script.

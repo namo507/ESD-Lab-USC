@@ -198,7 +198,7 @@ class KubernetesApiClient:
             },
             "spec": {
                 "backoffLimit": 0,
-                "ttlSecondsAfterFinished": 86400,
+                "ttlSecondsAfterFinished": self.config.worker_ttl_seconds_after_finished,
                 "template": {
                     "metadata": {
                         "labels": {

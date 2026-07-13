@@ -1,5 +1,7 @@
 # ESD-Lab Dashboard — Full Infrastructure Sweep & Self-Heal Prompt
 
+> **Historical inventory note (July 2026):** Reconcile all paths with the live tree before using this prompt. `sync_local_llm.yml` and `select_best_local_llm.py` were intentionally removed during the NVIDIA Nemotron migration and must not be recreated; use `NVIDIA.md`, `docs/dashboard_ai_assistant.md`, and the current workflow policy checker as sources of truth.
+
 > Paste everything below the line into an autonomous coding agent running
 > with this repository checked out and a shell available. It performs a
 > massive end-to-end health sweep of the Docker, Kubernetes, Cloudflare

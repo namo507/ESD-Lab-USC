@@ -41,17 +41,35 @@ dashboard:
 
 assistant:
   enabled: true
-  tier: auto
-  autoDownload: false
-  contextWindow: 2048
-  threads: 4
-  maxNewTokens: ""
-  minMemoryGiB: ""
-  modelCacheClaim: ""
+  provider: nvidia
+  runtime: nvidia-build-api
+  apiBase: https://integrate.api.nvidia.com/v1
+  apiKeySecretKey: dashboardAssistantApiKey
+  model: nvidia/nemotron-3-super-120b-a12b
+  enableThinking: true
+  reasoningBudget: 16384
+  maxNewTokens: 16384
+  temperature: 1
+  topP: 0.95
+  stream: true
+  requestTimeoutSeconds: 180
+  maxRetries: 6
+  retryBaseSeconds: 2
+  retryMaxSeconds: 30
+  retryJitter: 0.25
+  maxConcurrency: 2
+  circuitFailureThreshold: 3
+  circuitRecoverySeconds: 60
+  queueTimeoutSeconds: 180
+  contextBudget: 12000
+  selfHostedEnabled: false
+  selfHostedBaseUrl: http://nemotron-nim:8000/v1
 
 watcher:
   enabled: true
   pollSeconds: 2
+  heartbeatPath: /app/dashboard/data/readings_watcher_heartbeat.json
+  heartbeatMaxAgeSeconds: 30
   resources:
     requests:
       cpu: 100m
@@ -96,7 +114,7 @@ secret:
   participantIdSalt: ""
   dashboardOperatorToken: ""
   pagesDeployHookUrl: ""
-  hfToken: ""
+  dashboardAssistantApiKey: ""
 
 networkPolicy:
   enabled: true

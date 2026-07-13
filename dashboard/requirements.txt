@@ -1,8 +1,6 @@
 # NANO dashboard runtime dependencies.
-#
-# This file intentionally stays as the Docker install source because pip cannot
-# encode the llama-cpp-python CPU wheel index inside pyproject optional
-# dependencies. The logical dependency groups live in pyproject.toml.
+# Hosted NVIDIA inference uses the OpenAI-compatible client; no local model
+# weights or compiler-specific llama.cpp wheels are required.
 
 numpy>=1.26.0
 pandas>=2.1.0
@@ -13,8 +11,4 @@ beautifulsoup4>=4.12.3
 python-dotenv>=1.0.0
 requests>=2.31.0
 psutil>=5.9.0
-
-# Prebuilt CPU wheels prevent slow source builds on linux_aarch64 images.
---extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-huggingface-hub>=1.0.0
-llama-cpp-python==0.3.19
+openai>=1.55.0,<3

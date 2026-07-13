@@ -7,6 +7,26 @@ on:
     branches: [develop, main]
 
 jobs:
+  workflow-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate repository workflow policy
+        run: |
+          python -m pip install "PyYAML>=6.0.1,<7"
+          python scripts/check_github_workflows.py
+
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:1.7.7
+
   test-python:
     runs-on: ubuntu-latest
     timeout-minutes: 20

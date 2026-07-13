@@ -1,7 +1,7 @@
 """Lab operations workflow payload for the ESD Lab dashboard.
 
 This block intentionally separates operations planning from scientific model
-outputs.  It gives the dashboard and local assistant the same structured view of
+outputs.  It gives the dashboard and grounded assistant the same structured view of
 Nano-first rollout priorities, Nico secondary integration, REDCap standardizing,
 role handoffs, and expectation-management guardrails.
 """
@@ -13,7 +13,12 @@ from typing import Any
 
 
 def _iso_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, Any]:
@@ -73,7 +78,7 @@ def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, A
             {
                 "area": "Assistant",
                 "status": "live",
-                "shown": "Hover-aware Buddy glossary, local GGUF chat drawer, assistant status, REDCap freshness, and fast-path prompts.",
+                "shown": "Hover-aware Buddy glossary, NVIDIA-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
                 "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard.",
             },
         ],
@@ -368,7 +373,10 @@ def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, A
                     "Create a workflow chart across coordinator, graduate-student, and undergraduate tasks.",
                     "Draft aligned metrics for operations and research reporting.",
                 ],
-                "outputs": ["Standardized workflow documentation", "Draft operational metrics list"],
+                "outputs": [
+                    "Standardized workflow documentation",
+                    "Draft operational metrics list",
+                ],
                 "owners": ["Coordinator", "Graduate students", "Undergraduates"],
             },
             {
@@ -383,7 +391,10 @@ def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, A
                     "Coordinate priority assignments with Sam and Dr. Bradshaw.",
                     "Prepare lab and academic reporting templates.",
                 ],
-                "outputs": ["Pilot process improvements", "First structured lab report or dashboard"],
+                "outputs": [
+                    "Pilot process improvements",
+                    "First structured lab report or dashboard",
+                ],
                 "owners": ["Coordinator", "Sam", "Dr. Bradshaw", "Analyst"],
             },
             {
@@ -398,7 +409,10 @@ def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, A
                     "Develop multi-grant data workflow management.",
                     "Keep academic and operational outputs aligned.",
                 ],
-                "outputs": ["Scalable workflow system", "Enhanced data management and reporting structure"],
+                "outputs": [
+                    "Scalable workflow system",
+                    "Enhanced data management and reporting structure",
+                ],
                 "owners": ["Operations team", "Study leads", "Data team"],
             },
         ],

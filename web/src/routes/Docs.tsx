@@ -326,8 +326,8 @@ export function Docs() {
                   <small>Privacy</small>
                   <h3>Prompt scrubbing</h3>
                   <p>
-                    The assistant is operationally grounded, but prompts should remain de-identified. The dashboard states that
-                    LM Studio prompts are PHI-scrubbed before leaving the browser.
+                    The assistant is operationally grounded, but prompts should remain de-identified. Browser prompts are
+                    PHI-scrubbed before the dashboard backend forwards them to the hosted assistant.
                   </p>
                 </article>
               </div>
