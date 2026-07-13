@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dashboard.server import data_features
 
-
 PUBMED_XML = """<?xml version="1.0"?>
 <PubmedArticleSet>
   <PubmedArticle>
@@ -71,21 +70,37 @@ def test_orcid_merge_deduplicates_by_doi():
     orcid = data_features.parse_orcid_works(
         {
             "group": [
-                {"work-summary": [
-                    {
-                        "title": {"title": {"value": "Duplicate"}},
-                        "journal-title": {"value": "Journal"},
-                        "publication-date": {"year": {"value": "2026"}},
-                        "external-ids": {"external-id": [{"external-id-type": "doi", "external-id-value": "10.1002/dev.88888"}]},
-                    },
-                    {
-                        "title": {"title": {"value": "Book chapter"}},
-                        "journal-title": {"value": "Book"},
-                        "publication-date": {"year": {"value": "2025"}},
-                        "external-ids": {"external-id": [{"external-id-type": "doi", "external-id-value": "10.1/book"}]},
-                        "type": "book-chapter",
-                    },
-                ]}
+                {
+                    "work-summary": [
+                        {
+                            "title": {"title": {"value": "Duplicate"}},
+                            "journal-title": {"value": "Journal"},
+                            "publication-date": {"year": {"value": "2026"}},
+                            "external-ids": {
+                                "external-id": [
+                                    {
+                                        "external-id-type": "doi",
+                                        "external-id-value": "10.1002/dev.88888",
+                                    }
+                                ]
+                            },
+                        },
+                        {
+                            "title": {"title": {"value": "Book chapter"}},
+                            "journal-title": {"value": "Book"},
+                            "publication-date": {"year": {"value": "2025"}},
+                            "external-ids": {
+                                "external-id": [
+                                    {
+                                        "external-id-type": "doi",
+                                        "external-id-value": "10.1/book",
+                                    }
+                                ]
+                            },
+                            "type": "book-chapter",
+                        },
+                    ]
+                }
             ]
         }
     )
@@ -109,7 +124,9 @@ def test_sync_publications_merges_orcid_and_crossref(tmp_path):
                     {
                         "work-summary": [
                             {
-                                "title": {"title": {"value": "ORCID-only book chapter"}},
+                                "title": {
+                                    "title": {"value": "ORCID-only book chapter"}
+                                },
                                 "journal-title": {"value": "Developmental Cascades"},
                                 "publication-date": {"year": {"value": "2025"}},
                                 "external-ids": {

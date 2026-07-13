@@ -50,6 +50,9 @@ services:
       - type: bind
         source: ..
         target: /app
+      - type: volume
+        source: dashboard-web-node-modules
+        target: /app/web/node_modules
     healthcheck:
       test:
         - CMD
@@ -146,3 +149,6 @@ services:
 networks:
   dashboard-net:
     driver: bridge
+
+volumes:
+  dashboard-web-node-modules:

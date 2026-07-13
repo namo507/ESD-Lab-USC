@@ -6,10 +6,7 @@ from pathlib import Path
 from k8s.pipeline.config import PROJECT_ROOT, PipelineConfig
 from k8s.pipeline.freshness import readings_freshness_payload
 from k8s.pipeline.ledger import EventLedger
-from k8s.pipeline.observability import (
-    cluster_topology_payload,
-    pipeline_status_payload,
-)
+from k8s.pipeline.observability import cluster_topology_payload, pipeline_status_payload
 
 
 def make_config(tmp_path: Path) -> PipelineConfig:

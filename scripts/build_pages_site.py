@@ -98,9 +98,7 @@ def _api_origin_is_healthy(origin: str, timeout: float) -> bool:
 
 
 def _worker_source(api_origin: str | None) -> str:
-    return (
-        (
-            """
+    return ("""
 const API_ORIGIN = __API_ORIGIN__;
 
 const presentationJobs = new Map();
@@ -503,11 +501,7 @@ export default {
     return assetResponse;
   },
 };
-"""
-        )
-        .lstrip()
-        .replace("__API_ORIGIN__", json.dumps(api_origin))
-    )
+""").lstrip().replace("__API_ORIGIN__", json.dumps(api_origin))
 
 
 def _resolve_api_origin(

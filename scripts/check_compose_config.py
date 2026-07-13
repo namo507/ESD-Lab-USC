@@ -137,7 +137,9 @@ def validate_compose(path: Path) -> list[str]:
     volumes = _service_volumes(dashboard)
     for source, target, _mode in volumes:
         if "ESD Lab readings" in source or "ESD Lab readings" in target:
-            errors.append(f"{path}: stale spaced readings path in volume {source}:{target}")
+            errors.append(
+                f"{path}: stale spaced readings path in volume {source}:{target}"
+            )
         if source.startswith("."):
             source_path = _compose_relative(path, source)
             if not source_path.exists():
@@ -146,6 +148,11 @@ def validate_compose(path: Path) -> list[str]:
     if path.name == "compose.dev.yml":
         if ("..", "/app", "") not in volumes:
             errors.append(f"{path}: dev compose should bind repository root to /app")
+        if not any(target == "/app/web/node_modules" for _, target, _ in volumes):
+            errors.append(
+                f"{path}: dev compose must preserve image frontend dependencies "
+                "at /app/web/node_modules"
+            )
     if path.name == "docker-compose.yml":
         if (".", "/app", "") not in volumes:
             errors.append(f"{path}: root compose should bind repository root to /app")
@@ -154,7 +161,9 @@ def validate_compose(path: Path) -> list[str]:
         actual_targets = {target for _source, target, _mode in volumes}
         missing = sorted(required_targets - actual_targets)
         if missing:
-            errors.append(f"{path}: prod compose missing volume target(s): {', '.join(missing)}")
+            errors.append(
+                f"{path}: prod compose missing volume target(s): {', '.join(missing)}"
+            )
 
     for service_name, service in services.items():
         if not isinstance(service, dict):
@@ -175,14 +184,19 @@ def validate_compose(path: Path) -> list[str]:
             errors.append(f"{path}: {service_name} must be in the share profile")
         image = str(service.get("image") or "")
         if not image.startswith("cloudflare/cloudflared:"):
-            errors.append(f"{path}: {service_name} image should pin cloudflare/cloudflared")
+            errors.append(
+                f"{path}: {service_name} image should pin cloudflare/cloudflared"
+            )
         if service.get("env_file"):
             errors.append(
                 f"{path}: {service_name} must not load env_file; "
                 "cloudflared logs environment keys and can expose secrets"
             )
         environment = _service_environment(service)
-        if environment.get("TUNNEL_TRANSPORT_PROTOCOL") != "${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}":
+        if (
+            environment.get("TUNNEL_TRANSPORT_PROTOCOL")
+            != "${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}"
+        ):
             errors.append(
                 f"{path}: {service_name} must default TUNNEL_TRANSPORT_PROTOCOL "
                 "to ${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}"

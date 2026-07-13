@@ -151,7 +151,10 @@ def export_to_path(
     if dry_run:
         logger.info("[DRY RUN] Would export %d records to: %s", len(df), out_path)
         if dashboard_latest_path is not None:
-            logger.info("[DRY RUN] Would update dashboard REDCap mirror: %s", dashboard_latest_path)
+            logger.info(
+                "[DRY RUN] Would update dashboard REDCap mirror: %s",
+                dashboard_latest_path,
+            )
         return out_path
 
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -179,7 +182,9 @@ def _configured_processed_latest(config: dict[str, Any]) -> Path | None:
         return None
     path_text = str(raw)
     if "${" in path_text:
-        logger.warning("processed.redcap_latest is unresolved; set NANO_DATA_ROOT to update dashboard mirror.")
+        logger.warning(
+            "processed.redcap_latest is unresolved; set NANO_DATA_ROOT to update dashboard mirror."
+        )
         return None
     return Path(path_text)
 
@@ -218,16 +223,24 @@ def main() -> None:
             info = project.export_project_info()
             title = info.get("project_title") if isinstance(info, dict) else None
             project_id = info.get("project_id") if isinstance(info, dict) else None
-            logger.info("[DRY RUN] Connected to %s (PID %s)", title or "REDCap project", project_id or "unknown")
+            logger.info(
+                "[DRY RUN] Connected to %s (PID %s)",
+                title or "REDCap project",
+                project_id or "unknown",
+            )
         except Exception as exc:
-            logger.info("[DRY RUN] Connected to REDCap; project info unavailable: %s", exc)
+            logger.info(
+                "[DRY RUN] Connected to REDCap; project info unavailable: %s", exc
+            )
     df = pull_records(project, events=events, chunk_size=args.chunk_size)
 
     if df.empty:
         logger.warning("Empty export — check REDCap API token and project settings.")
         sys.exit(1)
 
-    out_path = export_to_path(df, export_dir, dashboard_latest_path=latest_path, dry_run=args.dry_run)
+    out_path = export_to_path(
+        df, export_dir, dashboard_latest_path=latest_path, dry_run=args.dry_run
+    )
     if not args.dry_run:
         logger.info("REDCap pull complete: %s", out_path)
 
