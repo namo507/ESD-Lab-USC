@@ -13,6 +13,8 @@ docker compose up -d --build
 ```
 
 Open the primary dashboard at `http://localhost:8080/`.
+Compose binds the origin only to `127.0.0.1`; public access goes through the
+Cloudflare tunnel service rather than a LAN-facing dashboard port.
 
 To run the secondary dashboard at the same time:
 
@@ -27,6 +29,10 @@ DASHBOARD_HOST_PORT=18080 docker compose -f docker/compose.dev.yml --profile sha
 | `dashboard` | `esd-lab-usc-dashboard:latest` or `docker-dashboard:latest` | Serves the NANO dashboard, rebuilds dashboard JSON payloads, and exposes `/api/healthz`. |
 | `dashboard-share` | `cloudflare/cloudflared:2026.5.2` | Starts a quick Cloudflare tunnel to the dashboard service. |
 | `dashboard-share-named` | `cloudflare/cloudflared:2026.5.2` | Starts a named Cloudflare tunnel when tunnel credentials are configured. |
+
+The `share` profile starts only the quick tunnel. Start the named service with
+`--profile share-named`; its connector token is mounted as a Compose secret and
+read through `--token-file`, so it does not appear in container command arguments.
 
 ## Ports
 
@@ -47,13 +53,21 @@ Values belong in `.env`; commit only `.env.example`.
 | `DASHBOARD_ASSISTANT_API_KEY` | NVIDIA key loaded from local `.env`; never bake it into the image. |
 | `DASHBOARD_ASSISTANT_MODEL` | Hosted model identifier. |
 | `DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS` | Provider request timeout; it does not affect app health checks. |
-| `CLOUDFLARE_TUNNEL_TOKEN` | Named tunnel token. |
-| `CLOUDFLARED_TUNNEL_TOKEN` | Backward-compatible named tunnel token alias. |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Named tunnel token; Compose mounts it as a secret. |
+| `CLOUDFLARED_TUNNEL_TOKEN` | Backward-compatible alias used by `scripts/share_dashboard.sh`; Compose uses the canonical key above. |
 | `DASHBOARD_PUBLIC_HOSTNAME` | Public hostname for a stable dashboard tunnel. |
 | `DASHBOARD_STABLE_SHARE_URL` | Canonical public dashboard URL echoed by share scripts. |
 | `REDCAP_API_URL` | REDCap API endpoint. |
 | `REDCAP_API_TOKEN` | REDCap API token. |
 | `NANO_DATA_ROOT` | Local secure data root. |
+
+The dashboard container receives an explicit application-only environment
+allowlist. Cloudflare account and tunnel credentials are not inherited from the
+whole `.env`, and implicit assistant `.env` loading is disabled in containers.
+The Pages proxy's forwarded client identity is accepted only when Cloudflare's
+platform-added `CF-Worker` header matches
+`DASHBOARD_TRUSTED_CLOUDFLARE_WORKER_ZONE`; other Worker traffic shares the
+Cloudflare egress rate-limit bucket and cannot choose an arbitrary client key.
 
 ## Development Workflow
 
@@ -100,9 +114,10 @@ run `docker compose up -d` for unhealthy services when repair is enabled.
 | Symptom | Check | Fix |
 | --- | --- | --- |
 | `port is already allocated` | `docker ps --format 'table {{.Names}}\t{{.Ports}}'` | Set `DASHBOARD_HOST_PORT=18080` or stop the conflicting stack. |
-| `127.0.0.1:8080` hangs but Docker is healthy | `lsof -nP -iTCP:8080 -sTCP:LISTEN` | Use `http://localhost:8080`; a local editor port-forward may own IPv4 while Docker serves IPv6. |
+| `127.0.0.1:8080` hangs but Docker is healthy | `lsof -nP -iTCP:8080 -sTCP:LISTEN` | Set an unused `DASHBOARD_HOST_PORT` (for example `18080`) or stop the IPv4 listener. Compose intentionally binds only to `127.0.0.1`; use an explicit override if IPv6 loopback is required. |
 | Dashboard is `unhealthy` | `docker compose logs --tail=200 dashboard` | Run `make docker-health`; then inspect `/api/healthz`. |
 | Missing `.env` warning | `test -f .env` | Copy `.env.example` to `.env` and fill local values. |
-| Cloudflare tunnel exits | `docker compose --profile share logs dashboard-share` | Use quick tunnel service or set named tunnel token keys. |
+| Quick Cloudflare tunnel exits | `docker compose --profile share logs dashboard-share` | Restart the quick profile and inspect connector readiness. |
+| Named Cloudflare tunnel exits | `docker compose --profile share-named logs dashboard-share-named` | Set `CLOUDFLARE_TUNNEL_TOKEN`, verify the account-owned hostname, then restart the named profile. |
 | Slow or large builds | `docker images`, `docker system df` | Run `make clean`; it removes only project containers/orphans and preserves named volumes and unrelated Docker data. |
 | Devcontainer dependency drift | `devcontainer build --workspace-folder .` | Rebuild the devcontainer; `post-create.sh` installs `requirements.txt`. |

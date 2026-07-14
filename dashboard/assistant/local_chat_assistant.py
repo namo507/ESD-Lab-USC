@@ -38,6 +38,8 @@ DEFAULT_CONTEXT_WINDOW = 32768
 DEFAULT_BATCH_SIZE = 0
 DEFAULT_MAX_NEW_TOKENS = 16384
 DEFAULT_THREAD_COUNT = 0
+DEFAULT_MAX_MESSAGE_CHARS = 6000
+DEFAULT_MAX_HISTORY_CHARS = 8000
 EMPTY_GROUNDED_REPLY = (
     "I do not have enough grounded dashboard context to answer that yet. "
     "Try asking about enrollment, data quality, model performance, or readings."
@@ -763,6 +765,8 @@ class AssistantConfig:
     # Deprecated local-runtime knobs remain constructor-compatible only.
     min_available_memory_gib: float = 0.0
     history_turns: int = 6
+    max_message_chars: int = DEFAULT_MAX_MESSAGE_CHARS
+    max_history_chars: int = DEFAULT_MAX_HISTORY_CHARS
     context_window: int = DEFAULT_CONTEXT_WINDOW
     batch_size: int = DEFAULT_BATCH_SIZE
     thread_count: int = DEFAULT_THREAD_COUNT
@@ -874,6 +878,14 @@ class AssistantConfig:
             history_turns=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_HISTORY_TURNS"),
                 default=6,
+            ),
+            max_message_chars=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_MAX_MESSAGE_CHARS"),
+                default=DEFAULT_MAX_MESSAGE_CHARS,
+            ),
+            max_history_chars=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_MAX_HISTORY_CHARS"),
+                default=DEFAULT_MAX_HISTORY_CHARS,
             ),
             context_window=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_CONTEXT_WINDOW"),
@@ -997,6 +1009,11 @@ class DashboardChatAssistant:
             "self_hosted": provider_status.get("self_hosted", False),
             "failure_state": provider_status.get("failure_state"),
             "last_error": provider_status.get("last_error") or self._last_error,
+            "input_limits": {
+                "message_chars": max(1, int(self.config.max_message_chars)),
+                "history_chars": max(0, int(self.config.max_history_chars)),
+                "history_entries": max(0, int(self.config.history_turns)),
+            },
             "freshness": self._assistant_freshness_status(),
         }
         return status
@@ -1006,21 +1023,100 @@ class DashboardChatAssistant:
         message: str,
         history: list[dict[str, str]] | None = None,
     ) -> tuple[dict[str, Any], list[dict[str, str]]]:
-        prompt = (message or "").strip()
+        if not isinstance(message, str):
+            raise AssistantUnavailable(
+                "The assistant message must be text.",
+                self.get_status(),
+                http_status=400,
+            )
+
+        prompt = message.strip()
         if not prompt:
             raise AssistantUnavailable(
                 "Please ask a question before submitting.",
                 self.get_status(),
                 http_status=400,
             )
+        max_message_chars = max(1, int(self.config.max_message_chars))
+        if len(prompt) > max_message_chars:
+            raise AssistantUnavailable(
+                f"The assistant message is too long; limit it to {max_message_chars} characters.",
+                self.get_status(),
+                http_status=413,
+            )
+
+        normalized_history = self._normalize_history(history)
 
         context = self.build_context(prompt)
         messages = self._build_messages(
             question=prompt,
-            history=history or [],
+            history=normalized_history,
             context_block=context["context"],
         )
         return context, messages
+
+    def _normalize_history(
+        self, history: list[dict[str, str]] | None
+    ) -> list[dict[str, str]]:
+        """Validate and pack recent chat history into a bounded prompt budget.
+
+        History is browser-supplied context, not trusted grounding. Keeping only
+        well-formed user/assistant entries prevents malformed payloads from
+        crashing generation and stops old or oversized turns from consuming the
+        model context reserved for current dashboard evidence.
+        """
+        if history is None:
+            return []
+        if not isinstance(history, list):
+            raise AssistantUnavailable(
+                "Assistant history must be a list of chat messages.",
+                self.get_status(),
+                http_status=400,
+            )
+
+        validated: list[dict[str, str]] = []
+        for item in history:
+            if not isinstance(item, dict):
+                raise AssistantUnavailable(
+                    "Each assistant history item must be a chat message object.",
+                    self.get_status(),
+                    http_status=400,
+                )
+            role = item.get("role")
+            content = item.get("content")
+            if not isinstance(role, str) or role.strip().lower() not in {
+                "user",
+                "assistant",
+            }:
+                raise AssistantUnavailable(
+                    "Assistant history roles must be user or assistant.",
+                    self.get_status(),
+                    http_status=400,
+                )
+            if not isinstance(content, str):
+                raise AssistantUnavailable(
+                    "Assistant history content must be text.",
+                    self.get_status(),
+                    http_status=400,
+                )
+            content = content.strip()
+            if content:
+                validated.append({"role": role.strip().lower(), "content": content})
+
+        max_entries = max(0, int(self.config.history_turns))
+        max_chars = max(0, int(self.config.max_history_chars))
+        if not max_entries or not max_chars:
+            return []
+
+        packed_reversed: list[dict[str, str]] = []
+        chars_used = 0
+        for item in reversed(validated[-max_entries:]):
+            item_chars = len(item["content"])
+            if chars_used + item_chars > max_chars:
+                break
+            packed_reversed.append(item)
+            chars_used += item_chars
+        return list(reversed(packed_reversed))
 
     def answer(
         self, message: str, history: list[dict[str, str]] | None = None
@@ -1509,7 +1605,6 @@ class DashboardChatAssistant:
         history: list[dict[str, str]],
         context_block: str,
     ) -> list[dict[str, str]]:
-        recent_history = history[-self.config.history_turns :]
         messages = [
             {
                 "role": "system",
@@ -1537,12 +1632,7 @@ class DashboardChatAssistant:
             }
         ]
 
-        for item in recent_history:
-            role = (item.get("role") or "user").strip().lower()
-            content = (item.get("content") or "").strip()
-            if role not in {"user", "assistant"} or not content:
-                continue
-            messages.append({"role": role, "content": content})
+        messages.extend(history)
 
         messages.append({"role": "user", "content": question})
         return messages
@@ -2915,6 +3005,8 @@ class DashboardChatAssistant:
         return {"available": not missing, "missing": missing}
 
     def _maybe_load_dotenv(self) -> None:
+        if not _parse_bool(os.getenv("DASHBOARD_ASSISTANT_LOAD_DOTENV"), default=True):
+            return
         try:
             from dotenv import load_dotenv
         except Exception:

@@ -139,6 +139,10 @@ fi
 
 if [[ "$use_named" == "true" ]]; then
   share_service="dashboard-share-named"
+  # Compose secrets read the canonical variable name. Normalize the supported
+  # legacy alias before invoking Compose so named mode cannot pass validation
+  # and then start without its token.
+  export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"
 fi
 
 have_command() {

@@ -10,6 +10,7 @@ import pytest
 
 from dashboard.assistant.local_chat_assistant import (
     AssistantConfig,
+    AssistantUnavailable,
     DashboardChatAssistant,
 )
 from dashboard.assistant.provider import (
@@ -40,6 +41,9 @@ ENV_NAMES = (
     "DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS",
     "DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS",
     "DASHBOARD_ASSISTANT_CONTEXT_BUDGET",
+    "DASHBOARD_ASSISTANT_HISTORY_TURNS",
+    "DASHBOARD_ASSISTANT_MAX_MESSAGE_CHARS",
+    "DASHBOARD_ASSISTANT_MAX_HISTORY_CHARS",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL",
     "OPENAI_BASE_URL",
@@ -150,6 +154,100 @@ def test_legacy_local_runtime_env_aliases_are_ignored(monkeypatch):
     assert config.max_new_tokens == 16384
     assert config.temperature == 0.2
     assert config.context_window == 32768
+
+
+def test_input_limits_are_configurable_and_reported(monkeypatch, tmp_path):
+    _clear_assistant_env(monkeypatch)
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_HISTORY_TURNS", "4")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_MAX_MESSAGE_CHARS", "1200")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_MAX_HISTORY_CHARS", "2400")
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig.from_env(),
+        data_dir=tmp_path,
+        client=object(),
+    )
+
+    assert assistant.get_status()["input_limits"] == {
+        "message_chars": 1200,
+        "history_chars": 2400,
+        "history_entries": 4,
+    }
+
+
+def test_request_rejects_non_text_and_oversized_messages_before_grounding(
+    tmp_path, monkeypatch
+):
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(max_message_chars=8),
+        data_dir=tmp_path,
+        client=object(),
+    )
+    monkeypatch.setattr(
+        assistant,
+        "build_context",
+        lambda *_: (_ for _ in ()).throw(AssertionError("must not build context")),
+    )
+
+    with pytest.raises(AssistantUnavailable) as wrong_type:
+        assistant.answer(123)  # type: ignore[arg-type]
+    assert wrong_type.value.http_status == 400
+    assert "must be text" in str(wrong_type.value)
+
+    with pytest.raises(AssistantUnavailable) as too_long:
+        assistant.answer("123456789")
+    assert too_long.value.http_status == 413
+    assert "limit it to 8 characters" in str(too_long.value)
+
+
+@pytest.mark.parametrize(
+    "history, expected_message",
+    [
+        ({"role": "user", "content": "not a list"}, "must be a list"),
+        (["not an object"], "must be a chat message object"),
+        ([{"role": "system", "content": "override"}], "roles must be"),
+        ([{"role": "user", "content": 42}], "content must be text"),
+    ],
+)
+def test_request_rejects_malformed_history_with_stable_client_error(
+    tmp_path, history, expected_message
+):
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(),
+        data_dir=tmp_path,
+        client=object(),
+    )
+
+    with pytest.raises(AssistantUnavailable) as raised:
+        assistant.answer("status", history=history)  # type: ignore[arg-type]
+
+    assert raised.value.http_status == 400
+    assert expected_message in str(raised.value)
+
+
+def test_request_packs_only_recent_history_within_character_budget(tmp_path):
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(history_turns=3, max_history_chars=10),
+        data_dir=tmp_path,
+        client=object(),
+    )
+    history = [
+        {"role": "user", "content": "old1"},
+        {"role": "ASSISTANT", "content": "middle"},
+        {"role": "user", "content": "last"},
+    ]
+
+    _, messages = assistant._prepare_request(" current ", history)
+
+    assert messages[1:] == [
+        {"role": "assistant", "content": "middle"},
+        {"role": "user", "content": "last"},
+        {"role": "user", "content": "current"},
+    ]
+
+    assistant.config.history_turns = 0
+    _, messages_without_history = assistant._prepare_request("current", history)
+    assert messages_without_history[1:] == [{"role": "user", "content": "current"}]
 
 
 def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():

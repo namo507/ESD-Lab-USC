@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import ipaddress
 import json
 import math
 import os
@@ -26,6 +27,7 @@ import sys
 import threading
 import time
 import uuid
+from collections import deque
 from datetime import datetime
 from functools import partial
 from http import HTTPStatus
@@ -56,9 +58,22 @@ from k8s.pipeline import (
 from k8s.pipeline.ledger import read_json as read_optional_json
 from src.utils.logging_utils import get_pipeline_logger
 
-DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
+
+def _configured_runtime_path(name: str, default: Path) -> Path:
+    configured = Path(os.getenv(name, str(default))).expanduser()
+    return configured if configured.is_absolute() else PROJECT_ROOT / configured
+
+
+DATA_DIR = _configured_runtime_path(
+    "DASHBOARD_DATA_DIR",
+    PROJECT_ROOT / "dashboard" / "data",
+)
 RUNTIME_STATUS_PATH = DATA_DIR / "runtime_status.json"
 AUDIT_LOG_PATH = DATA_DIR / "hipaa_access.log"
+LAB_READINGS_OUTPUT_PATH = _configured_runtime_path(
+    "LAB_READINGS_OUTPUT",
+    PROJECT_ROOT / "web" / "lab-readings.json",
+)
 CONTROLS_PATH = Path(
     os.getenv(
         "DASHBOARD_CONTROLS_PATH",
@@ -298,6 +313,280 @@ PRESENTATION_JOB_DB_PATH = Path(
     )
 )
 PRESENTATION_TERMINAL_STATES = {"succeeded", "failed", "expired"}
+
+MAX_REQUEST_BODY_BYTES = max(
+    1024,
+    _env_int("DASHBOARD_MAX_REQUEST_BODY_BYTES", 1024 * 1024),
+)
+PRESENTATION_MAX_CONCEPT_CHARS = max(
+    1,
+    _env_int("DASHBOARD_PRESENTATION_MAX_CONCEPT_CHARS", 6000),
+)
+ASSISTANT_RATE_LIMIT_REQUESTS = max(
+    0,
+    _env_int("DASHBOARD_ASSISTANT_RATE_LIMIT_REQUESTS", 12),
+)
+ASSISTANT_RATE_LIMIT_WINDOW_SECONDS = max(
+    1.0,
+    _env_float("DASHBOARD_ASSISTANT_RATE_LIMIT_WINDOW_SECONDS", 60.0),
+)
+ASSISTANT_RATE_LIMIT_PATHS = frozenset(
+    {
+        "/api/chat",
+        "/api/assistant/chat",
+        "/api/presentation/jobs",
+        "/api/presentation/plan",
+    }
+)
+AUDIT_RATE_LIMIT_REQUESTS = max(
+    0,
+    _env_int("DASHBOARD_AUDIT_RATE_LIMIT_REQUESTS", 120),
+)
+AUDIT_RATE_LIMIT_WINDOW_SECONDS = max(
+    1.0,
+    _env_float("DASHBOARD_AUDIT_RATE_LIMIT_WINDOW_SECONDS", 60.0),
+)
+AUDIT_ACTION_MAX_CHARS = 80
+AUDIT_SCOPE_MAX_CHARS = 256
+AUDIT_TIMESTAMP_MAX_CHARS = 64
+AUDIT_DETAIL_MAX_ITEMS = 32
+AUDIT_DETAIL_KEY_MAX_CHARS = 64
+AUDIT_DETAIL_VALUE_MAX_CHARS = 512
+AUDIT_DETAIL_MAX_BYTES = 4096
+CLOUDFLARE_WORKER_EGRESS_IP = ipaddress.ip_address("2a06:98c0:3600::103")
+ORIGINAL_CLIENT_IP_HEADER = "X-ESD-Original-Client-IP"
+CLOUDFLARE_WORKER_ZONE_HEADER = "CF-Worker"
+TRUSTED_CLOUDFLARE_WORKER_ZONE = (
+    os.getenv("DASHBOARD_TRUSTED_CLOUDFLARE_WORKER_ZONE", "")
+    .strip()
+    .lower()
+    .rstrip(".")
+)
+AUDIT_ALLOWED_ACTIONS = frozenset(
+    {
+        "auth.login",
+        "auth.timeout",
+        "epoch.decision",
+        "export.bibtex",
+        "export.csv",
+        "export.pdf",
+        "export.pptx",
+        "presentation.generate",
+        "publication.tags.update",
+        "publications.sync.trigger",
+        "route.navigate",
+        "run.stop",
+        "run.trigger",
+        "snapshot.create",
+    }
+)
+PROTECTED_POST_PATHS = frozenset(
+    {
+        "/api/controls",
+        "/api/publications/sync/trigger",
+        "/api/redcap/writeback",
+        "/api/snapshots",
+        "/api/v2/redcap-visit-entry",
+    }
+)
+
+
+class SlidingWindowRateLimiter:
+    """Small in-process limiter for paid assistant generation endpoints."""
+
+    def __init__(
+        self, limit: int, window_seconds: float, *, max_tracked_keys: int = 4096
+    ) -> None:
+        self.limit = max(0, int(limit))
+        self.window_seconds = max(1.0, float(window_seconds))
+        self.max_tracked_keys = max(1, int(max_tracked_keys))
+        self._requests: dict[str, deque[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, key: str, *, now: float | None = None) -> tuple[bool, int]:
+        if self.limit == 0:
+            return True, 0
+        timestamp = time.monotonic() if now is None else now
+        cutoff = timestamp - self.window_seconds
+        with self._lock:
+            if (
+                key not in self._requests
+                and len(self._requests) >= self.max_tracked_keys
+            ):
+                for tracked_key, tracked_requests in list(self._requests.items()):
+                    while tracked_requests and tracked_requests[0] <= cutoff:
+                        tracked_requests.popleft()
+                    if not tracked_requests:
+                        self._requests.pop(tracked_key, None)
+            if (
+                key not in self._requests
+                and len(self._requests) >= self.max_tracked_keys
+            ):
+                key = "overflow"
+            requests = self._requests.setdefault(key, deque())
+            while requests and requests[0] <= cutoff:
+                requests.popleft()
+            if len(requests) >= self.limit:
+                retry_after = max(
+                    1,
+                    math.ceil(requests[0] + self.window_seconds - timestamp),
+                )
+                return False, retry_after
+            requests.append(timestamp)
+        return True, 0
+
+
+ASSISTANT_RATE_LIMITER = SlidingWindowRateLimiter(
+    ASSISTANT_RATE_LIMIT_REQUESTS,
+    ASSISTANT_RATE_LIMIT_WINDOW_SECONDS,
+)
+AUDIT_RATE_LIMITER = SlidingWindowRateLimiter(
+    AUDIT_RATE_LIMIT_REQUESTS,
+    AUDIT_RATE_LIMIT_WINDOW_SECONDS,
+)
+AUDIT_LOG_LOCK = threading.Lock()
+
+
+def _configured_cors_origins() -> set[str]:
+    raw = os.getenv(
+        "DASHBOARD_CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    )
+    return {origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()}
+
+
+def _origin_allowed(origin: str, host: str, allowed_origins: set[str]) -> bool:
+    normalized = origin.strip().rstrip("/")
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    if normalized in allowed_origins:
+        return True
+    return parsed.netloc.casefold() == host.strip().casefold()
+
+
+def _mutation_requires_operator(method: str, request_path: str) -> bool:
+    if method.upper() == "PATCH":
+        return request_path.startswith("/api/")
+    return method.upper() == "POST" and request_path in PROTECTED_POST_PATHS
+
+
+def _validated_audit_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate and bound one browser audit event before writing it to disk."""
+
+    action = payload.get("action")
+    if not isinstance(action, str):
+        raise ValueError("audit action must be text")
+    action = action.strip()
+    if not action or len(action) > AUDIT_ACTION_MAX_CHARS:
+        raise ValueError(
+            f"audit action must be between 1 and {AUDIT_ACTION_MAX_CHARS} characters"
+        )
+    if action not in AUDIT_ALLOWED_ACTIONS:
+        raise ValueError("audit action is not recognized")
+
+    scope = payload.get("scope", "")
+    if not isinstance(scope, str):
+        raise ValueError("audit scope must be text")
+    scope = scope.strip()
+    if len(scope) > AUDIT_SCOPE_MAX_CHARS:
+        raise ValueError(
+            f"audit scope must not exceed {AUDIT_SCOPE_MAX_CHARS} characters"
+        )
+    if any(ord(char) < 32 for char in scope):
+        raise ValueError("audit scope must not contain control characters")
+
+    raw_timestamp = payload.get("ts")
+    if raw_timestamp is None:
+        timestamp = datetime.now().isoformat(timespec="seconds")
+    elif isinstance(raw_timestamp, str):
+        timestamp = raw_timestamp.strip()
+    else:
+        raise ValueError("audit timestamp must be text")
+    if not timestamp or len(timestamp) > AUDIT_TIMESTAMP_MAX_CHARS:
+        raise ValueError("audit timestamp is invalid")
+    try:
+        datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("audit timestamp must be ISO-8601") from exc
+
+    raw_detail = payload.get("detail", {})
+    if not isinstance(raw_detail, dict):
+        raise ValueError("audit detail must be an object")
+    if len(raw_detail) > AUDIT_DETAIL_MAX_ITEMS:
+        raise ValueError(
+            f"audit detail must not exceed {AUDIT_DETAIL_MAX_ITEMS} fields"
+        )
+
+    detail: dict[str, str | int | float | bool] = {}
+    for key, value in raw_detail.items():
+        if not isinstance(key, str):
+            raise ValueError("audit detail keys must be text")
+        normalized_key = key.strip()
+        if not normalized_key or len(normalized_key) > AUDIT_DETAIL_KEY_MAX_CHARS:
+            raise ValueError(
+                "audit detail keys must be between 1 and "
+                f"{AUDIT_DETAIL_KEY_MAX_CHARS} characters"
+            )
+        if any(ord(char) < 32 for char in normalized_key):
+            raise ValueError("audit detail keys must not contain control characters")
+        if isinstance(value, str):
+            if len(value) > AUDIT_DETAIL_VALUE_MAX_CHARS:
+                raise ValueError(
+                    "audit detail text values must not exceed "
+                    f"{AUDIT_DETAIL_VALUE_MAX_CHARS} characters"
+                )
+            detail[normalized_key] = value
+        elif isinstance(value, bool):
+            detail[normalized_key] = value
+        elif isinstance(value, int):
+            if len(str(value)) > AUDIT_DETAIL_VALUE_MAX_CHARS:
+                raise ValueError("audit detail number is too large")
+            detail[normalized_key] = value
+        elif isinstance(value, float) and math.isfinite(value):
+            detail[normalized_key] = value
+        else:
+            raise ValueError("audit detail values must be text, numbers, or booleans")
+
+    if (
+        len(json.dumps(detail, ensure_ascii=False).encode("utf-8"))
+        > AUDIT_DETAIL_MAX_BYTES
+    ):
+        raise ValueError(
+            f"audit detail must not exceed {AUDIT_DETAIL_MAX_BYTES} encoded bytes"
+        )
+
+    return {
+        "ts": timestamp,
+        "action": action,
+        "scope": scope,
+        "detail": detail,
+    }
+
+
+class PresentationConceptTooLong(ValueError):
+    """Raised when a presentation request exceeds the bounded concept input."""
+
+
+def _validated_presentation_request(
+    payload: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    concept = payload.get("concept")
+    if not isinstance(concept, str):
+        raise ValueError("Presentation concept must be text.")
+    concept = concept.strip()
+    if not concept:
+        raise ValueError("Please enter a concept you want explained.")
+    if len(concept) > PRESENTATION_MAX_CONCEPT_CHARS:
+        raise PresentationConceptTooLong(
+            "Presentation concept is too long; limit it to "
+            f"{PRESENTATION_MAX_CONCEPT_CHARS} characters."
+        )
+
+    options = payload.get("options", {})
+    if not isinstance(options, dict):
+        raise ValueError("Presentation options must be a JSON object.")
+    return concept, options
 
 
 def _iso(ts: float) -> str:
@@ -2896,7 +3185,7 @@ class DashboardRuntime:
                         "--input",
                         str(DATA_DIR / "readings_data.json"),
                         "--output",
-                        str(PROJECT_ROOT / "web" / "lab-readings.json"),
+                        str(LAB_READINGS_OUTPUT_PATH),
                         "--pdf-dir",
                         str(self.readings_dir),
                     ],
@@ -2913,7 +3202,7 @@ class DashboardRuntime:
             errors.append("dashboard_data.json was not created")
         if not (DATA_DIR / "readings_data.json").exists():
             errors.append("readings_data.json was not created")
-        if not (PROJECT_ROOT / "web" / "lab-readings.json").exists():
+        if not LAB_READINGS_OUTPUT_PATH.exists():
             errors.append("lab-readings.json was not created")
 
         finished_at = datetime.now().isoformat(timespec="seconds")
@@ -3004,7 +3293,8 @@ class PresentationJobStore:
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS presentation_jobs (
                     job_id TEXT PRIMARY KEY,
                     status TEXT NOT NULL,
@@ -3019,7 +3309,8 @@ class PresentationJobStore:
                     worker_id TEXT,
                     heartbeat_at REAL
                 )
-                """)
+                """
+            )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_presentation_jobs_status ON presentation_jobs(status)"
             )
@@ -3265,12 +3556,14 @@ class PresentationJobStore:
         with self._connect() as conn:
             self._prune(conn)
             self._release_stale_claims(conn)
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT job_id FROM presentation_jobs
                 WHERE status IN ('queued', 'running')
                   AND worker_id IS NULL
                 ORDER BY created_ts ASC
-                """).fetchall()
+                """
+            ).fetchall()
         return [str(row["job_id"]) for row in rows]
 
     def should_recover(self, job: dict[str, Any]) -> bool:
@@ -3645,6 +3938,44 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:
         request_path = urlparse(self.path).path
+        if self._reject_oversized_body():
+            return
+        if _mutation_requires_operator("POST", request_path) and not (
+            _operator_authorized(self.headers)
+        ):
+            self._send_json(
+                {"error": "Operator token required"},
+                status=HTTPStatus.FORBIDDEN,
+            )
+            return
+        if request_path in ASSISTANT_RATE_LIMIT_PATHS:
+            allowed, retry_after = ASSISTANT_RATE_LIMITER.allow(
+                self._client_rate_limit_key()
+            )
+            if not allowed:
+                self._send_json(
+                    {
+                        "error": "Assistant request limit reached. Please try again shortly.",
+                        "status": "rate-limited",
+                    },
+                    status=HTTPStatus.TOO_MANY_REQUESTS,
+                    headers={"Retry-After": str(retry_after)},
+                )
+                return
+        if request_path == "/api/audit":
+            allowed, retry_after = AUDIT_RATE_LIMITER.allow(
+                self._client_rate_limit_key()
+            )
+            if not allowed:
+                self._send_json(
+                    {
+                        "error": "Audit request limit reached. Please try again shortly.",
+                        "status": "rate-limited",
+                    },
+                    status=HTTPStatus.TOO_MANY_REQUESTS,
+                    headers={"Retry-After": str(retry_after)},
+                )
+                return
         if request_path == "/api/assistant/chat":
             self._handle_stream_chat()
             return
@@ -3691,8 +4022,8 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         try:
             payload = self._read_json_body()
-            message = (payload.get("message") or "").strip()
-            history = payload.get("history") or []
+            message = payload.get("message")
+            history = payload.get("history")
             result = self.assistant.answer(message, history=history)
             self._send_json(result)
         except AssistantUnavailable as exc:
@@ -3714,6 +4045,16 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def do_PATCH(self) -> None:
         request_path = urlparse(self.path).path
+        if self._reject_oversized_body():
+            return
+        if _mutation_requires_operator("PATCH", request_path) and not (
+            _operator_authorized(self.headers)
+        ):
+            self._send_json(
+                {"error": "Operator token required"},
+                status=HTTPStatus.FORBIDDEN,
+            )
+            return
         if request_path.startswith("/api/visits/") and "/epochs/" in request_path:
             parts = request_path[len("/api/visits/") :].strip("/").split("/")
             if len(parts) == 3 and parts[1] == "epochs":
@@ -3807,13 +4148,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         request_path = urlparse(self.path).path
         if request_path.startswith("/api/"):
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header(
-                "Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS"
-            )
-            self.send_header("Access-Control-Allow-Headers", "Content-Type, Accept")
-            self.send_header("Access-Control-Allow-Private-Network", "true")
-            self.send_header("Access-Control-Max-Age", "600")
+            allowed_origin = self._allowed_cors_origin()
+            if allowed_origin:
+                self.send_header("Access-Control-Allow-Origin", allowed_origin)
+                self.send_header("Access-Control-Allow-Credentials", "true")
+                self.send_header(
+                    "Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS"
+                )
+                self.send_header(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type, Accept, Authorization, X-Operator-Token",
+                )
+                self.send_header("Access-Control-Max-Age", "600")
             self.send_header("Vary", "Origin")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -3821,6 +4167,9 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         request_path = urlparse(self.path).path
         if request_path.startswith("/api/"):
+            if self.headers.get("Origin") and not self._allowed_cors_origin():
+                self.send_error(HTTPStatus.FORBIDDEN, "Origin is not allowed")
+                return
             self.send_response(HTTPStatus.NO_CONTENT)
             self.end_headers()
             return
@@ -3837,23 +4186,101 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             length = int(content_length)
         except ValueError as exc:
             raise ValueError("Invalid Content-Length header.") from exc
+        if length < 0:
+            raise ValueError("Invalid Content-Length header.")
+        if length > MAX_REQUEST_BODY_BYTES:
+            raise ValueError("Request body exceeds the configured size limit.")
         raw_body = self.rfile.read(length)
         try:
-            return json.loads(raw_body.decode("utf-8"))
+            payload = json.loads(raw_body.decode("utf-8"))
         except json.JSONDecodeError as exc:
             raise ValueError("Request body must be valid JSON.") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("Request body must be a JSON object.")
+        return payload
+
+    def _reject_oversized_body(self) -> bool:
+        content_length = self.headers.get("Content-Length")
+        if content_length is None:
+            return False
+        try:
+            length = int(content_length)
+        except ValueError:
+            self._send_json(
+                {"error": "Invalid Content-Length header."},
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return True
+        if length < 0:
+            self._send_json(
+                {"error": "Invalid Content-Length header."},
+                status=HTTPStatus.BAD_REQUEST,
+            )
+            return True
+        if length <= MAX_REQUEST_BODY_BYTES:
+            return False
+        self._send_json(
+            {
+                "error": "Request body exceeds the configured size limit.",
+                "maxBytes": MAX_REQUEST_BODY_BYTES,
+            },
+            status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+        )
+        return True
+
+    def _allowed_cors_origin(self) -> str | None:
+        origin = str(self.headers.get("Origin") or "").strip()
+        if not origin:
+            return None
+        host = str(self.headers.get("Host") or "").strip()
+        if _origin_allowed(origin, host, _configured_cors_origins()):
+            return origin.rstrip("/")
+        return None
+
+    def _client_rate_limit_key(self) -> str:
+        cloudflare_ip = str(self.headers.get("CF-Connecting-IP") or "").strip()
+        if cloudflare_ip:
+            try:
+                parsed_cloudflare_ip = ipaddress.ip_address(cloudflare_ip)
+            except ValueError:
+                parsed_cloudflare_ip = None
+            worker_zone = (
+                str(self.headers.get(CLOUDFLARE_WORKER_ZONE_HEADER) or "")
+                .strip()
+                .lower()
+                .rstrip(".")
+            )
+            if (
+                parsed_cloudflare_ip == CLOUDFLARE_WORKER_EGRESS_IP
+                and TRUSTED_CLOUDFLARE_WORKER_ZONE
+                and worker_zone == TRUSTED_CLOUDFLARE_WORKER_ZONE
+            ):
+                original_ip = str(
+                    self.headers.get(ORIGINAL_CLIENT_IP_HEADER) or ""
+                ).strip()
+                try:
+                    parsed_original_ip = ipaddress.ip_address(original_ip)
+                except ValueError:
+                    parsed_original_ip = None
+                if parsed_original_ip is not None:
+                    return f"cf-original:{parsed_original_ip.compressed}"
+            return f"cf:{cloudflare_ip}"
+        return f"peer:{self.client_address[0]}"
 
     def _send_json(
         self,
         payload: Any,
         *,
         status: int | HTTPStatus = HTTPStatus.OK,
+        headers: dict[str, str] | None = None,
     ) -> None:
         body = json.dumps(payload, indent=2).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -4110,27 +4537,16 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
     def _handle_audit(self) -> None:
         try:
-            payload = self._read_json_body()
-            action = str(payload.get("action") or "")
-            ts = str(payload.get("ts") or datetime.now().isoformat(timespec="seconds"))
-            scope = str(payload.get("scope") or "")
-            detail = (
-                payload.get("detail") if isinstance(payload.get("detail"), dict) else {}
-            )
-            AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with AUDIT_LOG_PATH.open("a", encoding="utf-8") as handle:
-                handle.write(
-                    json.dumps(
-                        {
-                            "ts": ts,
-                            "action": action,
-                            "scope": scope,
-                            "detail": detail,
-                        },
-                        sort_keys=True,
-                    )
-                    + "\n"
-                )
+            payload = _validated_audit_payload(self._read_json_body())
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            with AUDIT_LOG_LOCK:
+                AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+                with AUDIT_LOG_PATH.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(payload, sort_keys=True) + "\n")
         except Exception as exc:  # pragma: no cover - best effort audit path
             logger.warning("Audit write failed: %s", exc)
         self.send_response(HTTPStatus.NO_CONTENT)
@@ -4406,14 +4822,8 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     def _handle_stream_chat(self) -> None:
         try:
             payload = self._read_json_body()
-            message = (payload.get("message") or "").strip()
-            history = payload.get("history") or []
-            if not message:
-                self._send_json(
-                    {"error": "Please ask a question before submitting."},
-                    status=HTTPStatus.BAD_REQUEST,
-                )
-                return
+            message = payload.get("message")
+            history = payload.get("history")
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
@@ -4430,12 +4840,37 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         response_stream = None
         try:
+            # ``DashboardChatAssistant.stream`` is a generator, so none of its
+            # shared message/history validation runs until the first iteration.
+            # Advance it once before committing a 200 response; malformed or
+            # oversized input can then retain its stable HTTP error status.
+            try:
+                response_stream = iter(self.assistant.stream(message, history=history))
+                first_delta = next(response_stream, None)
+            except AssistantUnavailable as exc:
+                self._send_json(
+                    {"error": str(exc), "status": exc.status},
+                    status=exc.http_status,
+                )
+                return
+            except Exception as exc:  # pragma: no cover - defensive preflight path
+                logger.exception("Streaming chat request failed before response")
+                self._send_json(
+                    {"error": "Unexpected chat failure."},
+                    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+                return
+
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
 
-            response_stream = self.assistant.stream(message, history=history)
+            if first_delta is not None:
+                self.wfile.write(
+                    json.dumps({"delta": first_delta}).encode("utf-8") + b"\n"
+                )
+                self.wfile.flush()
             for delta in response_stream:
                 self.wfile.write(json.dumps({"delta": delta}).encode("utf-8") + b"\n")
                 self.wfile.flush()
@@ -4479,17 +4914,16 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         existing assistant endpoints and never leak raw model text.
         """
         try:
-            payload = self._read_json_body()
-            concept = (payload.get("concept") or "").strip()
-            options = payload.get("options") or {}
-            if not isinstance(options, dict):
-                options = {}
-            if not concept:
-                self._send_json(
-                    {"error": "Please enter a concept you want explained."},
-                    status=HTTPStatus.BAD_REQUEST,
-                )
-                return
+            concept, options = _validated_presentation_request(self._read_json_body())
+        except PresentationConceptTooLong as exc:
+            self._send_json(
+                {
+                    "error": str(exc),
+                    "maxChars": PRESENTATION_MAX_CONCEPT_CHARS,
+                },
+                status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            )
+            return
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
@@ -4529,17 +4963,16 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         the background worker, so creation never blocks on another generation.
         """
         try:
-            payload = self._read_json_body()
-            concept = (payload.get("concept") or "").strip()
-            options = payload.get("options") or {}
-            if not isinstance(options, dict):
-                options = {}
-            if not concept:
-                self._send_json(
-                    {"error": "Please enter a concept you want explained."},
-                    status=HTTPStatus.BAD_REQUEST,
-                )
-                return
+            concept, options = _validated_presentation_request(self._read_json_body())
+        except PresentationConceptTooLong as exc:
+            self._send_json(
+                {
+                    "error": str(exc),
+                    "maxChars": PRESENTATION_MAX_CONCEPT_CHARS,
+                },
+                status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+            )
+            return
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -108,6 +110,8 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
     assert 'name="esd-api-mode" content="fallback-only"' in html
     assert 'name="esd-api-origin"' not in html
     assert "const API_ORIGIN = null;" in worker
+    assert 'request.headers.get("CF-Connecting-IP")' in worker
+    assert 'headers.set("X-ESD-Original-Client-IP"' in worker
     assert (
         'fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin")' in worker
     )
@@ -227,7 +231,31 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-nvidia}")
         assert "nemotron-3-super-120b-a12b" in environment["DASHBOARD_ASSISTANT_MODEL"]
         assert "${" in environment["DASHBOARD_ASSISTANT_API_KEY"]
+        assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
+            "${DASHBOARD_ASSISTANT_ENABLED:-true}"
+        )
+        assert environment["DASHBOARD_ASSISTANT_LOAD_DOTENV"] == "false"
+        assert environment["NANO_ID_SALT"] == (
+            "${NANO_ID_SALT:-${PARTICIPANT_ID_SALT:-}}"
+        )
+        assert "DASHBOARD_PRESENTATION_JOB_DB" in environment
+        assert "READINGS_WATCH_PATH" in environment
+        assert "PIPELINE_MAX_RETRIES" in environment
+        assert "NANO_DATA_ROOT" in environment
         assert "HF_HOME" not in environment
+        assert services["dashboard"].get("env_file") is None
+        assert all(
+            str(port).startswith("127.0.0.1:")
+            for port in services["dashboard"]["ports"]
+        )
+        assert "no-new-privileges:true" in services["dashboard"]["security_opt"]
+        assert "ALL" in services["dashboard"]["cap_drop"]
+        for secret_name in (
+            "CLOUDFLARE_API_TOKEN",
+            "CLOUDFLARE_TUNNEL_TOKEN",
+            "CLOUDFLARED_TUNNEL_TOKEN",
+        ):
+            assert secret_name not in environment
         for key in (
             "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",
             "DASHBOARD_ASSISTANT_RETRY_JITTER",
@@ -241,10 +269,51 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
             assert services[service_name]["labels"]["com.esdlabusc.autoheal"] == "true"
         for service_name in ("dashboard-share", "dashboard-share-named"):
             assert services[service_name]["healthcheck"]["test"][-1] == "ready"
+        assert "share" in services["dashboard-share"]["profiles"]
+        assert "share-named" in services["dashboard-share-named"]["profiles"]
+        assert "share" not in services["dashboard-share-named"]["profiles"]
+        named_command = services["dashboard-share-named"]["command"]
+        assert "--token-file /run/secrets/cloudflare-tunnel-token" in named_command
+        assert "--token " not in named_command
         assert (
             services["autoheal"]["environment"]["AUTOHEAL_CONTAINER_LABEL"]
             == "com.esdlabusc.autoheal"
         )
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="Docker CLI unavailable")
+def test_compose_preserves_assistant_disable_override():
+    root = Path(__file__).resolve().parents[1]
+    env = dict(os.environ)
+    env["DASHBOARD_ASSISTANT_ENABLED"] = "false"
+    completed = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--env-file",
+            "/dev/null",
+            "-f",
+            str(root / "docker-compose.yml"),
+            "config",
+            "--format",
+            "json",
+        ],
+        cwd=root,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(completed.stdout)
+    dashboard_env = payload["services"]["dashboard"]["environment"]
+    assert dashboard_env["DASHBOARD_ASSISTANT_ENABLED"] == "false"
+    assert dashboard_env["DASHBOARD_ASSISTANT_LOAD_DOTENV"] == "false"
+
+
+def test_share_script_normalizes_legacy_tunnel_token_for_compose_secret():
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "scripts" / "share_dashboard.sh").read_text(encoding="utf-8")
+    assert 'export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"' in script
 
 
 def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():

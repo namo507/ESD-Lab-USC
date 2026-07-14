@@ -98,7 +98,9 @@ def _api_origin_is_healthy(origin: str, timeout: float) -> bool:
 
 
 def _worker_source(api_origin: str | None) -> str:
-    return ("""
+    return (
+        (
+            """
 const API_ORIGIN = __API_ORIGIN__;
 
 const presentationJobs = new Map();
@@ -456,7 +458,14 @@ async function proxyApi(request, url) {
     ? null
     : request.clone();
   try {
-    const response = await fetch(new Request(target.toString(), request));
+    const upstreamRequest = new Request(target.toString(), request);
+    const originalClientIp = request.headers.get("CF-Connecting-IP") || "";
+    if (originalClientIp) {
+      upstreamRequest.headers.set("X-ESD-Original-Client-IP", originalClientIp);
+    } else {
+      upstreamRequest.headers.delete("X-ESD-Original-Client-IP");
+    }
+    const response = await fetch(upstreamRequest);
     if (response.status < 500) return response;
     const fallback = await fallbackApiResponse(url, fallbackRequest, `upstream-${response.status}`);
     return fallback || response;
@@ -501,7 +510,11 @@ export default {
     return assetResponse;
   },
 };
-""").lstrip().replace("__API_ORIGIN__", json.dumps(api_origin))
+"""
+        )
+        .lstrip()
+        .replace("__API_ORIGIN__", json.dumps(api_origin))
+    )
 
 
 def _resolve_api_origin(

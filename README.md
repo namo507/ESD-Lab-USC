@@ -272,9 +272,10 @@ CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, `make dashboard-share` switches to the `dashboard-share-named`
-service and can print the custom-domain link instead of a random
-`trycloudflare.com` URL.
+After that, `make dashboard-share` selects named-tunnel mode and can print the
+custom-domain link instead of a random `trycloudflare.com` URL. The equivalent
+explicit command is `make share-named`; use `make share-quick` only for a
+temporary preview.
 
 The share link stays live while the Docker services keep running.
 

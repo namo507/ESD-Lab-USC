@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Send, Sparkles, X } from "lucide-react";
+import { RotateCcw, Send, Sparkles, Square, X } from "lucide-react";
 import {
   assistantStatusLabel,
   fetchLiveAssistantStatus,
@@ -82,6 +82,8 @@ interface Message {
   role: "you" | "bot";
   text: string;
   streaming?: boolean;
+  interrupted?: boolean;
+  retryPrompt?: string;
 }
 
 type MessageTextBlock =
@@ -101,6 +103,29 @@ function normalizeHistory(messages: Message[]): ChatMessage[] {
     role: message.role === "you" ? "user" : "assistant",
     content: message.text,
   }));
+}
+
+function withoutRetryPair(messages: Message[], assistantId: string | undefined, question: string): Message[] {
+  if (!assistantId) return messages;
+
+  const assistantIndex = messages.findIndex((message) => message.id === assistantId);
+  if (assistantIndex < 0) return messages;
+
+  const pairedUserIndex = assistantIndex - 1;
+  const pairedUser = messages[pairedUserIndex];
+  return messages.filter((_, index) => (
+    index !== assistantIndex
+    && !(index === pairedUserIndex && pairedUser?.role === "you" && pairedUser.text.trim() === question)
+  ));
+}
+
+function isAbortError(error: unknown): boolean {
+  return Boolean(
+    error
+      && typeof error === "object"
+      && "name" in error
+      && (error as { name?: unknown }).name === "AbortError",
+  );
 }
 
 export function parseMessageText(text: string): MessageTextBlock[] {
@@ -222,7 +247,8 @@ export function ChatDrawer() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const sendRef = useRef<((text?: string) => Promise<void>) | null>(null);
+  const sendingRef = useRef(false);
+  const sendRef = useRef<((text?: string, retryMessageId?: string) => Promise<void>) | null>(null);
 
   const refreshStatus = useCallback(async () => {
     setStatusBusy(true);
@@ -250,51 +276,58 @@ export function ChatDrawer() {
     }
   }, [messages, busy, chatOpen]);
 
-  const send = useCallback(async (text?: string) => {
+  const send = useCallback(async (text?: string, retryMessageId?: string) => {
     const question = (text ?? input).trim();
-    if (!question || busy) return;
+    if (!question || sendingRef.current) return;
 
-    let liveStatus = status;
-    if (!liveStatus || statusBusy || !isAssistantUsable(liveStatus)) {
-      setStatusBusy(true);
-      try {
-        liveStatus = await fetchLiveAssistantStatus();
-        setStatus(liveStatus);
-      } catch (error) {
-        liveStatus = {
-          status: "error",
-          error: error instanceof Error ? error.message : "Assistant unavailable.",
-          model: null,
-        };
-        setStatus(liveStatus);
-      } finally {
-        setStatusBusy(false);
-      }
-    }
-
-    const history = normalizeHistory(messages);
-    const assistantId = makeId("assistant");
+    sendingRef.current = true;
     const controller = new AbortController();
-
     abortRef.current?.abort();
     abortRef.current = controller;
-
     setBusy(true);
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "38px";
-    setMessages((current) => [
-      ...current,
-      { id: makeId("user"), role: "you", text: question },
-      { id: assistantId, role: "bot", text: "", streaming: true },
-    ]);
+
+    let assistantId: string | null = null;
 
     try {
+      let liveStatus = status;
+      if (!liveStatus || statusBusy || !isAssistantUsable(liveStatus)) {
+        setStatusBusy(true);
+        try {
+          liveStatus = await fetchLiveAssistantStatus(controller.signal);
+          setStatus(liveStatus);
+        } catch (error) {
+          liveStatus = {
+            status: "error",
+            error: error instanceof Error ? error.message : "Assistant unavailable.",
+            model: null,
+          };
+          setStatus(liveStatus);
+        } finally {
+          setStatusBusy(false);
+        }
+      }
+
+      if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
+
+      const baseMessages = withoutRetryPair(messages, retryMessageId, question);
+      const history = normalizeHistory(baseMessages);
+      const activeAssistantId = makeId("assistant");
+      assistantId = activeAssistantId;
+
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "38px";
+      setMessages((current) => [
+        ...withoutRetryPair(current, retryMessageId, question),
+        { id: makeId("user"), role: "you", text: question },
+        { id: activeAssistantId, role: "bot", text: "", streaming: true },
+      ]);
+
       let reply = "";
       for await (const delta of streamChat(question, history, controller.signal, liveStatus)) {
         reply += delta;
         setMessages((current) =>
           current.map((message) => (
-            message.id === assistantId
+            message.id === activeAssistantId
               ? { ...message, text: reply, streaming: true }
               : message
           )),
@@ -303,7 +336,7 @@ export function ChatDrawer() {
 
       setMessages((current) =>
         current.map((message) => (
-          message.id === assistantId
+          message.id === activeAssistantId
             ? {
                 ...message,
                 text: reply.trim() || "I don't have enough grounded dashboard context to answer that yet.",
@@ -314,15 +347,35 @@ export function ChatDrawer() {
       );
       void refreshStatus();
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (isAbortError(error)) {
+        if (assistantId) {
+          setMessages((current) =>
+            current.map((entry) => (
+              entry.id === assistantId
+                ? {
+                    ...entry,
+                    text: entry.text.trim() || "Response stopped.",
+                    streaming: false,
+                    interrupted: true,
+                    retryPrompt: question,
+                  }
+                : entry
+            )),
+          );
+        }
+        return;
+      }
+
       const message = error instanceof Error ? error.message : "Assistant request failed.";
-      setMessages((current) =>
-        current.map((entry) => (
-          entry.id === assistantId
-            ? { ...entry, text: message, streaming: false }
-            : entry
-        )),
-      );
+      if (assistantId) {
+        setMessages((current) =>
+          current.map((entry) => (
+            entry.id === assistantId
+              ? { ...entry, text: message, streaming: false, retryPrompt: question }
+              : entry
+          )),
+        );
+      }
       setStatus((current) => ({
         status: "error",
         error: message,
@@ -330,9 +383,10 @@ export function ChatDrawer() {
       }));
     } finally {
       setBusy(false);
-      abortRef.current = null;
+      sendingRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [busy, input, messages, refreshStatus, status, statusBusy]);
+  }, [input, messages, refreshStatus, status, statusBusy]);
 
   useEffect(() => {
     sendRef.current = send;
@@ -368,6 +422,10 @@ export function ChatDrawer() {
     setInput(event.target.value);
     event.target.style.height = "38px";
     event.target.style.height = `${Math.min(event.target.scrollHeight, 100)}px`;
+  }, []);
+
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
   }, []);
 
   const statusTone = statusBusy
@@ -430,7 +488,13 @@ export function ChatDrawer() {
           </button>
         </div>
 
-        <div className={styles.body} ref={bodyRef}>
+        <div
+          className={styles.body}
+          ref={bodyRef}
+          role="log"
+          aria-live="polite"
+          aria-busy={busy}
+        >
           {messages.map((message) => (
             <div key={message.id} className={`${styles.msg} ${message.role === "you" ? styles.you : ""}`}>
               <div className={`${styles.avatar} ${message.role === "you" ? styles.userAvatar : styles.botAvatar}`}>
@@ -445,6 +509,22 @@ export function ChatDrawer() {
                     <span />
                     <span />
                   </span>
+                )}
+                {message.interrupted && message.text !== "Response stopped." && (
+                  <div className={styles.deliveryNote}>Response stopped.</div>
+                )}
+                {message.retryPrompt && (
+                  <div className={styles.responseActions}>
+                    <button
+                      type="button"
+                      className={styles.retryBtn}
+                      disabled={busy}
+                      onClick={() => void send(message.retryPrompt, message.id)}
+                    >
+                      <RotateCcw size={12} aria-hidden />
+                      Try again
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -469,17 +549,22 @@ export function ChatDrawer() {
             rows={1}
             value={input}
             placeholder="Ask about the study…"
+            aria-label="Message ESD Buddy"
             onChange={onTextareaChange}
             onKeyDown={onKeyDown}
           />
           <button
             type="button"
-            className={styles.sendBtn}
-            disabled={busy || !input.trim()}
-            onClick={() => void send()}
-            aria-label="Send message"
+            className={`${styles.sendBtn} ${busy ? styles.stopBtn : ""}`}
+            disabled={!busy && !input.trim()}
+            onClick={busy ? stop : () => void send()}
+            aria-label={busy ? "Stop response" : "Send message"}
           >
-            <Send size={15} strokeWidth={1.5} />
+            {busy ? (
+              <Square size={12} fill="currentColor" aria-hidden />
+            ) : (
+              <Send size={15} strokeWidth={1.5} aria-hidden />
+            )}
           </button>
         </div>
       </aside>
