@@ -9,6 +9,7 @@ The canonical website UI lives in `web/` and is served locally by
 
 - Public landing route: `/`
 - Operator dashboard route: `/overview`
+- Additive NANO Study dashboard route: `/nano/dashboard`
 - Legacy `/dashboard/` route: redirect only
 
 ## Files that make it go
@@ -31,6 +32,7 @@ The canonical website UI lives in `web/` and is served locally by
 | Topic | Doc |
 |-------|-----|
 | How to open the current UI | `docs/dashboard_guide.md` |
+| NANO Study dashboard, data contract, and Buddy | `docs/nano_dashboard.md` |
 | How the runtime auto-refresh works | `docs/auto_update_pipeline.md` |
 | How Pages deploys are packaged | `docs/pages_deploy.md` |
 | How to keep the glossary honest | `docs/data_context_skill.md` |

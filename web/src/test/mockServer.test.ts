@@ -4,6 +4,7 @@ import { shouldBypassMock } from "@/api/mockServer";
 
 describe("mockServer assistant passthrough", () => {
   it("bypasses only assistant routes when live assistant is enabled", () => {
+    expect(shouldBypassMock("/api/buddy", true)).toBe(true);
     expect(shouldBypassMock("/api/assistant/status", true)).toBe(true);
     expect(shouldBypassMock("/api/assistant/chat", true)).toBe(true);
     expect(shouldBypassMock("/api/chat/status", true)).toBe(true);
@@ -19,6 +20,7 @@ describe("mockServer assistant passthrough", () => {
   });
 
   it("keeps all routes mocked when live assistant is disabled", () => {
+    expect(shouldBypassMock("/api/buddy", false)).toBe(false);
     expect(shouldBypassMock("/api/assistant/status", false)).toBe(false);
     expect(shouldBypassMock("/api/chat", false)).toBe(false);
     expect(shouldBypassMock("/api/presentation/jobs", false)).toBe(false);

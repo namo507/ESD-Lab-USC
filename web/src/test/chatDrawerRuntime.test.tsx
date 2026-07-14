@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { fetchLiveAssistantStatusMock, streamChatMock } = vi.hoisted(() => ({
+const { askNanoBuddyMock, fetchLiveAssistantStatusMock, fetchNanoBuddyStatusMock, streamChatMock } = vi.hoisted(() => ({
+  askNanoBuddyMock: vi.fn(),
   fetchLiveAssistantStatusMock: vi.fn(),
+  fetchNanoBuddyStatusMock: vi.fn(),
   streamChatMock: vi.fn(),
 }));
 
@@ -10,6 +12,12 @@ vi.mock("@/api/chatApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/api/chatApi")>()),
   fetchLiveAssistantStatus: fetchLiveAssistantStatusMock,
   streamChat: streamChatMock,
+}));
+
+vi.mock("@/api/nanoBuddyApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/nanoBuddyApi")>()),
+  askNanoBuddy: askNanoBuddyMock,
+  fetchNanoBuddyStatus: fetchNanoBuddyStatusMock,
 }));
 
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
@@ -23,10 +31,69 @@ const READY_STATUS = {
 
 describe("ChatDrawer response controls", () => {
   beforeEach(() => {
+    window.history.replaceState({}, "", "/");
+    askNanoBuddyMock.mockReset();
+    fetchNanoBuddyStatusMock.mockReset();
+    fetchNanoBuddyStatusMock.mockResolvedValue(READY_STATUS);
     fetchLiveAssistantStatusMock.mockReset();
     fetchLiveAssistantStatusMock.mockResolvedValue(READY_STATUS);
     streamChatMock.mockReset();
     useUi.setState({ chatOpen: true, chatSeed: null });
+  });
+
+  it("uses the strict NANO Buddy endpoint path and labels metric and document provenance", async () => {
+    window.history.replaceState({}, "", "/nano/dashboard");
+    askNanoBuddyMock.mockResolvedValue({
+      answer: "1,265 sessions have passed aggregate QA.",
+      citations: [{ title: "ECG Processing SOP", path: "docs/ecg_processing_protocol.md", loc: "document" }],
+      usedMetrics: ["nano.pipeline_summary.qa_passed_sessions"],
+      refused: false,
+    });
+
+    render(<ChatDrawer />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Message ESD Buddy" }), {
+      target: { value: "Show participant data" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText(/1,265 sessions have passed aggregate QA/i)).toBeInTheDocument();
+    expect(screen.getByText("Live aggregate metrics")).toBeInTheDocument();
+    expect(screen.getByText("Document sources")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "ECG Processing SOP" })).toHaveAttribute(
+      "href",
+      "https://github.com/namo507/ESD-Lab-USC/blob/main/docs/ecg_processing_protocol.md",
+    );
+    expect(askNanoBuddyMock).toHaveBeenCalledWith("Show participant data", expect.any(AbortSignal));
+    expect(streamChatMock).not.toHaveBeenCalled();
+    expect(await screen.findByText("Aggregate Buddy ready")).toBeInTheDocument();
+  });
+
+  it("shows the NANO privacy refusal returned by Buddy", async () => {
+    window.history.replaceState({}, "", "/nano/dashboard");
+    askNanoBuddyMock.mockResolvedValue({
+      answer: "I cannot provide participant-level data. Use approved secure systems.",
+      citations: [],
+      usedMetrics: [],
+      refused: true,
+    });
+
+    render(<ChatDrawer />);
+    const sensitiveQuestion = "Call 803-555-1212 about NANO-1043 on 2026-07-14";
+    fireEvent.change(screen.getByRole("textbox", { name: "Message ESD Buddy" }), {
+      target: { value: sensitiveQuestion },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText(/cannot provide participant-level data/i)).toBeInTheDocument();
+    expect(screen.getByText("Protected request refused")).toBeInTheDocument();
+    expect(screen.queryByText(sensitiveQuestion)).not.toBeInTheDocument();
+    expect(JSON.stringify(askNanoBuddyMock.mock.calls)).not.toContain("NANO-1043");
+    expect(JSON.stringify(askNanoBuddyMock.mock.calls)).not.toContain("803-555-1212");
+    expect(askNanoBuddyMock).toHaveBeenCalledWith(
+      expect.stringContaining("{{REDACTED:PHI}}"),
+      expect.any(AbortSignal),
+    );
   });
 
   it("stops an in-flight response without leaving a permanent streaming bubble", async () => {
@@ -51,6 +118,7 @@ describe("ChatDrawer response controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("A grounded partial answer")).toBeInTheDocument();
+    expect(askNanoBuddyMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Stop response" }));
 
     expect(await screen.findByText("Response stopped.")).toBeInTheDocument();

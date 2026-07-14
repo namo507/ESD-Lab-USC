@@ -36,6 +36,7 @@ DEFAULT_CANONICAL_ROUTES = (
     "/qa",
     "/results",
     "/redcap",
+    "/nano/dashboard",
     "/public-insights",
 )
 

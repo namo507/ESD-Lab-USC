@@ -61,6 +61,30 @@ describe("LgcmTrajectories", () => {
     expect(screen.getByText(/R01MH132925/)).toBeInTheDocument();
   });
 
+  it("states when individual traces and significance estimates are absent", () => {
+    const aggregateOnlyOutcome = {
+      ...outcome,
+      individual_traces: [],
+      asib_vs_td_intercept_p: null,
+      asib_vs_td_slope_p: null,
+      pt_vs_td_intercept_p: null,
+      pt_vs_td_slope_p: null,
+    };
+    mockState.data = {
+      nano: { lgcm_results: { pct_sa: aggregateOnlyOutcome, hr_decel: aggregateOnlyOutcome, rsa: aggregateOnlyOutcome } },
+      nico: {},
+      shared: {},
+    } as unknown;
+
+    renderRoute();
+
+    expect(screen.getByText(/individual traces are not included in this data release/i)).toBeInTheDocument();
+    expect(screen.getByText(/group-difference significance estimates are not available in this data release/i)).toBeInTheDocument();
+    expect(screen.getByText(/group comparison availability/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^n\.s\.$/i)).not.toBeInTheDocument();
+    mockState.data = studyData as unknown;
+  });
+
   it("handles an empty result set without crashing", () => {
     mockState.data = { nano: { lgcm_results: {} }, nico: {}, shared: {} } as unknown;
     renderRoute();

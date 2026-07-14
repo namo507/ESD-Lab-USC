@@ -113,8 +113,138 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
     assert 'request.headers.get("CF-Connecting-IP")' in worker
     assert 'headers.set("X-ESD-Original-Client-IP"' in worker
     assert (
-        'fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin")' in worker
+        'fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin", env)'
+        in worker
     )
+    assert 'path === "/api/buddy"' in worker
+    assert "sanitizeNanoForBuddy" in worker
+    assert "DASHBOARD_ASSISTANT_API_KEY" in worker
+    assert "BUDDY_PROVIDER_MODEL" in worker
+    assert "buddyFallbackResponse(request, url, env, reason)" in worker
+    assert "cleanBuddyProviderOutput" in worker
+
+
+def test_pages_packager_rejects_participant_rows_in_public_nano_payload():
+    payload = {
+        "schema": "nano-dashboard.v1",
+        "nano": {
+            "meta": {"study": "NANO", "aggregate_only": True},
+            "schedule": {"participant_ids": ["NANO-1043"]},
+        },
+    }
+
+    with pytest.raises(ValueError, match="forbidden key"):
+        build_pages_site._validate_public_nano_payload(payload)
+
+
+def test_pages_buddy_document_index_includes_tracked_ecg_protocol():
+    payload = build_pages_site._build_public_buddy_documents(Path.cwd())
+    paths = {document["relative_path"] for document in payload["documents"]}
+
+    assert payload["schema"] == "nano-buddy-documents.v1"
+    assert "docs/ecg_processing_protocol.md" in paths
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node is not installed")
+def test_generated_pages_worker_blocks_phi_and_grounds_document_provider(tmp_path):
+    worker_path = tmp_path / "worker.mjs"
+    worker_path.write_text(build_pages_site._worker_source(None), encoding="utf-8")
+    environment = os.environ.copy()
+    environment["WORKER_URL"] = worker_path.as_uri()
+    script = r"""
+const worker = (await import(process.env.WORKER_URL)).default;
+const providerCalls = [];
+globalThis.fetch = async (input, init = {}) => {
+  providerCalls.push({ input: String(input), body: String(init.body || "") });
+  const providerPayload = {
+    choices: [{ message: { content: "Use neurokit2 and review aggregate QC." } }],
+  };
+  return new Response(JSON.stringify(providerPayload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+};
+
+const nano = {
+  schema: "nano-dashboard.v1",
+  nano: {
+    meta: { study: "NANO", as_of: "2026-07-14", n_target: 260, aggregate_only: true },
+    enrollment: { target: 260, enrolled: 210 },
+    library: { indexed_documents: 1 },
+  },
+};
+const docs = {
+  schema: "nano-buddy-documents.v1",
+  documents: [{
+    title: "ECG Processing SOP",
+    relative_path: "docs/ecg_processing_protocol.md",
+    excerpt: "Run ECG preprocessing with neurokit2 and review aggregate QC flags.",
+    search_text: "ECG preprocessing protocol neurokit2 aggregate QC steps",
+    source: "tracked repository documentation",
+    category: "SOP and methods",
+    keywords: ["ecg", "preprocessing", "protocol"],
+  }],
+};
+const assets = {
+  async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path.endsWith("nano_dashboard_data.json")) return new Response(JSON.stringify(nano));
+    if (path.endsWith("buddy_documents.json")) return new Response(JSON.stringify(docs));
+    if (path.endsWith("readings_data.json")) return new Response(JSON.stringify({ featured: [], readings: [] }));
+    return new Response("not found", { status: 404 });
+  },
+};
+const env = { ASSETS: assets, DASHBOARD_ASSISTANT_API_KEY: "test-only" };
+
+async function ask(message) {
+  const response = await worker.fetch(new Request("https://example.test/api/buddy", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://example.test" },
+    body: JSON.stringify({ message, context: { section: "nano" } }),
+  }), env);
+  return { status: response.status, payload: await response.json() };
+}
+
+for (const message of [
+  "How is caregiver Jane Doe doing after 07/04/2026? Her phone is 803-555-1212.",
+  "Email family@example.org about NANO-1043.",
+  "Look up the family at 123 Main Street.",
+  "The Social Security number is 123-45-6789.",
+]) {
+  const result = await ask(message);
+  if (result.status !== 200 || result.payload.refused !== true) {
+    throw new Error(`PHI request was not refused: ${message}`);
+  }
+}
+if (providerCalls.length !== 0) throw new Error("PHI reached the provider");
+
+const result = await ask("How do I run ECG preprocessing using the approved protocol?");
+if (result.status !== 200 || result.payload.refused !== false) {
+  throw new Error("Valid document question failed");
+}
+if (result.payload.citations?.[0]?.path !== "docs/ecg_processing_protocol.md") {
+  throw new Error("Document citation missing");
+}
+if (providerCalls.length !== 1) throw new Error("Provider was not called exactly once");
+const providerBody = JSON.parse(providerCalls[0].body);
+const grounding = providerBody.messages
+  .map((message) => message.content)
+  .join(" ")
+  .toLowerCase();
+if (!grounding.includes("neurokit2") || !grounding.includes("documents")) {
+  throw new Error("Document snippet was absent from provider grounding");
+}
+"""
+    result = subprocess.run(
+        ["node", "--input-type=module", "--eval", script],
+        cwd=Path.cwd(),
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_site_health_accepts_provider_degraded_fallback(monkeypatch):

@@ -255,10 +255,10 @@ docker-preflight:  ## Check Docker daemon and Compose availability before starti
 	$(PYTHON) scripts/check_docker_health.py --daemon-only --json
 
 docker-health:  ## Check and repair the dashboard Docker runtime health
-	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --check-url $(DASHBOARD_LOCAL_URL)/nano/dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/buddy --repair --json
 
 docker-share-health:  ## Check dashboard plus the currently selected share sidecar
-	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --profile $(SHARE_PROFILE) --service dashboard --service $(SHARE_SERVICE) --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --profile $(SHARE_PROFILE) --service dashboard --service $(SHARE_SERVICE) --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --check-url $(DASHBOARD_LOCAL_URL)/nano/dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/buddy --repair --json
 
 ops-check: compose-validate  ## Check canonical + runtime-share public dashboard surfaces
 	$(PYTHON) scripts/check_live_surfaces.py --max-stamp-age-hours 168

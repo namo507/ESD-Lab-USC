@@ -41,6 +41,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
   const [syncing, setSyncing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const inNanoDashboard = location.pathname.replace(/\/+$/, "") === "/nano/dashboard";
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -132,7 +133,9 @@ export function AppShell({ brand }: AppShellProps = {}) {
           </RouteErrorBoundary>
           <footer className="app-footer">
             <span>Early Social Development Lab · Dr. Bradshaw · UofSC</span>
-            <span>NIH R01 MH123456 · IRB Pro00115234 · v0.15.0</span>
+            <span>{inNanoDashboard
+              ? "NIH R01 MH132925 · Aggregate-only public dashboard · v0.15.0"
+              : "NIH R01 MH123456 · IRB Pro00115234 · v0.15.0"}</span>
           </footer>
         </main>
 

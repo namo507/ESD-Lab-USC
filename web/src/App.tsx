@@ -64,6 +64,9 @@ const AttritionFunnel = lazy(() => import("@/routes/AttritionFunnel").then((m) =
 const GuidedExplorer = lazy(() => import("@/routes/GuidedExplorer").then((m) => ({ default: m.GuidedExplorer })));
 const PublicInsights = lazy(() => import("@/routes/PublicInsights").then((m) => ({ default: m.PublicInsights })));
 const ExecutiveMode = lazy(() => import("@/routes/ExecutiveMode").then((m) => ({ default: m.ExecutiveMode })));
+const NanoStudyDashboard = lazy(() =>
+  import("@/routes/NanoStudyDashboard").then((m) => ({ default: m.NanoStudyDashboard })),
+);
 const LgcmTrajectories = lazy(() => import("@/routes/LgcmTrajectories").then((m) => ({ default: m.LgcmTrajectories })));
 const Aim3Clusters = lazy(() => import("@/routes/Aim3Clusters").then((m) => ({ default: m.Aim3Clusters })));
 
@@ -246,6 +249,9 @@ export default function App() {
             />
             <Route element={<AppShell />}>
               {dashboardRoutes()}
+            </Route>
+            <Route element={<AppShell brand="esd-2026" />}>
+              <Route path="/nano/dashboard" element={<NanoStudyDashboard />} />
             </Route>
             <Route
               element={

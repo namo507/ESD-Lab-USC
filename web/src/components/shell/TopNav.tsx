@@ -37,6 +37,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
   const date = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
   const syncLabel = lastSyncAt ? formatRelativeTime(lastSyncAt, now) : "not synced";
   const inDiscovery = isDiscoveryPath(location.pathname);
+  const inNanoDashboard = location.pathname === "/nano/dashboard";
   const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
   function openChatWithQuery(nextQuery: string) {
@@ -75,7 +76,7 @@ export function TopNav({ query, onSearch, syncing, onForceSync, idleMinutes, las
           onChange={(e) => onSearch(e.target.value)}
           onFocus={() => openChatWithQuery(searchRef.current?.value ?? query)}
           onKeyDown={onSearchKeyDown}
-          placeholder="Ask the lab · NANO-0173 RMSSD trend?"
+          placeholder={inNanoDashboard ? "Ask the lab · NANO aggregate metrics" : "Ask the lab · NANO-0173 RMSSD trend?"}
           className="flex-1 bg-transparent border-none outline-none text-[13px] text-[color:var(--warm-fg1)]"
         />
         <span className="text-[9px] font-mono text-[color:var(--warm-fg4)] bg-[color:var(--warm-card)] border border-[color:var(--warm-border)] px-1.5 py-px rounded">

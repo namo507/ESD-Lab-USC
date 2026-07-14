@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Additive NANO Study dashboard at `/nano/dashboard` with ESD-branded motion,
+  aggregate enrollment and visit operations, HDA/RSA research metrics, pipeline
+  quality, assessments, equipment and compliance status, REDCap health, and
+  reading-library links.
+- Complete aggregate-only `nano` payload contract with a coherent synthetic
+  fallback, null-safe rendering, and explicit source/as-of metadata.
+- NANO ESD Lab Buddy adapter at `/api/buddy`, reusing the existing repository-
+  grounded assistant with metric provenance, document citations, offline
+  fallback behavior, and strict PHI or raw-signal refusal.
 - Dashboard Master feature release: Multimodal Synchrony Visualizer, redesigned Guided Explorer, REDCap completeness drawer, Public Insights sharing/IRB context, Infant Passport visit detail, SDOH priority overlay, and Cascade Simulator overlays.
 - AI Buddy and Ask AI fast paths for the new dashboard routes, Executive PPTX export, multimodal synchrony windows, and REDCap/public-insights guidance.
 - Explicit Pages build flags for the newly released dashboard surfaces so future website builds keep the assistant, metrics, and visualizations in sync.

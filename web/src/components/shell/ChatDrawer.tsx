@@ -8,6 +8,13 @@ import {
   type AssistantStatus,
   type ChatMessage,
 } from "@/api/chatApi";
+import {
+  askNanoBuddy,
+  fetchNanoBuddyStatus,
+  nanoBuddyCitationHref,
+  scrubNanoBuddyMessage,
+  type NanoBuddyCitation,
+} from "@/api/nanoBuddyApi";
 import { FastPaths, type FastPathPrompt } from "@/components/warm/FastPaths";
 import { AmbientOrbit } from "@/components/warm/AmbientOrbit";
 import { HELP_ASSISTANT_FAST_PATHS } from "@/data/helpContent";
@@ -77,6 +84,24 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "dyn",    label: "Cascade what-if",              prompt: "Explain the Cascade Intervention Simulator guardrails and how slider changes propagate through the fitted paths." },
 ];
 
+const NANO_DASHBOARD_FAST_PATHS: FastPathPrompt[] = [
+  {
+    lane: "qa",
+    label: "Visits due",
+    prompt: "Using only aggregate NANO dashboard metrics, how many visits are due in the next 14 days?",
+  },
+  {
+    lane: "model",
+    label: "HDA by window",
+    prompt: "Summarize HDA sustained-attention share by available NANO visit windows. Use aggregate metrics only.",
+  },
+  {
+    lane: "redcap",
+    label: "REDCap status",
+    prompt: "Is the aggregate NANO REDCap sync healthy, and are any double-entry discrepancies open?",
+  },
+];
+
 interface Message {
   id: string;
   role: "you" | "bot";
@@ -84,6 +109,9 @@ interface Message {
   streaming?: boolean;
   interrupted?: boolean;
   retryPrompt?: string;
+  citations?: NanoBuddyCitation[];
+  usedMetrics?: string[];
+  refused?: boolean;
 }
 
 type MessageTextBlock =
@@ -228,6 +256,8 @@ export function MessageText({ text }: { text: string }) {
 }
 
 export function ChatDrawer() {
+  const inNanoDashboard = typeof window !== "undefined" && window.location.pathname === "/nano/dashboard";
+  const fastPaths = inNanoDashboard ? NANO_DASHBOARD_FAST_PATHS : BUDDY_FAST_PATHS;
   const chatOpen = useUi((state) => state.chatOpen);
   const setChatOpen = useUi((state) => state.setChatOpen);
   const consumeChatSeed = useUi((state) => state.consumeChatSeed);
@@ -236,7 +266,9 @@ export function ChatDrawer() {
     {
       id: "welcome",
       role: "bot",
-      text: "Hi — I'm ESD Buddy. Ask me about the NANO Study, participant operations, REDCap forms, or any term you want unpacked.",
+      text: inNanoDashboard
+        ? "Hi. I'm ESD Buddy. Ask me about aggregate NANO metrics, study methods, or an approved SOP."
+        : "Hi. I'm ESD Buddy. Ask me about the NANO Study, participant operations, REDCap forms, or any term you want unpacked.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -253,7 +285,9 @@ export function ChatDrawer() {
   const refreshStatus = useCallback(async () => {
     setStatusBusy(true);
     try {
-      setStatus(await fetchLiveAssistantStatus());
+      setStatus(inNanoDashboard
+        ? await fetchNanoBuddyStatus()
+        : await fetchLiveAssistantStatus());
     } catch (error) {
       setStatus({
         status: "error",
@@ -263,7 +297,7 @@ export function ChatDrawer() {
     } finally {
       setStatusBusy(false);
     }
-  }, []);
+  }, [inNanoDashboard]);
 
   useEffect(() => {
     void refreshStatus();
@@ -277,8 +311,11 @@ export function ChatDrawer() {
   }, [messages, busy, chatOpen]);
 
   const send = useCallback(async (text?: string, retryMessageId?: string) => {
-    const question = (text ?? input).trim();
-    if (!question || sendingRef.current) return;
+    const enteredQuestion = (text ?? input).trim();
+    if (!enteredQuestion || sendingRef.current) return;
+    const question = inNanoDashboard
+      ? scrubNanoBuddyMessage(enteredQuestion)
+      : enteredQuestion;
 
     sendingRef.current = true;
     const controller = new AbortController();
@@ -290,7 +327,7 @@ export function ChatDrawer() {
 
     try {
       let liveStatus = status;
-      if (!liveStatus || statusBusy || !isAssistantUsable(liveStatus)) {
+      if (!inNanoDashboard && (!liveStatus || statusBusy || !isAssistantUsable(liveStatus))) {
         setStatusBusy(true);
         try {
           liveStatus = await fetchLiveAssistantStatus(controller.signal);
@@ -323,15 +360,26 @@ export function ChatDrawer() {
       ]);
 
       let reply = "";
-      for await (const delta of streamChat(question, history, controller.signal, liveStatus)) {
-        reply += delta;
-        setMessages((current) =>
-          current.map((message) => (
-            message.id === activeAssistantId
-              ? { ...message, text: reply, streaming: true }
-              : message
-          )),
-        );
+      let responseCitations: NanoBuddyCitation[] = [];
+      let responseUsedMetrics: string[] = [];
+      let responseRefused = false;
+      if (inNanoDashboard) {
+        const response = await askNanoBuddy(question, controller.signal);
+        reply = response.answer;
+        responseCitations = response.citations;
+        responseUsedMetrics = response.usedMetrics;
+        responseRefused = response.refused;
+      } else {
+        for await (const delta of streamChat(question, history, controller.signal, liveStatus)) {
+          reply += delta;
+          setMessages((current) =>
+            current.map((message) => (
+              message.id === activeAssistantId
+                ? { ...message, text: reply, streaming: true }
+                : message
+            )),
+          );
+        }
       }
 
       setMessages((current) =>
@@ -341,6 +389,9 @@ export function ChatDrawer() {
                 ...message,
                 text: reply.trim() || "I don't have enough grounded dashboard context to answer that yet.",
                 streaming: false,
+                citations: responseCitations,
+                usedMetrics: responseUsedMetrics,
+                refused: responseRefused,
               }
             : message
         )),
@@ -386,7 +437,7 @@ export function ChatDrawer() {
       sendingRef.current = false;
       if (abortRef.current === controller) abortRef.current = null;
     }
-  }, [input, messages, refreshStatus, status, statusBusy]);
+  }, [inNanoDashboard, input, messages, refreshStatus, status, statusBusy]);
 
   useEffect(() => {
     sendRef.current = send;
@@ -437,7 +488,13 @@ export function ChatDrawer() {
         : "error";
   const statusLabel = statusBusy
     ? "loading…"
-    : assistantStatusLabel(status);
+    : inNanoDashboard
+      ? status?.status === "ready"
+        ? "Aggregate Buddy ready"
+        : status?.status === "degraded"
+          ? "Buddy limited mode"
+          : "Buddy unavailable"
+      : assistantStatusLabel(status);
   const redcapFreshness = status?.freshness?.redcap;
   const redcapFreshnessLabel = redcapFreshness?.generated_at
     ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags${typeof redcapFreshness.age_hours === "number" ? ` · ${redcapFreshness.age_hours.toFixed(1)}h old` : ""}`
@@ -510,6 +567,32 @@ export function ChatDrawer() {
                     <span />
                   </span>
                 )}
+                {message.citations?.length ? (
+                  <div className={styles.citations} aria-label="Document sources">
+                    <span>Document sources</span>
+                    {message.citations.map((citation) => {
+                      const href = nanoBuddyCitationHref(citation);
+                      return href ? (
+                        <a
+                          key={`${citation.path}-${citation.loc}`}
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {citation.title}
+                        </a>
+                      ) : null;
+                    })}
+                  </div>
+                ) : null}
+                {message.usedMetrics?.length ? (
+                  <div className={styles.provenance} title={message.usedMetrics.join(", ")}>
+                    Live aggregate metrics
+                  </div>
+                ) : null}
+                {message.refused ? (
+                  <div className={`${styles.provenance} ${styles.refusal}`}>Protected request refused</div>
+                ) : null}
                 {message.interrupted && message.text !== "Response stopped." && (
                   <div className={styles.deliveryNote}>Response stopped.</div>
                 )}
@@ -536,7 +619,7 @@ export function ChatDrawer() {
             <FastPaths
               tone="light"
               density="compact"
-              prompts={BUDDY_FAST_PATHS}
+              prompts={fastPaths}
               onSelect={(p) => void send(p)}
             />
           </div>

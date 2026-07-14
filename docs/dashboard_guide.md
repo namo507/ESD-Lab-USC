@@ -36,7 +36,8 @@ Run the local server and open the canonical routes:
 docker compose -f docker/compose.dev.yml up --build dashboard
 ```
 
-Then open `http://localhost:8080/` or `http://localhost:8080/overview`.
+Then open `http://localhost:8080/`, `http://localhost:8080/overview`, or the
+additive NANO Study dashboard at `http://localhost:8080/nano/dashboard`.
 
 ### Option B — Public Pages URL
 

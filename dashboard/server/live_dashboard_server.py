@@ -41,7 +41,12 @@ import requests
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboard.assistant import AssistantUnavailable, DashboardChatAssistant
+from dashboard.assistant import (
+    AssistantUnavailable,
+    BuddyRequestError,
+    DashboardChatAssistant,
+    NanoBuddyAssistant,
+)
 from dashboard.pipelines import build_dashboard_data, build_readings_index
 from dashboard.pipelines.participant_operations import (
     build_participant_operations,
@@ -136,7 +141,12 @@ SPA_ROUTE_PREFIXES = (
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 PUBLIC_RUNTIME_DATA_ROUTES = {
     f"/dashboard/data/{name}": DATA_DIR / name
-    for name in ("dashboard_data.json", "readings_data.json", "runtime_status.json")
+    for name in (
+        "dashboard_data.json",
+        "nano_dashboard_data.json",
+        "readings_data.json",
+        "runtime_status.json",
+    )
 }
 PUBLIC_READING_SUFFIXES = {".pdf"}
 
@@ -318,6 +328,13 @@ MAX_REQUEST_BODY_BYTES = max(
     1024,
     _env_int("DASHBOARD_MAX_REQUEST_BODY_BYTES", 1024 * 1024),
 )
+BUDDY_MAX_REQUEST_BODY_BYTES = max(
+    1024,
+    min(
+        MAX_REQUEST_BODY_BYTES,
+        _env_int("DASHBOARD_BUDDY_MAX_REQUEST_BODY_BYTES", 32 * 1024),
+    ),
+)
 PRESENTATION_MAX_CONCEPT_CHARS = max(
     1,
     _env_int("DASHBOARD_PRESENTATION_MAX_CONCEPT_CHARS", 6000),
@@ -333,6 +350,7 @@ ASSISTANT_RATE_LIMIT_WINDOW_SECONDS = max(
 ASSISTANT_RATE_LIMIT_PATHS = frozenset(
     {
         "/api/chat",
+        "/api/buddy",
         "/api/assistant/chat",
         "/api/presentation/jobs",
         "/api/presentation/plan",
@@ -3698,10 +3716,12 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         assistant: DashboardChatAssistant,
         jobs: PresentationJobStore,
         directory: str,
+        buddy: NanoBuddyAssistant | None = None,
         **kwargs: Any,
     ) -> None:
         self.runtime = runtime
         self.assistant = assistant
+        self.buddy = buddy
         self.jobs = jobs
         super().__init__(*args, directory=directory, **kwargs)
 
@@ -3746,6 +3766,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
 
         if request_path == "/api/chat/status":
             self._send_json(self.assistant.get_status())
+            return
+
+        if request_path == "/api/buddy":
+            self._send_json(self._buddy().get_status())
             return
 
         if request_path == "/api/study/summary":
@@ -3934,11 +3958,29 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         request_path = urlparse(self.path).path
         if self._redirect_legacy_dashboard(request_path):
             return
+        if request_path == "/api/buddy":
+            body = json.dumps(self._buddy().get_status(), indent=2).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            return
         super().do_HEAD()
 
     def do_POST(self) -> None:
         request_path = urlparse(self.path).path
         if self._reject_oversized_body():
+            return
+        if (
+            request_path == "/api/buddy"
+            and self.headers.get("Origin")
+            and not self._allowed_cors_origin()
+        ):
+            self._send_json(
+                {"error": "Origin is not allowed"},
+                status=HTTPStatus.FORBIDDEN,
+            )
             return
         if _mutation_requires_operator("POST", request_path) and not (
             _operator_authorized(self.headers)
@@ -3978,6 +4020,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                 return
         if request_path == "/api/assistant/chat":
             self._handle_stream_chat()
+            return
+
+        if request_path == "/api/buddy":
+            self._handle_buddy()
             return
 
         if request_path == "/api/table/query":
@@ -4178,7 +4224,9 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         logger.info("http | " + format, *args)
 
-    def _read_json_body(self) -> dict[str, Any]:
+    def _read_json_body(
+        self, *, max_bytes: int = MAX_REQUEST_BODY_BYTES
+    ) -> dict[str, Any]:
         content_length = self.headers.get("Content-Length")
         if not content_length:
             raise ValueError("Missing request body.")
@@ -4188,7 +4236,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             raise ValueError("Invalid Content-Length header.") from exc
         if length < 0:
             raise ValueError("Invalid Content-Length header.")
-        if length > MAX_REQUEST_BODY_BYTES:
+        if length > max_bytes:
             raise ValueError("Request body exceeds the configured size limit.")
         raw_body = self.rfile.read(length)
         try:
@@ -4283,6 +4331,48 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
+
+    def _buddy(self) -> NanoBuddyAssistant:
+        if self.buddy is None:
+            self.buddy = NanoBuddyAssistant(self.assistant)
+        return self.buddy
+
+    def _handle_buddy(self) -> None:
+        content_type = str(self.headers.get("Content-Type") or "")
+        if content_type.split(";", 1)[0].strip().casefold() != "application/json":
+            self._send_json(
+                {"error": "Buddy requests require Content-Type: application/json."},
+                status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+        try:
+            payload = self._read_json_body(max_bytes=BUDDY_MAX_REQUEST_BODY_BYTES)
+            result = self._buddy().answer(
+                payload.get("message"), context=payload.get("context")
+            )
+            self._send_json(result)
+        except BuddyRequestError as exc:
+            self._send_json({"error": str(exc)}, status=exc.http_status)
+        except ValueError as exc:
+            status = (
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+                if "size limit" in str(exc).casefold()
+                else HTTPStatus.BAD_REQUEST
+            )
+            self._send_json({"error": str(exc)}, status=status)
+        except Exception:  # pragma: no cover - defensive API path
+            logger.exception("Buddy request failed")
+            self._send_json(
+                {
+                    "answer": (
+                        "Buddy is temporarily offline, but dashboard metrics remain available."
+                    ),
+                    "citations": [],
+                    "used_metrics": [],
+                    "refused": False,
+                },
+                status=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
 
     def _handle_table_query(self) -> None:
         try:
@@ -5050,6 +5140,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     ensure_public_spa_build()
     runtime.start()
     assistant = DashboardChatAssistant()
+    buddy = NanoBuddyAssistant(assistant)
     presentation_jobs = PresentationJobStore()
     for job_id in presentation_jobs.recoverable_job_ids():
         _start_presentation_job_worker(
@@ -5063,6 +5154,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         RepoRequestHandler,
         runtime=runtime,
         assistant=assistant,
+        buddy=buddy,
         jobs=presentation_jobs,
         directory=str(PROJECT_ROOT),
     )

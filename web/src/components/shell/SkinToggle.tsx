@@ -17,6 +17,9 @@ export function SkinToggle({ variant = "pill", className = "" }: Props) {
   const setBrand = useUi((s) => s.setBrand);
 
   if (!FEATURE_FLAGS.BRAND_ESD_2026) return null;
+  // This additive route owns the Discovery skin at the route level. Hiding the
+  // switch prevents navigation to a non-existent default-skin mirror.
+  if (location.pathname === "/nano/dashboard") return null;
 
   const discoveryActive = isDiscoveryPath(location.pathname);
   const nextPath = discoveryActive ? fromDiscoveryPath(location.pathname) : toDiscoveryPath(location.pathname);

@@ -27,6 +27,10 @@ populates it in the production pipeline.
 | `cohort_table[]` | Cohort section table | `build_cohort_table()` with surrogate IDs | `build_cohort_table` | yes |
 | `organization_site.summary / mission / studies / impact_feed[]` | ESD Lab organization + impact sections | `build_org_site_data.build_payload()` | same schema target via R wrapper | yes |
 | `research_questions.meta / questions[] / rollups / matrix[]` | Research Questions section (KPIs, heatmap, card grid, filters) | `build_research_questions_data.py` over `research_questions.json` | — (Python only) | yes (static catalog) |
+| `nano.meta / enrollment / attention / autonomic` | `/nano/dashboard` hero, KPI, cohort, and research cards | `build_nano_contract()` over existing aggregate blocks | n/a (Python only) | yes |
+| `nano.schedule.timepoints[]` | NANO visit schedule tracker | Aggregate visit completion and schedule builders | n/a (Python only) | yes |
+| `nano.pipeline[] / assessments[]` | NANO pipeline quality and assessment matrix | Aggregate pipeline, feature, completion, and quality summaries | n/a (Python only) | yes |
+| `nano.inventory[] / checklists / redcap / models / library` | NANO operations hub, model status, and Library link | Reviewed operations metadata and aggregate runtime summaries | n/a (Python only) | yes |
 
 ## REDCap Contract (v2)
 
@@ -50,6 +54,13 @@ populates it in the production pipeline.
    categories and 8 type-tags declared in
    `dashboard/research_questions/research_questions.md`. The UI's
    Category × Type-tag heatmap iterates over `meta.categories` × `meta.type_tags`.
+9. `nano.meta.aggregate_only` is always true, target enrollment is 260, and
+   `nano.enrollment.by_group` uses targets ASIB 65, PT 130, and TD 65.
+10. `nano.schedule.timepoints` contains exactly the nine public count-only
+    timepoints from `nicu_admission` through `month_36`.
+11. No object below `nano` may contain a participant identifier, participant
+    row, raw signal, date of birth, medical record number, or free-text note.
+    Null means unavailable; numeric zero remains a measured zero.
 
 If you change any of these, also update:
 * the current consumers in `web/src/**` or `dashboard/server/live_dashboard_server.py`

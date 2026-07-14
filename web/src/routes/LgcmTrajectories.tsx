@@ -5,9 +5,9 @@ import { useStudyData, type LgcmOutcomeData, type GrowthPointData } from "@/api/
 /**
  * NANO Aim 1 — Latent Growth Curve Models.
  *
- * Group means (ASIB / PT / TD) with bootstrapped 95% CI ribbons and dimmed
- * individual traces across the 1–3 month timepoints, plus the intercept/slope
- * group-difference significance table. Every value is read from
+ * Group means (ASIB / PT / TD) with bootstrapped 95% CI ribbons across the
+ * 1–3 month timepoints. Individual traces and group-difference estimates are
+ * rendered only when the approved dashboard release includes them. Every value is read from
  * `dashboard_data.json → nano.lgcm_results`; nothing is hardcoded.
  */
 type Outcome = "pct_sa" | "hr_decel" | "rsa";
@@ -27,12 +27,23 @@ const GROUP_META: Record<Group, { label: string; color: string }> = {
 
 const OUTCOME_UNIT: Record<Outcome, string> = { pct_sa: "%", hr_decel: "bpm", rsa: "ln(ms²)" };
 
+function hasSignificanceResults(result: LgcmOutcomeData): boolean {
+  return [
+    result.asib_vs_td_intercept_p,
+    result.asib_vs_td_slope_p,
+    result.pt_vs_td_intercept_p,
+    result.pt_vs_td_slope_p,
+  ].some((value) => typeof value === "number" && Number.isFinite(value));
+}
+
 export function LgcmTrajectories() {
   const { data, isLoading, isError } = useStudyData();
   const [outcome, setOutcome] = useState<Outcome>("pct_sa");
   const [groups, setGroups] = useState<Record<Group, boolean>>({ asib: true, pt: true, td: true });
 
   const result = data?.nano.lgcm_results[outcome];
+  const hasIndividualTraces = Boolean(result?.individual_traces.length);
+  const hasSignificance = Boolean(result && hasSignificanceResults(result));
 
   function toggleGroup(g: Group) {
     setGroups((prev) => ({ ...prev, [g]: !prev[g] }));
@@ -49,8 +60,12 @@ export function LgcmTrajectories() {
         </h1>
         <p className="mt-2 text-[13px] text-[color:var(--warm-fg3)] max-w-[680px]">
           Latent growth curve intercepts and slopes on heart-defined attention and RSA from 1–3 months,
-          in corrected age. Group means with bootstrapped 95% CI ribbons; dimmed lines are individual
-          participant traces.
+          in corrected age. Group means use bootstrapped 95% CI ribbons when available.{" "}
+          {result
+            ? hasIndividualTraces
+              ? "Dimmed lines show the individual traces included in this approved data release."
+              : "Individual traces are not included in this data release."
+            : "No trajectory release is available for this outcome yet."}
         </p>
       </header>
 
@@ -97,8 +112,14 @@ export function LgcmTrajectories() {
           </Card>
 
           <Card pad={20}>
-            <SectionLabel>Group difference significance</SectionLabel>
-            <SignificanceTable result={result} />
+            <SectionLabel>{hasSignificance ? "Group difference significance" : "Group comparison availability"}</SectionLabel>
+            {hasSignificance ? (
+              <SignificanceTable result={result} />
+            ) : (
+              <p role="status" className="mt-2 text-[13px] text-[color:var(--warm-fg3)]">
+                Group-difference significance estimates are not available in this data release.
+              </p>
+            )}
           </Card>
         </>
       )}
@@ -204,8 +225,8 @@ function GrowthChart({ result, visible, unit }: { result: LgcmOutcomeData; visib
   );
 }
 
-function fmtP(p: number | null): { text: string; sig: boolean } {
-  if (p === null || p === undefined) return { text: "—", sig: false };
+function fmtP(p: number | null): { text: string; sig: boolean | null } {
+  if (p === null || p === undefined) return { text: "Not available", sig: null };
   return { text: p < 0.001 ? "<0.001" : p.toFixed(3), sig: p < 0.05 };
 }
 
@@ -233,7 +254,9 @@ function SignificanceTable({ result }: { result: LgcmOutcomeData }) {
               <td className="py-2 text-[color:var(--warm-fg2)]">{r.label}</td>
               <td className="py-2 text-right font-mono text-[color:var(--warm-fg1)]">{p.text}</td>
               <td className="py-2 text-right">
-                <Badge kind={p.sig ? "ok" : "neutral"} size="sm">{p.sig ? "p < 0.05" : "n.s."}</Badge>
+                <Badge kind={p.sig === true ? "ok" : "neutral"} size="sm">
+                  {p.sig === null ? "Not available" : p.sig ? "p < 0.05" : "n.s."}
+                </Badge>
               </td>
             </tr>
           );

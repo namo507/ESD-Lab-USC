@@ -1150,6 +1150,63 @@ class DashboardChatAssistant:
             "status": self.get_status(),
         }
 
+    def complete_grounded_answer(
+        self,
+        *,
+        message: str,
+        system_prompt: str,
+        context_block: str,
+        max_tokens: int | None = None,
+    ) -> str:
+        """Generate from caller-supplied, already-sanitized grounding.
+
+        This is the narrow reuse seam for API surfaces such as the NANO Buddy.
+        It deliberately does not load the dashboard's broad chat context.  The
+        caller owns a strict aggregate/document allowlist, while generation
+        still uses this assistant's configured provider, queue, timeout,
+        retries, and circuit breaker.  No second model runtime is created.
+        """
+
+        if not isinstance(message, str) or not message.strip():
+            raise AssistantUnavailable(
+                "Please ask a question before submitting.",
+                self.get_status(),
+                http_status=400,
+            )
+        if not isinstance(system_prompt, str) or not system_prompt.strip():
+            raise ValueError("system_prompt must be non-empty text")
+        if not isinstance(context_block, str):
+            raise ValueError("context_block must be text")
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    system_prompt.strip()
+                    + "\n\nAllowed grounding (aggregate and non-PHI only):\n"
+                    + context_block.strip()
+                ),
+            },
+            {"role": "user", "content": message.strip()},
+        ]
+        try:
+            provider = self._ensure_provider()
+            reply = provider.complete(
+                messages=messages,
+                max_tokens=max(
+                    48,
+                    min(
+                        int(max_tokens or self._response_token_limit(message)),
+                        int(self.config.max_new_tokens),
+                    ),
+                ),
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+            )
+        except ProviderError as exc:
+            self._raise_provider_unavailable(exc)
+        return reply.strip() if reply else EMPTY_GROUNDED_REPLY
+
     def stream(self, message: str, history: list[dict[str, str]] | None = None):
         context, messages = self._prepare_request(message, history)
         quick_reply = self._maybe_short_circuit_response(message, context)
