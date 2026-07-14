@@ -137,9 +137,17 @@ export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, densi
 
   return (
     <div className="flex flex-col gap-2.5" aria-label="Fast-path prompts">
-      <div className="flex items-center justify-between gap-2">
-        <span className={baseLabel}>Fast-paths · QA · Model · REDCap · MATLAB · DYN</span>
-        <div className="flex gap-1.5">
+      <div
+        className={
+          density === "compact"
+            ? "flex flex-col items-start gap-2"
+            : "flex items-center justify-between gap-2"
+        }
+      >
+        <span className={baseLabel}>
+          {density === "compact" ? "Fast-paths · filter by topic" : "Fast-paths · QA · Model · REDCap · MATLAB · DYN"}
+        </span>
+        <div className={`flex gap-1.5 ${density === "compact" ? "w-full flex-wrap" : ""}`}>
           {filterTab("all", "all")}
           {lanes.map((l) => filterTab(l, LANE_META[l].label))}
         </div>

@@ -52,7 +52,7 @@ const DEFAULT_ROUTES = [
 ];
 
 const DEFAULT_VIEWPORTS = [
-  { label: "desktop", width: 1440, height: 1100 },
+  { label: "desktop", width: 1280, height: 720 },
   { label: "mobile", width: 390, height: 844 },
 ];
 
@@ -67,6 +67,7 @@ Options:
   --base-url URL       Local dashboard origin to check (default: http://127.0.0.1:8080)
   --live-url URL       Live URL to check. Can be passed multiple times.
   --output-dir DIR     Directory for screenshots and visual-health-results.json
+  --route NAME         Check one named local route. Can be passed multiple times.
   --desktop-only       Skip mobile viewport.
   --mobile-only        Skip desktop viewport.
   --help              Show this help.
@@ -78,6 +79,7 @@ function parseArgs(argv) {
     baseUrl: "http://127.0.0.1:8080",
     liveUrls: [],
     outputDir: "artifacts/visual-health",
+    routes: [],
     desktopOnly: false,
     mobileOnly: false,
   };
@@ -93,6 +95,8 @@ function parseArgs(argv) {
       args.liveUrls.push(argv[++i]);
     } else if (arg === "--output-dir") {
       args.outputDir = argv[++i];
+    } else if (arg === "--route") {
+      args.routes.push(argv[++i]);
     } else if (arg === "--desktop-only") {
       args.desktopOnly = true;
     } else if (arg === "--mobile-only") {
@@ -157,20 +161,115 @@ async function runCheck(browser, check, viewport, outputDir) {
     const errorText = request.failure()?.errorText || "failed";
     const isCancelledMapTile =
       errorText === "net::ERR_ABORTED" && requestUrl.startsWith(OPTIONAL_MAP_TILE_PREFIX);
-    if (!requestUrl.endsWith("/favicon.ico") && !isCancelledMapTile) {
+    const isCancelledAudit =
+      errorText === "net::ERR_ABORTED" && new URL(requestUrl).pathname === "/api/audit";
+    if (!requestUrl.endsWith("/favicon.ico") && !isCancelledMapTile && !isCancelledAudit) {
       failedRequests.push(`${errorText} ${requestUrl}`);
     }
   });
 
   try {
-    await page.goto(check.url, { waitUntil: "networkidle", timeout: 45_000 });
+    await page.goto(check.url, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.waitForSelector("#root", { timeout: 15_000 });
     await page.waitForTimeout(750);
+    await page
+      .waitForFunction(
+        (needles) => needles.every((needle) => document.body.innerText.includes(needle)),
+        check.expect,
+        { timeout: 10_000 },
+      )
+      .catch(() => {});
 
     const bodyText = await page.locator("body").innerText({ timeout: 5_000 }).catch(() => "");
     const rootBox = await page.locator("#root").boundingBox().catch(() => null);
     const missingText = check.expect.filter((needle) => !bodyText.includes(needle));
     const rejectedText = (check.reject ?? []).filter((needle) => bodyText.includes(needle));
+    const assistantLayoutErrors = [];
+    let assistantComposer = null;
+    if (check.name === "local-overview") {
+      await page.getByRole("button", { name: "Toggle ESD Buddy" }).click();
+      const dialog = page.getByRole("dialog", { name: "ESD Buddy" });
+      await dialog.waitFor({ state: "visible", timeout: 5_000 });
+      await page.waitForTimeout(450);
+
+      const composer = page.getByPlaceholder("Ask about the study…");
+      const sendButton = page.getByRole("button", { name: "Send message" });
+      const form = composer.locator("..");
+      const suggestions = dialog.getByLabel("Fast-path prompts");
+      const suggestionsRegion = suggestions.locator("..");
+      await composer.fill("Non-sensitive layout probe\nSecond line");
+      await composer.focus();
+
+      const [dialogBox, composerBox, sendBox, formBox, suggestionsBox, dialogMetrics] = await Promise.all([
+        dialog.boundingBox(),
+        composer.boundingBox(),
+        sendButton.boundingBox(),
+        form.boundingBox(),
+        suggestionsRegion.boundingBox(),
+        dialog.evaluate((element) => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        })),
+      ]);
+      const viewportSize = page.viewportSize();
+      const validBox = (box) => Boolean(box && box.width > 0 && box.height > 0);
+      const withinBox = (box, outer, tolerance = 2) =>
+        Boolean(
+          validBox(box) &&
+          validBox(outer) &&
+          box.x >= outer.x - tolerance &&
+          box.y >= outer.y - tolerance &&
+          box.x + box.width <= outer.x + outer.width + tolerance &&
+          box.y + box.height <= outer.y + outer.height + tolerance,
+        );
+      const withinViewport = (box) =>
+        Boolean(
+          validBox(box) &&
+          viewportSize &&
+          box.x >= -2 &&
+          box.y >= -2 &&
+          box.x + box.width <= viewportSize.width + 2 &&
+          box.y + box.height <= viewportSize.height + 2,
+        );
+
+      for (const [label, box] of [
+        ["composer form", formBox],
+        ["textarea", composerBox],
+        ["Send button", sendBox],
+      ]) {
+        if (!validBox(box)) assistantLayoutErrors.push(`${label} has no visible box`);
+        if (!withinBox(box, dialogBox)) assistantLayoutErrors.push(`${label} leaves the assistant dialog`);
+        if (!withinViewport(box)) assistantLayoutErrors.push(`${label} leaves the viewport`);
+      }
+      if (
+        validBox(suggestionsBox) &&
+        validBox(formBox) &&
+        suggestionsBox.y + suggestionsBox.height > formBox.y + 2
+      ) {
+        assistantLayoutErrors.push("Fast-path prompts overlap the composer form");
+      }
+      if (dialogMetrics.scrollWidth > dialogMetrics.clientWidth + 2) {
+        assistantLayoutErrors.push("Assistant dialog has horizontal overflow");
+      }
+      if (!(await sendButton.isEnabled())) {
+        assistantLayoutErrors.push("Send button stayed disabled after filling the textarea");
+      }
+      if (!(await composer.evaluate((element) => document.activeElement === element))) {
+        assistantLayoutErrors.push("Textarea could not retain focus");
+      }
+      await sendButton.click({ trial: true, timeout: 2_000 }).catch((error) => {
+        assistantLayoutErrors.push(`Send button is not actionable: ${String(error?.message || error)}`);
+      });
+
+      assistantComposer = {
+        dialogBox,
+        formBox,
+        composerBox,
+        sendBox,
+        suggestionsBox,
+        dialogMetrics,
+      };
+    }
     const screenshot = path.join(
       outputDir,
       `${sanitizeName(check.name)}-${viewport.label}.png`,
@@ -186,7 +285,8 @@ async function runCheck(browser, check, viewport, outputDir) {
       consoleErrors.length === 0 &&
       pageErrors.length === 0 &&
       badResponses.length === 0 &&
-      failedRequests.length === 0;
+      failedRequests.length === 0 &&
+      assistantLayoutErrors.length === 0;
 
     return {
       name: check.name,
@@ -201,6 +301,8 @@ async function runCheck(browser, check, viewport, outputDir) {
       pageErrors,
       badResponses,
       failedRequests,
+      assistantLayoutErrors,
+      assistantComposer,
       screenshot,
     };
   } catch (error) {
@@ -232,7 +334,17 @@ async function main() {
     return true;
   });
 
-  const localChecks = DEFAULT_ROUTES.map((route) => ({
+  const selectedRoutes = args.routes.length
+    ? DEFAULT_ROUTES.filter((route) => args.routes.includes(route.name))
+    : DEFAULT_ROUTES;
+  const unknownRoutes = args.routes.filter(
+    (name) => !DEFAULT_ROUTES.some((route) => route.name === name),
+  );
+  if (unknownRoutes.length > 0) {
+    throw new Error(`Unknown route name: ${unknownRoutes.join(", ")}`);
+  }
+
+  const localChecks = selectedRoutes.map((route) => ({
     ...route,
     name: `local-${route.name}`,
     url: joinUrl(args.baseUrl, route.path),
@@ -266,6 +378,7 @@ async function main() {
       "pageErrors",
       "badResponses",
       "failedRequests",
+      "assistantLayoutErrors",
     ]) {
       const value = result[key];
       if (Array.isArray(value) && value.length > 0) {
