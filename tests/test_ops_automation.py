@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -108,9 +110,141 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
     assert 'name="esd-api-mode" content="fallback-only"' in html
     assert 'name="esd-api-origin"' not in html
     assert "const API_ORIGIN = null;" in worker
+    assert 'request.headers.get("CF-Connecting-IP")' in worker
+    assert 'headers.set("X-ESD-Original-Client-IP"' in worker
     assert (
-        'fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin")' in worker
+        'fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin", env)'
+        in worker
     )
+    assert 'path === "/api/buddy"' in worker
+    assert "sanitizeNanoForBuddy" in worker
+    assert "DASHBOARD_ASSISTANT_API_KEY" in worker
+    assert "BUDDY_PROVIDER_MODEL" in worker
+    assert "buddyFallbackResponse(request, url, env, reason)" in worker
+    assert "cleanBuddyProviderOutput" in worker
+
+
+def test_pages_packager_rejects_participant_rows_in_public_nano_payload():
+    payload = {
+        "schema": "nano-dashboard.v1",
+        "nano": {
+            "meta": {"study": "NANO", "aggregate_only": True},
+            "schedule": {"participant_ids": ["NANO-1043"]},
+        },
+    }
+
+    with pytest.raises(ValueError, match="forbidden key"):
+        build_pages_site._validate_public_nano_payload(payload)
+
+
+def test_pages_buddy_document_index_includes_tracked_ecg_protocol():
+    payload = build_pages_site._build_public_buddy_documents(Path.cwd())
+    paths = {document["relative_path"] for document in payload["documents"]}
+
+    assert payload["schema"] == "nano-buddy-documents.v1"
+    assert "docs/ecg_processing_protocol.md" in paths
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node is not installed")
+def test_generated_pages_worker_blocks_phi_and_grounds_document_provider(tmp_path):
+    worker_path = tmp_path / "worker.mjs"
+    worker_path.write_text(build_pages_site._worker_source(None), encoding="utf-8")
+    environment = os.environ.copy()
+    environment["WORKER_URL"] = worker_path.as_uri()
+    script = r"""
+const worker = (await import(process.env.WORKER_URL)).default;
+const providerCalls = [];
+globalThis.fetch = async (input, init = {}) => {
+  providerCalls.push({ input: String(input), body: String(init.body || "") });
+  const providerPayload = {
+    choices: [{ message: { content: "Use neurokit2 and review aggregate QC." } }],
+  };
+  return new Response(JSON.stringify(providerPayload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+};
+
+const nano = {
+  schema: "nano-dashboard.v1",
+  nano: {
+    meta: { study: "NANO", as_of: "2026-07-14", n_target: 260, aggregate_only: true },
+    enrollment: { target: 260, enrolled: 210 },
+    library: { indexed_documents: 1 },
+  },
+};
+const docs = {
+  schema: "nano-buddy-documents.v1",
+  documents: [{
+    title: "ECG Processing SOP",
+    relative_path: "docs/ecg_processing_protocol.md",
+    excerpt: "Run ECG preprocessing with neurokit2 and review aggregate QC flags.",
+    search_text: "ECG preprocessing protocol neurokit2 aggregate QC steps",
+    source: "tracked repository documentation",
+    category: "SOP and methods",
+    keywords: ["ecg", "preprocessing", "protocol"],
+  }],
+};
+const assets = {
+  async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path.endsWith("nano_dashboard_data.json")) return new Response(JSON.stringify(nano));
+    if (path.endsWith("buddy_documents.json")) return new Response(JSON.stringify(docs));
+    if (path.endsWith("readings_data.json")) return new Response(JSON.stringify({ featured: [], readings: [] }));
+    return new Response("not found", { status: 404 });
+  },
+};
+const env = { ASSETS: assets, DASHBOARD_ASSISTANT_API_KEY: "test-only" };
+
+async function ask(message) {
+  const response = await worker.fetch(new Request("https://example.test/api/buddy", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://example.test" },
+    body: JSON.stringify({ message, context: { section: "nano" } }),
+  }), env);
+  return { status: response.status, payload: await response.json() };
+}
+
+for (const message of [
+  "How is caregiver Jane Doe doing after 07/04/2026? Her phone is 803-555-1212.",
+  "Email family@example.org about NANO-1043.",
+  "Look up the family at 123 Main Street.",
+  "The Social Security number is 123-45-6789.",
+]) {
+  const result = await ask(message);
+  if (result.status !== 200 || result.payload.refused !== true) {
+    throw new Error(`PHI request was not refused: ${message}`);
+  }
+}
+if (providerCalls.length !== 0) throw new Error("PHI reached the provider");
+
+const result = await ask("How do I run ECG preprocessing using the approved protocol?");
+if (result.status !== 200 || result.payload.refused !== false) {
+  throw new Error("Valid document question failed");
+}
+if (result.payload.citations?.[0]?.path !== "docs/ecg_processing_protocol.md") {
+  throw new Error("Document citation missing");
+}
+if (providerCalls.length !== 1) throw new Error("Provider was not called exactly once");
+const providerBody = JSON.parse(providerCalls[0].body);
+const grounding = providerBody.messages
+  .map((message) => message.content)
+  .join(" ")
+  .toLowerCase();
+if (!grounding.includes("neurokit2") || !grounding.includes("documents")) {
+  throw new Error("Document snippet was absent from provider grounding");
+}
+"""
+    result = subprocess.run(
+        ["node", "--input-type=module", "--eval", script],
+        cwd=Path.cwd(),
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_site_health_accepts_provider_degraded_fallback(monkeypatch):
@@ -227,7 +361,31 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-nvidia}")
         assert "nemotron-3-super-120b-a12b" in environment["DASHBOARD_ASSISTANT_MODEL"]
         assert "${" in environment["DASHBOARD_ASSISTANT_API_KEY"]
+        assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
+            "${DASHBOARD_ASSISTANT_ENABLED:-true}"
+        )
+        assert environment["DASHBOARD_ASSISTANT_LOAD_DOTENV"] == "false"
+        assert environment["NANO_ID_SALT"] == (
+            "${NANO_ID_SALT:-${PARTICIPANT_ID_SALT:-}}"
+        )
+        assert "DASHBOARD_PRESENTATION_JOB_DB" in environment
+        assert "READINGS_WATCH_PATH" in environment
+        assert "PIPELINE_MAX_RETRIES" in environment
+        assert "NANO_DATA_ROOT" in environment
         assert "HF_HOME" not in environment
+        assert services["dashboard"].get("env_file") is None
+        assert all(
+            str(port).startswith("127.0.0.1:")
+            for port in services["dashboard"]["ports"]
+        )
+        assert "no-new-privileges:true" in services["dashboard"]["security_opt"]
+        assert "ALL" in services["dashboard"]["cap_drop"]
+        for secret_name in (
+            "CLOUDFLARE_API_TOKEN",
+            "CLOUDFLARE_TUNNEL_TOKEN",
+            "CLOUDFLARED_TUNNEL_TOKEN",
+        ):
+            assert secret_name not in environment
         for key in (
             "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",
             "DASHBOARD_ASSISTANT_RETRY_JITTER",
@@ -241,10 +399,51 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
             assert services[service_name]["labels"]["com.esdlabusc.autoheal"] == "true"
         for service_name in ("dashboard-share", "dashboard-share-named"):
             assert services[service_name]["healthcheck"]["test"][-1] == "ready"
+        assert "share" in services["dashboard-share"]["profiles"]
+        assert "share-named" in services["dashboard-share-named"]["profiles"]
+        assert "share" not in services["dashboard-share-named"]["profiles"]
+        named_command = services["dashboard-share-named"]["command"]
+        assert "--token-file /run/secrets/cloudflare-tunnel-token" in named_command
+        assert "--token " not in named_command
         assert (
             services["autoheal"]["environment"]["AUTOHEAL_CONTAINER_LABEL"]
             == "com.esdlabusc.autoheal"
         )
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="Docker CLI unavailable")
+def test_compose_preserves_assistant_disable_override():
+    root = Path(__file__).resolve().parents[1]
+    env = dict(os.environ)
+    env["DASHBOARD_ASSISTANT_ENABLED"] = "false"
+    completed = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--env-file",
+            "/dev/null",
+            "-f",
+            str(root / "docker-compose.yml"),
+            "config",
+            "--format",
+            "json",
+        ],
+        cwd=root,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(completed.stdout)
+    dashboard_env = payload["services"]["dashboard"]["environment"]
+    assert dashboard_env["DASHBOARD_ASSISTANT_ENABLED"] == "false"
+    assert dashboard_env["DASHBOARD_ASSISTANT_LOAD_DOTENV"] == "false"
+
+
+def test_share_script_normalizes_legacy_tunnel_token_for_compose_secret():
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "scripts" / "share_dashboard.sh").read_text(encoding="utf-8")
+    assert 'export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"' in script
 
 
 def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():

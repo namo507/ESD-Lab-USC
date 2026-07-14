@@ -11,6 +11,16 @@ const DEFAULT_ROUTES = [
     reject: ["No pipeline stages"],
   },
   {
+    name: "nano-dashboard",
+    path: "/nano/dashboard",
+    expect: [
+      "The heartbeat of every baby's first year.",
+      "What is due next?",
+      "Ask the lab, stay grounded",
+    ],
+    reject: ["NANO dashboard data is temporarily unavailable"],
+  },
+  {
     name: "versioned-root",
     path: "/?v=20260604-032545",
     expect: ["The heartbeat", "The NANO pipeline, live"],
@@ -144,6 +154,8 @@ async function runCheck(browser, check, viewport, outputDir) {
   const pageErrors = [];
   const badResponses = [];
   const failedRequests = [];
+  const layoutErrors = [];
+  let horizontalLayout = null;
 
   page.on("console", (msg) => {
     if (msg.type() === "error") consoleErrors.push(msg.text());
@@ -270,6 +282,48 @@ async function runCheck(browser, check, viewport, outputDir) {
         dialogMetrics,
       };
     }
+    if (new URL(check.url).pathname === "/nano/dashboard") {
+      const documentHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      const scrollStep = Math.max(360, Math.floor(viewport.height * 0.75));
+      for (let y = 0; y <= documentHeight; y += scrollStep) {
+        await page.evaluate((nextY) => window.scrollTo(0, nextY), y);
+        await page.waitForTimeout(100);
+      }
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(150);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForTimeout(700);
+
+      horizontalLayout = await page.evaluate(() => {
+        const root = document.querySelector("#root");
+        const dashboard = document.querySelector('[data-testid="nano-study-dashboard"]');
+        const pipeline = document.querySelector('[class*="pipelineSteps"]');
+        const tableScroller = document.querySelector('[class*="tableScroll"]');
+        return {
+          viewportWidth: document.documentElement.clientWidth,
+          documentScrollWidth: document.documentElement.scrollWidth,
+          bodyScrollWidth: document.body.scrollWidth,
+          rootClientWidth: root?.clientWidth ?? 0,
+          rootScrollWidth: root?.scrollWidth ?? 0,
+          dashboardClientWidth: dashboard?.clientWidth ?? 0,
+          dashboardScrollWidth: dashboard?.scrollWidth ?? 0,
+          pipelineClientWidth: pipeline?.clientWidth ?? 0,
+          pipelineScrollWidth: pipeline?.scrollWidth ?? 0,
+          tableClientWidth: tableScroller?.clientWidth ?? 0,
+          tableScrollWidth: tableScroller?.scrollWidth ?? 0,
+        };
+      });
+      const pageScrollWidth = Math.max(
+        horizontalLayout.documentScrollWidth,
+        horizontalLayout.bodyScrollWidth,
+        horizontalLayout.rootScrollWidth,
+      );
+      if (pageScrollWidth > horizontalLayout.viewportWidth + 2) {
+        layoutErrors.push(
+          `Document has horizontal overflow (${pageScrollWidth}px scroll width at ${horizontalLayout.viewportWidth}px viewport)`,
+        );
+      }
+    }
     const screenshot = path.join(
       outputDir,
       `${sanitizeName(check.name)}-${viewport.label}.png`,
@@ -286,7 +340,8 @@ async function runCheck(browser, check, viewport, outputDir) {
       pageErrors.length === 0 &&
       badResponses.length === 0 &&
       failedRequests.length === 0 &&
-      assistantLayoutErrors.length === 0;
+      assistantLayoutErrors.length === 0 &&
+      layoutErrors.length === 0;
 
     return {
       name: check.name,
@@ -302,7 +357,9 @@ async function runCheck(browser, check, viewport, outputDir) {
       badResponses,
       failedRequests,
       assistantLayoutErrors,
+      layoutErrors,
       assistantComposer,
+      horizontalLayout,
       screenshot,
     };
   } catch (error) {
@@ -316,6 +373,8 @@ async function runCheck(browser, check, viewport, outputDir) {
       pageErrors,
       badResponses,
       failedRequests,
+      layoutErrors,
+      horizontalLayout,
     };
   } finally {
     await page.close().catch(() => {});
@@ -379,6 +438,7 @@ async function main() {
       "badResponses",
       "failedRequests",
       "assistantLayoutErrors",
+      "layoutErrors",
     ]) {
       const value = result[key];
       if (Array.isArray(value) && value.length > 0) {

@@ -16,8 +16,9 @@ COMPOSE := docker compose -f docker/compose.dev.yml
 ROOT_COMPOSE := docker compose -f docker-compose.yml
 MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
+SHARE_PROFILE ?= share
 
-.PHONY: help install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -173,6 +174,12 @@ dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	fi
 	bash scripts/share_dashboard.sh
 
+share-named:  ## Start the configured stable named Cloudflare tunnel
+	bash scripts/share_dashboard.sh --mode named
+
+share-quick:  ## Start a temporary random-hostname Cloudflare tunnel
+	bash scripts/share_dashboard.sh --mode quick
+
 pages-build:  ## Build the canonical Cloudflare Pages dashboard SPA artifact locally
 	VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true VITE_FEATURE_RSA_GROWTH_CURVES=true VITE_FEATURE_HDA_TIMELINE_PLAYER=true VITE_FEATURE_THERMAL_HEATMAP=true VITE_FEATURE_SWIMMER_PLOT=true VITE_FEATURE_ATTRITION_FUNNEL=true VITE_FEATURE_SDOH_MAP=true VITE_FEATURE_SHAP_BEESWARM=true VITE_FEATURE_CLUSTER_VIEWER=true VITE_FEATURE_MODEL_LEADERBOARD=true VITE_FEATURE_CASCADE_DAG=true VITE_FEATURE_REDCAP_COMPLETENESS=true VITE_FEATURE_REDCAP_VISIT_HEALTH=true VITE_FEATURE_ECG_QUALITY_MONITOR=true VITE_FEATURE_SPATIAL_ASSESSMENT_MATRIX=true VITE_FEATURE_ATTACHMENT_HEATMAP=true VITE_FEATURE_CGA_RIVER=true VITE_FEATURE_COUNTY_COMPARATOR=true VITE_FEATURE_PARTICIPANT_TIMELINE_V2=true VITE_FEATURE_MODEL_CONFIDENCE_TERRAIN=true VITE_FEATURE_ATTRITION_FUNNEL_V2=true VITE_FEATURE_GUIDED_EXPLORER=true VITE_FEATURE_PUBLIC_INSIGHTS=true VITE_FEATURE_EXECUTIVE_MODE=true VITE_FEATURE_DYN_INFANT_PASSPORT=true VITE_FEATURE_DYN_CASCADE_SIMULATOR=true VITE_FEATURE_MULTIMODAL_SYNCHRONY=true VITE_FEATURE_DYN_CO_REGULATION_BRAID=true npm --prefix web run build
 	$(PYTHON) scripts/build_pages_site.py
@@ -248,10 +255,10 @@ docker-preflight:  ## Check Docker daemon and Compose availability before starti
 	$(PYTHON) scripts/check_docker_health.py --daemon-only --json
 
 docker-health:  ## Check and repair the dashboard Docker runtime health
-	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --service dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --check-url $(DASHBOARD_LOCAL_URL)/nano/dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/buddy --repair --json
 
 docker-share-health:  ## Check dashboard plus the currently selected share sidecar
-	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --profile share --service dashboard --service $(SHARE_SERVICE) --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --repair --json
+	$(PYTHON) scripts/check_docker_health.py --compose-file docker-compose.yml --project-name esd-lab-usc --profile $(SHARE_PROFILE) --service dashboard --service $(SHARE_SERVICE) --check-url $(DASHBOARD_LOCAL_URL)/api/healthz --check-url $(DASHBOARD_LOCAL_URL)/nano/dashboard --check-url $(DASHBOARD_LOCAL_URL)/api/buddy --repair --json
 
 ops-check: compose-validate  ## Check canonical + runtime-share public dashboard surfaces
 	$(PYTHON) scripts/check_live_surfaces.py --max-stamp-age-hours 168

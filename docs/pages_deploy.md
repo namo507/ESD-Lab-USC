@@ -24,7 +24,7 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 
 - The public Pages site serves the React SPA from `web/build/`.
 - Dashboard data is intentionally mocked in production by building with `VITE_USE_MOCKS=true`.
-- Live NVIDIA assistant chat works when `_worker.js` proxies `/api/*` to a healthy durable backend origin. If no such origin exists, packaging emits a fallback-only worker so every dashboard page remains usable without embedding a dead hostname.
+- Live NVIDIA assistant chat prefers a healthy durable backend origin. If no such origin exists, the Pages worker uses the project-level `DASHBOARD_ASSISTANT_API_KEY` secret for bounded provider calls and keeps deterministic aggregate and document fallbacks available.
 - The browser never receives the NVIDIA key and never calls the provider directly.
 - External `200` rewrites in `_redirects` are not enough for this on Cloudflare Pages because Pages only supports proxy-style rewrites to relative paths on the same site.
 
@@ -97,16 +97,28 @@ curl -X POST https://esd-lab-namo.pages.dev/api/chat \
   --data '{"message":"How many indexed readings are available?","history":[]}'
 ```
 
-If the status returns `pages://fallback-assistant`, inspect the live
-`esd-api-origin` meta tag and verify that origin directly:
+If the status returns `pages://fallback-assistant`, confirm that the Pages
+runtime secret is present. Also inspect the live `esd-api-origin` meta tag when
+a durable backend is expected:
 
 ```bash
+npx --yes wrangler@4 pages secret list --project-name esd-lab-namo
 curl https://esd-lab-namo.pages.dev/ | tr '<' '\n' | grep esd-api-origin
 curl https://<origin-host>/api/assistant/status
 ```
 
-Then republish with a healthy durable origin. If none is available, leave
-`PAGES_API_ORIGIN` unset and deploy fallback-only mode:
+Set the edge secret from a protected local or CI environment without printing
+its value:
+
+```bash
+printf '%s' "$DASHBOARD_ASSISTANT_API_KEY" | \
+  npx --yes wrangler@4 pages secret put DASHBOARD_ASSISTANT_API_KEY \
+  --project-name esd-lab-namo
+```
+
+Then redeploy. If no durable origin is available, leave `PAGES_API_ORIGIN`
+unset; the secret-backed edge assistant and deterministic fallbacks remain
+active:
 
 ```bash
 PAGES_API_ORIGIN= DASHBOARD_API_ORIGIN= make pages-deploy
@@ -119,6 +131,11 @@ The workflows require two repo secrets:
 - `CLOUDFLARE_API_TOKEN` — an API token with **Account · Cloudflare Pages · Edit** permission for the `esd-lab-namo` project.
 - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID for that Pages project.
 
+The Pages project also requires the runtime secret
+`DASHBOARD_ASSISTANT_API_KEY` for provider-backed edge chat when a durable
+backend origin is unavailable. Store it with `wrangler pages secret put`; do
+not serialize it into the build artifact or a repository variable.
+
 If you want unattended assistant proxying from GitHub Actions, set the
 `PAGES_API_ORIGIN` repository variable to a stable backend origin. Without it,
 deployments intentionally use fallback-only mode; an ephemeral manifest origin
@@ -130,5 +147,5 @@ Do not set `DASHBOARD_PUBLIC_HOSTNAME` to a `*.pages.dev` domain. Named tunnels 
 
 - **Pages stays deterministic.** CI ships a prebuilt directory instead of letting Cloudflare infer a framework build.
 - **The assistant proxy lives at the edge.** `_worker.js` handles `/api/*` so the public site can keep same-origin API calls while the backend runs behind a separate tunnel.
-- **Production remains smooth without a full backend port.** Mocked dashboard data avoids exposing half-implemented API routes while live chat still works.
+- **Production remains smooth without a full backend port.** Packaged aggregate dashboard data and a secret-backed edge assistant keep NANO metrics and chat available while a durable origin is absent.
 - **The runtime-share preview stays separate from production.** Quick-tunnel refreshes can update a stable preview wrapper without overwriting the canonical Pages alias.

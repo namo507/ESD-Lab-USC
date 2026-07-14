@@ -474,9 +474,11 @@ EVENTS = [
 # ─── Section builders ──────────────────────────────────────────────────────
 def build_enrollment(redcap: pd.DataFrame) -> dict:
     """Per-group cumulative enrollment over the last 30 months."""
-    today = datetime.now()
-    start = today - timedelta(days=30 * 30)
-    months = [(start + timedelta(days=30 * i)).strftime("%Y-%m") for i in range(30)]
+    current_month = pd.Timestamp.now().to_period("M")
+    months = [
+        str(period)
+        for period in pd.period_range(end=current_month, periods=30, freq="M")
+    ]
 
     # Filter to enrollment event
     enroll_df = redcap[
@@ -490,8 +492,12 @@ def build_enrollment(redcap: pd.DataFrame) -> dict:
     for g, meta in GROUPS.items():
         group_df = enroll_df[enroll_df["group_assignment"] == g]
         monthly = []
-        cum = 0
         by_month = group_df.groupby("enrolled_month").size().to_dict()
+        window_start = pd.Timestamp(f"{months[0]}-01")
+        enrolled_dates = pd.to_datetime(group_df["enrollment_date"], errors="coerce")
+        # Participants enrolled before the 30-month chart window remain part of
+        # the current cohort; seed the cumulative curve with that baseline.
+        cum = int(((enrolled_dates < window_start) | enrolled_dates.isna()).sum())
         for m in months:
             cum += int(by_month.get(m, 0))
             monthly.append(cum)
@@ -506,7 +512,21 @@ def build_enrollment(redcap: pd.DataFrame) -> dict:
             "color": meta["color"],
             "label": meta["label"],
         }
-    return {"months": months, "by_group": by_group}
+
+    by_ga_stratum: dict[str, int] = {}
+    if "ga_weeks" in enroll_df.columns:
+        ga_weeks = pd.to_numeric(enroll_df["ga_weeks"], errors="coerce")
+        by_ga_stratum = {
+            "24_26w": int(ga_weeks.between(24, 26, inclusive="both").sum()),
+            "27_29w": int(ga_weeks.between(27, 29, inclusive="both").sum()),
+            "30_32w": int(ga_weeks.between(30, 32, inclusive="both").sum()),
+            "full_term": int(ga_weeks.between(37, 42, inclusive="both").sum()),
+        }
+    return {
+        "months": months,
+        "by_group": by_group,
+        "by_ga_stratum": by_ga_stratum,
+    }
 
 
 def build_visit_completion(redcap: pd.DataFrame) -> dict:
@@ -2155,8 +2175,6 @@ def build_payload(
         redcap_timeline,
         redcap_next_wave,
     )
-    study_blocks = build_study_blocks(generated_at=redcap_generated_at)
-
     payload = {
         "meta": {
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -2212,8 +2230,36 @@ def build_payload(
             controls=controls,
         ),
         "lab_operations": build_lab_operations_payload(generated_at=redcap_generated_at),
-        **study_blocks,
     }
+    nano_aggregates = {
+        key: payload.get(key)
+        for key in (
+            "enrollment",
+            "visit_completion",
+            "data_quality",
+            "ml_performance",
+            "trajectories",
+            "redcap_audit",
+            "hda_composition",
+            "attrition_funnel",
+            "county_profiles",
+            "redcap_meta",
+            "redcap_trackers",
+            "redcap_schedule",
+            "redcap_ops",
+            "matlab_integration",
+        )
+    }
+    # Only this aggregate row count crosses into the public NANO contract; no
+    # feature-matrix rows, identifiers, or raw values are passed to the builder.
+    nano_aggregates["feature_row_count"] = int(len(features))
+    payload.update(
+        build_study_blocks(
+            generated_at=redcap_generated_at,
+            data_source=data_source,
+            aggregates=nano_aggregates,
+        )
+    )
     return _make_json_safe(payload)
 
 
@@ -2291,6 +2337,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--output",
         type=Path,
         default=PROJECT_ROOT / "dashboard" / "data" / "dashboard_data.json",
+    )
+    parser.add_argument(
+        "--nano-output",
+        type=Path,
+        default=None,
+        help=(
+            "Aggregate-only NANO browser payload. Defaults to "
+            "nano_dashboard_data.json beside --output."
+        ),
     )
     parser.add_argument(
         "--fallback-synthetic",
@@ -2381,7 +2436,16 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 2
 
     _atomic_write_json(args.output, payload)
+    nano_output = args.nano_output or args.output.with_name("nano_dashboard_data.json")
+    _atomic_write_json(
+        nano_output,
+        {
+            "schema": "nano-dashboard.v1",
+            "nano": payload.get("nano", {}),
+        },
+    )
     logger.info("✓ Wrote dashboard payload → %s", args.output)
+    logger.info("✓ Wrote aggregate-only NANO payload → %s", nano_output)
     logger.info("  data_source: %s", payload["meta"]["data_source"])
     logger.info("  keys: %s", list(payload.keys()))
     return 0

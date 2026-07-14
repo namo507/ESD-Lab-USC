@@ -1079,9 +1079,7 @@ def build_payload() -> dict:
     redcap_anomaly_count = sum(
         1 for row in redcap_visit_health if row["hasCarryForwardRisk"]
     )
-    study_blocks = build_study_blocks(generated_at=redcap_generated_at)
-
-    return {
+    payload = {
         "meta": {
             "generated_at": generated_at,
             "data_source": "synthetic_demo",
@@ -1136,8 +1134,34 @@ def build_payload() -> dict:
             next_wave=redcap_next_wave,
         ),
         "lab_operations": build_lab_operations_payload(generated_at=redcap_generated_at),
-        **study_blocks,
     }
+    nano_aggregates = {
+        key: payload.get(key)
+        for key in (
+            "enrollment",
+            "visit_completion",
+            "data_quality",
+            "ml_performance",
+            "trajectories",
+            "redcap_audit",
+            "hda_composition",
+            "attrition_funnel",
+            "county_profiles",
+            "redcap_meta",
+            "redcap_trackers",
+            "redcap_schedule",
+            "redcap_ops",
+            "matlab_integration",
+        )
+    }
+    payload.update(
+        build_study_blocks(
+            generated_at=redcap_generated_at,
+            data_source="synthetic_demo",
+            aggregates=nano_aggregates,
+        )
+    )
+    return payload
 
 
 def main() -> None:

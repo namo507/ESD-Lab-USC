@@ -217,6 +217,7 @@ To reopen the current workspace in the container, use the VS Code command palett
 Current stable public entrypoints:
 
 - Public wrapper: [https://esd-lab-namo.pages.dev/](https://esd-lab-namo.pages.dev/)
+- NANO Study dashboard: [https://esd-lab-namo.pages.dev/nano/dashboard](https://esd-lab-namo.pages.dev/nano/dashboard)
 - Direct dashboard origin: the current `make dashboard-share` URL printed for the active Cloudflare quick tunnel session
 
 ### Shareable Public Links
@@ -251,8 +252,9 @@ The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
 depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
 hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
 Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
-is attached, the canonical site serves its safe fallback assistant while the
-current direct quick-tunnel URL exposes the live NVIDIA-backed runtime.
+is attached, the canonical site can run the NVIDIA-backed assistant at the
+Pages edge from the project-level `DASHBOARD_ASSISTANT_API_KEY` secret. The
+current direct quick-tunnel URL continues to expose the full local runtime.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or
@@ -272,9 +274,10 @@ CLOUDFLARE_TUNNEL_TOKEN=...
 DASHBOARD_PUBLIC_HOSTNAME=dashboard.esdlabsc.com
 ```
 
-After that, `make dashboard-share` switches to the `dashboard-share-named`
-service and can print the custom-domain link instead of a random
-`trycloudflare.com` URL.
+After that, `make dashboard-share` selects named-tunnel mode and can print the
+custom-domain link instead of a random `trycloudflare.com` URL. The equivalent
+explicit command is `make share-named`; use `make share-quick` only for a
+temporary preview.
 
 The share link stays live while the Docker services keep running.
 

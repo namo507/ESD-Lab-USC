@@ -388,8 +388,8 @@ export async function* streamChat(
   for (const delta of parsed.deltas) yield delta;
 }
 
-async function fetchStatusAt(path: string): Promise<AssistantStatus> {
-  const response = await requestJson(path);
+async function fetchStatusAt(path: string, signal?: AbortSignal): Promise<AssistantStatus> {
+  const response = await requestJson(path, { signal });
   if (!response.ok) throw safeRequestError(response.status);
   try {
     return normalizeStatus((await response.json()) as AssistantStatusPayload);
@@ -398,10 +398,10 @@ async function fetchStatusAt(path: string): Promise<AssistantStatus> {
   }
 }
 
-export async function fetchAssistantStatus(): Promise<AssistantStatus> {
-  const response = await requestJson(ASSISTANT_STATUS_ENDPOINT);
+export async function fetchAssistantStatus(signal?: AbortSignal): Promise<AssistantStatus> {
+  const response = await requestJson(ASSISTANT_STATUS_ENDPOINT, { signal });
   if (response.status === 404 || response.status === 405) {
-    return fetchStatusAt(LEGACY_STATUS_ENDPOINT);
+    return fetchStatusAt(LEGACY_STATUS_ENDPOINT, signal);
   }
   if (!response.ok) throw safeRequestError(response.status);
   try {
@@ -412,6 +412,6 @@ export async function fetchAssistantStatus(): Promise<AssistantStatus> {
 }
 
 /** Kept as the UI-facing name; it now uses only the dashboard/Pages proxy. */
-export async function fetchLiveAssistantStatus(): Promise<AssistantStatus> {
-  return fetchAssistantStatus();
+export async function fetchLiveAssistantStatus(signal?: AbortSignal): Promise<AssistantStatus> {
+  return fetchAssistantStatus(signal);
 }

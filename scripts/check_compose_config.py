@@ -23,6 +23,28 @@ DEFAULT_FILES = [
     PROJECT_ROOT / "docker" / "compose.prod.yml",
 ]
 
+REQUIRED_DASHBOARD_ENVIRONMENT = {
+    "DASHBOARD_ASSISTANT_ENABLED",
+    "DASHBOARD_ASSISTANT_PROVIDER",
+    "DASHBOARD_ASSISTANT_API_KEY",
+    "DASHBOARD_ASSISTANT_LOAD_DOTENV",
+    "DASHBOARD_AUDIT_RATE_LIMIT_REQUESTS",
+    "DASHBOARD_PRESENTATION_JOB_DB",
+    "DASHBOARD_PRESENTATION_MAX_CONCEPT_CHARS",
+    "DASHBOARD_PRESENTATION_JOB_TTL_SECONDS",
+    "DASHBOARD_PRESENTATION_MAX_TOKENS",
+    "DASHBOARD_TRUSTED_CLOUDFLARE_WORKER_ZONE",
+    "K8S_MODE_ENABLED",
+    "K8S_NAMESPACE",
+    "PIPELINE_ENVIRONMENT",
+    "READINGS_WATCH_PATH",
+    "READINGS_PIPELINE_STATUS_PATH",
+    "PIPELINE_MAX_RETRIES",
+    "NANO_ID_SALT",
+    "PARTICIPANT_ID_SALT",
+    "NANO_DATA_ROOT",
+}
+
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     try:
@@ -102,6 +124,14 @@ def _service_environment(service: dict[str, Any]) -> dict[str, str]:
     return {}
 
 
+def _port_is_loopback_only(port: Any) -> bool:
+    if isinstance(port, str):
+        return port.startswith("127.0.0.1:") or port.startswith("[::1]:")
+    if isinstance(port, dict):
+        return str(port.get("host_ip") or "") in {"127.0.0.1", "::1"}
+    return False
+
+
 def validate_compose(path: Path) -> list[str]:
     errors: list[str] = []
     data = _load_yaml(path)
@@ -133,6 +163,47 @@ def validate_compose(path: Path) -> list[str]:
     healthcheck = dashboard.get("healthcheck")
     if not isinstance(healthcheck, dict) or not healthcheck.get("test"):
         errors.append(f"{path}: dashboard service must define healthcheck.test")
+
+    if dashboard.get("env_file"):
+        errors.append(
+            f"{path}: dashboard must use an explicit application environment "
+            "allowlist instead of loading the whole .env"
+        )
+    dashboard_environment = _service_environment(dashboard)
+    missing_environment = sorted(
+        REQUIRED_DASHBOARD_ENVIRONMENT - dashboard_environment.keys()
+    )
+    if missing_environment:
+        errors.append(
+            f"{path}: dashboard application allowlist is missing: "
+            + ", ".join(missing_environment)
+        )
+    for forbidden_key in (
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_TUNNEL_TOKEN",
+        "CLOUDFLARED_TUNNEL_TOKEN",
+    ):
+        if forbidden_key in dashboard_environment:
+            errors.append(
+                f"{path}: dashboard environment must not include {forbidden_key}"
+            )
+    if dashboard_environment.get("DASHBOARD_ASSISTANT_LOAD_DOTENV") != "false":
+        errors.append(f"{path}: dashboard must hard-disable implicit .env loading")
+    if dashboard_environment.get("NANO_ID_SALT") != (
+        "${NANO_ID_SALT:-${PARTICIPANT_ID_SALT:-}}"
+    ):
+        errors.append(f"{path}: NANO_ID_SALT must preserve the participant-salt alias")
+
+    ports = dashboard.get("ports") or []
+    if not ports or not all(_port_is_loopback_only(port) for port in ports):
+        errors.append(f"{path}: dashboard host ports must bind to loopback only")
+
+    security_opt = dashboard.get("security_opt") or []
+    if "no-new-privileges:true" not in security_opt:
+        errors.append(f"{path}: dashboard must set no-new-privileges:true")
+    cap_drop = dashboard.get("cap_drop") or []
+    if "ALL" not in cap_drop:
+        errors.append(f"{path}: dashboard must drop all Linux capabilities")
 
     volumes = _service_volumes(dashboard)
     for source, target, _mode in volumes:
@@ -180,8 +251,17 @@ def validate_compose(path: Path) -> list[str]:
             errors.append(f"{path}: missing {service_name} service")
             continue
         profiles = service.get("profiles") or []
-        if "share" not in profiles:
-            errors.append(f"{path}: {service_name} must be in the share profile")
+        expected_profile = (
+            "share" if service_name == "dashboard-share" else "share-named"
+        )
+        if expected_profile not in profiles:
+            errors.append(
+                f"{path}: {service_name} must be in the {expected_profile} profile"
+            )
+        if service_name == "dashboard-share-named" and "share" in profiles:
+            errors.append(
+                f"{path}: named tunnel must not start with the quick share profile"
+            )
         image = str(service.get("image") or "")
         if not image.startswith("cloudflare/cloudflared:"):
             errors.append(
@@ -201,6 +281,28 @@ def validate_compose(path: Path) -> list[str]:
                 f"{path}: {service_name} must default TUNNEL_TRANSPORT_PROTOCOL "
                 "to ${CLOUDFLARE_TUNNEL_PROTOCOL:-http2}"
             )
+        if service_name == "dashboard-share-named":
+            command = str(service.get("command") or "")
+            if "--token-file /run/secrets/cloudflare-tunnel-token" not in command:
+                errors.append(
+                    f"{path}: named tunnel must read its token from a Compose secret"
+                )
+            if "--token " in command:
+                errors.append(
+                    f"{path}: named tunnel token must not appear in command arguments"
+                )
+            secret_targets = {
+                (
+                    str(item.get("target") or item.get("source") or "")
+                    if isinstance(item, dict)
+                    else str(item)
+                )
+                for item in (service.get("secrets") or [])
+            }
+            if "cloudflare-tunnel-token" not in secret_targets:
+                errors.append(
+                    f"{path}: named tunnel must mount cloudflare-tunnel-token"
+                )
 
     return errors
 

@@ -10,9 +10,17 @@ The migration preserves the existing dashboard API:
 - `GET /api/chat/status`
 - `GET /api/assistant/status`
 - `GET /api/assistant/freshness`
+- `GET /api/buddy`
 - `POST /api/chat`
 - `POST /api/assistant/chat`
+- `POST /api/buddy`
 - the synchronous and asynchronous presentation-planning endpoints
+
+`/api/buddy` is the NANO dashboard adapter over the same assistant instance.
+It returns a compact JSON contract with `answer`, `citations`, `used_metrics`,
+and `refused`. Its grounding allowlist contains aggregate NANO metrics and
+non-PHI repository documents only. It refuses participant-level and raw-signal
+requests even when another assistant route could answer a general question.
 
 Repository grounding, citation extraction, REDCap/readings freshness,
 deterministic short-circuit answers, PHI guardrails, and presentation-plan
@@ -116,6 +124,7 @@ docker compose config
 docker compose up -d --build
 curl -fsS http://127.0.0.1:8080/api/healthz
 curl -fsS http://127.0.0.1:8080/api/assistant/status
+curl -fsS http://127.0.0.1:8080/api/buddy
 ```
 
 The first endpoint should remain healthy even when the second reports
@@ -145,11 +154,13 @@ Never place a real key in a values file or committed render.
 
 ## Cloudflare Pages
 
-Pages contains only the SPA, a same-origin `/api/*` proxy, and a deliberately
-limited fallback assistant. NVIDIA credentials stay in the Python backend.
-When no healthy backend origin exists, packaging emits fallback-only behavior
-instead of embedding a dead quick-tunnel hostname. The dashboard pages continue
-to load, while assistant status clearly reports fallback/degraded state.
+Pages contains the SPA, a same-origin `/api/*` proxy, and bounded aggregate-only
+assistant fallbacks. A healthy Python backend remains the preferred provider
+path. When no healthy origin exists, the worker can use the Pages project-level
+`DASHBOARD_ASSISTANT_API_KEY` runtime secret for NVIDIA generation without
+serializing the credential into the bundle or exposing it to the browser.
+Without either provider path, deterministic aggregate metric and approved
+document answers remain available while status reports the degraded state.
 
 Use a named tunnel or another durable HTTPS backend origin for production.
 Ephemeral `trycloudflare.com` origins are runtime previews and must not become a

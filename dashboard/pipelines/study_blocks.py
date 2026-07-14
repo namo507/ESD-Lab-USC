@@ -8,190 +8,37 @@ must always be present so the dual-study routes and assistant stay healthy.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
+
+from dashboard.pipelines.nano_study import build_nano_contract
 
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _growth_points(
+def build_study_blocks(
+    generated_at: str | None = None,
     *,
-    asib_start: float,
-    asib_slope: float,
-    pt_start: float,
-    pt_slope: float,
-    td_start: float,
-    td_slope: float,
-) -> list[dict[str, Any]]:
-    points: list[dict[str, Any]] = []
-    for group, start, slope in (
-        ("asib", asib_start, asib_slope),
-        ("pt", pt_start, pt_slope),
-        ("td", td_start, td_slope),
-    ):
-        for month in (1, 2, 3):
-            mean = round(start + slope * (month - 1), 2)
-            points.append(
-                {
-                    "group": group,
-                    "timepoint_m": month,
-                    "mean": mean,
-                    "ci_low": round(mean * 0.86, 2),
-                    "ci_high": round(mean * 1.14, 2),
-                }
-            )
-    return points
-
-
-def _individual_traces(group: str, start: float, slope: float) -> list[dict[str, Any]]:
-    traces: list[dict[str, Any]] = []
-    for index in range(1, 4):
-        traces.append(
-            {
-                "group": group,
-                "participant": f"{group.upper()}-{index:02d}",
-                "values": [
-                    {
-                        "timepoint_m": month,
-                        "value": round(start + slope * (month - 1) + (index - 2) * 0.7, 2),
-                    }
-                    for month in (1, 2, 3)
-                ],
-            }
-        )
-    return traces
-
-
-def _lgcm_outcome(
-    *,
-    asib_start: float,
-    asib_slope: float,
-    pt_start: float,
-    pt_slope: float,
-    td_start: float,
-    td_slope: float,
+    data_source: str = "synthetic_demo",
+    aggregates: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "asib_intercept_mean": asib_start,
-        "asib_slope_mean": asib_slope,
-        "pt_intercept_mean": pt_start,
-        "pt_slope_mean": pt_slope,
-        "td_intercept_mean": td_start,
-        "td_slope_mean": td_slope,
-        "asib_vs_td_intercept_p": 0.018,
-        "asib_vs_td_slope_p": 0.006,
-        "pt_vs_td_intercept_p": 0.004,
-        "pt_vs_td_slope_p": 0.021,
-        "growth_curves": _growth_points(
-            asib_start=asib_start,
-            asib_slope=asib_slope,
-            pt_start=pt_start,
-            pt_slope=pt_slope,
-            td_start=td_start,
-            td_slope=td_slope,
-        ),
-        "individual_traces": [
-            *_individual_traces("asib", asib_start, asib_slope),
-            *_individual_traces("pt", pt_start, pt_slope),
-            *_individual_traces("td", td_start, td_slope),
-        ],
-    }
+    """Return additive study blocks consumed by the React SPA.
 
-
-def build_study_blocks(generated_at: str | None = None) -> dict[str, Any]:
-    """Return additive dual-study blocks consumed by the React SPA."""
+    NANO is derived from the caller's aggregate payload.  NICO and shared
+    retain their existing additive contracts until their producers are moved to
+    the same aggregate-only boundary.
+    """
 
     timestamp = generated_at or _iso_now()
     return {
-        "nano": {
-            "study_meta": {
-                "award": "R01MH132925",
-                "start_date": "2023-07-01",
-                "end_date": "2028-06-30",
-                "n_target": 200,
-                "n_target_asib": 75,
-                "n_target_pt": 75,
-                "n_target_td": 50,
-                "pi": "Jessica Bradshaw, PhD",
-            },
-            "enrollment": {
-                "asib": 26,
-                "pt": 31,
-                "td": 19,
-                "total": 76,
-                "last_updated": timestamp,
-                "by_ga_stratum": {"24_26w": 9, "27_29w": 11, "30_32w": 11},
-            },
-            "active_followup": {"1_3m": 22, "6_12m": 34, "24_36m": 20},
-            "ecg_quality": {
-                "pct_valid_ecg_by_visit": {
-                    "1m": 0.94,
-                    "2m": 0.92,
-                    "3m": 0.90,
-                    "6m": 0.88,
-                    "9m": 0.85,
-                    "12m": 0.86,
-                },
-                "pct_hda_synced_by_visit": {
-                    "1m": 0.97,
-                    "2m": 0.95,
-                    "3m": 0.93,
-                    "6m": 0.90,
-                    "9m": 0.89,
-                    "12m": 0.90,
-                },
-                "flagged_participants": ["ASIB-07", "PT-14"],
-            },
-            "hda_features": {"by_participant_visit": []},
-            "lgcm_results": {
-                "pct_sa": _lgcm_outcome(
-                    asib_start=34.0,
-                    asib_slope=3.1,
-                    pt_start=30.0,
-                    pt_slope=3.6,
-                    td_start=38.0,
-                    td_slope=4.4,
-                ),
-                "hr_decel": _lgcm_outcome(
-                    asib_start=3.4,
-                    asib_slope=0.18,
-                    pt_start=3.0,
-                    pt_slope=0.25,
-                    td_start=4.2,
-                    td_slope=0.34,
-                ),
-                "rsa": _lgcm_outcome(
-                    asib_start=2.1,
-                    asib_slope=0.09,
-                    pt_start=1.8,
-                    pt_slope=0.14,
-                    td_start=2.4,
-                    td_slope=0.18,
-                ),
-            },
-            "ml_results": {
-                "r2_by_outcome": {
-                    "ados_total_css": {"1_3m": 0.19, "6_12m": 0.25},
-                    "ados_social_affect": {"1_3m": 0.17, "6_12m": 0.23},
-                },
-                "outcomes": ["ados_total_css", "ados_social_affect"],
-                "windows": ["1_3m", "6_12m"],
-                "feature_importance": [
-                    {"feature": "pct_sa_slope", "mean_abs_shap": 0.19},
-                    {"feature": "rsa_3m", "mean_abs_shap": 0.16},
-                    {"feature": "hr_decel_6m", "mean_abs_shap": 0.13},
-                ],
-            },
-            "preliminary_finding": {
-                "label": "MLP ASD-likelihood classification",
-                "value": 0.86,
-                "type": "accuracy",
-                "n": 23,
-                "pilot": True,
-            },
-        },
+        "nano": build_nano_contract(
+            generated_at=timestamp,
+            source=data_source,
+            aggregates=aggregates,
+        ),
         "nico": {
             "study_meta": {
                 "award": "R01MH138028",

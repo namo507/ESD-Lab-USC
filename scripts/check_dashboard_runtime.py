@@ -35,6 +35,13 @@ FRAME_URL_RE = re.compile(
     r'<iframe[^>]*id=["\']dashboard-frame["\'][^>]*src=["\']([^"\']+)["\']',
     re.IGNORECASE,
 )
+PUBLIC_NANO_FORBIDDEN_KEY_RE = re.compile(
+    r'"(?:participants?|participant_ids?|record_ids?|subject_ids?|mrn|dob|date_of_birth|'
+    r"first_name|last_name|free_text|notes|raw_signal|waveform|flagged_participants|"
+    r'individual_traces|hda_features)"\s*:',
+    re.IGNORECASE,
+)
+PUBLIC_NANO_ID_RE = re.compile(r"\b(?:NANO|ASIB|PT|TD|VPT)[-_ ]?\d+\b", re.IGNORECASE)
 
 
 def _strict_json_loads(raw: bytes) -> Any:
@@ -108,9 +115,12 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     health_url = f"{base_url}/api/healthz"
     page_url = f"{base_url}/"
     overview_url = f"{base_url}/overview"
+    nano_url = f"{base_url}/nano/dashboard"
+    buddy_url = f"{base_url}/api/buddy"
     legacy_page_url = f"{base_url}/dashboard/"
     runtime_url = f"{base_url}/dashboard/data/runtime_status.json"
     dashboard_url = f"{base_url}/dashboard/data/dashboard_data.json"
+    nano_dashboard_url = f"{base_url}/dashboard/data/nano_dashboard_data.json"
     readings_url = f"{base_url}/dashboard/data/readings_data.json"
 
     health = wait_for(
@@ -137,6 +147,12 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     if EXPECTED_SPA_TITLE not in overview_html:
         raise RuntimeError("overview SPA shell did not contain the expected title")
 
+    nano_html = fetch_text(nano_url, timeout=timeout)
+    if EXPECTED_SPA_TITLE not in nano_html:
+        raise RuntimeError(
+            "NANO dashboard SPA shell did not contain the expected title"
+        )
+
     legacy_final_url = fetch_final_url(legacy_page_url, timeout=timeout)
     if not legacy_final_url.rstrip("/").endswith("/overview"):
         raise RuntimeError(
@@ -145,7 +161,9 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
 
     runtime = fetch_json(runtime_url, timeout=timeout)
     dashboard = fetch_json(dashboard_url, timeout=timeout)
+    public_nano = fetch_json(nano_dashboard_url, timeout=timeout)
     readings = fetch_json(readings_url, timeout=timeout)
+    buddy = fetch_json(buddy_url, timeout=timeout)
 
     if not dashboard.get("meta"):
         raise RuntimeError("dashboard payload is missing meta")
@@ -153,12 +171,52 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
         raise RuntimeError("dashboard payload is missing data_source")
     if not readings.get("summary"):
         raise RuntimeError("readings payload is missing summary")
+    if not isinstance(public_nano, dict) or set(public_nano) != {"schema", "nano"}:
+        raise RuntimeError("aggregate-only NANO browser payload has an invalid shape")
+    if public_nano.get("schema") != "nano-dashboard.v1":
+        raise RuntimeError("aggregate-only NANO browser payload has an invalid schema")
+    nano = public_nano.get("nano")
+    if not isinstance(nano, dict):
+        raise RuntimeError("dashboard payload is missing the nano namespace")
+    required_nano_sections = {
+        "meta",
+        "enrollment",
+        "attention",
+        "autonomic",
+        "schedule",
+        "pipeline",
+        "assessments",
+        "inventory",
+        "checklists",
+        "redcap",
+        "models",
+    }
+    missing_nano_sections = sorted(required_nano_sections - nano.keys())
+    if missing_nano_sections:
+        raise RuntimeError(
+            "dashboard nano namespace is missing sections: "
+            + ", ".join(missing_nano_sections)
+        )
+    nano_meta = nano.get("meta")
+    if not isinstance(nano_meta, dict) or nano_meta.get("study") != "NANO":
+        raise RuntimeError("dashboard nano namespace is missing the NANO marker")
+    if nano_meta.get("aggregate_only") is not True:
+        raise RuntimeError("NANO browser payload is not marked aggregate-only")
+    serialized_nano = json.dumps(public_nano, ensure_ascii=True)
+    if PUBLIC_NANO_FORBIDDEN_KEY_RE.search(serialized_nano):
+        raise RuntimeError("NANO browser payload contains a participant-level field")
+    if PUBLIC_NANO_ID_RE.search(serialized_nano):
+        raise RuntimeError("NANO browser payload contains a study identifier")
+    if not isinstance(buddy, dict) or buddy.get("contract") != "nano-buddy.v1":
+        raise RuntimeError("Buddy health endpoint returned an invalid contract")
 
     return {
         "health": health,
         "runtime": runtime,
         "dashboard": dashboard,
+        "public_nano": public_nano,
         "readings": readings,
+        "buddy": buddy,
     }
 
 
@@ -230,6 +288,7 @@ def run_cycle(args: argparse.Namespace, *, exercise_watcher: bool) -> None:
     health = runtime_state["health"]
     dashboard = runtime_state["dashboard"]
     readings = runtime_state["readings"]
+    buddy = runtime_state["buddy"]
 
     print(
         "health-ok "
@@ -254,6 +313,16 @@ def run_cycle(args: argparse.Namespace, *, exercise_watcher: bool) -> None:
         "payload-ok "
         f"data_source={dashboard['meta'].get('data_source')} "
         f"total_readings={readings['summary'].get('total_readings', 0)}"
+    )
+    nano = runtime_state["public_nano"]["nano"]
+    nano_enrollment = nano.get("enrollment", {})
+    print(
+        "nano-ok "
+        f"route=/nano/dashboard "
+        f"enrolled={nano_enrollment.get('enrolled', 'awaiting')} "
+        f"target={nano_enrollment.get('target', 'awaiting')} "
+        f"buddy={buddy.get('state') or buddy.get('status') or 'unknown'} "
+        f"contract={buddy.get('contract')}"
     )
 
     if args.pages_url:

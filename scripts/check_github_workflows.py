@@ -29,6 +29,7 @@ REQUIRED_ACTION_MAJORS = {
     "setup-node": "v6",
     "setup-python": "v6",
     "upload-artifact": "v7",
+    "download-artifact": "v8",
 }
 
 
@@ -75,7 +76,7 @@ def check_official_action_runtimes(
 ) -> None:
     text = path.read_text(encoding="utf-8")
     for action, major in re.findall(
-        r"uses:\s+actions/(checkout|github-script|setup-node|setup-python|upload-artifact)@(v\d+)",
+        r"uses:\s+actions/(checkout|download-artifact|github-script|setup-node|setup-python|upload-artifact)@(v\d+)",
         text,
     ):
         required = REQUIRED_ACTION_MAJORS[action]
@@ -203,11 +204,19 @@ def check_deploy_pages(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(
             "deploy-pages.yml: repository_dispatch is forbidden to prevent stale-origin loops"
         )
+    jobs = as_mapping(data.get("jobs", {}), "deploy-pages.yml jobs")
+    deploy = as_mapping(jobs.get("deploy", {}), "deploy-pages.yml jobs.deploy")
+    if deploy.get("environment") != "production":
+        errors.append(
+            "deploy-pages.yml: deploy job must target the production environment"
+        )
     text = (WORKFLOW_DIR / "deploy-pages.yml").read_text(encoding="utf-8")
     for snippet in (
         "scripts/build_pages_site.py",
         "scripts/check_live_surfaces.py",
         "cloudflare/wrangler-action@v4",
+        'canonical_url="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev/"',
+        '--canonical-url "$canonical_url"',
     ):
         if snippet not in text:
             errors.append(f"deploy-pages.yml: missing {snippet!r}")
@@ -215,20 +224,124 @@ def check_deploy_pages(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(
             "deploy-pages.yml: smoke check must accept intentional fallback-only builds"
         )
+    if "https://esd-lab-namo.pages.dev/" in text:
+        errors.append(
+            "deploy-pages.yml: smoke URL must derive from CLOUDFLARE_PAGES_PROJECT"
+        )
 
 
 def check_docker_publish(data: dict[str, Any], errors: list[str]) -> None:
+    jobs = as_mapping(data.get("jobs", {}), "docker-build.yml jobs")
+    dashboard = as_mapping(
+        jobs.get("dashboard-image", {}), "docker-build.yml jobs.dashboard-image"
+    )
+    scan_permissions = as_mapping(
+        dashboard.get("permissions", {}),
+        "docker-build.yml jobs.dashboard-image.permissions",
+    )
+    if scan_permissions.get("packages") == "write":
+        errors.append(
+            "docker-build.yml: PR build/scan job must not receive packages: write"
+        )
+    publish = as_mapping(
+        jobs.get("publish-dashboard-image", {}),
+        "docker-build.yml jobs.publish-dashboard-image",
+    )
+    publish_permissions = as_mapping(
+        publish.get("permissions", {}),
+        "docker-build.yml jobs.publish-dashboard-image.permissions",
+    )
+    if publish_permissions.get("packages") != "write":
+        errors.append(
+            "docker-build.yml: main-only publish job requires packages: write"
+        )
+    if publish.get("needs") != "dashboard-image":
+        errors.append(
+            "docker-build.yml: publish job must depend on the scanned dashboard image"
+        )
+    publish_condition = str(publish.get("if", ""))
+    if "github.event_name == 'push'" not in publish_condition or (
+        "github.ref == 'refs/heads/main'" not in publish_condition
+    ):
+        errors.append("docker-build.yml: publish job must be restricted to main pushes")
+
     text = (WORKFLOW_DIR / "docker-build.yml").read_text(encoding="utf-8")
     for snippet in (
-        "DOCKERHUB_CONFIGURED: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}",
-        "env.DOCKERHUB_CONFIGURED == 'true'",
-        "username: ${{ secrets.DOCKERHUB_USERNAME }}",
-        "password: ${{ secrets.DOCKERHUB_TOKEN }}",
+        "IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/esd-lab-usc-dashboard",
+        "docker/setup-buildx-action@v4",
+        "docker/build-push-action@v7",
+        "outputs: type=docker,dest=${{ runner.temp }}/dashboard-image.tar",
+        'docker load --input "$RUNNER_TEMP/dashboard-image.tar"',
+        "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+        'exit-code: "1"',
+        "severity: CRITICAL,HIGH",
+        "actions/upload-artifact@v7",
+        "archive: false",
+        "actions/download-artifact@v8",
+        "EXPECTED_IMAGE_TAR_SHA256:",
+        "docker/login-action@v4",
+        "registry: ghcr.io",
+        "password: ${{ secrets.GITHUB_TOKEN }}",
+        'docker push "$IMAGE_REF"',
+        'docker push "$IMAGE_NAME:latest"',
     ):
         if snippet not in text:
             errors.append(
-                f"docker-build.yml: credential-aware publish guard missing {snippet!r}"
+                f"docker-build.yml: secure GHCR publish contract missing {snippet!r}"
             )
+    for forbidden in ("DOCKERHUB_", "continue-on-error", "docker scout"):
+        if forbidden in text:
+            errors.append(
+                f"docker-build.yml: obsolete or false-green scan wiring found {forbidden!r}"
+            )
+
+    steps = dashboard.get("steps", [])
+    if not isinstance(steps, list):
+        errors.append("docker-build.yml: dashboard-image steps must be a list")
+        return
+    step_names = [str(step.get("name", "")) for step in steps if isinstance(step, dict)]
+    scan_order = [
+        "Build dashboard image",
+        "Load dashboard image for scanning",
+        "Scan dashboard image for fixable high-severity CVEs",
+        "Record scanned image artifact digest",
+        "Preserve scanned image for main-only publish",
+    ]
+    try:
+        positions = [step_names.index(name) for name in scan_order]
+    except ValueError:
+        errors.append(
+            "docker-build.yml: build, scan, and scanned-artifact steps are required"
+        )
+    else:
+        if positions != sorted(positions):
+            errors.append(
+                "docker-build.yml: image must be built, loaded, scanned, and "
+                "preserved in that order"
+            )
+    if "Log in to GitHub Container Registry" in step_names:
+        errors.append(
+            "docker-build.yml: scan job must not receive registry credentials"
+        )
+
+    publish_steps = publish.get("steps", [])
+    if not isinstance(publish_steps, list):
+        errors.append("docker-build.yml: publish-dashboard-image steps must be a list")
+        return
+    publish_names = [
+        str(step.get("name", "")) for step in publish_steps if isinstance(step, dict)
+    ]
+    for required in (
+        "Download scanned dashboard image",
+        "Log in to GitHub Container Registry",
+        "Publish dashboard image",
+    ):
+        if required not in publish_names:
+            errors.append(f"docker-build.yml: publish job missing {required!r}")
+    if "Build dashboard image" in publish_names:
+        errors.append(
+            "docker-build.yml: publish job must push the scanned artifact without rebuilding"
+        )
 
 
 def check_redcap_sync(data: dict[str, Any], errors: list[str]) -> None:

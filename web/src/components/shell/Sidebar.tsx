@@ -48,6 +48,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "dual-study",
     title: "NANO · NICO Studies",
     items: [
+      { to: "/nano/dashboard", label: "NANO Study", icon: "layout-dashboard" },
       { to: "/nano/lgcm-trajectories", label: "LGCM Trajectories", icon: "line-chart", flag: "NANO_LGCM_TRAJECTORIES" },
       { to: "/nico/aim3-clusters", label: "Aim 3 Clusters", icon: "git-fork", flag: "NICO_AIM3_CLUSTERS" },
     ],
@@ -205,7 +206,7 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
           </div>
           <div className="flex flex-col gap-px">
             {g.items.filter((it) => !it.flag || isFeatureFlagEnabled(it.flag)).map((it, i) => {
-              const to = inDiscovery ? toDiscoveryRoute(it.to) : it.to;
+              const to = inDiscovery && it.to !== "/nano/dashboard" ? toDiscoveryRoute(it.to) : it.to;
               const badge =
                 it.label === "Window QA" && qaPending > 0
                   ? qaPending

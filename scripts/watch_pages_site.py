@@ -6,6 +6,10 @@ What this watcher does
 1. Polls the canonical Pages packaging inputs:
    - `web/build/**`
    - `web/lab-readings.json`
+   - `dashboard/data/dashboard_data.json`
+   - `dashboard/data/nano_dashboard_data.json`
+   - `dashboard/data/readings_data.json`
+   - `dashboard/data/runtime_status.json`
    - `dashboard/public/pages_wrapper/manifest.json`
 2. When any of those files change, reruns `scripts/build_pages_site.py`.
 3. By default, redeploys `dist/pages-wrapper` to the main Pages branch so
@@ -40,6 +44,12 @@ BUILD_ARTIFACT = ROOT / "dist" / "pages-wrapper" / "index.html"
 WATCH_PATHS = [
     ROOT / "web" / "build",
     ROOT / "web" / "lab-readings.json",
+    ROOT / "dashboard" / "data" / "dashboard_data.json",
+    ROOT / "dashboard" / "data" / "nano_dashboard_data.json",
+    ROOT / "dashboard" / "data" / "readings_data.json",
+    ROOT / "dashboard" / "data" / "runtime_status.json",
+    ROOT / "docs",
+    ROOT / "dashboard" / "context_skill" / "references",
     ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json",
     ROOT / "scripts" / "build_pages_site.py",
 ]

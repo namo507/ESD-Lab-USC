@@ -35,6 +35,7 @@ describe("Sidebar navigation", () => {
     expect(screen.getByRole("link", { name: /matlab bridge/i })).toHaveAttribute("href", "/matlab");
     expect(screen.getByRole("link", { name: /redcap sync/i })).toHaveAttribute("href", "/redcap");
     expect(screen.getByRole("link", { name: /window qa/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^nano study$/i })).toHaveAttribute("href", "/nano/dashboard");
   });
 
   it("shows the feature-gated Discovery preview section", () => {

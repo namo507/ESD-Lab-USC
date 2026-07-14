@@ -5,6 +5,9 @@ LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
     description="Runtime image for the ESD Lab USC NANO live dashboard"
 
 ARG PIP_VERSION=25.3
+ARG NPM_VERSION=11.18.0
+ARG SETUPTOOLS_VERSION=80.10.2
+ARG WHEEL_VERSION=0.46.3
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -18,8 +21,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install Node.js 20 + npm 10 (required by the Vite 8 public SPA build)
+# Install Node.js 20 + npm 11 (required by the Vite 8 public SPA build)
 RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
     && apt-get install -y --no-install-recommends build-essential ca-certificates curl gnupg \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -28,7 +32,7 @@ RUN apt-get update \
        > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
-    && npm install -g npm@10.9.8 \
+    && npm install -g "npm@${NPM_VERSION}" --no-audit --no-fund \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g 1000 appuser \
@@ -37,6 +41,9 @@ RUN groupadd -g 1000 appuser \
 
 COPY --chown=appuser:appuser dashboard/requirements.txt /tmp/dashboard-requirements.txt
 RUN python -m pip install --no-cache-dir --upgrade "pip==${PIP_VERSION}" \
+    && python -m pip install --no-cache-dir --upgrade \
+       "setuptools==${SETUPTOOLS_VERSION}" \
+       "wheel==${WHEEL_VERSION}" \
     && python -m pip install --no-cache-dir -r /tmp/dashboard-requirements.txt
 
 # Install frontend dependencies so `npm run build` works at startup

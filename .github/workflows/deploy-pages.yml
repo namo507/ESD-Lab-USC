@@ -16,18 +16,23 @@ on:
       - "config/redcap_config.yml"
       - "functions/**"
       - "dashboard/assistant/local_chat_assistant.py"
+      - "dashboard/assistant/nano_buddy.py"
       - "dashboard/context_skill/extract_context.py"
-      - "dashboard/context_skill/references/dashboard_schema.md"
-      - "dashboard/context_skill/references/tables/redcap.md"
+      - "dashboard/context_skill/references/**"
       - "dashboard/data/dashboard_data.json"
+      - "dashboard/data/nano_dashboard_data.json"
+      - "dashboard/data/readings_data.json"
       - "dashboard/pipelines/build_dashboard_data.py"
       - "dashboard/pipelines/build_dashboard_data.R"
       - "dashboard/pipelines/generate_synthetic_dashboard_data.py"
+      - "dashboard/pipelines/nano_study.py"
+      - "dashboard/pipelines/study_blocks.py"
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"
       - "scripts/check_site_health.py"
+      - "docs/**"
       - "dashboard/public/pages_wrapper/manifest.json"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
@@ -43,6 +48,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment: production
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
       CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
@@ -135,8 +141,9 @@ jobs:
       - name: Smoke test live URL
         run: |
           sleep 60
+          canonical_url="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev/"
           python scripts/check_live_surfaces.py \
-            --canonical-url https://esd-lab-namo.pages.dev/ \
+            --canonical-url "$canonical_url" \
             --skip-runtime \
             --timeout 30 \
             --max-stamp-age-hours 24

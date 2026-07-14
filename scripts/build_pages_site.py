@@ -31,7 +31,9 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -44,11 +46,166 @@ DEFAULT_MANIFEST = (
     REPO_ROOT / "dashboard" / "public" / "pages_wrapper" / "manifest.json"
 )
 
+PUBLIC_NANO_FORBIDDEN_KEYS = {
+    "participant",
+    "participants",
+    "participant_id",
+    "participant_ids",
+    "record_id",
+    "record_ids",
+    "subject_id",
+    "subject_ids",
+    "mrn",
+    "dob",
+    "date_of_birth",
+    "first_name",
+    "last_name",
+    "free_text",
+    "notes",
+    "raw_signal",
+    "waveform",
+    "flagged_participants",
+    "individual_traces",
+    "hda_features",
+}
+PUBLIC_NANO_ID_RE = re.compile(r"\b(?:NANO|ASIB|PT|TD|VPT)[-_ ]?\d+\b", re.I)
+PUBLIC_BUDDY_DOCUMENT_SUFFIXES = {".md", ".txt", ".rst"}
+
 
 def _read(path: pathlib.Path) -> str:
     if not path.exists():
         sys.exit(f"[build_pages_site] missing required file: {path}")
     return path.read_text(encoding="utf-8")
+
+
+def _walk_json(value):
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            yield str(key), inner
+            yield from _walk_json(inner)
+    elif isinstance(value, list):
+        for inner in value:
+            yield from _walk_json(inner)
+
+
+def _validate_public_nano_payload(payload: object) -> dict:
+    if not isinstance(payload, dict) or set(payload) != {"schema", "nano"}:
+        raise ValueError("public NANO payload must contain only schema and nano")
+    if payload.get("schema") != "nano-dashboard.v1":
+        raise ValueError("public NANO payload has an invalid schema")
+    nano = payload.get("nano")
+    if not isinstance(nano, dict):
+        raise ValueError("public NANO payload is missing the nano object")
+    meta = nano.get("meta")
+    if not isinstance(meta, dict) or meta.get("aggregate_only") is not True:
+        raise ValueError("public NANO payload is not marked aggregate-only")
+    for key, _value in _walk_json(nano):
+        if key.casefold() in PUBLIC_NANO_FORBIDDEN_KEYS:
+            raise ValueError(f"public NANO payload contains forbidden key: {key}")
+    serialized = json.dumps(payload, ensure_ascii=True, allow_nan=False)
+    if PUBLIC_NANO_ID_RE.search(serialized):
+        raise ValueError("public NANO payload contains a study identifier")
+    return payload
+
+
+def _clean_public_document_text(value: str, *, limit: int) -> str:
+    text = re.sub(r"[\x00-\x1f\x7f]", " ", value)
+    text = re.sub(
+        r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
+        "[redacted email]",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"(?<!\d)(?:\+?1[-. (]*)?\d{3}[-. )]*\d{3}[-. ]*\d{4}(?!\d)",
+        "[redacted phone]",
+        text,
+    )
+    text = re.sub(
+        r"\b(?:\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})?)?"
+        r"|\d{1,2}/\d{1,2}/\d{2,4})\b",
+        "[redacted date]",
+        text,
+    )
+    text = re.sub(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)", "[redacted SSN]", text)
+    text = re.sub(
+        r"\b(patient|participant|subject|infant|baby|caregiver|mother|father)"
+        r"(?:'s|\s+(?:name\s*(?:is|:)?|named))?\s+"
+        r"[A-Z][A-Za-z'’-]{1,40}(?:\s+[A-Z][A-Za-z'’-]{1,40}){1,3}\b",
+        r"\1 [redacted name]",
+        text,
+    )
+    text = re.sub(
+        r"\b\d{1,6}\s+(?:[A-Za-z0-9.'-]+\s+){0,5}"
+        r"(?:street|st|road|rd|avenue|ave|boulevard|blvd|drive|dr|lane|ln|court|ct|way)\b",
+        "[redacted address]",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = PUBLIC_NANO_ID_RE.sub("[redacted study ID]", text)
+    text = re.sub(r"[`*_>#|]+", " ", text)
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    return re.sub(r"\s+", " ", text).strip()[:limit].rstrip()
+
+
+def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
+    try:
+        tracked = (
+            subprocess.run(
+                [
+                    "git",
+                    "ls-files",
+                    "-z",
+                    "--",
+                    "docs",
+                    "dashboard/context_skill/references",
+                ],
+                cwd=repo_root,
+                check=True,
+                capture_output=True,
+            )
+            .stdout.decode("utf-8")
+            .split("\0")
+        )
+    except (OSError, subprocess.CalledProcessError, UnicodeDecodeError):
+        tracked = []
+
+    documents = []
+    for relative in sorted(filter(None, tracked)):
+        path = repo_root / relative
+        if (
+            path.suffix.casefold() not in PUBLIC_BUDDY_DOCUMENT_SUFFIXES
+            or not path.is_file()
+        ):
+            continue
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        heading = next(
+            (
+                line.lstrip("# ").strip()
+                for line in raw.splitlines()
+                if line.lstrip().startswith("#") and line.lstrip("# ").strip()
+            ),
+            path.stem.replace("_", " ").replace("-", " "),
+        )
+        title = _clean_public_document_text(heading, limit=160)
+        search_text = _clean_public_document_text(raw, limit=4000)
+        if not title or not search_text:
+            continue
+        documents.append(
+            {
+                "title": title,
+                "relative_path": pathlib.PurePosixPath(relative).as_posix(),
+                "excerpt": search_text[:1000],
+                "search_text": search_text,
+                "source": "tracked repository documentation",
+                "category": "SOP and methods",
+                "keywords": [],
+            }
+        )
+    return {"schema": "nano-buddy-documents.v1", "documents": documents}
 
 
 def _fingerprint_tree(root: pathlib.Path) -> str:
@@ -100,8 +257,14 @@ def _api_origin_is_healthy(origin: str, timeout: float) -> bool:
 def _worker_source(api_origin: str | None) -> str:
     return ("""
 const API_ORIGIN = __API_ORIGIN__;
+const BUDDY_PROVIDER_BASE = "https://integrate.api.nvidia.com/v1";
+const BUDDY_PROVIDER_MODEL = "nvidia/nemotron-3-super-120b-a12b";
+const BUDDY_MAX_BODY_BYTES = 32 * 1024;
+const BUDDY_RATE_LIMIT = 12;
+const BUDDY_RATE_WINDOW_MS = 60 * 1000;
 
 const presentationJobs = new Map();
+const buddyRequests = new Map();
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -178,7 +341,27 @@ async function redcapProxy(request, env) {
   }
 }
 
-function assistantStatus(reason = "upstream-unavailable") {
+function assistantStatus(reason = "upstream-unavailable", env = null) {
+  if (env?.DASHBOARD_ASSISTANT_API_KEY) {
+    return {
+      status: "ready",
+      ready: true,
+      state: "ready",
+      error: null,
+      provider: "nvidia",
+      runtime: "pages-edge-nvidia-build-api",
+      model: BUDDY_PROVIDER_MODEL,
+      model_id: BUDDY_PROVIDER_MODEL,
+      message: "The NVIDIA assistant is ready through the Pages edge runtime.",
+      fallback: false,
+      reason,
+      freshness: {
+        readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-packaged" },
+        pipeline: { state: "pages-packaged", warnings: [] },
+        redcap: { generated_at: null, record_count: null, anomaly_count: null, source: "pages-packaged" },
+      },
+    };
+  }
   return {
     status: "fallback",
     ready: false,
@@ -275,6 +458,450 @@ function assistantReply(message) {
   return "The public Pages fallback assistant can answer high-level dashboard navigation questions while the hosted NVIDIA assistant is unavailable. Dashboard data remains mocked and de-identified in the browser build.";
 }
 
+function buddyStatus(reason, env) {
+  const providerReady = Boolean(env?.DASHBOARD_ASSISTANT_API_KEY);
+  return {
+    endpoint: "/api/buddy",
+    state: providerReady ? "ready" : "degraded",
+    ready: true,
+    provider_ready: providerReady,
+    local_fallback: true,
+    metrics_available: true,
+    documents_available: true,
+    model_id: providerReady ? BUDDY_PROVIDER_MODEL : null,
+    message: providerReady
+      ? "Buddy is ready with packaged aggregate grounding and the shared NVIDIA provider."
+      : "Buddy generation is offline; packaged aggregate metrics and reading lookup remain available.",
+    contract: "nano-buddy.v1",
+    reason,
+  };
+}
+
+function buddyRefuses(message) {
+  const text = String(message || "");
+  return /\\b(?:mrn|medical record number|date of birth|dob|home address|phone number|email address|caregiver name|participant name|subject name|identifiable|identified data|phi)\\b/i.test(text)
+    || /\\{\\{REDACTED:(?:PHI|DATE|MRN|PHONE|SSN|EMAIL|NAME)\\}\\}|\\[redacted (?:phi|date|mrn|phone|ssn|email|name|address|study id)\\]/i.test(text)
+    || /\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/i.test(text)
+    || /(?<!\\d)(?:\\+?1[-. (]*)?\\d{3}[-. )]*\\d{3}[-. ]*\\d{4}(?!\\d)/.test(text)
+    || /\\b(?:\\d{4}-\\d{2}-\\d{2}(?:[T ]\\d{2}:\\d{2}(?::\\d{2})?(?:Z|[+-]\\d{2}:?\\d{2})?)?|\\d{1,2}\\/\\d{1,2}\\/\\d{2,4})\\b/.test(text)
+    || /(?<!\\d)\\d{3}-\\d{2}-\\d{4}(?!\\d)/.test(text)
+    || /\\b(?:patient|participant|subject|infant|baby|caregiver|mother|father)(?:'s|\\s+(?:name\\s*(?:is|:)?|named))?\\s+[A-Z][A-Za-z'’-]{1,40}(?:\\s+[A-Z][A-Za-z'’-]{1,40}){1,3}\\b/.test(text)
+    || /\\b\\d{1,6}\\s+(?:[A-Za-z0-9.'-]+\\s+){0,5}(?:street|st|road|rd|avenue|ave|boulevard|blvd|drive|dr|lane|ln|court|ct|way)\\b/i.test(text)
+    || /\\b(?:nano|asib|pt|td|vpt)[-_ ]?\\d{1,8}\\b|\\b(?:participant|subject|infant|baby)\\s*(?:id|number|no\\.?|#)?\\s*[-_:]?\\s*\\d{2,}\\b/i.test(text)
+    || /\\b(?:participant|subject|infant|baby)[ -]level\\b/i.test(text)
+    || /\\b(?:list|show|give|identify|name|find|lookup|open|download|export)\\b.{0,80}\\b(?:participants?|subjects?|infants?|babies|records?|rows?|ids?|names?)\\b/i.test(text)
+    || /\\b(?:raw|sample[- ]level|waveform|trace)\\b.{0,35}\\b(?:ecg|ekg|temperature|signal|rr|r-r|sensor)\\b/i.test(text)
+    || /\\b(?:ecg|ekg|temperature|signal|rr|r-r|sensor)\\b.{0,35}\\b(?:raw|sample[- ]level|waveform|trace)\\b/i.test(text);
+}
+
+function buddyRefusal() {
+  return {
+    answer: "I cannot provide participant-level, identifiable, or raw-signal data. That information stays in REDCap or the USC secure server under the lab's HIPAA workflow. I can help with de-identified aggregate counts, metric definitions, or an approved SOP instead.",
+    citations: [],
+    used_metrics: [],
+    refused: true,
+  };
+}
+
+function buddyTokens(value) {
+  return new Set((String(value || "").toLowerCase().match(/[a-z0-9_]{2,}/g) || []));
+}
+
+function pickBuddyScalars(source, keys) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  return Object.fromEntries(keys
+    .filter((key) => Object.hasOwn(source, key))
+    .filter((key) => source[key] === null || ["string", "number", "boolean"].includes(typeof source[key]))
+    .map((key) => [key, source[key]]));
+}
+
+function pickBuddyRows(value, keys, limit = 100) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, limit).map((row) => pickBuddyScalars(row, keys)).filter((row) => Object.keys(row).length);
+}
+
+function pickBuddyScalarMap(value, limit = 100) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).slice(0, limit).filter(([key, item]) =>
+    key.length <= 80 && (item === null || ["string", "number", "boolean"].includes(typeof item))));
+}
+
+function sanitizeNanoForBuddy(payload) {
+  const nano = payload?.nano;
+  if (!nano || typeof nano !== "object" || Array.isArray(nano)) return {};
+  const safe = {};
+  const meta = pickBuddyScalars(nano.meta, ["study", "state", "as_of", "n_target", "source"]);
+  if (Object.keys(meta).length) safe.meta = meta;
+  const enrollment = pickBuddyScalars(nano.enrollment, ["target", "enrolled", "active", "retention_pct", "total", "asib", "pt", "td", "last_updated"]);
+  const groups = pickBuddyRows(nano.enrollment?.by_group, ["group", "target", "enrolled", "hda_sustained_pct", "hda_quality_bpm", "rsa_baseline_ms2"]);
+  const funnel = pickBuddyRows(nano.enrollment?.funnel, ["stage", "n"]);
+  if (groups.length) enrollment.by_group = groups;
+  if (funnel.length) enrollment.funnel = funnel;
+  if (Object.keys(enrollment).length) safe.enrollment = enrollment;
+  const attention = pickBuddyScalars(nano.attention, ["hda_sustained_pct", "hda_quality_bpm"]);
+  const phases = pickBuddyRows(nano.attention?.phases, ["phase", "pct"]);
+  const windows = pickBuddyRows(nano.attention?.by_window, ["window", "group", "sustained_pct", "hda_sustained_pct", "hda_quality_bpm", "rsa_baseline_ms2"]);
+  const attentionGroups = pickBuddyRows(nano.attention?.by_group, ["group", "sustained_pct", "hda_sustained_pct", "hda_quality_bpm", "rsa_baseline_ms2"]);
+  const attentionGroupWindows = pickBuddyRows(nano.attention?.by_group_window, ["group", "window", "sustained_pct", "hda_sustained_pct", "hda_quality_bpm", "orienting_pct", "termination_pct", "inattention_pct"]);
+  if (phases.length) attention.phases = phases;
+  if (windows.length) attention.by_window = windows;
+  if (attentionGroups.length) attention.by_group = attentionGroups;
+  if (attentionGroupWindows.length) attention.by_group_window = attentionGroupWindows;
+  if (Object.keys(attention).length) safe.attention = attention;
+  const autonomic = pickBuddyScalars(nano.autonomic, ["rsa_baseline_ms2", "cptd_mean_c"]);
+  const autonomicGroupWindows = pickBuddyRows(nano.autonomic?.by_group_window, ["group", "window", "rsa_baseline_ms2", "cptd_mean_c"]);
+  if (autonomicGroupWindows.length) autonomic.by_group_window = autonomicGroupWindows;
+  if (Object.keys(autonomic).length) safe.autonomic = autonomic;
+  const timepoints = pickBuddyRows(nano.schedule?.timepoints, ["id", "due", "upcoming_14d", "overdue", "completed", "window_adherence_pct"]);
+  if (timepoints.length) safe.schedule = { timepoints };
+  const pipeline = pickBuddyRows(nano.pipeline, ["stage", "count", "delta_7d", "qc_pass_pct", "qa_passed"]);
+  if (pipeline.length) safe.pipeline = pipeline;
+  const pipelineSummary = pickBuddyScalars(nano.pipeline_summary, ["qa_passed_sessions", "qa_pass_pct", "open_qc_actions"]);
+  if (Object.keys(pipelineSummary).length) safe.pipeline_summary = pipelineSummary;
+  const assessments = pickBuddyRows(nano.assessments, ["instrument", "timepoint", "complete", "expected"]);
+  if (assessments.length) safe.assessments = assessments;
+  const inventory = pickBuddyRows(nano.inventory, ["item", "in_use", "available", "calibration_due", "reorder_threshold", "low_stock", "status"]);
+  if (inventory.length) safe.inventory = inventory;
+  const checklists = pickBuddyScalars(nano.checklists, ["open_qc_actions", "sop_ack_pct"]);
+  const onboarding = pickBuddyRows(nano.checklists?.onboarding, ["key", "done", "total"]);
+  if (onboarding.length) checklists.onboarding = onboarding;
+  if (Object.keys(checklists).length) safe.checklists = checklists;
+  const redcap = pickBuddyScalars(nano.redcap, ["api_token_valid", "last_sync", "records_locked", "double_entry_discrepancies", "instruments_defined", "dags", "sync_health"]);
+  if (Object.keys(redcap).length) safe.redcap = redcap;
+  const models = pickBuddyScalars(nano.models, ["aim3_status", "best_metric", "shap_ready"]);
+  if (Object.keys(models).length) safe.models = models;
+  const library = pickBuddyScalars(nano.library, ["indexed_documents", "total_documents", "total_readings", "last_indexed", "last_indexed_at", "label", "index_source", "href", "api_href"]);
+  if (Object.keys(library).length) safe.library = library;
+
+  // Legacy aggregate compatibility. Participant rows, flagged IDs, HDA feature
+  // rows, raw signals, and individual traces are intentionally not copied.
+  const studyMeta = pickBuddyScalars(nano.study_meta, ["award", "start_date", "end_date", "n_target", "n_target_asib", "n_target_pt", "n_target_td"]);
+  if (Object.keys(studyMeta).length) safe.study_meta = studyMeta;
+  const activeFollowup = pickBuddyScalarMap(nano.active_followup);
+  if (Object.keys(activeFollowup).length) safe.active_followup = activeFollowup;
+  const ecgQuality = {};
+  for (const key of ["pct_valid_ecg_by_visit", "pct_hda_synced_by_visit"]) {
+    const values = pickBuddyScalarMap(nano.ecg_quality?.[key]);
+    if (Object.keys(values).length) ecgQuality[key] = values;
+  }
+  if (Object.keys(ecgQuality).length) safe.ecg_quality = ecgQuality;
+  const lgcm = {};
+  for (const metric of ["pct_sa", "hr_decel", "rsa"]) {
+    const source = nano.lgcm_results?.[metric];
+    if (!source || typeof source !== "object") continue;
+    const section = Object.fromEntries(Object.entries(source).filter(([key, value]) =>
+      /^(?:asib|pt|td)_(?:intercept|slope)_mean$|^(?:asib|pt)_vs_td_(?:intercept|slope)_p$/.test(key)
+      && (value === null || typeof value === "number")));
+    const curves = pickBuddyRows(source.growth_curves, ["group", "timepoint_m", "mean", "ci_low", "ci_high"]);
+    if (curves.length) section.growth_curves = curves;
+    if (Object.keys(section).length) lgcm[metric] = section;
+  }
+  if (Object.keys(lgcm).length) safe.lgcm_results = lgcm;
+  return safe;
+}
+
+function buddyValue(value, path = "") {
+  if (value === null || value === undefined) return "Awaiting data";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "number" && path.includes("pct")) {
+    const pct = Math.abs(value) <= 1 ? value * 100 : value;
+    return `${pct.toFixed(1)}%`;
+  }
+  return String(value);
+}
+
+function buddyAsOf(nano, requested) {
+  return requested || nano?.meta?.as_of || nano?.enrollment?.last_updated || "the packaged aggregate snapshot";
+}
+
+function buddyMetricAnswer(message, nano, requestedAsOf) {
+  const tokens = buddyTokens(message);
+  const when = buddyAsOf(nano, requestedAsOf);
+  const timepoints = nano?.schedule?.timepoints || [];
+  if (timepoints.length && ["visit", "visits", "schedule", "due", "overdue", "upcoming", "completed", "adherence", "window"].some((key) => tokens.has(key))) {
+    const compact = String(message).toLowerCase().replace(/[- ]/g, "_");
+    const row = timepoints.find((item) => {
+      const id = String(item.id || "").toLowerCase();
+      const month = id.startsWith("month_") ? id.slice(6) : "";
+      return id && (compact.includes(id) || (month && (compact.includes(`${month}m`) || compact.includes(`${month}_month`))) || (id === "nicu_admission" && compact.includes("nicu")));
+    });
+    if (row) {
+      let field = "due";
+      if (tokens.has("overdue")) field = "overdue";
+      else if (["upcoming", "week", "weeks"].some((key) => tokens.has(key))) field = "upcoming_14d";
+      else if (tokens.has("completed") || tokens.has("complete")) field = "completed";
+      else if (tokens.has("adherence") || tokens.has("window")) field = "window_adherence_pct";
+      const label = field === "upcoming_14d" ? "upcoming in the next 14 days" : field.replaceAll("_", " ");
+      return { answer: `The NANO ${row.id} aggregate has ${buddyValue(row[field], field)} visits ${label} as of ${when}. No participant list or identifier is exposed.`, used_metrics: [`nano.schedule.timepoints[${row.id}].${field}`] };
+    }
+    const due = timepoints.reduce((sum, item) => sum + Number(item.due || 0), 0);
+    const upcoming = timepoints.reduce((sum, item) => sum + Number(item.upcoming_14d || 0), 0);
+    const overdue = timepoints.reduce((sum, item) => sum + Number(item.overdue || 0), 0);
+    return { answer: `Across NANO visit windows, ${due} are due, ${upcoming} are upcoming in the next 14 days, and ${overdue} are overdue as of ${when}. These are de-identified aggregate counts.`, used_metrics: ["nano.schedule.timepoints[].due", "nano.schedule.timepoints[].upcoming_14d", "nano.schedule.timepoints[].overdue"] };
+  }
+  const redcap = nano?.redcap || {};
+  if (tokens.has("redcap") && Object.keys(redcap).length) {
+    const candidates = [
+      ["double_entry_discrepancies", ["discrepancy", "discrepancies", "double", "entry"]],
+      ["sync_health", ["sync", "health", "healthy", "status"]],
+      ["last_sync", ["last", "sync", "fresh", "freshness"]],
+      ["api_token_valid", ["api", "token", "valid", "validity"]],
+      ["records_locked", ["locked", "records"]],
+      ["instruments_defined", ["instrument", "instruments", "defined"]],
+      ["dags", ["dag", "dags", "coverage"]],
+    ];
+    const match = candidates.find(([field, words]) => Object.hasOwn(redcap, field) && words.some((word) => tokens.has(word)));
+    const fields = match ? [match[0]] : ["sync_health", "last_sync", "double_entry_discrepancies"].filter((field) => Object.hasOwn(redcap, field));
+    return { answer: `NANO REDCap status as of ${when}: ${fields.map((field) => `${field.replaceAll("_", " ")}: ${buddyValue(redcap[field], field)}`).join("; ")}.`, used_metrics: fields.map((field) => `nano.redcap.${field}`) };
+  }
+  const inventory = nano?.inventory || [];
+  if (inventory.length && ["inventory", "equipment", "actiheart", "squirrel", "electrode", "electrodes", "kit", "kits", "calibration", "stock", "available"].some((key) => tokens.has(key))) {
+    const row = [...inventory].sort((left, right) => [...tokens].filter((token) => buddyTokens(right.item).has(token)).length - [...tokens].filter((token) => buddyTokens(left.item).has(token)).length)[0];
+    const fields = ["available", "in_use", "calibration_due", "low_stock", "reorder_threshold", "status"].filter((field) => Object.hasOwn(row, field));
+    return { answer: `${row.item || "Selected equipment"} aggregate inventory as of ${when}: ${fields.map((field) => `${field.replaceAll("_", " ")}: ${buddyValue(row[field], field)}`).join("; ")}.`, used_metrics: fields.map((field) => `nano.inventory[${row.item}].${field}`) };
+  }
+  const enrollment = nano?.enrollment || {};
+  if (Object.keys(enrollment).length && ["enrollment", "enrolled", "cohort", "recruitment", "retention", "active", "target"].some((key) => tokens.has(key))) {
+    const groupTokens = ["asib", "pt", "td"].filter((group) => tokens.has(group));
+    const groupRows = enrollment.by_group || [];
+    if (groupRows.length && (groupTokens.length || tokens.has("group") || tokens.has("cohort"))) {
+      const selected = groupRows.filter((row) => !groupTokens.length || groupTokens.includes(String(row.group || "").toLowerCase()));
+      return { answer: `NANO enrollment by group as of ${when}: ${selected.map((row) => `${String(row.group).toUpperCase()} ${row.enrolled} of ${row.target}`).join("; ")}.`, used_metrics: selected.flatMap((row) => [`nano.enrollment.by_group[${String(row.group).toUpperCase()}].enrolled`, `nano.enrollment.by_group[${String(row.group).toUpperCase()}].target`]) };
+    }
+    const enrolledField = Object.hasOwn(enrollment, "enrolled") ? "enrolled" : "total";
+    const enrolled = enrollment[enrolledField];
+    const target = enrollment.target ?? nano?.meta?.n_target ?? nano?.study_meta?.n_target;
+    if (enrolled !== undefined) return { answer: `Current NANO aggregate enrollment is ${enrolled}${target !== undefined ? ` of ${target}` : ""} as of ${when}.`, used_metrics: [`nano.enrollment.${enrolledField}`, ...(target !== undefined ? [enrollment.target !== undefined ? "nano.enrollment.target" : nano?.meta?.n_target !== undefined ? "nano.meta.n_target" : "nano.study_meta.n_target"] : [])] };
+  }
+  const attention = nano?.attention || {};
+  if (["hda", "attention", "sustained", "orienting", "termination", "inattention", "deceleration", "quality", "rsa", "autonomic", "cptd", "temperature"].some((key) => tokens.has(key))) {
+    const requestedGroups = ["asib", "pt", "td"].filter((group) => tokens.has(group));
+    const attentionGroupWindows = attention.by_group_window || [];
+    if (attentionGroupWindows.length && (requestedGroups.length || tokens.has("group") || tokens.has("groups") || tokens.has("window") || tokens.has("windows"))) {
+      const rows = attentionGroupWindows.filter((row) => !requestedGroups.length || requestedGroups.includes(String(row.group || "").toLowerCase())).slice(0, 12);
+      const field = (tokens.has("quality") || tokens.has("deceleration"))
+        ? "hda_quality_bpm"
+        : rows.some((row) => Object.hasOwn(row, "hda_sustained_pct")) ? "hda_sustained_pct" : "sustained_pct";
+      const selected = rows.filter((row) => Object.hasOwn(row, field));
+      if (selected.length) return { answer: `NANO aggregate ${field === "hda_quality_bpm" ? "HDA quality" : "sustained-attention HDA share"} by group and window as of ${when}: ${selected.map((row) => `${String(row.group).toUpperCase()} ${row.window} ${buddyValue(row[field], field)}`).join("; ")}.`, used_metrics: selected.map((row) => `nano.attention.by_group_window[${String(row.group).toUpperCase()}-${row.window}].${field}`) };
+    }
+    const autonomicGroupWindows = nano?.autonomic?.by_group_window || [];
+    if (autonomicGroupWindows.length && ["rsa", "autonomic", "cptd", "temperature"].some((key) => tokens.has(key))) {
+      const field = tokens.has("cptd") || tokens.has("temperature") ? "cptd_mean_c" : "rsa_baseline_ms2";
+      const rows = autonomicGroupWindows.filter((row) => Object.hasOwn(row, field) && (!requestedGroups.length || requestedGroups.includes(String(row.group || "").toLowerCase()))).slice(0, 12);
+      if (rows.length) return { answer: `NANO aggregate ${field === "cptd_mean_c" ? "mean CPTd" : "baseline RSA"} by group and window as of ${when}: ${rows.map((row) => `${String(row.group).toUpperCase()} ${row.window} ${buddyValue(row[field], field)}`).join("; ")}.`, used_metrics: rows.map((row) => `nano.autonomic.by_group_window[${String(row.group).toUpperCase()}-${row.window}].${field}`) };
+    }
+    if ((tokens.has("rsa") || tokens.has("autonomic")) && nano?.autonomic?.rsa_baseline_ms2 !== undefined) return { answer: `NANO baseline RSA is ${buddyValue(nano.autonomic.rsa_baseline_ms2)} ms² in the aggregate snapshot as of ${when}.`, used_metrics: ["nano.autonomic.rsa_baseline_ms2"] };
+    if ((tokens.has("cptd") || tokens.has("temperature")) && nano?.autonomic?.cptd_mean_c !== undefined) return { answer: `NANO mean CPTd is ${buddyValue(nano.autonomic.cptd_mean_c)} °C in the aggregate snapshot as of ${when}.`, used_metrics: ["nano.autonomic.cptd_mean_c"] };
+    if (attention.hda_sustained_pct !== undefined) return { answer: `NANO sustained-attention HDA share is ${buddyValue(attention.hda_sustained_pct, "pct")} as of ${when}.`, used_metrics: ["nano.attention.hda_sustained_pct"] };
+    const legacy = nano?.lgcm_results?.pct_sa?.growth_curves || [];
+    if (legacy.length) {
+      const requested = ["asib", "pt", "td"].filter((group) => tokens.has(group));
+      const rows = legacy.filter((row) => !requested.length || requested.includes(String(row.group).toLowerCase())).slice(0, 9);
+      return { answer: `NANO aggregate sustained-attention share by group and age as of ${when}: ${rows.map((row) => `${String(row.group).toUpperCase()} ${row.timepoint_m}m ${buddyValue(row.mean, "pct")}`).join("; ")}.`, used_metrics: rows.map((row) => `nano.lgcm_results.pct_sa.growth_curves[${String(row.group).toUpperCase()}-${row.timepoint_m}m].mean`) };
+    }
+  }
+  const pipeline = nano?.pipeline || [];
+  const pipelineSummary = nano?.pipeline_summary || {};
+  if ((pipeline.length || Object.keys(pipelineSummary).length) && ["pipeline", "qc", "qa", "quality", "ingested", "preproc", "preprocessing", "imputation", "model", "ready", "sessions", "week", "actions"].some((key) => tokens.has(key))) {
+    if (Object.keys(pipelineSummary).length && ["qc", "qa", "quality", "sessions", "week", "actions"].some((key) => tokens.has(key))) {
+      const fields = (tokens.has("action") || tokens.has("actions") || tokens.has("open")) && Object.hasOwn(pipelineSummary, "open_qc_actions")
+        ? ["open_qc_actions"]
+        : ["qa_passed_sessions", "qa_pass_pct", "open_qc_actions"].filter((field) => Object.hasOwn(pipelineSummary, field));
+      if (fields.length) return { answer: `NANO aggregate pipeline QA as of ${when}: ${fields.map((field) => `${field.replaceAll("_", " ")}: ${buddyValue(pipelineSummary[field], field)}`).join("; ")}.`, used_metrics: fields.map((field) => `nano.pipeline_summary.${field}`) };
+    }
+    if (!pipeline.length) return null;
+    const row = [...pipeline].sort((left, right) => [...tokens].filter((token) => buddyTokens(right.stage).has(token)).length - [...tokens].filter((token) => buddyTokens(left.stage).has(token)).length)[0];
+    const fields = ["count", "delta_7d", "qc_pass_pct", "qa_passed"].filter((field) => Object.hasOwn(row, field));
+    return { answer: `NANO ${row.stage} as of ${when}: ${fields.map((field) => `${field.replaceAll("_", " ")}: ${buddyValue(row[field], field)}`).join("; ")}.`, used_metrics: fields.map((field) => `nano.pipeline[${row.stage}].${field}`) };
+  }
+  const models = nano?.models || {};
+  if (Object.keys(models).length && ["aim3", "aim", "model", "models", "shap", "training", "evaluated"].some((key) => tokens.has(key))) {
+    const fields = ["aim3_status", "best_metric", "shap_ready"].filter((field) => Object.hasOwn(models, field));
+    return { answer: `NANO Aim 3 model status as of ${when}: ${fields.map((field) => `${field.replaceAll("_", " ")}: ${buddyValue(models[field], field)}`).join("; ")}.`, used_metrics: fields.map((field) => `nano.models.${field}`) };
+  }
+  return null;
+}
+
+function safeBuddyCitationPath(value) {
+  const rawPath = String(value || "").trim().split(String.fromCharCode(92)).join("/");
+  const path = rawPath.startsWith("/") ? rawPath.replace(new RegExp("^/+"), "") : rawPath;
+  if (!path || path.split("/").includes("..") || !/\\.(?:md|txt|rst|pdf)$/i.test(path)) return null;
+  if (!["docs/", "esd-lab-readings/", "ESD Lab readings/", "dashboard/context_skill/references/"].some((prefix) => path.startsWith(prefix))) return null;
+  return path;
+}
+
+function cleanBuddyText(value, limit = 700) {
+  return String(value || "")
+    .replace(/[\\x00-\\x1f\\x7f]/g, " ")
+    .replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, "[redacted email]")
+    .replace(/(?<!\\d)(?:\\+?1[-. (]*)?\\d{3}[-. )]*\\d{3}[-. ]*\\d{4}(?!\\d)/g, "[redacted phone]")
+    .replace(/\\b(?:\\d{4}-\\d{2}-\\d{2}(?:[T ]\\d{2}:\\d{2}(?::\\d{2})?(?:Z|[+-]\\d{2}:?\\d{2})?)?|\\d{1,2}\\/\\d{1,2}\\/\\d{2,4})\\b/g, "[redacted date]")
+    .replace(/(?<!\\d)\\d{3}-\\d{2}-\\d{4}(?!\\d)/g, "[redacted SSN]")
+    .replace(/\\b(patient|participant|subject|infant|baby|caregiver|mother|father)(?:'s|\\s+(?:name\\s*(?:is|:)?|named))?\\s+[A-Z][A-Za-z'’-]{1,40}(?:\\s+[A-Z][A-Za-z'’-]{1,40}){1,3}\\b/g, "$1 [redacted name]")
+    .replace(/\\b\\d{1,6}\\s+(?:[A-Za-z0-9.'-]+\\s+){0,5}(?:street|st|road|rd|avenue|ave|boulevard|blvd|drive|dr|lane|ln|court|ct|way)\\b/gi, "[redacted address]")
+    .replace(/\\b(?:nano|asib|pt|td|vpt)[-_ ]?\\d{1,8}\\b/gi, "[redacted study ID]")
+    .replace(/\\s+/g, " ").trim().slice(0, limit);
+}
+
+function cleanBuddyProviderOutput(value, limit = 2400) {
+  const withoutReasoning = String(value || "")
+    .replace(/<(?:think|analysis|reasoning)\\s*>[\\s\\S]*?<[/](?:think|analysis|reasoning)\\s*>/gi, " ")
+    .replace(/<(?:think|analysis|reasoning)\\s*>[\\s\\S]*$/gi, " ")
+    .replace(/<[/]?(?:think|analysis|reasoning)\\s*>/gi, " ")
+    .replace(/^(?:final\\s+answer|answer)\\s*:\\s*/i, " ");
+  return cleanBuddyText(withoutReasoning, limit);
+}
+
+function buddyDocumentMatches(message, readings, limit = 2) {
+  const common = new Set(["about", "current", "does", "from", "have", "how", "many", "nano", "please", "show", "study", "that", "the", "this", "what", "which", "with"]);
+  const query = [...buddyTokens(message)].filter((token) => !common.has(token));
+  if (!query.length) return [];
+  const seen = new Set();
+  const matches = [];
+  for (const bucket of ["featured", "readings"]) {
+    for (const item of readings?.[bucket] || []) {
+      const path = safeBuddyCitationPath(item?.relative_path);
+      if (!path || seen.has(path)) continue;
+      seen.add(path);
+      const title = cleanBuddyText(item.title || item.display_name || path, 160);
+      const snippet = cleanBuddyText([item.excerpt, item.search_text, item.source, item.category, ...(item.keywords || [])].filter(Boolean).join(" "), 1000);
+      const titleTokens = buddyTokens(`${title} ${path}`);
+      const bodyTokens = buddyTokens(snippet);
+      const titleOverlap = query.filter((token) => titleTokens.has(token)).length;
+      const overlap = query.filter((token) => titleTokens.has(token) || bodyTokens.has(token)).length;
+      const score = 4 * titleOverlap + overlap;
+      if (score >= 3) matches.push({ title, path, loc: "Library index", snippet, score });
+    }
+  }
+  return matches.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, limit);
+}
+
+function buddyDocumentHelpRequest(message) {
+  const tokens = buddyTokens(message);
+  return ["sop", "protocol", "procedure", "procedures", "instruction", "instructions", "guide", "manual", "steps"].some((token) => tokens.has(token))
+    || /(?:how\\s+(?:do|can|should)\\s+i|how\\s+to|where\\s+do\\s+i)/i.test(String(message || ""));
+}
+
+async function readPackagedJson(env, url, path) {
+  if (!env?.ASSETS) return {};
+  try {
+    const target = new URL(path, url);
+    const response = await env.ASSETS.fetch(new Request(target.toString(), { headers: { accept: "application/json" } }));
+    if (!response.ok) return {};
+    const payload = await response.json();
+    return payload && typeof payload === "object" ? payload : {};
+  } catch {
+    return {};
+  }
+}
+
+function buddyRateLimit(request) {
+  const now = Date.now();
+  const key = request.headers.get("CF-Connecting-IP") || "anonymous";
+  if (buddyRequests.size > 4096) {
+    for (const [tracked, timestamps] of buddyRequests) {
+      const active = timestamps.filter((timestamp) => timestamp > now - BUDDY_RATE_WINDOW_MS);
+      if (active.length) buddyRequests.set(tracked, active);
+      else buddyRequests.delete(tracked);
+    }
+  }
+  const timestamps = (buddyRequests.get(key) || []).filter((timestamp) => timestamp > now - BUDDY_RATE_WINDOW_MS);
+  if (timestamps.length >= BUDDY_RATE_LIMIT) return Math.max(1, Math.ceil((timestamps[0] + BUDDY_RATE_WINDOW_MS - now) / 1000));
+  timestamps.push(now);
+  buddyRequests.set(key, timestamps);
+  return 0;
+}
+
+async function parseBuddyRequest(request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.split(";", 1)[0].trim().toLowerCase() !== "application/json") return { error: jsonResponse({ error: "Buddy requests require Content-Type: application/json." }, 415) };
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (declared > BUDDY_MAX_BODY_BYTES) return { error: jsonResponse({ error: "Request body exceeds the configured size limit." }, 413) };
+  let text;
+  try { text = await request.text(); } catch { return { error: jsonResponse({ error: "Request body must be valid JSON." }, 400) }; }
+  if (new TextEncoder().encode(text).byteLength > BUDDY_MAX_BODY_BYTES) return { error: jsonResponse({ error: "Request body exceeds the configured size limit." }, 413) };
+  let payload;
+  try { payload = JSON.parse(text); } catch { return { error: jsonResponse({ error: "Request body must be valid JSON." }, 400) }; }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return { error: jsonResponse({ error: "Request body must be a JSON object." }, 400) };
+  if (typeof payload.message !== "string") return { error: jsonResponse({ error: "Buddy message must be text." }, 400) };
+  const message = payload.message.trim();
+  if (!message) return { error: jsonResponse({ error: "Please ask Buddy a question before submitting." }, 400) };
+  if (message.length > 6000) return { error: jsonResponse({ error: "Buddy message is too long; limit it to 6000 characters." }, 413) };
+  const context = payload.context ?? { section: "nano" };
+  if (!context || typeof context !== "object" || Array.isArray(context)) return { error: jsonResponse({ error: "Buddy context must be a JSON object." }, 400) };
+  if (context.section !== undefined && String(context.section).trim().toLowerCase() !== "nano") return { error: jsonResponse({ error: "Buddy context section must be nano." }, 400) };
+  if (context.as_of !== undefined && (typeof context.as_of !== "string" || !/^\\d{4}-\\d{2}-\\d{2}(?:T[0-9:.+\\-]+Z?)?$/.test(context.as_of) || context.as_of.length > 64)) return { error: jsonResponse({ error: "Buddy context as_of must be an ISO-8601 date or timestamp." }, 400) };
+  return { message, asOf: context.as_of || null };
+}
+
+async function edgeBuddyProvider(message, nano, documents, env) {
+  const apiKey = env?.DASHBOARD_ASSISTANT_API_KEY;
+  if (!apiKey) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  const safeDocuments = documents.map(({ title, path, loc, snippet }) => ({ title, path, loc, snippet }));
+  const groundingPayload = safeDocuments.length
+    ? { documents: safeDocuments, nano: { meta: nano?.meta || {}, library: nano?.library || {} } }
+    : { nano };
+  const grounding = JSON.stringify(groundingPayload).slice(0, 12000);
+  try {
+    const response = await fetch(`${BUDDY_PROVIDER_BASE}/chat/completions`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: BUDDY_PROVIDER_MODEL,
+        temperature: 0.2,
+        top_p: 0.95,
+        max_tokens: 180,
+        messages: [
+          { role: "system", content: "You are ESD Lab Buddy for the NANO dashboard. Answer only from the supplied allowlisted aggregate metrics and public document snippets. Never infer, request, or reveal participant-level data, identifiers, raw signals, names, dates of birth, MRNs, contact details, or free-text notes. If evidence is missing, say so. Be concise. Do not invent citations or paths because the API attaches allowlisted citations." },
+          { role: "user", content: `Grounding: ${grounding}\n\nQuestion: ${cleanBuddyText(message, 6000)}` },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const answer = cleanBuddyProviderOutput(payload?.choices?.[0]?.message?.content, 2400);
+    return answer || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function buddyFallbackResponse(request, url, env, reason) {
+  const retryAfter = buddyRateLimit(request);
+  if (retryAfter) return jsonResponse({ error: "Buddy request limit reached. Please try again shortly.", status: "rate-limited", retry_after: retryAfter }, 429);
+  const parsed = await parseBuddyRequest(request);
+  if (parsed.error) return parsed.error;
+  if (buddyRefuses(parsed.message)) return jsonResponse(buddyRefusal());
+  const [dashboard, readings, repositoryDocuments] = await Promise.all([
+    readPackagedJson(env, url, "/dashboard/data/nano_dashboard_data.json"),
+    readPackagedJson(env, url, "/dashboard/data/readings_data.json"),
+    readPackagedJson(env, url, "/dashboard/data/buddy_documents.json"),
+  ]);
+  const nano = sanitizeNanoForBuddy(dashboard);
+  const documentCatalog = {
+    featured: readings?.featured || [],
+    readings: [...(readings?.readings || []), ...(repositoryDocuments?.documents || [])],
+  };
+  const documents = buddyDocumentMatches(parsed.message, documentCatalog);
+  if (buddyDocumentHelpRequest(parsed.message) && documents.length) {
+    const generated = await edgeBuddyProvider(parsed.message, nano, documents, env);
+    if (generated) return jsonResponse({ answer: generated, citations: documents.map(({ title, path, loc }) => ({ title, path, loc })), used_metrics: [], refused: false });
+    return jsonResponse({ answer: `According to ${documents[0].title}, ${documents[0].snippet} The linked citation is the approved source for the full procedure.`, citations: documents.map(({ title, path, loc }) => ({ title, path, loc })), used_metrics: [], refused: false });
+  }
+  const metric = buddyMetricAnswer(parsed.message, nano, parsed.asOf);
+  if (metric) return jsonResponse({ answer: metric.answer, citations: [], used_metrics: metric.used_metrics, refused: false });
+  const generated = await edgeBuddyProvider(parsed.message, nano, documents, env);
+  if (generated) return jsonResponse({ answer: generated, citations: documents.map(({ title, path, loc }) => ({ title, path, loc })), used_metrics: [], refused: false });
+  if (documents.length) return jsonResponse({ answer: `According to ${documents[0].title}, ${documents[0].snippet} The linked citation is the approved source for the full procedure.`, citations: documents.map(({ title, path, loc }) => ({ title, path, loc })), used_metrics: [], refused: false });
+  return jsonResponse({ answer: "Buddy is offline for open-ended generation, but the packaged aggregate dashboard metrics remain available. Ask about NANO enrollment, visit counts, HDA, RSA, pipeline QC, inventory, REDCap health, or an indexed reading.", citations: [], used_metrics: [], refused: false, degraded_reason: reason });
+}
+
 function presentationPlan(concept, options = {}) {
   const topic = String(concept || "this concept").trim() || "this concept";
   const title = topic.charAt(0).toUpperCase() + topic.slice(1);
@@ -360,26 +987,41 @@ function presentationPlan(concept, options = {}) {
   };
 }
 
-async function fallbackApiResponse(url, request, reason) {
+async function fallbackApiResponse(url, request, reason, env) {
   const path = url.pathname;
   if (path === "/api/healthz") {
     return jsonResponse({
       status: "ok",
       dashboard: true,
       readings: true,
-      assistant: assistantStatus(reason),
+      assistant: assistantStatus(reason, env),
       origin: "pages-fallback",
     });
   }
   if (path === "/api/assistant/status" || path === "/api/chat/status") {
-    return jsonResponse(assistantStatus(reason));
+    return jsonResponse(assistantStatus(reason, env));
+  }
+  if (path === "/api/buddy" && (!request || request.method === "GET" || request.method === "HEAD")) {
+    if (request?.method === "HEAD") {
+      return new Response(null, {
+        status: 200,
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+        },
+      });
+    }
+    return jsonResponse(buddyStatus(reason, env));
+  }
+  if (path === "/api/buddy" && request?.method === "POST") {
+    return buddyFallbackResponse(request, url, env, reason);
   }
   if (path === "/api/assistant/freshness") {
     return jsonResponse({
       schema: "assistant_freshness.v1",
       mode: "pages-fallback",
       generated_at: new Date().toISOString(),
-      assistant: assistantStatus(reason),
+      assistant: assistantStatus(reason, env),
       readings: { last_indexed_at: null, total_indexed: null, payload_version: "pages-fallback" },
       pipeline: { state: "pages-fallback", warnings: [] },
       redcap: { generated_at: null, record_count: null, anomaly_count: null, source: "pages-fallback" },
@@ -403,12 +1045,20 @@ async function fallbackApiResponse(url, request, reason) {
     return jsonResponse({ error: "Backend offline - REDCap visit entry unavailable" }, 503);
   }
   if (path === "/api/assistant/chat" && request?.method === "POST") {
-    const payload = await readJson(request);
-    return ndjsonResponse(assistantReply(payload.message));
+    const response = await buddyFallbackResponse(request, url, env, reason);
+    if (!response.ok) return response;
+    const payload = await response.json();
+    return ndjsonResponse(payload.answer);
   }
   if (path === "/api/chat" && request?.method === "POST") {
-    const payload = await readJson(request);
-    return jsonResponse({ reply: assistantReply(payload.message), status: assistantStatus(reason) });
+    const response = await buddyFallbackResponse(request, url, env, reason);
+    if (!response.ok) return response;
+    const payload = await response.json();
+    return jsonResponse({
+      reply: payload.answer,
+      citations: payload.citations || [],
+      status: assistantStatus(reason, env),
+    });
   }
   if (path === "/api/presentation/plan" && request?.method === "POST") {
     const payload = await readJson(request);
@@ -443,12 +1093,14 @@ async function fallbackApiResponse(url, request, reason) {
   return null;
 }
 
-async function proxyApi(request, url) {
+async function proxyApi(request, url, env) {
   if (!API_ORIGIN) {
-    const directFallbackRequest = request.method === "GET" || request.method === "HEAD"
-      ? null
-      : request.clone();
-    const fallback = await fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin");
+    const directFallbackRequest = url.pathname === "/api/buddy"
+      ? request.clone()
+      : request.method === "GET" || request.method === "HEAD"
+        ? null
+        : request.clone();
+    const fallback = await fallbackApiResponse(url, directFallbackRequest, "no-healthy-origin", env);
     return fallback || jsonResponse({ error: "API route unavailable in fallback-only mode" }, 503);
   }
   const target = new URL(url.pathname + url.search, API_ORIGIN);
@@ -456,12 +1108,19 @@ async function proxyApi(request, url) {
     ? null
     : request.clone();
   try {
-    const response = await fetch(new Request(target.toString(), request));
+    const upstreamRequest = new Request(target.toString(), request);
+    const originalClientIp = request.headers.get("CF-Connecting-IP") || "";
+    if (originalClientIp) {
+      upstreamRequest.headers.set("X-ESD-Original-Client-IP", originalClientIp);
+    } else {
+      upstreamRequest.headers.delete("X-ESD-Original-Client-IP");
+    }
+    const response = await fetch(upstreamRequest);
     if (response.status < 500) return response;
-    const fallback = await fallbackApiResponse(url, fallbackRequest, `upstream-${response.status}`);
+    const fallback = await fallbackApiResponse(url, fallbackRequest, `upstream-${response.status}`, env);
     return fallback || response;
   } catch (error) {
-    const fallback = await fallbackApiResponse(url, fallbackRequest, "upstream-fetch-failed");
+    const fallback = await fallbackApiResponse(url, fallbackRequest, "upstream-fetch-failed", env);
     if (fallback) return fallback;
     return jsonResponse(
       { error: "API origin unavailable", origin: API_ORIGIN, detail: String(error?.message || error) },
@@ -483,8 +1142,34 @@ export default {
       return redcapProxy(request, env);
     }
 
+    if (url.pathname === "/api/buddy") {
+      const origin = request.headers.get("Origin");
+      const normalizedOrigin = origin?.endsWith("/") ? origin.slice(0, -1) : origin;
+      if (normalizedOrigin && normalizedOrigin !== url.origin) {
+        return jsonResponse({ error: "Origin is not allowed" }, 403);
+      }
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            "access-control-allow-methods": "GET, HEAD, POST, OPTIONS",
+            "access-control-allow-headers": "Content-Type",
+            "cache-control": "no-store",
+          },
+        });
+      }
+      if (!["GET", "HEAD", "POST"].includes(request.method)) {
+        return jsonResponse({ error: "Use GET for status or POST for Buddy questions." }, 405);
+      }
+      if (request.method === "POST") {
+        const parsed = await parseBuddyRequest(request.clone());
+        if (parsed.error) return parsed.error;
+        if (buddyRefuses(parsed.message)) return jsonResponse(buddyRefusal());
+      }
+    }
+
     if (url.pathname.startsWith("/api/")) {
-      return proxyApi(request, url);
+      return proxyApi(request, url, env);
     }
 
     const assetResponse = await env.ASSETS.fetch(request);
@@ -589,6 +1274,24 @@ def build(
         source = REPO_ROOT / "dashboard" / "data" / name
         if source.exists():
             shutil.copy2(source, dashboard_data_out / name)
+
+    nano_source = REPO_ROOT / "dashboard" / "data" / "nano_dashboard_data.json"
+    if nano_source.exists():
+        try:
+            nano_payload = json.loads(nano_source.read_text(encoding="utf-8"))
+            _validate_public_nano_payload(nano_payload)
+        except (json.JSONDecodeError, ValueError) as exc:
+            sys.exit(f"[build_pages_site] unsafe public NANO payload: {exc}")
+        (dashboard_data_out / nano_source.name).write_text(
+            json.dumps(nano_payload, indent=2, ensure_ascii=True, allow_nan=False),
+            encoding="utf-8",
+        )
+
+    buddy_documents = _build_public_buddy_documents(REPO_ROOT)
+    (dashboard_data_out / "buddy_documents.json").write_text(
+        json.dumps(buddy_documents, indent=2, ensure_ascii=True, allow_nan=False),
+        encoding="utf-8",
+    )
 
     out_index = out_dir / "index.html"
     html = _read(out_index)

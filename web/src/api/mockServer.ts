@@ -1648,6 +1648,7 @@ function mockJobView(job: MockJob): Record<string, unknown> {
 
 const realFetch = window.fetch.bind(window);
 const LIVE_ASSISTANT_ROUTES = new Set([
+  "/api/buddy",
   "/api/assistant/status",
   "/api/assistant/chat",
   "/api/chat/status",
