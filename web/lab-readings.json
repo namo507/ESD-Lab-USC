@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-14T14:09:10",
+  "generated_at": "2026-07-14T14:26:11",
   "summary": {
     "count": 24,
     "total_pages": 900,
@@ -361,24 +361,44 @@
       "bucket": "Grant Materials · n/a"
     },
     {
-      "id": "infant-autism-screening-redcap",
-      "title": "Infant Autism Screening | REDCap",
+      "id": "specific-aims-atypical-attention-is-among-the-earliest-emerging-lifelong-features-of-autism-spectrum-disorder-asd-and-a-particularly-compelling-candidate-for",
+      "title": "SPECIFIC AIMS Atypical attention is among the earliest-emerging, lifelong features of autism spectrum disorder (ASD) and a particularly compelling candidate for",
       "year": null,
-      "category": "Autism and Development",
-      "source": "ESD Lab Reading Library",
+      "category": "Grant Materials",
+      "source": "Grant Materials",
       "keywords": [
-        "elig",
-        "field",
-        "knee",
-        "time",
-        "text",
-        "secs"
+        "attention",
+        "autonomic",
+        "regulation",
+        "asibs",
+        "will",
+        "specific"
       ],
-      "abstract": "Indexed reading from ESD Lab Reading Library focused on autism and development.",
-      "page_count": 43,
-      "size_mb": 0.32,
-      "href": "../esd-lab-readings/Infant%20Autism%20Screening%20_%20REDCap.pdf",
-      "bucket": "Autism and Development · n/a"
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 1,
+      "size_mb": 0.18,
+      "href": "../esd-lab-readings/SpecificAims_BradshawR01_A1.pdf",
+      "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "significance-earlier-intervention",
+      "title": "SIGNIFICANCE Earlier Intervention",
+      "year": null,
+      "category": "Grant Materials",
+      "source": "Grant Materials",
+      "keywords": [
+        "attention",
+        "that",
+        "intervention",
+        "early",
+        "earlier",
+        "lifelong"
+      ],
+      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
+      "page_count": 12,
+      "size_mb": 1.03,
+      "href": "../esd-lab-readings/ResearchStrategy_BradshawR01_A1.pdf",
+      "bucket": "Grant Materials · n/a"
     },
     {
       "id": "nico",
@@ -421,46 +441,6 @@
       "bucket": "Grant Materials · n/a"
     },
     {
-      "id": "specific-aims-atypical-attention-is-among-the-earliest-emerging-lifelong-features-of-autism-spectrum-disorder-asd-and-a-particularly-compelling-candidate-for",
-      "title": "SPECIFIC AIMS Atypical attention is among the earliest-emerging, lifelong features of autism spectrum disorder (ASD) and a particularly compelling candidate for",
-      "year": null,
-      "category": "Grant Materials",
-      "source": "Grant Materials",
-      "keywords": [
-        "attention",
-        "autonomic",
-        "regulation",
-        "asibs",
-        "will",
-        "specific"
-      ],
-      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
-      "page_count": 1,
-      "size_mb": 0.18,
-      "href": "../esd-lab-readings/SpecificAims_BradshawR01_A1.pdf",
-      "bucket": "Grant Materials · n/a"
-    },
-    {
-      "id": "significance-earlier-intervention",
-      "title": "SIGNIFICANCE Earlier Intervention",
-      "year": null,
-      "category": "Grant Materials",
-      "source": "Grant Materials",
-      "keywords": [
-        "attention",
-        "that",
-        "intervention",
-        "early",
-        "earlier",
-        "lifelong"
-      ],
-      "abstract": "Indexed reading from Grant Materials focused on grant materials.",
-      "page_count": 12,
-      "size_mb": 1.03,
-      "href": "../esd-lab-readings/ResearchStrategy_BradshawR01_A1.pdf",
-      "bucket": "Grant Materials · n/a"
-    },
-    {
       "id": "microsoft-word-specific-aims-and-research-strategy-linked-robin-only-unlinked",
       "title": "Microsoft Word - specific aims and research strategy linked_ROBIN ONLY_unlinked",
       "year": null,
@@ -479,6 +459,26 @@
       "size_mb": 1.21,
       "href": "../esd-lab-readings/ResearchStrategy_Final.pdf",
       "bucket": "Grant Materials · n/a"
+    },
+    {
+      "id": "infant-autism-screening-redcap",
+      "title": "Infant Autism Screening | REDCap",
+      "year": null,
+      "category": "Autism and Development",
+      "source": "ESD Lab Reading Library",
+      "keywords": [
+        "elig",
+        "field",
+        "knee",
+        "time",
+        "text",
+        "secs"
+      ],
+      "abstract": "Indexed reading from ESD Lab Reading Library focused on autism and development.",
+      "page_count": 43,
+      "size_mb": 0.32,
+      "href": "../esd-lab-readings/Infant%20Autism%20Screening%20_%20REDCap.pdf",
+      "bucket": "Autism and Development · n/a"
     },
     {
       "id": "a-secure-base-script-perspective-on-attachment-progress-promise-and-prospects",
