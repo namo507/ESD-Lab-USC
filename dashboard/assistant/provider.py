@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib.util
 import random
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -34,6 +35,71 @@ PROVIDER_ALIASES = {
     "self-hosted": "nvidia-nim",
     "self-hosted-nim": "nvidia-nim",
 }
+
+_REASONING_TAG_PATTERN = re.compile(
+    r"</?(?:think|analysis|reasoning)\s*>", re.IGNORECASE
+)
+_REASONING_BLOCK_PATTERN = re.compile(
+    r"<(?:think|analysis|reasoning)\s*>.*?</(?:think|analysis|reasoning)\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+_REASONING_OPEN_PATTERN = re.compile(
+    r"<(?:think|analysis|reasoning)\s*>", re.IGNORECASE
+)
+_FINAL_ANSWER_PATTERN = re.compile(
+    r"(?:^|\n|[.!?]\s+)\s*(?:final\s+answer|answer)\s*:\s*",
+    re.IGNORECASE,
+)
+_PLANNING_PREFIX_PATTERN = re.compile(
+    r"^(?:(?:we|i)\s+(?:need|must|should|have)\s+to\s+"
+    r"(?:answer|respond|explain|analy[sz]e|craft)|"
+    r"(?:the\s+)?user\s+(?:asks|wants|requested)|"
+    r"(?:let(?:'s|\s+us))\s+(?:reason|analy[sz]e|craft)|analysis\s*:)",
+    re.IGNORECASE,
+)
+_PLANNING_MARKERS = (
+    "must answer",
+    "provided context",
+    "dashboard context",
+    "context only",
+    "be concise",
+    "concise answer",
+    "do not invent",
+    "must not invent",
+    "should not add",
+    "grounded in",
+    "hidden reasoning",
+)
+_PLANNING_PREFIXES = tuple(
+    f"{subject} {intent} to {action}"
+    for subject in ("we", "i")
+    for intent in ("need", "must", "should", "have")
+    for action in ("answer", "respond", "explain", "analyze", "analyse", "craft")
+) + (
+    "the user asks",
+    "the user wants",
+    "the user requested",
+    "user asks",
+    "user wants",
+    "user requested",
+    "let's reason",
+    "let's analyze",
+    "let's analyse",
+    "let's craft",
+    "let us reason",
+    "let us analyze",
+    "let us analyse",
+    "let us craft",
+    "analysis:",
+)
+_REASONING_TAGS = (
+    "<think>",
+    "</think>",
+    "<analysis>",
+    "</analysis>",
+    "<reasoning>",
+    "</reasoning>",
+)
 
 
 class AssistantProvider(Protocol):
@@ -76,8 +142,9 @@ class ProviderConfig:
     api_base: str = NVIDIA_HOSTED_API_BASE
     api_key: str | None = None
     model: str = NVIDIA_NEMOTRON_MODEL
-    enable_thinking: bool = True
-    reasoning_budget: int = 16384
+    # Dashboard chat needs short final answers, not a visible reasoning trace.
+    enable_thinking: bool = False
+    reasoning_budget: int = 0
     request_timeout_seconds: float = 180.0
     max_retries: int = 6
     retry_base_seconds: float = 2.0
@@ -220,12 +287,123 @@ def _content_text(content: Any) -> str:
     return "".join(parts)
 
 
+def _looks_like_internal_planning(text: str) -> bool:
+    """Identify provider planning prose without matching ordinary first-person text."""
+    normalized = " ".join(text.strip().lower().split())
+    if not normalized or not _PLANNING_PREFIX_PATTERN.match(normalized):
+        return False
+    if normalized.startswith(("we need to answer", "i need to answer")):
+        return True
+    marker_count = sum(marker in normalized[:800] for marker in _PLANNING_MARKERS)
+    return marker_count >= 2
+
+
+def _could_start_internal_planning(text: str) -> bool:
+    """Keep an undecided stream prefix private until it cannot be planning."""
+    normalized = " ".join(text.strip().lower().split())
+    if not normalized:
+        return True
+    if _PLANNING_PREFIX_PATTERN.match(normalized):
+        return True
+    return any(prefix.startswith(normalized) for prefix in _PLANNING_PREFIXES)
+
+
+def sanitize_response_content(content: str) -> str:
+    """Return final answer text while suppressing model reasoning artifacts.
+
+    Nemotron may place reasoning in ``content`` rather than a dedicated field and
+    may emit an orphan ``</think>`` marker even when thinking is disabled.  This
+    boundary therefore treats tagged or recognizable planning text as private.
+    """
+    text = (content or "").lstrip("\ufeff")
+    if not text.strip():
+        return ""
+
+    previous = None
+    while previous != text:
+        previous = text
+        text = _REASONING_BLOCK_PATTERN.sub("", text)
+
+    # Never expose an unterminated reasoning block. Preserve only content that
+    # appeared before the opening marker, if any.
+    open_match = _REASONING_OPEN_PATTERN.search(text)
+    if open_match is not None:
+        text = text[: open_match.start()]
+
+    # NVIDIA can return a leading closing marker for non-thinking completions.
+    text = _REASONING_TAG_PATTERN.sub("", text).strip()
+    if not text:
+        return ""
+
+    if _looks_like_internal_planning(text):
+        final_markers = list(_FINAL_ANSWER_PATTERN.finditer(text))
+        if not final_markers:
+            return ""
+        text = text[final_markers[-1].end() :].strip()
+
+    return text
+
+
+class _ReasoningTagFilter:
+    """Strip reasoning tags safely when a marker is split across stream chunks."""
+
+    def __init__(self) -> None:
+        self._buffer = ""
+        self._inside_reasoning = False
+
+    @staticmethod
+    def _partial_tag_length(value: str) -> int:
+        lowered = value.lower()
+        return max(
+            (
+                size
+                for tag in _REASONING_TAGS
+                for size in range(1, min(len(tag), len(lowered)) + 1)
+                if lowered.endswith(tag[:size])
+            ),
+            default=0,
+        )
+
+    def feed(self, content: str) -> list[str]:
+        self._buffer += content
+        visible: list[str] = []
+
+        while self._buffer:
+            match = _REASONING_TAG_PATTERN.search(self._buffer)
+            if match is not None:
+                prefix = self._buffer[: match.start()]
+                if prefix and not self._inside_reasoning:
+                    visible.append(prefix)
+                tag = match.group(0).lower()
+                self._inside_reasoning = not tag.startswith("</")
+                self._buffer = self._buffer[match.end() :]
+                continue
+
+            keep = self._partial_tag_length(self._buffer)
+            flush = self._buffer[:-keep] if keep else self._buffer
+            if flush and not self._inside_reasoning:
+                visible.append(flush)
+            self._buffer = self._buffer[-keep:] if keep else ""
+            break
+
+        return visible
+
+    def finish(self) -> str:
+        # An unfinished tag or reasoning block is private and intentionally lost.
+        if self._inside_reasoning or self._partial_tag_length(self._buffer):
+            self._buffer = ""
+            return ""
+        visible = self._buffer
+        self._buffer = ""
+        return visible
+
+
 def completion_content(response: Any) -> str:
     choices = _read_attr(response, "choices", []) or []
     if not choices:
         return ""
     message = _read_attr(choices[0], "message", {}) or {}
-    return _content_text(_read_attr(message, "content", "")).strip()
+    return sanitize_response_content(_content_text(_read_attr(message, "content", "")))
 
 
 def stream_content(chunk: Any) -> str:
@@ -656,6 +834,11 @@ class NVIDIAOpenAIProvider:
             )
             for attempt in range(max(0, self.config.max_retries) + 1):
                 emitted = False
+                reasoning_buffer: list[str] = []
+                tag_filter = _ReasoningTagFilter()
+                buffer_reasoning = bool(self.config.enable_thinking)
+                planning_prefix = ""
+                planning_decided = buffer_reasoning
                 try:
                     remote_stream = self._create(**kwargs)
                     for chunk in remote_stream:
@@ -668,7 +851,40 @@ class NVIDIAOpenAIProvider:
                         content = stream_content(chunk)
                         if content:
                             emitted = True
-                            yield content
+                            if buffer_reasoning:
+                                reasoning_buffer.append(content)
+                                continue
+                            for visible in tag_filter.feed(content):
+                                if planning_decided:
+                                    yield visible
+                                    continue
+                                planning_prefix += visible
+                                if _looks_like_internal_planning(planning_prefix):
+                                    buffer_reasoning = True
+                                    planning_decided = True
+                                    reasoning_buffer.append(planning_prefix)
+                                    planning_prefix = ""
+                                elif not _could_start_internal_planning(
+                                    planning_prefix
+                                ):
+                                    planning_decided = True
+                                    yield planning_prefix
+                                    planning_prefix = ""
+                    if buffer_reasoning:
+                        visible = sanitize_response_content("".join(reasoning_buffer))
+                        if visible:
+                            yield visible
+                    else:
+                        tail = tag_filter.finish()
+                        if tail:
+                            if planning_decided:
+                                yield tail
+                            else:
+                                planning_prefix += tail
+                        if planning_prefix:
+                            visible = sanitize_response_content(planning_prefix)
+                            if visible:
+                                yield visible
                     self._record_success()
                     return
                 except GeneratorExit:
@@ -725,5 +941,6 @@ __all__ = [
     "ProviderError",
     "build_provider",
     "completion_content",
+    "sanitize_response_content",
     "stream_content",
 ]

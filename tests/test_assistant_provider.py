@@ -18,6 +18,7 @@ from dashboard.assistant.provider import (
     NVIDIAOpenAIProvider,
     ProviderConfig,
     ProviderError,
+    sanitize_response_content,
 )
 
 ENV_NAMES = (
@@ -71,10 +72,10 @@ def test_config_defaults_to_nvidia_hosted_contract(monkeypatch):
     assert config.runtime == "nvidia-build-api"
     assert config.api_base == NVIDIA_HOSTED_API_BASE
     assert config.model_id == NVIDIA_NEMOTRON_MODEL
-    assert config.enable_thinking is True
-    assert config.reasoning_budget == 16384
+    assert config.enable_thinking is False
+    assert config.reasoning_budget == 0
     assert config.max_new_tokens == 16384
-    assert config.temperature == 1.0
+    assert config.temperature == 0.2
     assert config.top_p == 0.95
     assert config.stream_enabled is True
     assert config.model_dir is None and config.model_file is None
@@ -147,7 +148,7 @@ def test_legacy_local_runtime_env_aliases_are_ignored(monkeypatch):
     config = AssistantConfig.from_env()
 
     assert config.max_new_tokens == 16384
-    assert config.temperature == 1.0
+    assert config.temperature == 0.2
     assert config.context_window == 32768
 
 
@@ -189,9 +190,98 @@ def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
     assert attempts[0]["model"] == NVIDIA_NEMOTRON_MODEL
     assert attempts[0]["stream"] is False
     assert attempts[0]["extra_body"] == {
-        "chat_template_kwargs": {"enable_thinking": True},
-        "reasoning_budget": 16384,
+        "chat_template_kwargs": {"enable_thinking": False},
+        "reasoning_budget": 0,
     }
+
+
+def test_response_sanitizer_removes_reasoning_tags_and_planning_preambles():
+    assert (
+        sanitize_response_content("</think>\n- The NANO Study is the main project.")
+        == "- The NANO Study is the main project."
+    )
+    assert (
+        sanitize_response_content(
+            "<think>private planning</think>\n- Grounded final answer."
+        )
+        == "- Grounded final answer."
+    )
+
+    leaked_planning = (
+        "We need to explain NANO Study in simple terms. Must answer from provided "
+        "context only. Use concise answer and be grounded in context."
+    )
+    assert sanitize_response_content(leaked_planning) == ""
+    assert (
+        sanitize_response_content(
+            leaked_planning + "\nFinal answer: - Grounded final answer."
+        )
+        == "- Grounded final answer."
+    )
+
+
+def test_stream_strips_reasoning_markers_split_across_chunks():
+    chunks = iter(
+        [
+            {"choices": [{"delta": {"content": "<thi"}}]},
+            {"choices": [{"delta": {"content": "nk>private plan"}}]},
+            {"choices": [{"delta": {"content": "ning</thi"}}]},
+            {"choices": [{"delta": {"content": "nk>\n- Final"}}]},
+            {"choices": [{"delta": {"content": " answer."}}]},
+        ]
+    )
+    provider = NVIDIAOpenAIProvider(
+        ProviderConfig(api_key="test-key", max_retries=0),
+        client=_client(lambda **kwargs: chunks),
+    )
+
+    output = "".join(
+        provider.stream(
+            [{"role": "user", "content": "q"}],
+            max_tokens=32,
+            temperature=0.2,
+            top_p=0.95,
+        )
+    )
+
+    assert output == "\n- Final answer."
+    assert "private" not in output
+
+
+def test_stream_strips_planning_preamble_split_across_chunks():
+    chunks = iter(
+        [
+            {"choices": [{"delta": {"content": "We need "}}]},
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "content": (
+                                "to answer using the provided context only. "
+                                "Final answer: - Grounded answer."
+                            )
+                        }
+                    }
+                ]
+            },
+        ]
+    )
+    provider = NVIDIAOpenAIProvider(
+        ProviderConfig(api_key="test-key", max_retries=0),
+        client=_client(lambda **kwargs: chunks),
+    )
+
+    output = "".join(
+        provider.stream(
+            [{"role": "user", "content": "q"}],
+            max_tokens=32,
+            temperature=0.2,
+            top_p=0.95,
+        )
+    )
+
+    assert output == "- Grounded answer."
+    assert "We need" not in output
 
 
 def test_timeout_state_opens_circuit_and_next_request_fails_fast():

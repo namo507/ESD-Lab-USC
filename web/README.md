@@ -14,9 +14,9 @@ Python runtime serves the same built SPA from `web/build/`.
 | `build/` | Generated Vite output; ignored by git |
 
 The retired monolithic exports (`dashboard-source.html`, `pages-overlay.css`,
-and `pages-overlay.js`) are intentionally ignored and not deployed. If a design
-export is needed for reference, keep it under `design-ideas/` or `archive/`,
-not in this frontend package.
+and `pages-overlay.js`) are intentionally ignored and not deployed. Put large
+design-source packages in approved external asset storage or a GitHub Release,
+not in the application tree.
 
 ## Commands
 

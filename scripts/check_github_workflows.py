@@ -233,9 +233,17 @@ def check_docker_publish(data: dict[str, Any], errors: list[str]) -> None:
 
 def check_redcap_sync(data: dict[str, Any], errors: list[str]) -> None:
     text = (WORKFLOW_DIR / "redcap_sync.yml").read_text(encoding="utf-8")
-    if "if: env.PAGES_DEPLOY_HOOK_URL != ''" not in text:
+    for snippet in (
+        "REDCAP_CONFIGURED:",
+        "r-lib/actions/setup-r@v2",
+        "if: env.REDCAP_CONFIGURED == 'true'",
+        "if: env.REDCAP_CONFIGURED != 'true'",
+        "if: env.REDCAP_CONFIGURED == 'true' && env.PAGES_DEPLOY_HOOK_URL != ''",
+    ):
+        if snippet in text:
+            continue
         errors.append(
-            "redcap_sync.yml: Pages hook condition must use the environment value"
+            f"redcap_sync.yml: credential-aware skip guard missing {snippet!r}"
         )
 
 

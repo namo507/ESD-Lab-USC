@@ -38,6 +38,10 @@ DEFAULT_CONTEXT_WINDOW = 32768
 DEFAULT_BATCH_SIZE = 0
 DEFAULT_MAX_NEW_TOKENS = 16384
 DEFAULT_THREAD_COUNT = 0
+EMPTY_GROUNDED_REPLY = (
+    "I do not have enough grounded dashboard context to answer that yet. "
+    "Try asking about enrollment, data quality, model performance, or readings."
+)
 CONTEXT_WINDOW_TOKEN_RESERVE = 320
 APPROX_CONTEXT_CHARS_PER_TOKEN = 2
 SUMMARY_KEYS = (
@@ -572,6 +576,11 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "measures",
     },
     "organization_site": {
+        "nano",
+        "newborn",
+        "purpose",
+        "studies",
+        "study",
         "website",
         "site",
         "esd",
@@ -667,6 +676,19 @@ DETAIL_REQUEST_TOKENS = {
     "summary",
     "why",
 }
+NANO_EXPLAINER_TOKENS = {
+    "5",
+    "five",
+    "child",
+    "eli5",
+    "kid",
+    "kids",
+    "old",
+    "simple",
+    "simply",
+    "year",
+    "years",
+}
 CONCISE_RESPONSE_TOKEN_LIMIT = 96
 DETAILED_RESPONSE_TOKEN_LIMIT = 144
 DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS = 90.0
@@ -721,10 +743,10 @@ class AssistantConfig:
     model_license: str = "NVIDIA API terms"
     auto_download: bool = False
     device_preference: str = "provider-managed"
-    enable_thinking: bool = True
-    reasoning_budget: int = 16384
+    enable_thinking: bool = False
+    reasoning_budget: int = 0
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
-    temperature: float = 1.0
+    temperature: float = 0.2
     top_p: float = 0.95
     stream_enabled: bool = True
     request_timeout_seconds: float = 180.0
@@ -794,10 +816,10 @@ class AssistantConfig:
                 "self-hosted-gpu" if use_self_hosted else "provider-managed"
             ),
             enable_thinking=_parse_bool(
-                os.getenv("DASHBOARD_ASSISTANT_ENABLE_THINKING"), default=True
+                os.getenv("DASHBOARD_ASSISTANT_ENABLE_THINKING"), default=False
             ),
             reasoning_budget=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_REASONING_BUDGET"), default=16384
+                os.getenv("DASHBOARD_ASSISTANT_REASONING_BUDGET"), default=0
             ),
             max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS"),
@@ -805,7 +827,7 @@ class AssistantConfig:
             ),
             temperature=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_TEMPERATURE"),
-                default=1.0,
+                default=0.2,
             ),
             top_p=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_TOP_P"),
@@ -1024,10 +1046,7 @@ class DashboardChatAssistant:
             self._raise_provider_unavailable(exc)
 
         if not reply:
-            reply = (
-                "I do not have enough grounded dashboard context to answer that yet. "
-                "Try asking about enrollment, data quality, model performance, or readings."
-            )
+            reply = EMPTY_GROUNDED_REPLY
 
         return {
             "reply": reply,
@@ -1053,13 +1072,22 @@ class DashboardChatAssistant:
                 )
                 if content:
                     yield content
+                else:
+                    yield EMPTY_GROUNDED_REPLY
                 return
-            yield from provider.stream(
+            emitted = False
+            for content in provider.stream(
                 messages=messages,
                 max_tokens=self._response_token_limit(message),
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
-            )
+            ):
+                if not content:
+                    continue
+                emitted = True
+                yield content
+            if not emitted:
+                yield EMPTY_GROUNDED_REPLY
         except GeneratorExit:
             # Closing this generator propagates into the provider, which closes the
             # remote stream without recording a model-health failure.
@@ -1382,6 +1410,28 @@ class DashboardChatAssistant:
         if reading_matches and focus_sections == {"readings"}:
             grounded = True
 
+        if (
+            {"nano", "study"} <= question_tokens
+            and question_tokens & {"explain", "describe", "what"}
+            and question_tokens & NANO_EXPLAINER_TOKENS
+        ):
+            organization_site = payload.get("organization_site") or {}
+            public_studies = (
+                organization_site.get("studies")
+                if isinstance(organization_site, dict)
+                else []
+            )
+            for index, study in enumerate(public_studies or []):
+                if (
+                    not isinstance(study, dict)
+                    or "nano"
+                    not in str(study.get("title") or study.get("slug") or "").lower()
+                ):
+                    continue
+                source_path = f"organization_site.studies[{index}]"
+                citations = [source_path, *[c for c in citations if c != source_path]]
+                break
+
         return {
             "context": "\n".join(part for part in context_parts if part),
             "citations": citations[:6],
@@ -1465,23 +1515,19 @@ class DashboardChatAssistant:
                 "role": "system",
                 "content": (
                     "You are the NANO Study dashboard assistant embedded in the ESD Lab live dashboard. "
+                    "Return only the final user-facing answer. Never output analysis, planning, task instructions, prompt text, or hidden reasoning. "
+                    "Start directly with the answer, do not restate the question, and match the audience or reading level the user requests. "
                     "Answer only from the provided dashboard context and do not invent facts. "
                     "Be concise by default: answer in 2-4 short bullets or sentences unless the user explicitly asks for more detail. "
-                    "Use readable spacing: when an answer has multiple parts, put each part on its own bullet line. "
+                    "Use readable Markdown spacing: when an answer has multiple parts, put each part on its own bullet line. Do not add a heading to a short answer. "
                     "Repeat exact counts, group labels, model names, and AUROC values verbatim when they appear in context. "
                     "Do not add qualitative judgments, speculation, or interpretations that are not explicitly stated. "
+                    "If the context shows only study operations and not the study's scientific purpose, explain only those operations and say the full purpose is not stated. "
                     "If a list is requested, include every listed item from context and nothing else. "
                     "For library or reading questions, the dashboard context may contain only indexed metadata and short excerpts, not full document text. "
                     "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
                     "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
                     "Do not include protected health information or speculate about participants.\n\n"
-                    "Assistant runtime policy: generation uses the configured NVIDIA "
-                    f"OpenAI-compatible provider ({self.config.runtime}) with "
-                    f"{self.config.model_label} ({self.config.model_id}). "
-                    "The hosted NVIDIA endpoint is the default. Self-hosted NIM is "
-                    "optional, requires dedicated GPU infrastructure, and is disabled "
-                    "unless explicitly configured. Never claim unlimited provider "
-                    "capacity or expose credentials or hidden reasoning.\n\n"
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
                     "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
@@ -2497,6 +2543,7 @@ class DashboardChatAssistant:
         matlab = payload.get("matlab_integration", {})
         cohort = payload.get("cohort_table") or []
         participant_operations = payload.get("participant_operations") or {}
+        organization_site = payload.get("organization_site") or {}
         lab_operations = payload.get("lab_operations") or {}
         participant_operations_summary = (
             participant_operations.get("summary")
@@ -2533,6 +2580,20 @@ class DashboardChatAssistant:
             payload.get("ml_performance", {}).get("models") or []
         )
         shap = payload.get("ml_performance", {}).get("shap") or []
+        public_studies = (
+            organization_site.get("studies")
+            if isinstance(organization_site, dict)
+            else []
+        )
+        nano_public_study = next(
+            (
+                study
+                for study in (public_studies or [])
+                if isinstance(study, dict)
+                and "nano" in str(study.get("title") or study.get("slug") or "").lower()
+            ),
+            {},
+        )
 
         enrollment_total_current = overall.get("current")
         enrollment_total_target = overall.get("target") or payload.get("meta", {}).get(
@@ -2588,6 +2649,7 @@ class DashboardChatAssistant:
                 if isinstance(participant_operations, dict)
                 else None
             ),
+            "nano_public_study": nano_public_study,
             "participant_id_legend": (
                 participant_operations.get("id_legend") or []
                 if isinstance(participant_operations, dict)
@@ -2886,6 +2948,15 @@ class DashboardChatAssistant:
         question_tokens = set(_tokenize(question))
         reading_matches = context.get("reading_matches") or []
         facts = context.get("facts") or {}
+
+        if (
+            {"nano", "study"} <= question_tokens
+            and question_tokens & {"explain", "describe", "what"}
+            and question_tokens & NANO_EXPLAINER_TOKENS
+        ):
+            return self._format_nano_study_explainer_response(
+                facts.get("nano_public_study") or {}
+            )
 
         def as_number(value: Any, default: float = 0.0) -> float:
             try:
@@ -3911,6 +3982,49 @@ class DashboardChatAssistant:
             "- Default runtime: NVIDIA's hosted OpenAI-compatible endpoint; an API key is required and external rate limits still apply.\n"
             "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
             "- Self-hosting: NVIDIA NIM is optional and disabled by default because this model requires dedicated high-end GPU infrastructure."
+        )
+
+    def _format_nano_study_explainer_response(
+        self, public_study: dict[str, Any]
+    ) -> str:
+        """Give a child-friendly overview using only facts present in the dashboard."""
+        if public_study:
+            details = public_study.get("details") or []
+            source_parts = [
+                public_study.get("summary"),
+                public_study.get("audience"),
+                *(details if isinstance(details, list) else []),
+            ]
+            source_text = " ".join(
+                str(part).strip() for part in source_parts if str(part or "").strip()
+            )
+            normalized_source = " ".join(source_text.lower().split())
+            compensation = str(public_study.get("compensation") or "").strip()
+            lines: list[str] = []
+            if "newborn" in normalized_source and "first 3 years" in normalized_source:
+                lines.append(
+                    "- The NANO Study follows newborn babies as they grow through their first 3 years."
+                )
+            if all(term in normalized_source for term in ("social", "language")) and (
+                "motor" in normalized_source or "movement" in normalized_source
+            ):
+                lines.append(
+                    "- The team watches early social, movement, and language skills, "
+                    "like noticing how babies learn new things."
+                )
+            if "feedback" in normalized_source and "tips" in normalized_source:
+                lines.append(
+                    "- Families receive feedback and tips that can support their child's development."
+                )
+            if compensation:
+                lines.append(f"- Families can earn {compensation} for taking part.")
+            if lines:
+                return "\n".join(lines)
+        return (
+            "- The NANO Study is the lab's main study project right now.\n"
+            "- Think of it like a big class folder: the team keeps family visits and study forms organized.\n"
+            "- The dashboard uses group-level, de-identified information, so it does not show private family details.\n"
+            "- The dashboard does not state the study's full science question, so I should not make that part up."
         )
 
     def _format_rmssd_response(self, latest_by_group: dict[str, Any]) -> str:

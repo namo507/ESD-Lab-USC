@@ -46,10 +46,10 @@ assistant:
   apiBase: https://integrate.api.nvidia.com/v1
   apiKeySecretKey: dashboardAssistantApiKey
   model: nvidia/nemotron-3-super-120b-a12b
-  enableThinking: true
-  reasoningBudget: 16384
+  enableThinking: false
+  reasoningBudget: 0
   maxNewTokens: 16384
-  temperature: 1
+  temperature: 0.2
   topP: 0.95
   stream: true
   requestTimeoutSeconds: 180

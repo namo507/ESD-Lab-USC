@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import threading
 import time
+from pathlib import Path
 
 from dashboard.assistant.local_chat_assistant import (
     AssistantConfig,
@@ -228,6 +229,10 @@ def test_build_presentation_messages_shape_and_grounding_rules():
 
 def test_spa_route_whitelist_includes_new_and_existing_routes():
     # New route + hard-refresh sub-paths resolve as SPA routes.
+    assert is_spa_route("/discovery")
+    assert is_spa_route("/discovery/nano/lgcm-trajectories")
+    assert is_spa_route("/nano/lgcm-trajectories")
+    assert is_spa_route("/nico/aim3-clusters")
     assert is_spa_route("/presentation-maker")
     assert is_spa_route("/presentation-maker/anything")
     # Existing routes still resolve (regression guard, incl. /matlab).
@@ -238,6 +243,136 @@ def test_spa_route_whitelist_includes_new_and_existing_routes():
     assert is_spa_route("/redcap")
     # API endpoints are never treated as SPA document routes.
     assert not is_spa_route("/api/presentation/plan")
+
+
+def _configure_public_path_test_tree(monkeypatch, tmp_path):
+    project_root = tmp_path / "repo"
+    spa_build = project_root / "web" / "build"
+    data_dir = project_root / "dashboard" / "data"
+    readings_dir = project_root / "esd-lab-readings"
+    for directory in (spa_build, data_dir, readings_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    (spa_build / "index.html").write_text("spa")
+    stale_data = spa_build / "dashboard" / "data" / "dashboard_data.json"
+    stale_data.parent.mkdir(parents=True)
+    stale_data.write_text("stale")
+    live_data = data_dir / "dashboard_data.json"
+    live_data.write_text("live")
+    readings_data = data_dir / "readings_data.json"
+    readings_data.write_text("readings")
+    runtime_status = data_dir / "runtime_status.json"
+    runtime_status.write_text("runtime")
+    secret = project_root / ".env"
+    secret.write_text("secret")
+    audit_log = data_dir / "hipaa_access.log"
+    audit_log.write_text("private")
+    reading = readings_dir / "NANO.pdf"
+    reading.write_bytes(b"pdf")
+    encoded_reading = readings_dir / "Combined Papers.pdf"
+    encoded_reading.write_bytes(b"pdf")
+    private_reading = readings_dir / "notes.txt"
+    private_reading.write_text("private")
+    spa_asset = spa_build / "assets" / "app.js"
+    spa_asset.parent.mkdir(parents=True)
+    spa_asset.write_text("app")
+
+    monkeypatch.setattr(server, "PROJECT_ROOT", project_root)
+    monkeypatch.setattr(server, "SPA_BUILD_DIR", spa_build)
+    monkeypatch.setattr(server, "DATA_DIR", data_dir)
+    monkeypatch.setattr(
+        server,
+        "PUBLIC_RUNTIME_DATA_ROUTES",
+        {
+            "/dashboard/data/dashboard_data.json": live_data,
+            "/dashboard/data/readings_data.json": readings_data,
+            "/dashboard/data/runtime_status.json": runtime_status,
+        },
+    )
+
+    handler = object()
+
+    def resolve(request_path):
+        return server.RepoRequestHandler.translate_path(handler, request_path)
+
+    return resolve, {
+        "spa_build": spa_build,
+        "live_data": live_data,
+        "readings_data": readings_data,
+        "runtime_status": runtime_status,
+        "secret": secret,
+        "audit_log": audit_log,
+        "reading": reading,
+        "encoded_reading": encoded_reading,
+        "private_reading": private_reading,
+        "spa_asset": spa_asset,
+    }
+
+
+def test_public_path_resolution_prefers_live_data_and_spa_assets(monkeypatch, tmp_path):
+    resolve, paths = _configure_public_path_test_tree(monkeypatch, tmp_path)
+
+    assert resolve("/dashboard/data/dashboard_data.json") == str(paths["live_data"])
+    assert resolve("/dashboard/data/readings_data.json") == str(paths["readings_data"])
+    assert resolve("/dashboard/data/runtime_status.json") == str(
+        paths["runtime_status"]
+    )
+    assert resolve("/assets/app.js") == str(paths["spa_asset"])
+
+
+def test_public_path_resolution_normalizes_runtime_aliases(monkeypatch, tmp_path):
+    resolve, paths = _configure_public_path_test_tree(monkeypatch, tmp_path)
+
+    assert resolve("/dashboard//data/dashboard_data.json") == str(paths["live_data"])
+    assert resolve("/dashboard%2Fdata%2Fdashboard_data.json") == str(paths["live_data"])
+    assert resolve("/dashboard/data/../data/dashboard_data.json") == str(
+        paths["live_data"]
+    )
+
+
+def test_public_path_resolution_decodes_pdf_names_and_blocks_non_pdf(
+    monkeypatch, tmp_path
+):
+    resolve, paths = _configure_public_path_test_tree(monkeypatch, tmp_path)
+
+    assert resolve("/esd-lab-readings/NANO.pdf") == str(paths["reading"])
+    assert resolve("/esd-lab-readings/Combined%20Papers.pdf") == str(
+        paths["encoded_reading"]
+    )
+    assert resolve("/esd-lab-readings/notes.txt") != str(paths["private_reading"])
+
+
+def test_public_path_resolution_blocks_traversal_directories_and_symlinks(
+    monkeypatch, tmp_path
+):
+    resolve, paths = _configure_public_path_test_tree(monkeypatch, tmp_path)
+
+    blocked_requests = (
+        "/.env",
+        "/%2e%2e/.env",
+        "/assets/../../.env",
+        "/esd-lab-readings/../.env",
+        "/dashboard/data/hipaa_access.log",
+    )
+    for request_path in blocked_requests:
+        assert not Path(resolve(request_path)).exists()
+
+    # SimpleHTTPRequestHandler lists a returned directory automatically, so
+    # directory requests must resolve to the missing sentinel and become 404s.
+    assert not Path(resolve("/assets")).exists()
+    assert not Path(resolve("/assets/")).exists()
+    assert not Path(resolve("/dashboard/data/")).exists()
+    assert not Path(resolve("/esd-lab-readings/")).exists()
+
+    # An allowlisted filename must not become a trampoline to a repository
+    # secret if a generated file or SPA entrypoint is replaced by a symlink.
+    paths["runtime_status"].unlink()
+    paths["runtime_status"].symlink_to(paths["secret"])
+    assert not Path(resolve("/dashboard/data/runtime_status.json")).exists()
+    spa_index = paths["spa_build"] / "index.html"
+    spa_index.unlink()
+    spa_index.symlink_to(paths["secret"])
+    assert not Path(resolve("/overview")).exists()
 
 
 # ---------------------------------------------------------------------------

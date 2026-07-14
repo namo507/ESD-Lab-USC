@@ -71,6 +71,90 @@ def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
     )
 
 
+def test_child_friendly_nano_explainer_is_grounded_and_structured(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "lab_operations": {
+                    "priority": {
+                        "current_priority": "Nano grant data and lab processes first",
+                        "scope_guardrail": "Use de-identified aggregate status only",
+                    }
+                },
+                "organization_site": {
+                    "studies": [
+                        {
+                            "slug": "nano-study",
+                            "title": "NANO Study",
+                            "summary": (
+                                "A newborn study that follows babies through their first "
+                                "3 years, tracking social, motor, and language skills while "
+                                "giving families feedback and tips."
+                            ),
+                            "compensation": "up to $250",
+                        }
+                    ]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    result = assistant.answer("Explain the NANO Study like I am 5 years old.")
+
+    reply = result["reply"]
+    assert result["citations"][0] == "organization_site.studies[0]"
+    assert reply.count("\n-") == 3
+    assert "first 3 years" in reply
+    assert "social, movement, and language" in reply
+    assert "feedback and tips" in reply
+    assert "up to $250" in reply
+    assert "We need to" not in reply
+
+
+def test_child_friendly_nano_explainer_does_not_invent_missing_public_facts(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {"study": {"name": "NANO Study"}},
+                "organization_site": {
+                    "studies": [
+                        {
+                            "slug": "nano-study",
+                            "title": "NANO Study",
+                            "summary": "A public study page is available.",
+                        }
+                    ]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    result = assistant.answer("Explain the NANO Study like I am 5 years old.")
+
+    reply = result["reply"]
+    assert "first 3 years" not in reply
+    assert "social, movement, and language" not in reply
+    assert "up to $250" not in reply
+
+
 def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
     data_dir = tmp_path / "dashboard-data"
     data_dir.mkdir()

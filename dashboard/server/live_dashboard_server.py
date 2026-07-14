@@ -2,7 +2,7 @@
 
 The server has two responsibilities:
 
-1. Serve the repository root so the dashboard can open linked docs, code, and
+1. Serve the public SPA, current aggregate runtime JSON, and explicitly public
    PDFs from the reading library.
 2. Monitor the dashboard inputs and rebuild the generated JSON payloads when
    source files change.
@@ -68,6 +68,9 @@ CONTROLS_PATH = Path(
 SPA_BUILD_DIR = PROJECT_ROOT / "web" / "build"
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
 SPA_ROUTE_PREFIXES = (
+    "/discovery",
+    "/nano",
+    "/nico",
     "/overview",
     "/docs",
     "/how-to",
@@ -116,6 +119,11 @@ SPA_ROUTE_PREFIXES = (
     "/changelog",
 )
 LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
+PUBLIC_RUNTIME_DATA_ROUTES = {
+    f"/dashboard/data/{name}": DATA_DIR / name
+    for name in ("dashboard_data.json", "readings_data.json", "runtime_status.json")
+}
+PUBLIC_READING_SUFFIXES = {".pdf"}
 
 logger = get_pipeline_logger(__name__)
 ASSISTANT_CHAT_LOCK = threading.Semaphore(1)
@@ -3388,7 +3396,7 @@ def _run_presentation_job(
 
 
 class RepoRequestHandler(SimpleHTTPRequestHandler):
-    """Serve the repository root and expose a tiny health endpoint."""
+    """Serve public dashboard assets and APIs without exposing repository files."""
 
     def __init__(
         self,
@@ -3742,23 +3750,59 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Unknown API endpoint")
 
     def translate_path(self, path: str) -> str:
-        parsed_path = urlparse(path).path
-        if is_spa_route(parsed_path):
-            return str(SPA_BUILD_DIR / "index.html")
+        try:
+            decoded_path = unquote(urlparse(path).path, errors="strict")
+        except UnicodeDecodeError:
+            return str(SPA_BUILD_DIR / "__not_found__")
+        if "\x00" in decoded_path:
+            return str(SPA_BUILD_DIR / "__not_found__")
 
-        spa_candidate = (SPA_BUILD_DIR / parsed_path.lstrip("/")).resolve()
-        if spa_candidate.exists() and spa_candidate.is_relative_to(
-            SPA_BUILD_DIR.resolve()
+        # Decode once, then normalize URL separators and dot segments before
+        # consulting any allowlist. This keeps encoded reading filenames usable
+        # while ensuring aliases such as /dashboard//data/... cannot fall
+        # through to a stale copy bundled in the SPA build.
+        parsed_path = posixpath.normpath("/" + decoded_path.lstrip("/"))
+        spa_root = SPA_BUILD_DIR.resolve()
+        if is_spa_route(parsed_path):
+            spa_index = (spa_root / "index.html").resolve()
+            if spa_index.is_relative_to(spa_root) and spa_index.is_file():
+                return str(spa_index)
+            return str(SPA_BUILD_DIR / "__not_found__")
+
+        # Runtime data must win over the copy bundled by Vite so a successful
+        # watcher rebuild is visible immediately on the live dashboard.
+        runtime_data_path = PUBLIC_RUNTIME_DATA_ROUTES.get(parsed_path)
+        if (
+            runtime_data_path is not None
+            and not runtime_data_path.is_symlink()
+            and runtime_data_path.is_file()
         ):
+            return str(runtime_data_path)
+
+        # Dotfiles and dot-directories must never be reachable through the
+        # public tunnel, even if a similarly named file enters the build tree.
+        segments = [segment for segment in parsed_path.split("/") if segment]
+        if any(segment.startswith(".") for segment in segments):
+            return str(SPA_BUILD_DIR / "__not_found__")
+
+        spa_candidate = (spa_root / parsed_path.lstrip("/")).resolve()
+        if spa_candidate.is_relative_to(spa_root) and spa_candidate.is_file():
             return str(spa_candidate)
 
-        repo_candidate = (PROJECT_ROOT / parsed_path.lstrip("/")).resolve()
-        if repo_candidate.exists() and repo_candidate.is_relative_to(
-            PROJECT_ROOT.resolve()
-        ):
-            return str(repo_candidate)
+        readings_prefix = "/esd-lab-readings/"
+        if parsed_path.startswith(readings_prefix):
+            readings_root = (PROJECT_ROOT / "esd-lab-readings").resolve()
+            reading_candidate = (
+                readings_root / parsed_path[len(readings_prefix) :]
+            ).resolve()
+            if (
+                reading_candidate.is_file()
+                and reading_candidate.is_relative_to(readings_root)
+                and reading_candidate.suffix.lower() in PUBLIC_READING_SUFFIXES
+            ):
+                return str(reading_candidate)
 
-        return str(repo_candidate)
+        return str(SPA_BUILD_DIR / "__not_found__")
 
     def end_headers(self) -> None:
         request_path = urlparse(self.path).path

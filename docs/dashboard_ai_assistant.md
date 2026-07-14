@@ -38,8 +38,8 @@ as compatibility aliases when the canonical values are absent.
 
 Default generation and reliability settings are documented in `.env.example`:
 
-- thinking enabled with a 16,384-token reasoning budget
-- 16,384 maximum output tokens, temperature `1`, and top-p `0.95`
+- thinking disabled with a zero reasoning budget so planning text cannot consume the short chat response budget
+- 16,384 maximum provider output tokens, temperature `0.2`, and top-p `0.95`; chat responses are capped separately for concise answers
 - streaming enabled
 - bounded concurrency and queue wait
 - request timeout
@@ -161,7 +161,7 @@ long-lived canonical Pages origin.
 - Streaming retries stop after the first emitted content token to prevent
   duplicate output.
 - Closing the chat drawer or disconnecting a client cancels/closes the stream.
-- Provider reasoning fields are ignored; only answer content reaches the UI.
+- Provider reasoning fields, tags, and recognizable planning preambles are removed before answer content reaches the UI.
 - Raw provider errors and keys are never returned to the browser or logged.
 - The dashboard does not cache model responses by default because prompts may
   contain sensitive research context.

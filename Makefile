@@ -17,7 +17,7 @@ ROOT_COMPOSE := docker compose -f docker-compose.yml
 MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 
-.PHONY: help install test lint clean clean-python docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -226,6 +226,12 @@ clean-python:  ## Remove Python cache files and test artifacts
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null; true
 	find . -type f -name ".coverage" -delete 2>/dev/null; true
 	@echo "✓ Cleaned Python cache and test artifacts."
+
+clean-space: clean-python  ## Remove rebuildable legacy model and stale tool caches
+	rm -rf models/local_llms .devcontainer/.venv .venv-1 .venv-2 .tools
+	find models -maxdepth 1 -type f -name "*.gguf" -delete 2>/dev/null; true
+	rm -rf dist temp tmp web/build-merge web/dist
+	@echo "✓ Removed rebuildable space-heavy artifacts; live data, metrics, .env, web/build, and node_modules were preserved."
 
 clean: clean-python  ## Remove project containers/orphans without global Docker or volume pruning
 	@if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then \
