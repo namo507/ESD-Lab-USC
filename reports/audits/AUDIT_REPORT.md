@@ -4,6 +4,9 @@
 **Audited:** 2026-06-05 · commit on `main` (fresh clone) · 546 files (excl. `.git`)
 **Stack:** Python (85 `.py`), React/TypeScript (`web/`, 87 `.tsx`/38 `.ts`), R (10), MATLAB (11 `.m`), Jupyter (7 `.ipynb`), k8s/Helm + Docker, REDCap integration
 
+> Historical audit: the tracked build-artifact and archive bloat findings were
+> resolved by the July 2026 repository sweep. See `docs/archive_manifest.md`.
+
 ## Verdict
 
 **Approve with minor changes.** This is a mature, well-organized research repository — not the loose notebook dump the audit template assumes. There are **no CRITICAL issues**: no leaked credentials, no PHI committed, no syntax errors, no broken pipeline entry point. The real problems are one dependency-name bug, several unused heavy dependencies, and committed build artifacts/bloat. Everything below is fixable in under an hour.

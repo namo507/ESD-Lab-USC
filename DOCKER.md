@@ -43,10 +43,10 @@ Values belong in `.env`; commit only `.env.example`.
 | --- | --- |
 | `DASHBOARD_HOST_PORT` | Host port mapped to dashboard container port `8080`. |
 | `DASHBOARD_MEM_LIMIT` | Compose memory limit for the dashboard service. |
-| `DASHBOARD_ASSISTANT_TIER` | Local assistant sizing tier. |
-| `DASHBOARD_ASSISTANT_AUTO_DOWNLOAD` | Allows model auto-download when enabled. |
-| `DASHBOARD_ASSISTANT_CONTEXT_WINDOW` | Assistant context window override. |
-| `DASHBOARD_ASSISTANT_THREADS` | Assistant CPU thread count. |
+| `DASHBOARD_ASSISTANT_API_BASE` | NVIDIA OpenAI-compatible endpoint; hosted NVIDIA is the default. |
+| `DASHBOARD_ASSISTANT_API_KEY` | NVIDIA key loaded from local `.env`; never bake it into the image. |
+| `DASHBOARD_ASSISTANT_MODEL` | Hosted model identifier. |
+| `DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS` | Provider request timeout; it does not affect app health checks. |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Named tunnel token. |
 | `CLOUDFLARED_TUNNEL_TOKEN` | Backward-compatible named tunnel token alias. |
 | `DASHBOARD_PUBLIC_HOSTNAME` | Public hostname for a stable dashboard tunnel. |
@@ -82,8 +82,10 @@ make docker-health
 
 ## Self-Healing
 
-The dashboard service has a Docker healthcheck against `/api/healthz` and all
-long-running services use `restart: unless-stopped`. For explicit repair:
+The dashboard service has a Docker healthcheck against `/api/healthz`; provider
+outages appear in `/api/assistant/status` and do not restart-loop the website.
+Long-running dashboard and tunnel services use restart policies, healthchecks,
+and scoped repair. For explicit repair:
 
 ```bash
 make docker-health
@@ -102,5 +104,5 @@ run `docker compose up -d` for unhealthy services when repair is enabled.
 | Dashboard is `unhealthy` | `docker compose logs --tail=200 dashboard` | Run `make docker-health`; then inspect `/api/healthz`. |
 | Missing `.env` warning | `test -f .env` | Copy `.env.example` to `.env` and fill local values. |
 | Cloudflare tunnel exits | `docker compose --profile share logs dashboard-share` | Use quick tunnel service or set named tunnel token keys. |
-| Slow or large builds | `docker images`, `docker system df` | Run `make clean` after confirming unused Docker data can be pruned. |
+| Slow or large builds | `docker images`, `docker system df` | Run `make clean`; it removes only project containers/orphans and preserves named volumes and unrelated Docker data. |
 | Devcontainer dependency drift | `devcontainer build --workspace-folder .` | Rebuild the devcontainer; `post-create.sh` installs `requirements.txt`. |

@@ -12,9 +12,10 @@ operator-facing dashboard at `/overview`. It is backed by
 which the nightly pipeline rebuilds from REDCap, feature outputs, and the
 reading library.
 
-The older static shell that lived at `dashboard/index.html` has been archived
-under `archive/2026-05-18_legacy_dashboard_ui/`. The repository now treats the
-local runtime and the Pages-deployed SPA as the same canonical UI surface.
+The older static shell that lived at `dashboard/index.html` was removed from the
+active tree after the React migration. It remains recoverable from the annotated
+pre-sweep tag documented in `docs/archive_manifest.md`. The local runtime and
+Pages deployment use the same canonical SPA.
 
 The page also now includes a compact jump atlas near the top and smaller
 local jump chips inside each section so team members can hop directly to

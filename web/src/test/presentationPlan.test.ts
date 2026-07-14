@@ -39,7 +39,7 @@ describe("Presentation job schemas", () => {
       job_id: "abc123",
       status: "queued",
       created_at: "2026-05-31T00:00:00",
-      progress_message: "Queued — waiting for the local model.",
+      progress_message: "Queued — waiting for the assistant.",
       poll_after_ms: 900,
     });
     expect(parsed.success).toBe(true);

@@ -23,7 +23,11 @@ const DEFAULT_ROUTES = [
   {
     name: "how-to",
     path: "/how-to",
-    expect: ["Learn the dashboard by doing", "Every interactive feature", "Readable ordered config"],
+    expect: [
+      "Learn the dashboard by doing",
+      "Every interactive feature",
+      "Step-by-step, each linked to its route",
+    ],
   },
   {
     name: "participants",
@@ -51,6 +55,9 @@ const DEFAULT_VIEWPORTS = [
   { label: "desktop", width: 1440, height: 1100 },
   { label: "mobile", width: 390, height: 844 },
 ];
+
+const OPTIONAL_MAP_TILE_PREFIX =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/";
 
 function usage() {
   console.log(`Usage:
@@ -147,8 +154,11 @@ async function runCheck(browser, check, viewport, outputDir) {
   });
   page.on("requestfailed", (request) => {
     const requestUrl = request.url();
-    if (!requestUrl.endsWith("/favicon.ico")) {
-      failedRequests.push(`${request.failure()?.errorText || "failed"} ${requestUrl}`);
+    const errorText = request.failure()?.errorText || "failed";
+    const isCancelledMapTile =
+      errorText === "net::ERR_ABORTED" && requestUrl.startsWith(OPTIONAL_MAP_TILE_PREFIX);
+    if (!requestUrl.endsWith("/favicon.ico") && !isCancelledMapTile) {
+      failedRequests.push(`${errorText} ${requestUrl}`);
     }
   });
 

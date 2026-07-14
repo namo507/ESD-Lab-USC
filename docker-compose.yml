@@ -1,5 +1,33 @@
 name: esd-lab-usc
 
+x-dashboard-assistant-environment: &dashboard-assistant-environment
+  DASHBOARD_ASSISTANT_PROVIDER: ${DASHBOARD_ASSISTANT_PROVIDER:-nvidia}
+  DASHBOARD_ASSISTANT_RUNTIME: ${DASHBOARD_ASSISTANT_RUNTIME:-nvidia-build-api}
+  DASHBOARD_ASSISTANT_API_BASE: ${DASHBOARD_ASSISTANT_API_BASE:-https://integrate.api.nvidia.com/v1}
+  DASHBOARD_ASSISTANT_API_KEY: ${DASHBOARD_ASSISTANT_API_KEY:-${OPENAI_API_KEY:-}}
+  DASHBOARD_ASSISTANT_MODEL: ${DASHBOARD_ASSISTANT_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+  DASHBOARD_ASSISTANT_MODEL_ID: ${DASHBOARD_ASSISTANT_MODEL_ID:-nvidia/nemotron-3-super-120b-a12b}
+  DASHBOARD_ASSISTANT_ENABLE_THINKING: ${DASHBOARD_ASSISTANT_ENABLE_THINKING:-false}
+  DASHBOARD_ASSISTANT_REASONING_BUDGET: ${DASHBOARD_ASSISTANT_REASONING_BUDGET:-0}
+  DASHBOARD_ASSISTANT_MAX_NEW_TOKENS: ${DASHBOARD_ASSISTANT_MAX_NEW_TOKENS:-16384}
+  DASHBOARD_ASSISTANT_TEMPERATURE: ${DASHBOARD_ASSISTANT_TEMPERATURE:-0.2}
+  DASHBOARD_ASSISTANT_TOP_P: ${DASHBOARD_ASSISTANT_TOP_P:-0.95}
+  DASHBOARD_ASSISTANT_STREAM: ${DASHBOARD_ASSISTANT_STREAM:-true}
+  DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS: ${DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS:-180}
+  DASHBOARD_ASSISTANT_MAX_RETRIES: ${DASHBOARD_ASSISTANT_MAX_RETRIES:-6}
+  DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS: ${DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS:-2}
+  DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS: ${DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS:-30}
+  DASHBOARD_ASSISTANT_RETRY_JITTER: ${DASHBOARD_ASSISTANT_RETRY_JITTER:-0.25}
+  DASHBOARD_ASSISTANT_MAX_CONCURRENCY: ${DASHBOARD_ASSISTANT_MAX_CONCURRENCY:-2}
+  DASHBOARD_ASSISTANT_CIRCUIT_FAILURE_THRESHOLD: ${DASHBOARD_ASSISTANT_CIRCUIT_FAILURE_THRESHOLD:-3}
+  DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS: ${DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS:-60}
+  DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS: ${DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS:-180}
+  DASHBOARD_ASSISTANT_CONTEXT_BUDGET: ${DASHBOARD_ASSISTANT_CONTEXT_BUDGET:-12000}
+  DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED: ${DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED:-false}
+  DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL: ${DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL:-http://nemotron-nim:8000/v1}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://integrate.api.nvidia.com/v1}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-${DASHBOARD_ASSISTANT_API_KEY:-}}
+
 services:
   dashboard:
     init: true
@@ -13,13 +41,9 @@ services:
       - path: .env
         required: false
     environment:
+      <<: *dashboard-assistant-environment
       PYTHONUNBUFFERED: "1"
-      DASHBOARD_ASSISTANT_TIER: ${DASHBOARD_ASSISTANT_TIER:-auto}
-      DASHBOARD_ASSISTANT_AUTO_DOWNLOAD: ${DASHBOARD_ASSISTANT_AUTO_DOWNLOAD:-false}
-      DASHBOARD_ASSISTANT_CONTEXT_WINDOW: ${DASHBOARD_ASSISTANT_CONTEXT_WINDOW:-2048}
-      DASHBOARD_ASSISTANT_THREADS: ${DASHBOARD_ASSISTANT_THREADS:-4}
       DASHBOARD_REUSE_EXISTING_SPA_BUILD: ${DASHBOARD_REUSE_EXISTING_SPA_BUILD:-true}
-      HF_HOME: /app/models/.cache/huggingface
     cpus: "2.0"
     mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
     pids_limit: 512
@@ -27,9 +51,6 @@ services:
       - type: bind
         source: .
         target: /app
-      - type: volume
-        source: dashboard-hf-cache
-        target: /app/models/.cache/huggingface
       - type: volume
         source: dashboard-node-modules
         target: /app/web/node_modules
@@ -50,7 +71,7 @@ services:
       retries: 3
       start_period: 45s
     labels:
-      autoheal: "true"
+      com.esdlabusc.autoheal: "true"
     restart: unless-stopped
     networks:
       - esd-lab-dashboard
@@ -66,7 +87,15 @@ services:
     depends_on:
       dashboard:
         condition: service_healthy
-    command: tunnel --no-autoupdate --url http://dashboard:8080
+    command: tunnel --metrics 0.0.0.0:2000 --no-autoupdate --url http://dashboard:8080
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      com.esdlabusc.autoheal: "true"
     restart: unless-stopped
     networks:
       - esd-lab-dashboard
@@ -82,7 +111,15 @@ services:
     depends_on:
       dashboard:
         condition: service_healthy
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
+    command: tunnel --metrics 0.0.0.0:2000 --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-${CLOUDFLARED_TUNNEL_TOKEN:-}}
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      com.esdlabusc.autoheal: "true"
     restart: unless-stopped
     networks:
       - esd-lab-dashboard
@@ -96,7 +133,7 @@ services:
     init: true
     restart: unless-stopped
     environment:
-      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_CONTAINER_LABEL: com.esdlabusc.autoheal
       AUTOHEAL_INTERVAL: "15"
       AUTOHEAL_START_PERIOD: "60"
       AUTOHEAL_DEFAULT_STOP_TIMEOUT: "30"
@@ -112,7 +149,6 @@ services:
       - esd-lab-dashboard
 
 volumes:
-  dashboard-hf-cache:
   dashboard-node-modules:
 
 networks:

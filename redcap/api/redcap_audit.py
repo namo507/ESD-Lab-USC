@@ -5,10 +5,10 @@ Reason for archival
 This module duplicated ~90% of the functionality in
 ``scripts/generate_data_quality_report.py`` (both built the same
 HTML QC report). To prevent two-source-of-truth bugs, the audit logic
-was consolidated into the `scripts/` version. A full snapshot of the
-original file is preserved at::
+was consolidated into the `scripts/` version. The original file is recoverable
+from the annotated pre-sweep Git tag documented in::
 
-    archive/2026-04-17_dashboard_refactor/redcap_audit.py
+    docs/archive_manifest.md
 
 Replacement
 -----------

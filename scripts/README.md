@@ -12,6 +12,7 @@ Use these when checking local runtime, deployment, or repository wiring:
 - `check_github_workflows.py` validates workflow file wiring and required fields.
 - `check_k8s_readings_pipeline.py` probes the readings-library pipeline endpoints against a running dashboard.
 - `check_live_surfaces.py` probes the public Pages routes that should remain healthy.
+- `check_repository_hygiene.py` rejects retired archive paths and tracked files larger than 20 MiB.
 - `check_site_health.py` performs a lightweight HTML and assistant-status health probe against a single public URL.
 
 ## Build And Deploy
@@ -29,8 +30,7 @@ Use these when packaging or publishing the website surfaces:
 Use these when regenerating dashboard-facing data artifacts:
 
 - `build_lab_readings_index.py` derives `web/lab-readings.json` from the dashboard readings payload.
-- `prepare_dashboard_assistant.py` inspects or provisions the local dashboard assistant model/runtime.
-- `select_best_local_llm.py` refreshes the assistant model selection config.
+- `prepare_dashboard_assistant.py` validates NVIDIA provider configuration, reports readiness, and refreshes grounding context.
 - `generate_data_quality_report.py` writes HTML data-quality reports.
 - `export_deidentified_dataset.py` produces de-identified analysis exports.
 - `redcap_daily_sync.py` runs the REDCap sync and downstream QC workflow.
@@ -41,10 +41,13 @@ Use these when regenerating dashboard-facing data artifacts:
 Use these for housekeeping and non-core operator workflows:
 
 - `backup_verification.sh` verifies secure-server backups.
-- `benchmark_presentation_planner.py` benchmarks presentation-planning paths.
+- `benchmark_presentation_planner.py` validates presentation planning and optionally runs an explicitly metered live-provider benchmark.
 - `ecg_batch_processor.py` batch-processes ECG inputs.
-- `parse_css.py` is a utility parser used during frontend asset work.
 - `prune_logs.sh` deletes old local log files.
+- `make clean-space` is opt-in disk housekeeping. It removes rebuildable local
+  model weights, tool caches, extra virtual environments, and generated deploy
+  artifacts while preserving live data, metrics, `.env`, `web/build`, and
+  `node_modules`.
 
 ## Recommended Entry Points
 

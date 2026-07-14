@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
+import json
 import os
 import subprocess
 import sys
@@ -10,14 +12,29 @@ import time
 from pathlib import Path
 
 from .config import PipelineConfig
-from .k8s_api import KubernetesApiClient
-from .k8s_api import KubernetesApiError
-from .ledger import EventBatch
-from .ledger import EventDeduper
-from .ledger import EventLedger
-from .ledger import sanitize_relative_path
+from .k8s_api import KubernetesApiClient, KubernetesApiError
+from .ledger import EventBatch, EventDeduper, EventLedger, sanitize_relative_path
 
 WATCHABLE_SUFFIXES = {".csv", ".json", ".parquet", ".pdf", ".py", ".yaml", ".yml"}
+
+
+def write_heartbeat(config: PipelineConfig, *, now: float | None = None) -> Path:
+    """Atomically publish watcher liveness on the shared dashboard volume."""
+    timestamp = time.time() if now is None else now
+    path = config.watcher_heartbeat_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema": "readings_watcher_heartbeat.v1",
+        "pid": os.getpid(),
+        "timestamp": timestamp,
+        "updated_at": dt.datetime.fromtimestamp(
+            timestamp, tz=dt.timezone.utc
+        ).isoformat(),
+    }
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
+    return path
 
 
 def snapshot_tree(root: Path) -> dict[str, tuple[int, int]]:
@@ -131,12 +148,14 @@ def run_once(config: PipelineConfig, trigger_source: str) -> bool:
 def watch_forever(config: PipelineConfig) -> int:
     ledger = EventLedger(config)
     ledger.write_status(state="watching", queue_depth=0)
+    write_heartbeat(config)
     previous = snapshot_tree(config.readings_watch_path)
     pending: set[str] = set()
     last_change = 0.0
 
     while True:
         time.sleep(max(0.25, config.watcher_poll_seconds))
+        write_heartbeat(config)
         current = snapshot_tree(config.readings_watch_path)
         changed = changed_paths(previous, current)
         previous = current

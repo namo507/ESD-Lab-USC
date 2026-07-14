@@ -11,7 +11,7 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 | `web/src/**` | Source of truth for the public React dashboard UI. |
 | `web/public/**` | Static public assets copied into the Vite build. |
 | `scripts/build_pages_site.py` | Packages `web/build/` into `dist/pages-wrapper/`, injects deploy metadata, and generates a Pages `_worker.js` proxy for `/api/*`. |
-| `dashboard/public/pages_wrapper/manifest.json` | Records the latest runtime-share origin when a quick tunnel is refreshed. Useful when packaging a manual deploy without an explicit `PAGES_API_ORIGIN`. |
+| `dashboard/public/pages_wrapper/manifest.json` | Records runtime-share metadata. Packaging accepts its origin only when it is durable and passes `/api/healthz`; stale and quick-tunnel origins are ignored. |
 | `scripts/share_dashboard.sh` | Starts the local dashboard runtime plus Cloudflare tunnel and refreshes the runtime-share preview wrapper. |
 | `scripts/check_site_health.py` | Health probe used by the uptime workflow and local spot checks. Accepts either the older large HTML shell or the current lightweight SPA shell. |
 | `scripts/check_live_surfaces.py` | Composite probe for the canonical Pages site plus the runtime-share preview branch. |
@@ -24,7 +24,8 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 
 - The public Pages site serves the React SPA from `web/build/`.
 - Dashboard data is intentionally mocked in production by building with `VITE_USE_MOCKS=true`.
-- Live assistant chat works only when the build emits a Cloudflare Pages `_worker.js` file that proxies `/api/*` to a healthy live assistant origin. The health checks now treat the Pages fallback assistant as a failure instead of a healthy ready state.
+- Live NVIDIA assistant chat works when `_worker.js` proxies `/api/*` to a healthy durable backend origin. If no such origin exists, packaging emits a fallback-only worker so every dashboard page remains usable without embedding a dead hostname.
+- The browser never receives the NVIDIA key and never calls the provider directly.
 - External `200` rewrites in `_redirects` are not enough for this on Cloudflare Pages because Pages only supports proxy-style rewrites to relative paths on the same site.
 
 ## How a change reaches production
@@ -45,7 +46,7 @@ Build the SPA and package the Pages artifact:
 make pages-build
 ```
 
-Start a live assistant backend and quick tunnel:
+Start a live assistant backend and quick tunnel for a temporary direct preview:
 
 ```bash
 bash scripts/share_dashboard.sh --continuous --mode quick
@@ -59,17 +60,13 @@ unstable. Override only when the network is known-good:
 CLOUDFLARE_TUNNEL_PROTOCOL=auto bash scripts/share_dashboard.sh --mode quick
 ```
 
-For a one-shot share, publish the canonical Pages worker in the same run:
+Quick-tunnel origins are deliberately rejected for the canonical Pages worker
+because they expire and previously caused a redeploy/incident loop. Package the
+Pages artifact against a healthy named tunnel or other durable backend origin:
 
 ```bash
-AUTO_DEPLOY_CANONICAL_PAGES=true bash scripts/share_dashboard.sh --mode quick
-```
-
-Package the Pages artifact against a known backend origin explicitly:
-
-```bash
-PAGES_API_ORIGIN=https://your-live-origin.trycloudflare.com \
-python scripts/build_pages_site.py
+PAGES_API_ORIGIN=https://dashboard-api.example.org \
+python3 scripts/build_pages_site.py
 ```
 
 Deploy the artifact manually:
@@ -108,10 +105,11 @@ curl https://esd-lab-namo.pages.dev/ | tr '<' '\n' | grep esd-api-origin
 curl https://<origin-host>/api/assistant/status
 ```
 
-Then republish with a healthy origin:
+Then republish with a healthy durable origin. If none is available, leave
+`PAGES_API_ORIGIN` unset and deploy fallback-only mode:
 
 ```bash
-AUTO_DEPLOY_CANONICAL_PAGES=true bash scripts/share_dashboard.sh --mode quick
+PAGES_API_ORIGIN= DASHBOARD_API_ORIGIN= make pages-deploy
 ```
 
 ## One-time setup
@@ -121,7 +119,10 @@ The workflows require two repo secrets:
 - `CLOUDFLARE_API_TOKEN` — an API token with **Account · Cloudflare Pages · Edit** permission for the `esd-lab-namo` project.
 - `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account ID for that Pages project.
 
-If you want unattended assistant proxying from GitHub Actions, also set a repo variable such as `PAGES_API_ORIGIN` to a stable backend origin. Without that, manual deploys can still package against the latest tunnel origin or manifest.
+If you want unattended assistant proxying from GitHub Actions, set the
+`PAGES_API_ORIGIN` repository variable to a stable backend origin. Without it,
+deployments intentionally use fallback-only mode; an ephemeral manifest origin
+is never promoted to production.
 
 Do not set `DASHBOARD_PUBLIC_HOSTNAME` to a `*.pages.dev` domain. Named tunnels require a hostname on a DNS zone you control in Cloudflare.
 

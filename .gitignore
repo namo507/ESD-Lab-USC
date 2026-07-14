@@ -188,3 +188,15 @@ models/_metrics.json
 
 # ─── Generated design exports ───────────────────────────────
 design-ideas/**/*.html
+
+# ─── Retired non-runtime archives ───────────────────────────
+# Restore historical source packages from the pre-sweep Git tag instead of
+# placing them back in the active dashboard tree.
+/ESD Lab Brand Files/
+/archive/
+/design-ideas/
+/design-qa/
+/design-qa.md
+/NANO_Dashboard_Docs_HowTo_Implementation_Prompt.md
+/reports/NANO_statistical_analysis.html
+/reports/NANO_statistical_analysis_files/

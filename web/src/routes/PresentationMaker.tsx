@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, SectionLabel, Segmented } from "@/components/primitives";
 import { AmbientOrbit } from "@/components/warm";
 import { useAssistantStatus, usePresentationJob } from "@/api/hooks";
+import { assistantStatusLabel, isAssistantUsable } from "@/api/chatApi";
 import { mapDeckPlan, downloadDeck, type DeckSlideDef } from "@/lib/pptx";
 import { useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
@@ -12,7 +13,7 @@ import styles from "./PresentationMaker.module.css";
  * Simplified Presentation Maker.
  *
  * Turns a single concept into a minimal, easy-to-understand slide deck using
- * the same local GGUF assistant that powers ESD Buddy. The server returns a
+ * the same backend-routed NVIDIA assistant that powers ESD Buddy. The server returns a
  * strict, structured deck plan (/api/presentation/plan); this route previews
  * it as calm slide cards and exports a real .pptx entirely on the client.
  *
@@ -66,28 +67,24 @@ export function PresentationMaker() {
     if (seededConcept) setConcept(seededConcept);
   }, []);
 
-  const assistantReady = status.data?.status === "ready";
+  const assistantAvailable = isAssistantUsable(status.data);
   const statusTone = status.isLoading
     ? "loading"
-    : assistantReady
+    : status.data?.status === "ready"
       ? "ready"
-      : "error";
+      : assistantAvailable
+        ? "loading"
+        : "error";
   const statusLabel = status.isLoading
     ? "checking assistant…"
-    : assistantReady
-      ? `assistant ready · ${status.data?.model?.split("/").pop() ?? "local model"}`
-      : status.data?.status === "fallback"
-        ? "assistant fallback active"
-      : status.data?.status === "unloaded"
-        ? "assistant model unavailable"
-        : "assistant offline";
+    : assistantStatusLabel(status.data);
 
   const trimmedConcept = concept.trim();
-  const canGenerate = assistantReady && trimmedConcept.length > 0 && !job.isPending;
+  const canGenerate = assistantAvailable && trimmedConcept.length > 0 && !job.isPending;
 
   const runGenerate = useCallback(() => {
     const value = concept.trim();
-    if (!value || !assistantReady || job.isPending) return;
+    if (!value || !assistantAvailable || job.isPending) return;
     setDownloadError(null);
     job.start({
       concept: value,
@@ -98,7 +95,7 @@ export function PresentationMaker() {
         include_worked_example: includeExample,
       },
     });
-  }, [concept, assistantReady, job, audience, slideCount, includeAnalogy, includeExample]);
+  }, [concept, assistantAvailable, job, audience, slideCount, includeAnalogy, includeExample]);
 
   const deck = useMemo(() => (job.data ? mapDeckPlan(job.data.plan) : null), [job.data]);
 
@@ -141,9 +138,9 @@ export function PresentationMaker() {
           <span className={`${styles.eyebrow} t-mono`}>Presentation maker</span>
           <h1 className={styles.h1}>Explain a concept · as a calm, simple deck</h1>
           <p className={styles.lede}>
-            Type something you want understood. The local ESD assistant drafts a minimal, easy-to-follow
+            Type something you want understood. The ESD assistant drafts a minimal, easy-to-follow
             slide plan grounded in NANO study context when relevant, and you can preview it here and
-            download a real PowerPoint file. Nothing leaves the machine.
+            download a real PowerPoint file. Prompts are scrubbed before the secure backend proxy request.
           </p>
         </div>
         <div className={styles.statusPill} role="status" aria-live="polite" data-insight="pm-status">
@@ -228,12 +225,12 @@ export function PresentationMaker() {
             </div>
 
             <div className={styles.generateRow}>
-              <p className={`${styles.hint} ${!assistantReady && !status.isLoading ? styles.hintWarn : ""}`}>
-                {assistantReady
+              <p className={`${styles.hint} ${!assistantAvailable && !status.isLoading ? styles.hintWarn : ""}`}>
+                {assistantAvailable
                   ? "Calm, non-technical tone by default. Six slides, with analogy and example, is a good place to start."
                   : status.isLoading
-                    ? "Checking whether the local assistant is ready…"
-                    : `Generation is paused — ${status.data?.error ?? "the local assistant is not available right now."}`}
+                    ? "Checking whether the assistant is ready…"
+                    : `Generation is paused — ${status.data?.error ?? "the assistant is not available right now."}`}
               </p>
               <Button
                 icon="sparkles"
@@ -260,11 +257,11 @@ export function PresentationMaker() {
             <span className={styles.spinner} aria-hidden />
             <div className={styles.progressBody}>
               <p className={styles.progressTitle}>
-                {job.phase === "queued" ? "Queued for the local model…" : "Composing your deck…"}
+                {job.phase === "queued" ? "Queued for the assistant…" : "Composing your deck…"}
               </p>
               <p className={styles.progressSub}>
                 {job.progressMessage ??
-                  `The local model is planning slides for “${trimmedConcept}”.`}{" "}
+                  `The assistant is planning slides for “${trimmedConcept}”.`}{" "}
                 You can keep this tab open; it updates on its own.
               </p>
             </div>

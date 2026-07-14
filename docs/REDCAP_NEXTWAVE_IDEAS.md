@@ -1,6 +1,7 @@
 # REDCap Next-Wave Implementation Notes
 
-Verified prompt source: `design-ideas/NANO-REDCap-NextWave-Feature-Ideas-Prompt.md`.
+The historical implementation prompt is recoverable from the pre-sweep Git tag
+documented in `docs/archive_manifest.md`; this file records the implemented contract.
 
 This repository now emits the additive REDCap v3 contract from the Python, R, and synthetic dashboard builders:
 
@@ -20,7 +21,7 @@ Automation path:
 2. Pull and QC REDCap data.
 3. Rebuild `dashboard/data/dashboard_data.json`.
 4. Regenerate TypeScript REDCap constants.
-5. Emit assistant context and reindex the local assistant.
+5. Emit assistant context and reindex the NVIDIA-hosted grounded assistant.
 6. Build Pages and run Docker/Kubernetes health checks.
 
 Privacy stance:

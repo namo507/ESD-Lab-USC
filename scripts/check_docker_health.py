@@ -213,7 +213,18 @@ def repair_compose_services(
     rows = query_compose_ps_rows(compose_cmd, compose_file, project_name, profiles)
     stale = find_unhealthy_running_services(rows, targets)
     if stale:
-        run_command([*base, "restart", *stale], cwd=PROJECT_ROOT)
+        restarted = run_command([*base, "restart", *stale], cwd=PROJECT_ROOT)
+        if restarted.returncode != 0:
+            detail = (restarted.stderr or restarted.stdout).strip() or "unknown error"
+            raise RuntimeError(f"Compose restart failed: {detail}")
+
+    # Remove only stopped containers owned by this Compose project. Avoid
+    # daemon-wide prune commands: unrelated developer containers and caches are
+    # outside the repair scope.
+    cleaned = run_command([*base, "rm", "--force"], cwd=PROJECT_ROOT)
+    if cleaned.returncode != 0:
+        detail = (cleaned.stderr or cleaned.stdout).strip() or "unknown error"
+        raise RuntimeError(f"Compose project cleanup failed: {detail}")
 
     # 2. (Re)create any service that is missing or stopped.
     result = run_command([*base, "up", "-d", *targets], cwd=PROJECT_ROOT)

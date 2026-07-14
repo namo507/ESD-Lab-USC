@@ -26,6 +26,7 @@
     "PYTHONUNBUFFERED": "1",
     "PIP_DISABLE_PIP_VERSION_CHECK": "1",
     "R_HOME": "/usr/lib/R",
+    "R_LIBS_USER": "/home/vscode/R/library",
     "VENV": "/workspaces/ESD-Lab-USC/.devcontainer/.venv"
   },
   "customizations": {

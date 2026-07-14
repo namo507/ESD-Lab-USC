@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { Send, Sparkles, X } from "lucide-react";
-import { fetchLiveAssistantStatus, streamChat, type AssistantStatus, type ChatMessage } from "@/api/chatApi";
+import {
+  assistantStatusLabel,
+  fetchLiveAssistantStatus,
+  isAssistantUsable,
+  streamChat,
+  type AssistantStatus,
+  type ChatMessage,
+} from "@/api/chatApi";
 import { FastPaths, type FastPathPrompt } from "@/components/warm/FastPaths";
 import { AmbientOrbit } from "@/components/warm/AmbientOrbit";
 import { HELP_ASSISTANT_FAST_PATHS } from "@/data/helpContent";
@@ -15,7 +22,7 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
   { lane: "model",  label: "SHAP explorer",                prompt: "Explain how to read the SHAP Explorer beeswarm and what participant highlighting changes." },
   { lane: "model",  label: "Model leaderboard",            prompt: "Summarize the Model Leaderboard and which metrics I should compare before trusting a model." },
-  { lane: "model",  label: "Local AI model",                prompt: "Which local no-API model is configured for ESD Buddy, why was it selected, and when will the dashboard fall back to a smaller model?" },
+  { lane: "model",  label: "NVIDIA assistant",               prompt: "How does the NVIDIA-hosted ESD Buddy stay grounded in repository context, and what happens when the assistant is degraded or unavailable?" },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
   { lane: "redcap", label: "Participant ID legend",       prompt: "What does the participant ID legend mean for NANO, NICO, ANONICO, and dual-enrolled participants? Explain 5-series versus 9-series and visit markers." },
   { lane: "redcap", label: "Dual forms policy",           prompt: "For a dual-enrolled participant, should AIH and EH be one shared master form or duplicate study-specific forms? Explain the linking ID rule." },
@@ -141,7 +148,7 @@ export function parseMessageText(text: string): MessageTextBlock[] {
       continue;
     }
 
-    const numbered = line.match(/^\d+[\.)]\s+(.+)$/);
+    const numbered = line.match(/^\d+[.)]\s+(.+)$/);
     if (numbered) {
       flushParagraph();
       flushBullets();
@@ -248,7 +255,7 @@ export function ChatDrawer() {
     if (!question || busy) return;
 
     let liveStatus = status;
-    if (!liveStatus || statusBusy || liveStatus.status !== "ready") {
+    if (!liveStatus || statusBusy || !isAssistantUsable(liveStatus)) {
       setStatusBusy(true);
       try {
         liveStatus = await fetchLiveAssistantStatus();
@@ -348,7 +355,7 @@ export function ChatDrawer() {
     }
 
     return () => window.clearTimeout(timer);
-  }, [chatOpen, consumeChatSeed]);
+  }, [chatOpen, consumeChatSeed, refreshStatus]);
 
   const onKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -363,24 +370,16 @@ export function ChatDrawer() {
     event.target.style.height = `${Math.min(event.target.scrollHeight, 100)}px`;
   }, []);
 
-  const statusTone = statusBusy ? "loading" : status?.status === "ready" ? "ready" : "error";
-  const modelDisplay = status?.model_label
-    || (status?.transport === "lmstudio" ? "LM Studio local model" : null)
-    || status?.model?.split("/").pop()
-    || "model";
+  const statusTone = statusBusy
+    ? "loading"
+    : status?.status === "ready"
+      ? "ready"
+      : isAssistantUsable(status)
+        ? "loading"
+        : "error";
   const statusLabel = statusBusy
     ? "loading…"
-    : status?.status === "ready"
-      ? status.transport === "lmstudio"
-        ? `ready · ${modelDisplay}`
-        : status.transport === "local-backend"
-          ? `ready · ${modelDisplay}`
-          : `ready · ${modelDisplay}`
-      : status?.status === "fallback"
-        ? "fallback · live origin unavailable"
-      : status?.status === "unloaded"
-        ? "model unavailable"
-        : "offline";
+    : assistantStatusLabel(status);
   const redcapFreshness = status?.freshness?.redcap;
   const redcapFreshnessLabel = redcapFreshness?.generated_at
     ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags${typeof redcapFreshness.age_hours === "number" ? ` · ${redcapFreshness.age_hours.toFixed(1)}h old` : ""}`
@@ -408,11 +407,7 @@ export function ChatDrawer() {
             <div
               className={styles.statusPill}
               data-insight="assistant-model-clinical"
-              data-insight-body={
-                status?.model_label
-                  ? `${status.model_label} (${status.model_tier ?? "auto"} tier, ${status.model_license ?? "local"} license) is the active local GGUF policy for this assistant status.`
-                  : undefined
-              }
+              data-insight-body="ESD Buddy uses the hosted NVIDIA assistant through the dashboard backend. Prompts are scrubbed before the proxy request, and limited fallback answers remain available when the live provider is degraded."
             >
               <span className={`${styles.statusDot} ${styles[statusTone]}`} aria-hidden />
               <span>{statusLabel}</span>
@@ -445,7 +440,7 @@ export function ChatDrawer() {
                 {message.text ? (
                   <MessageText text={message.text} />
                 ) : (
-                  <span className={styles.dots} aria-label="Assistant is thinking">
+                  <span className={styles.dots} aria-label="Assistant is responding">
                     <span />
                     <span />
                     <span />

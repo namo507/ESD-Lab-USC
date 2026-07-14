@@ -1,84 +1,43 @@
-# Archive Manifest — Dashboard Refactor (2026-04-17)
+# Repository Archive and Retention Manifest
 
-> Audience: anyone wondering why a file they remember is no longer
-> where it used to be, or why a file has a "DEPRECATED" banner at the
-> top.
+The active Git tree contains only sources, tests, runtime data, documentation,
+and assets that contribute to building, operating, or validating the dashboard.
+Historical design packages and retired implementations are preserved by Git,
+not duplicated inside the working tree.
 
-## 1. Philosophy
+## Recovery point
 
-**Conservative archiving.** Nothing is deleted. Every archived file is
-preserved in full inside `archive/<date>_<reason>/` and the live copy
-is replaced with a short *deprecation stub* that:
+The annotated tag `pre-dashboard-space-sweep-2026-07-14` points to the exact
+repository state before the space sweep. It contains the retired brand source
+package, design prototypes, QA screenshots, legacy dashboard shell, and generated
+report bundle.
 
-1. Explains what happened.
-2. Points to the replacement.
-3. Forwards any runtime call to the canonical script, so existing
-   cron jobs and README instructions keep working.
+The tag covers Git-tracked content only. Files that were never tracked were moved
+to a machine-local archive during the sweep and are not a durable recovery path;
+lab-owned source artwork or templates that still matter should be copied to
+approved shared storage.
 
-That keeps git history clean, keeps automations working, and makes
-roll-back a one-line `cp`.
-
-## 2. Who decides?
-
-A file is eligible for archival only if **all** of these are true:
-
-* Its functionality is fully covered by another module.
-* That other module is clearly canonical (more recently updated, more
-  widely imported, or explicitly documented as the source of truth).
-* A human reviewer signed off on the decision.
-* A restoration procedure is documented in the archive manifest for
-  that batch.
-
-## 3. Batches
-
-### `archive/2026-04-17_dashboard_refactor/`
-
-| Original | Moved because | Replacement |
-|----------|---------------|-------------|
-| `redcap/api/redcap_audit.py` | Duplicated ~90% of `scripts/generate_data_quality_report.py`; the two had silently drifted out of sync, producing different completeness numbers on two different weeks. | `scripts/generate_data_quality_report.py` + `dashboard/pipelines/build_dashboard_data.py::build_redcap_audit()` |
-
-Full restoration procedure is in
-`archive/2026-04-17_dashboard_refactor/MANIFEST.md`.
-
-### `archive/2026-05-18_legacy_dashboard_ui/`
-
-| Original | Moved because | Replacement |
-|----------|---------------|-------------|
-| `dashboard/index.html` | The old static HTML shell was retired so localhost, Pages, and tunnel previews all resolve to the same React SPA. | `dashboard/server/live_dashboard_server.py` serving `web/build/index.html` at `/` and `/overview` |
-| `dashboard/app.js` | Vanilla runtime controller only powered the retired static shell. | `web/src/**` |
-| `dashboard/styles.css` | Static-only theme file no longer drives the canonical site. | `web/src/**` |
-| `dashboard/primitives.js` | Static helper library only served the archived dashboard shell. | `web/src/**` |
-
-Full restoration procedure is in
-`archive/2026-05-18_legacy_dashboard_ui/MANIFEST.md`.
-
-## 4. How to find the old version
+To inspect a retired path without restoring it:
 
 ```bash
-find archive/ -name "<filename>"
+git ls-tree -r --name-only pre-dashboard-space-sweep-2026-07-14 -- <path>
+git show pre-dashboard-space-sweep-2026-07-14:<path>
 ```
 
-or, if you want a diff against the current stub:
+Restore a file only when it has a current owner and a documented runtime or
+build consumer. Large source-design packages belong in approved external asset
+storage or a GitHub Release, not in the application tree.
 
-```bash
-diff archive/2026-04-17_dashboard_refactor/redcap_audit.py \
-     redcap/api/redcap_audit.py
-```
+## July 2026 sweep
 
-## 5. Adding a new archival batch
+| Retired path | Approximate size | Why it left the active tree | Active replacement |
+|---|---:|---|---|
+| `ESD Lab Brand Files/` (tracked portion) | 221 MiB | Source artwork, print exports, and repeated color variants were not read by any build or deployment. | Optimized fonts and images in `web/src/assets/brand-esd/` |
+| `design-ideas/`, `design-qa/`, `design-qa.md` | 6 MiB | Superseded prompts, duplicate PDFs, prototypes, and screenshots were historical evidence only. | Implemented React sources and tests in `web/src/` |
+| `archive/` | 0.7 MiB | Git already preserves the retired implementations; keeping a second source tree caused drift. | Current runtime under `dashboard/` and `web/` |
+| Generated `reports/NANO_statistical_analysis*` bundle | 1 MiB | Rebuildable Quarto HTML and vendored browser libraries were not deployed. | `reports/NANO_statistical_analysis.qmd` |
+| Legacy dashboard stubs and `scripts/parse_css.py` | 0.1 MiB | Routes are redirected by the server and Pages worker; the files had no runtime consumer. | `dashboard/server/live_dashboard_server.py` and `scripts/build_pages_site.py` |
 
-1. Create a dated directory: `archive/YYYY-MM-DD_<short-reason>/`
-2. Copy the original files into it **unchanged**.
-3. Replace the live copy with a deprecation stub that points to the
-   replacement (use the pattern in
-   `redcap/api/redcap_audit.py` as a template).
-4. Add a `MANIFEST.md` inside the batch directory listing each file
-   with `Original path / Replacement path / Reason / Date / Reviewer`.
-5. Append a row to section 3 of this document.
-6. Open a PR with the title `archive: <short-reason>` and a reviewer
-   from the affected team.
-
-## 6. Deleting a batch (permanent)
-
-We don't. An archive stays for the lifetime of the project unless
-storage becomes an actual problem, in which case the PI signs off.
+`scripts/check_repository_hygiene.py` enforces this boundary in CI and rejects
+new tracked files larger than 20 MiB. The reading library remains intentionally
+tracked because it is indexed into ESD Buddy and the public dashboard.

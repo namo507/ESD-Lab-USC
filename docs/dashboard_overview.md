@@ -24,7 +24,7 @@ The canonical website UI lives in `web/` and is served locally by
 | R production pipeline | `dashboard/pipelines/build_dashboard_data.R` |
 | Pages packaging | `scripts/build_pages_site.py` |
 | Runtime-share wrapper | `scripts/build_pages_wrapper.py` |
-| Archive | `archive/2026-05-18_legacy_dashboard_ui/` |
+| Historical recovery | Git tag `pre-dashboard-space-sweep-2026-07-14` |
 
 ## Documentation map
 
@@ -46,4 +46,4 @@ The canonical website UI lives in `web/` and is served locally by
 * Cluster observability is additive: `/overview` shows Kubernetes topology and
   readings pipeline status when available, and a labeled local fallback when
   Kubernetes is disabled.
-* The retired static dashboard shell was archived unchanged and can still be restored if needed.
+* Retired dashboard sources can be inspected or restored from the pre-sweep Git tag without bloating the active tree.

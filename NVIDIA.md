@@ -42,10 +42,10 @@ Target provider settings:
 - Hosted API base URL: https://integrate.api.nvidia.com/v1
 - Hosted model id: nvidia/nemotron-3-super-120b-a12b
 - Default provider runtime label: nvidia-build-api
-- Default thinking enabled: true
-- Default reasoning budget: 16384
+- Default thinking enabled: false
+- Default reasoning budget: 0
 - Default max output tokens: 16384
-- Default temperature: 1
+- Default temperature: 0.2
 - Default top_p: 0.95
 - Default streaming: true
 
@@ -61,10 +61,10 @@ Use these environment variable names as the canonical assistant provider contrac
 - DASHBOARD_ASSISTANT_API_KEY from secret storage
 - DASHBOARD_ASSISTANT_MODEL=nvidia/nemotron-3-super-120b-a12b
 - DASHBOARD_ASSISTANT_MODEL_ID=nvidia/nemotron-3-super-120b-a12b
-- DASHBOARD_ASSISTANT_ENABLE_THINKING=true
-- DASHBOARD_ASSISTANT_REASONING_BUDGET=16384
+- DASHBOARD_ASSISTANT_ENABLE_THINKING=false
+- DASHBOARD_ASSISTANT_REASONING_BUDGET=0
 - DASHBOARD_ASSISTANT_MAX_NEW_TOKENS=16384
-- DASHBOARD_ASSISTANT_TEMPERATURE=1
+- DASHBOARD_ASSISTANT_TEMPERATURE=0.2
 - DASHBOARD_ASSISTANT_TOP_P=0.95
 - DASHBOARD_ASSISTANT_STREAM=true
 - DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS=180
@@ -89,12 +89,12 @@ client = OpenAI(
 completion = client.chat.completions.create(
     model=os.environ.get("DASHBOARD_ASSISTANT_MODEL", "nvidia/nemotron-3-super-120b-a12b"),
     messages=[{"role": "user", "content": "..."}],
-    temperature=float(os.environ.get("DASHBOARD_ASSISTANT_TEMPERATURE", "1")),
+    temperature=float(os.environ.get("DASHBOARD_ASSISTANT_TEMPERATURE", "0.2")),
     top_p=float(os.environ.get("DASHBOARD_ASSISTANT_TOP_P", "0.95")),
     max_tokens=int(os.environ.get("DASHBOARD_ASSISTANT_MAX_NEW_TOKENS", "16384")),
     extra_body={
-        "chat_template_kwargs": {"enable_thinking": True},
-        "reasoning_budget": int(os.environ.get("DASHBOARD_ASSISTANT_REASONING_BUDGET", "16384")),
+        "chat_template_kwargs": {"enable_thinking": False},
+        "reasoning_budget": int(os.environ.get("DASHBOARD_ASSISTANT_REASONING_BUDGET", "0")),
     },
     stream=True,
 )

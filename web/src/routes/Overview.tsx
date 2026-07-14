@@ -44,7 +44,7 @@ import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
  * - `useStages` (full list) → AnimatedDAG with traveling dots
  * - `useTrajectory("rmssd")` → KPI delta string ("Median RMSSD ↗")
  * - `useParticipants.slice(0, 7)` → ParticipantFlow card
- * - AgenticQAPanel uses LM Studio + scrubPhi; UI is data-independent
+ * - AgenticQAPanel uses the shared assistant API + scrubPhi; UI is data-independent
  */
 export function Overview() {
   const navigate = useNavigate();

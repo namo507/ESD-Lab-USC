@@ -21,6 +21,21 @@ and optional Pages packaging trigger metadata.
 Secrets are never hardcoded. To enable the optional Pages redeploy hook, create
 or render a Secret named by `secret.name` with key `pagesDeployHookUrl`.
 
+The default assistant runtime is NVIDIA's hosted OpenAI-compatible endpoint and
+does not download model weights into the pod. Inject the API key through the
+existing Secret (key `dashboardAssistantApiKey` by default):
+
+```bash
+kubectl -n esd-lab create secret generic esd-lab-dashboard-secrets \
+  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY"
+```
+
+The dashboard starts and passes readiness checks when that key is missing or the
+provider is unavailable; only the assistant reports a degraded state. A future
+self-hosted NIM endpoint can be selected with `assistant.selfHostedEnabled` and
+`assistant.selfHostedBaseUrl`, but it is disabled by default and requires
+dedicated GPU infrastructure outside this chart.
+
 Validation:
 
 ```bash

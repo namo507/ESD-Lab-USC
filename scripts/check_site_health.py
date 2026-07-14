@@ -9,8 +9,8 @@ Used by the uptime GitHub Action and runnable locally for spot checks.
 Checks
 ------
 1. URL responds with HTTP 200 within `--timeout` seconds.
-2. Assistant status endpoint responds with HTTP 200 and, by default,
-    reports `ready=true`.
+2. Assistant status endpoint responds with HTTP 200. Provider readiness is an
+   optional stricter check so a provider outage does not mark the website down.
 3. Body length > `--min-bytes` (default 4 KB) unless the response is a valid
     lightweight SPA shell with hashed asset references.
 4. Body contains every string from `--must-contain` (comma-separated).
@@ -82,7 +82,12 @@ def _extract_api_origin(body: str) -> str | None:
         body,
         flags=re.IGNORECASE,
     )
-    return m.group(1) if m else None
+    value = m.group(1).strip() if m else ""
+    return value or None
+
+
+def _is_quick_tunnel_origin(value: str) -> bool:
+    return (urlparse(value).hostname or "").lower().endswith(".trycloudflare.com")
 
 
 def _assistant_is_fallback(payload: dict[str, object]) -> bool:
@@ -90,19 +95,14 @@ def _assistant_is_fallback(payload: dict[str, object]) -> bool:
     model_id = payload.get("model_id")
     reason = payload.get("reason")
     message = (
-        payload.get("message")
-        or payload.get("error")
-        or payload.get("last_error")
+        payload.get("message") or payload.get("error") or payload.get("last_error")
     )
     return (
         payload.get("fallback") is True
         or model == "pages://fallback-assistant"
         or model_id == "pages://fallback-assistant"
         or (isinstance(reason, str) and reason.startswith("upstream-"))
-        or (
-            isinstance(message, str)
-            and "fallback assistant" in message.lower()
-        )
+        or (isinstance(message, str) and "fallback assistant" in message.lower())
     )
 
 
@@ -213,6 +213,13 @@ def check(
     api_origin = _extract_api_origin(body)
     page_origin = _origin_from_url(url)
 
+    if probe_assistant and api_origin and _is_quick_tunnel_origin(api_origin):
+        print(
+            "[FAIL] canonical artifact embeds an ephemeral trycloudflare API "
+            f"origin: {api_origin}"
+        )
+        return 1
+
     if len(raw) < min_bytes and not spa_shell:
         print(
             f"[FAIL] body too small: {len(raw)} bytes < min {min_bytes} "
@@ -248,19 +255,22 @@ def check(
 
     if probe_api_origin:
         if api_origin is None:
-            print("[FAIL] esd-api-origin meta missing — cannot verify backend origin health")
-            return 1
-        if api_origin.rstrip("/") == page_origin:
+            print(
+                "[INFO] esd-api-origin is absent; Pages is intentionally running "
+                "with its built-in fallback API"
+            )
+        elif api_origin.rstrip("/") == page_origin:
             print(f"[FAIL] esd-api-origin points back to the page origin: {api_origin}")
             return 1
-        try:
-            _probe_api_origin_health(api_origin, timeout)
-        except RuntimeError as e:
-            print(f"[FAIL] {e}")
-            return 1
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
-            print(f"[FAIL] api origin probe failed for {api_origin}: {e}")
-            return 1
+        else:
+            try:
+                _probe_api_origin_health(api_origin, timeout)
+            except RuntimeError as e:
+                print(f"[FAIL] {e}")
+                return 1
+            except (urllib.error.URLError, TimeoutError, OSError) as e:
+                print(f"[FAIL] api origin probe failed for {api_origin}: {e}")
+                return 1
 
     assistant_state = None
     assistant_message = None
@@ -312,7 +322,12 @@ def main() -> int:
     parser.add_argument(
         "--allow-assistant-unready",
         action="store_true",
-        help="Treat a 200 assistant status response as healthy even when ready=false.",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--require-assistant-ready",
+        action="store_true",
+        help="Require the external assistant provider to report ready=true.",
     )
     args = parser.parse_args()
 
@@ -325,7 +340,9 @@ def main() -> int:
         max_stamp_age_hours=args.max_stamp_age_hours,
         assistant_status_path=args.assistant_status_path,
         probe_assistant=not args.skip_assistant_probe,
-        require_assistant_ready=not args.allow_assistant_unready,
+        require_assistant_ready=(
+            args.require_assistant_ready and not args.allow_assistant_unready
+        ),
         probe_api_origin=False,
     )
 

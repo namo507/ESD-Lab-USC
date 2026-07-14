@@ -1,19 +1,20 @@
 name: Uptime monitor
 
-# Runs every 15 minutes. Probes the canonical Pages URL and assistant
-# surface with the health-check script. On failure: open / update a
-# single GitHub issue ("ESD Pages site is down") AND fire a
-# repository_dispatch event that triggers the deploy workflow to push a
-# fresh artifact.
-
+# Monitor the durable Pages surface. Ephemeral trycloudflare origins are not an
+# uptime target and this workflow intentionally does not dispatch redeploys:
+# rebuilding the same stale origin caused an unbounded workflow/issue loop.
 on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   issues: write
+
+concurrency:
+  group: uptime-monitor
+  cancel-in-progress: true
 
 jobs:
   probe:
@@ -21,132 +22,50 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - name: Probe live site
+      - name: Probe durable public site
         id: probe
         run: |
           set +e
           : > probe.log
           python scripts/check_live_surfaces.py \
             --canonical-url "https://esd-lab-namo.pages.dev/" \
+            --canonical-route / \
             --canonical-route /redcap \
             --canonical-route /pipeline-health \
-            --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
+            --skip-runtime \
             --timeout 25 \
             --max-stamp-age-hours 168 \
-            --probe-api-origin \
             >> probe.log 2>&1
           rc=$?
           echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
           cat probe.log
           exit 0
 
-      - name: Discover runtime-share API origin
-        id: runtime_origin
+      - name: Open or refresh incident issue
         if: steps.probe.outputs.exit_code != '0'
-        run: |
-          python - <<'PY'
-          import html.parser
-          import os
-          import urllib.request
-
-          class MetaOriginParser(html.parser.HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.origin = ""
-
-              def handle_starttag(self, tag, attrs):
-                  if tag.lower() != "meta":
-                      return
-                  attr_map = {k.lower(): v for k, v in attrs}
-                  if attr_map.get("name", "").lower() == "esd-api-origin":
-                      self.origin = attr_map.get("content", "").strip()
-
-          runtime_url = "https://runtime-share.esd-lab-namo.pages.dev/"
-          output_path = os.environ["GITHUB_OUTPUT"]
-          origin = ""
-          try:
-              with urllib.request.urlopen(runtime_url, timeout=20) as response:
-                  html = response.read().decode("utf-8", errors="ignore")
-              parser = MetaOriginParser()
-              parser.feed(html)
-              origin = parser.origin
-          except Exception:
-              origin = ""
-
-          with open(output_path, "a", encoding="utf-8") as handle:
-              handle.write(f"api_origin={origin}\n")
-          PY
-
-      - name: Trigger redeploy on failure
-        if: steps.probe.outputs.exit_code != '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          api_origin="${{ steps.runtime_origin.outputs.api_origin }}"
-          payload='{"event_type":"redeploy-pages"}'
-          if [ -n "$api_origin" ]; then
-            payload=$(printf '{"event_type":"redeploy-pages","client_payload":{"api_origin":"%s"}}' "$api_origin")
-          fi
-          curl -fsS -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${{ github.repository }}/dispatches" \
-            -d "$payload"
-
-      - name: Verify recovery after redeploy request
-        id: recovery
-        if: steps.probe.outputs.exit_code != '0'
-        continue-on-error: true
-        run: |
-          set +e
-          echo "" >> probe.log
-          echo "Recovery probe after automatic redeploy request:" >> probe.log
-          sleep 90
-          python scripts/check_live_surfaces.py \
-            --canonical-url "https://esd-lab-namo.pages.dev/" \
-            --canonical-route /redcap \
-            --canonical-route /pipeline-health \
-            --runtime-url "https://runtime-share.esd-lab-namo.pages.dev/" \
-            --timeout 25 \
-            --max-stamp-age-hours 168 \
-            --probe-api-origin \
-            >> probe.log 2>&1
-          recovery_rc=$?
-          if [ "$recovery_rc" -eq 0 ]; then
-            echo "recovered=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "recovered=false" >> "$GITHUB_OUTPUT"
-          fi
-          exit 0
-
-      - name: Open / update incident issue on failure
-        if: steps.probe.outputs.exit_code != '0' && steps.recovery.outputs.recovered != 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = "ESD Pages site is down";
             const log = require("fs").readFileSync("probe.log", "utf-8");
             const body = [
-              "Uptime monitor detected the public Pages site is unhealthy.",
+              "The durable Cloudflare Pages dashboard failed its shell/API-contract probe.",
               "",
               "Run: " + process.env.GITHUB_SERVER_URL + "/" + process.env.GITHUB_REPOSITORY + "/actions/runs/" + process.env.GITHUB_RUN_ID,
               "",
               "Probe output:",
               "```",
-              log.trim(),
+              log.trim().slice(-6000),
               "```",
               "",
-              "A redeploy has been requested automatically.",
-              "If the failing probe references a stale trycloudflare api-origin,",
-              "restart the local `make share-live` supervisor so it republishes Pages with the current tunnel origin, or update the `PAGES_API_ORIGIN` repo variable to a stable named tunnel.",
+              "The monitor did not trigger a redeploy. Pages deploys only use a healthy, stable configured origin; otherwise they publish the built-in fallback API.",
             ].join("\n");
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -154,9 +73,9 @@ jobs:
               state: "open",
               labels: "uptime",
             });
-            const existing = issues.find(i => i.title === title);
+            const existing = issues.find((issue) => issue.title === title);
             if (existing) {
-              await github.rest.issues.createComment({
+              await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
@@ -173,8 +92,8 @@ jobs:
             }
 
       - name: Close incident issue on recovery
-        if: steps.probe.outputs.exit_code == '0' || steps.recovery.outputs.recovered == 'true'
-        uses: actions/github-script@v7
+        if: steps.probe.outputs.exit_code == '0'
+        uses: actions/github-script@v9
         with:
           script: |
             const title = "ESD Pages site is down";
@@ -184,13 +103,13 @@ jobs:
               state: "open",
               labels: "uptime",
             });
-            const existing = issues.find(i => i.title === title);
+            const existing = issues.find((issue) => issue.title === title);
             if (existing) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: existing.number,
-                body: "Site healthy again — closing.",
+                body: "Durable Pages probes are healthy again — closing.",
               });
               await github.rest.issues.update({
                 owner: context.repo.owner,

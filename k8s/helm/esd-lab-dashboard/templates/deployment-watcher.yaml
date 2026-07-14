@@ -42,7 +42,7 @@ spec:
                   fieldPath: metadata.namespace
           resources:
             {{- toYaml .Values.watcher.resources | nindent 12 }}
-          readinessProbe:
+          startupProbe:
             exec:
               command:
                 - python
@@ -51,7 +51,24 @@ spec:
                   from pathlib import Path
                   assert Path('/app/esd-lab-readings').is_dir()
                   assert Path('/app/dashboard/data').is_dir()
-            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - |
+                  import os
+                  import time
+                  from pathlib import Path
+                  assert Path('/app/esd-lab-readings').is_dir()
+                  assert Path('/app/dashboard/data').is_dir()
+                  heartbeat = Path(os.environ['READINGS_WATCHER_HEARTBEAT_PATH'])
+                  assert heartbeat.is_file()
+                  assert time.time() - heartbeat.stat().st_mtime <= float(os.environ['READINGS_WATCHER_HEARTBEAT_MAX_AGE_SECONDS'])
+            initialDelaySeconds: 5
             periodSeconds: 15
             timeoutSeconds: 5
           livenessProbe:
@@ -60,10 +77,13 @@ spec:
                 - python
                 - -c
                 - |
+                  import os
+                  import time
                   from pathlib import Path
-                  cmdline = Path('/proc/1/cmdline').read_text(errors='ignore')
-                  assert 'k8s.pipeline.watcher' in cmdline
-            initialDelaySeconds: 30
+                  heartbeat = Path(os.environ['READINGS_WATCHER_HEARTBEAT_PATH'])
+                  assert heartbeat.is_file()
+                  assert time.time() - heartbeat.stat().st_mtime <= float(os.environ['READINGS_WATCHER_HEARTBEAT_MAX_AGE_SECONDS'])
+            initialDelaySeconds: 15
             periodSeconds: 30
             timeoutSeconds: 5
           volumeMounts:

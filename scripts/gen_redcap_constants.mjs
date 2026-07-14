@@ -10,22 +10,31 @@ const root = resolve(new URL("..", import.meta.url).pathname);
 const configPath = resolve(root, "config/redcap_config.yml");
 const outputPath = resolve(root, "web/src/constants/redcapConfig.ts");
 
-const py = spawnSync(
+const pythonCandidates = [
+  process.env.PYTHON,
+  resolve(root, ".venv/bin/python"),
+  resolve(root, ".venv-codex/bin/python"),
+  "python3",
   "python",
-  [
-    "-c",
-    [
-      "import json, pathlib, yaml",
-      `path = pathlib.Path(${JSON.stringify(configPath)})`,
-      "print(json.dumps(yaml.safe_load(path.read_text(encoding='utf-8'))))",
-    ].join("; "),
-  ],
-  { encoding: "utf-8" },
-);
+].filter(Boolean);
+const pythonProgram = [
+  "import json, pathlib, yaml",
+  `path = pathlib.Path(${JSON.stringify(configPath)})`,
+  "print(json.dumps(yaml.safe_load(path.read_text(encoding='utf-8'))))",
+].join("; ");
 
-if (py.status !== 0) {
-  process.stderr.write(py.stderr || "Unable to parse config/redcap_config.yml\n");
-  process.exit(py.status || 1);
+let py;
+for (const candidate of pythonCandidates) {
+  const result = spawnSync(candidate, ["-c", pythonProgram], { encoding: "utf-8" });
+  py = result;
+  if (result.status === 0) break;
+}
+
+if (!py || py.status !== 0) {
+  process.stderr.write(
+    py?.stderr || py?.error?.message || "Unable to parse config/redcap_config.yml\n",
+  );
+  process.exit(py?.status || 1);
 }
 
 const c = JSON.parse(py.stdout);

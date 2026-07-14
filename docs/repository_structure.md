@@ -6,9 +6,9 @@
 build from `web/build/` through `scripts/build_pages_site.py`.
 
 `dashboard/` is the Python runtime, API, assistant, and data-pipeline layer.
-The old static dashboard shell is archived under
-`archive/2026-05-18_legacy_dashboard_ui/`; the files left in `dashboard/` are
-redirect/deprecation stubs.
+The retired static shell is recoverable from the annotated pre-sweep tag in
+`docs/archive_manifest.md`; no duplicate frontend implementation remains in the
+active tree.
 
 ## Data Locations
 
@@ -44,6 +44,10 @@ checks, packaging, and sharing commands.
 `scripts/` contains the narrower automation entry points behind those targets.
 See `scripts/README.md` for the current health, build, deploy, and maintenance
 script catalog.
+
+`make clean-space` removes rebuildable legacy model weights and stale local
+tool environments while preserving `.env`, current ML metrics, runtime data,
+`web/build`, and `web/node_modules`.
 
 ## R Environment
 

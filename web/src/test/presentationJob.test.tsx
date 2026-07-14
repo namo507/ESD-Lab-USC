@@ -10,7 +10,10 @@ const { fetchAssistantStatusMock, createJobMock, getJobMock } = vi.hoisted(() =>
   getJobMock: vi.fn(),
 }));
 
-vi.mock("@/api/chatApi", () => ({ fetchAssistantStatus: fetchAssistantStatusMock }));
+vi.mock("@/api/chatApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/chatApi")>()),
+  fetchAssistantStatus: fetchAssistantStatusMock,
+}));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(async () => undefined) }));
 vi.mock("@/api/presentationApi", () => ({
   planPresentation: vi.fn(),
@@ -62,7 +65,7 @@ describe("PresentationMaker async job flow", () => {
     fetchAssistantStatusMock.mockReset();
     createJobMock.mockReset();
     getJobMock.mockReset();
-    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "local/qwen" });
+    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "nvidia/nemotron-3-super-120b-a12b" });
   });
 
   afterEach(() => {
@@ -115,6 +118,25 @@ describe("PresentationMaker async job flow", () => {
     // Form state is preserved for retry.
     expect((input as HTMLTextAreaElement).value).toBe("Explain gradient descent to a beginner.");
     expect(screen.getByRole("button", { name: /retry/i })).not.toBeDisabled();
+  });
+
+  it("does not render raw provider diagnostics from a failed job", async () => {
+    createJobMock.mockResolvedValue({ job_id: "job-private", status: "queued", poll_after_ms: 900 });
+    getJobMock.mockResolvedValue({
+      job_id: "job-private",
+      status: "failed",
+      error: "NVCF request failed at https://integrate.api.nvidia.com with api key nvapi-secret",
+    });
+
+    renderPage();
+    await typeConceptAndGenerate("Explain RMSSD.");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument());
+    expect(screen.getByText(/Your concept and settings are still here/i).textContent).toContain(
+      "Generation didn’t complete. Please try again.",
+    );
+    expect(screen.queryByText(/integrate\.api\.nvidia\.com/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nvapi-secret/i)).not.toBeInTheDocument();
   });
 
   it("does not call the job API until the user generates", async () => {

@@ -16,22 +16,36 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
+      REDCAP_CONFIGURED: ${{ secrets.REDCAP_API_URL != '' && (secrets.REDCAP_API_TOKEN != '' || secrets.REDCAP_API_KEY != '') && secrets.PARTICIPANT_ID_SALT != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
 
+      - uses: r-lib/actions/setup-r@v2
+        if: env.REDCAP_CONFIGURED == 'true'
+        with:
+          r-version: "release"
+
       - name: Install Python dependencies
+        if: env.REDCAP_CONFIGURED == 'true'
         run: pip install -r requirements.txt
 
+      - name: Report unconfigured REDCap sync
+        if: env.REDCAP_CONFIGURED != 'true'
+        run: echo "::notice::REDCap sync skipped because the required repository secrets are not configured."
+
       - name: Pull REDCap and build dashboard payload
+        if: env.REDCAP_CONFIGURED == 'true'
         env:
           NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
           REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
@@ -46,6 +60,7 @@ jobs:
           python dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
 
       - name: Regenerate REDCap constants and context
+        if: env.REDCAP_CONFIGURED == 'true'
         env:
           NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
           REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
@@ -57,9 +72,11 @@ jobs:
           python dashboard/context_skill/extract_context.py --emit
 
       - name: Re-index assistant grounding
+        if: env.REDCAP_CONFIGURED == 'true'
         run: python scripts/prepare_dashboard_assistant.py --reindex || true
 
       - name: Commit propagated data and context
+        if: env.REDCAP_CONFIGURED == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -68,7 +85,5 @@ jobs:
           git push || true
 
       - name: Trigger Pages deploy hook
-        if: ${{ secrets.PAGES_DEPLOY_HOOK_URL != '' }}
-        env:
-          PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
+        if: env.REDCAP_CONFIGURED == 'true' && env.PAGES_DEPLOY_HOOK_URL != ''
         run: curl -fsS -X POST "$PAGES_DEPLOY_HOOK_URL"
