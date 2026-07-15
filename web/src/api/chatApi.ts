@@ -14,6 +14,7 @@ export interface ChatMessage {
  */
 export type AssistantState =
   | "ready"
+  | "setup-required"
   | "disabled"
   | "credentials-missing"
   | "provider-unreachable"
@@ -56,12 +57,14 @@ interface AssistantStatusPayload {
   error?: unknown;
   model?: unknown;
   ready?: unknown;
+  can_attempt?: unknown;
   state?: unknown;
   last_error?: unknown;
   message?: unknown;
   model_id?: unknown;
   reason?: unknown;
   fallback?: unknown;
+  dependencies?: unknown;
   freshness?: unknown;
 }
 
@@ -83,6 +86,7 @@ const ASSISTANT_CHAT_ENDPOINT = "/api/assistant/chat";
 const LEGACY_CHAT_ENDPOINT = "/api/chat";
 
 const SAFE_STATUS_MESSAGES: Record<Exclude<AssistantState, "ready">, string> = {
+  "setup-required": "The assistant setup is incomplete for this deployment.",
   disabled: "The assistant is disabled for this deployment.",
   "credentials-missing": "The assistant is not configured for this deployment.",
   "provider-unreachable": "The assistant service is temporarily unreachable.",
@@ -104,6 +108,12 @@ function normalizedStateName(value: unknown): string | null {
   return stringValue(value)?.trim().toLowerCase().replaceAll("_", "-") ?? null;
 }
 
+function hasMissingDependencies(payload: AssistantStatusPayload): boolean {
+  const dependencies = payload.dependencies;
+  if (!dependencies || typeof dependencies !== "object") return false;
+  return (dependencies as { available?: unknown }).available === false;
+}
+
 function isFallbackStatus(payload: AssistantStatusPayload, model: string | null): boolean {
   const reason = normalizedStateName(payload.reason);
   const message = stringValue(payload.message)?.toLowerCase() ?? "";
@@ -115,6 +125,7 @@ function isFallbackStatus(payload: AssistantStatusPayload, model: string | null)
 
 function normalizeAssistantState(payload: AssistantStatusPayload, model: string | null): AssistantState {
   if (isFallbackStatus(payload, model)) return "fallback";
+  if (hasMissingDependencies(payload)) return "setup-required";
 
   const statusState = normalizedStateName(payload.status);
   const providerState = normalizedStateName(payload.state);
@@ -122,6 +133,10 @@ function normalizeAssistantState(payload: AssistantStatusPayload, model: string 
   if (raw === "ready" || (!raw && payload.ready === true)) return "ready";
 
   switch (raw) {
+    case "setup-required":
+    case "dependencies-missing":
+    case "dependency-missing":
+      return "setup-required";
     case "disabled":
     case "unloaded":
     case "model-missing":
@@ -177,6 +192,8 @@ export function assistantStatusLabel(status: AssistantStatus | null | undefined)
   switch (status?.status) {
     case "ready":
       return "NVIDIA assistant ready";
+    case "setup-required":
+      return "Assistant setup required";
     case "degraded":
       return "Assistant degraded · limited mode";
     case "fallback":

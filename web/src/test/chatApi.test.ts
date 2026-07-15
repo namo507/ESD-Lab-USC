@@ -166,6 +166,27 @@ describe("chatApi", () => {
     expect(assistantStatusLabel(status)).toBe("Assistant busy · retry shortly");
   });
 
+  it("maps missing assistant dependencies to setup-required copy", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        state: "degraded",
+        ready: false,
+        can_attempt: false,
+        dependencies: { available: false, missing: ["openai"] },
+        message: "The OpenAI-compatible client dependency is not installed.",
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const status = await fetchAssistantStatus();
+    expect(status.status).toBe("setup-required");
+    expect(status.error).toBe("The assistant setup is incomplete for this deployment.");
+    expect(assistantStatusLabel(status)).toBe("Assistant setup required");
+  });
+
   it("keeps the Pages fallback usable without probing browser-local providers", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({

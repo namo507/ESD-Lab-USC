@@ -117,14 +117,12 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
     "redcap_audit": {
         "query",
         "queries",
-        "redcap",
         "audit",
         "active",
         "withdrawn",
         "review",
     },
     "redcap_visit_health": {
-        "redcap",
         "csbs",
         "visit",
         "visits",
@@ -156,7 +154,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "visit_date",
     },
     "redcap_meta": {
-        "redcap",
         "freshness",
         "fresh",
         "synced",
@@ -166,7 +163,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "anomalies",
     },
     "redcap_completion_stats": {
-        "redcap",
         "csbs",
         "completeness",
         "complete",
@@ -181,7 +177,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "24",
     },
     "redcap_trackers": {
-        "redcap",
         "tracker",
         "trackers",
         "target",
@@ -197,7 +192,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "completed",
     },
     "redcap_timeline": {
-        "redcap",
         "timeline",
         "swimlane",
         "swimlanes",
@@ -209,7 +203,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "records",
     },
     "redcap_ops": {
-        "redcap",
         "runtime",
         "parity",
         "sync",
@@ -225,7 +218,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "knobs",
     },
     "redcap_clinical": {
-        "redcap",
         "clinical",
         "epds",
         "depression",
@@ -243,7 +235,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "cascade",
     },
     "redcap_integrity": {
-        "redcap",
         "integrity",
         "nullity",
         "missingness",
@@ -257,7 +248,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "radar",
     },
     "redcap_schedule": {
-        "redcap",
         "schedule",
         "scheduling",
         "forecast",
@@ -273,15 +263,12 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "lag",
     },
     "redcap_respondent": {
-        "redcap",
         "respondent",
         "caregiver",
-        "burden",
         "fatigue",
         "concordance",
     },
     "redcap_platform": {
-        "redcap",
         "platform",
         "api",
         "logging",
@@ -296,7 +283,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "dag",
     },
     "redcap_predictive": {
-        "redcap",
         "predictive",
         "prediction",
         "attrition",
@@ -308,7 +294,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "weekly",
         "natural",
         "language",
-        "query",
     },
     "clinical_cutoffs": {
         "epds",
@@ -321,18 +306,14 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "window",
     },
     "participant_operations": {
-        "participant",
-        "participants",
         "role",
         "roles",
         "id",
         "legend",
         "dual",
-        "enrollment",
         "nino",
         "nico",
         "anonico",
-        "nano",
         "aih",
         "eh",
         "form",
@@ -345,6 +326,8 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "linking",
         "numbering",
         "intervention",
+        "workflow",
+        "workflows",
     },
     "lab_operations": {
         "lab",
@@ -365,11 +348,8 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "supervisors",
         "sam",
         "bradshaw",
-        "nano",
-        "nico",
         "grant",
         "grants",
-        "redcap",
         "coding",
         "scoring",
         "assessment",
@@ -550,7 +530,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "participants",
         "completion",
         "missingness",
-        "redcap",
         "nda",
     },
     "readings": {
@@ -581,8 +560,6 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "nano",
         "newborn",
         "purpose",
-        "studies",
-        "study",
         "website",
         "site",
         "esd",
@@ -696,6 +673,9 @@ DETAILED_RESPONSE_TOKEN_LIMIT = 144
 DEFAULT_GENERATION_QUEUE_TIMEOUT_SECONDS = 90.0
 LOW_CONFIDENCE_SCORE_THRESHOLD = 3.0
 FOCUSED_CONFIDENCE_SCORE_THRESHOLD = 5.0
+DEFAULT_CONTEXT_EVIDENCE_LIMIT = 8
+FOCUSED_CONTEXT_EVIDENCE_LIMIT = 6
+MIN_RELEVANT_FRAGMENT_SCORE = 1.0
 
 # ---- Presentation planning -------------------------------------------------
 PRESENTATION_AUDIENCE_LEVELS = ("beginner", "intermediate", "advanced")
@@ -1501,7 +1481,6 @@ class DashboardChatAssistant:
         context_parts: list[str] = []
         citations: list[str] = []
         used_paths: set[str] = set()
-        target_citation_count = max(1, len(focus_sections)) if focus_sections else 4
 
         ranked_summary = sorted(
             summary_fragments,
@@ -1537,10 +1516,19 @@ class DashboardChatAssistant:
             self._effective_context_char_budget() - len("\n".join(context_parts)), 0
         )
         reading_matches: list[dict[str, Any]] = []
+        evidence_limit = (
+            FOCUSED_CONTEXT_EVIDENCE_LIMIT
+            if focus_sections
+            else DEFAULT_CONTEXT_EVIDENCE_LIMIT
+        )
+        evidence_count = 0
 
         for path, text in ranked:
             if not text or path in used_paths or path in summary_paths:
                 continue
+            score = _score_fragment(question_tokens, path, text, focus_sections)
+            if score < MIN_RELEVANT_FRAGMENT_SCORE:
+                break
             if path in reading_fragment_index and len(reading_matches) < 3:
                 reading_matches.append(reading_fragment_index[path])
             line = f"- {text}"
@@ -1548,10 +1536,11 @@ class DashboardChatAssistant:
                 continue
             context_parts.append(line)
             used_paths.add(path)
-            if len(citations) < target_citation_count and path not in citations:
+            evidence_count += 1
+            if len(citations) < 6 and path not in citations:
                 citations.append(path)
             remaining -= len(line) + 1
-            if len(citations) >= 8:
+            if evidence_count >= evidence_limit or remaining <= 0:
                 break
 
         grounded_threshold = (
@@ -3802,7 +3791,7 @@ class DashboardChatAssistant:
                     f"{len(radar) if isinstance(radar, list) else 0} validation radar rows."
                 )
 
-        if question_tokens & {"caregiver", "respondent", "burden", "fatigue"}:
+        if question_tokens & {"caregiver", "respondent", "fatigue"}:
             respondent = facts.get("redcap_respondent") or {}
             burden = (
                 respondent.get("caregiver_burden")
@@ -4085,7 +4074,7 @@ class DashboardChatAssistant:
                         f"{stats.get('skipped', 0)} skipped of {stats.get('total', 0)} total."
                     )
 
-        if question_tokens & {"redcap", "nda", "completeness", "missingness"}:
+        if question_tokens & {"nda", "completeness", "missingness"}:
             dq = facts.get("data_quality") or {}
             flags = dq.get("qc_flags") or {}
             missing_required = flags.get("missing_required_fields")

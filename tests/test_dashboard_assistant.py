@@ -71,6 +71,61 @@ def test_build_context_prioritizes_matching_dashboard_fragments(tmp_path):
     )
 
 
+def test_build_context_keeps_enrollment_questions_tight_and_relevant(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+
+    dashboard_payload = {
+        "meta": {
+            "data_source": "repo_demo_inputs",
+            "study": {"name": "NANO Study"},
+        },
+        "enrollment": {
+            "overall": {"current": 209, "target": 260},
+            "by_group": {
+                "ASIB": {"current": 54, "target": 65},
+                "PT": {"current": 104, "target": 130},
+            },
+        },
+        "participant_operations": {
+            "summary": {
+                "single": 140,
+                "dual": 18,
+                "risk_watch": 9,
+                "risk_high": 2,
+            },
+            "meta": {"source_doc": "docs/participant_operations_workflow.md"},
+        },
+        "lab_operations": {
+            "priority": {
+                "current_priority": "Nano grant data and lab processes first",
+            },
+            "workflow_phases": [
+                {"phase": "Phase 1", "timeframe": "Now", "status": "active"}
+            ],
+        },
+        "organization_site": {
+            "stories": [
+                {"title": "Enrollment news", "summary": "Public site summary."}
+            ]
+        },
+    }
+    (data_dir / "dashboard_data.json").write_text(json.dumps(dashboard_payload))
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context("What is current enrollment?")
+
+    assert context["focus_sections"] == ["enrollment"]
+    assert "Enrollment total: 209 of 260" in context["context"]
+    assert "Participant operations:" not in context["context"]
+    assert len(context["context"]) < 1200
+
+
 def test_child_friendly_nano_explainer_is_grounded_and_structured(tmp_path):
     data_dir = tmp_path / "dashboard-data"
     data_dir.mkdir()
@@ -248,6 +303,45 @@ def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
     assert "nvidia-build-api" in response
     assert "external rate limits still apply" in response
     assert "model leaderboard" not in response.lower()
+
+
+def test_query_burden_question_does_not_hit_caregiver_burden_shortcut(tmp_path):
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {"data_source": "repo_demo_inputs"},
+                "redcap_audit": {"summary": {"open_queries": 78}},
+                "redcap_respondent": {
+                    "caregiver_burden": [
+                        {
+                            "label": "Caregiver 1",
+                            "completed": 12,
+                            "assigned": 20,
+                            "fatigue_index": 0.2,
+                        }
+                    ]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        data_dir=data_dir,
+    )
+
+    context = assistant.build_context(
+        "How much open REDCap query burden is visible right now?"
+    )
+    response = assistant._maybe_short_circuit_response(
+        "How much open REDCap query burden is visible right now?",
+        context,
+    )
+
+    assert response is None
 
 
 def test_assistant_answers_rmss_typo_with_rmssd_trajectory_values(tmp_path):

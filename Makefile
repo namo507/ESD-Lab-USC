@@ -18,7 +18,7 @@ MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 SHARE_PROFILE ?= share
 
-.PHONY: help install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -30,7 +30,13 @@ help:  ## Show this help message
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
-install: $(VENV)/bin/activate  ## Install Python dependencies in virtualenv
+venv-ready:  ## Create or repair the project virtualenv
+	@if ! [ -x "$(VENV)/bin/python" ] || ! "$(VENV)/bin/python" -V >/dev/null 2>&1; then \
+		echo "Rebuilding project virtualenv at $(VENV)..."; \
+		$(PYTHON) -m venv --clear $(VENV); \
+	fi
+
+install: venv-ready  ## Install Python dependencies in virtualenv
 	$(PIP) install --upgrade pip
 	$(PIP) install -r requirements.txt
 	$(VENV)/bin/pre-commit install
@@ -153,18 +159,18 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-assistant-status:  ## Show NVIDIA provider configuration and non-billable readiness state
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config
+assistant-status: venv-ready  ## Show NVIDIA provider configuration and non-billable readiness state
+	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config
 
-assistant-prepare:  ## Validate provider config and rebuild repository grounding indexes
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config --reindex
+assistant-prepare: venv-ready  ## Validate provider config and rebuild repository grounding indexes
+	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --reindex
 
-assistant-bootstrap: $(VENV)/bin/activate  ## Install hosted-provider dependencies and require configured credentials
+assistant-bootstrap: venv-ready  ## Install hosted-provider dependencies and require configured credentials
 	$(VENV)/bin/pip install -r dashboard/requirements.txt
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --require-ready
 
-assistant-probe:  ## Probe the configured NVIDIA OpenAI-compatible endpoint without generating text
-	$(PYTHON) scripts/prepare_dashboard_assistant.py --validate-config --probe-provider --require-ready
+assistant-probe: venv-ready  ## Probe the configured NVIDIA OpenAI-compatible endpoint without generating text
+	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --probe-provider --require-ready
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	@if command -v docker >/dev/null 2>&1; then \
