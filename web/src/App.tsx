@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrandScope } from "@/components/brand/BrandScope";
 import { AppShell } from "@/components/shell/AppShell";
+import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { RouteErrorBoundary } from "@/components/shell/RouteErrorBoundary";
 import { GuidedTourHost } from "@/components/help/GuidedTour";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
@@ -206,6 +207,31 @@ function BrandRouteBoot() {
   return null;
 }
 
+function NanoDashboardExperience() {
+  const setChatOpen = useUi((state) => state.setChatOpen);
+  const toggleChat = useUi((state) => state.toggleChat);
+
+  useEffect(() => {
+    const openBuddy = (event: globalThis.KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        toggleChat();
+      } else if (event.key === "Escape") {
+        setChatOpen(false);
+      }
+    };
+    window.addEventListener("keydown", openBuddy);
+    return () => window.removeEventListener("keydown", openBuddy);
+  }, [setChatOpen, toggleChat]);
+
+  return (
+    <>
+      <NanoStudyDashboard />
+      <ChatDrawer showLauncher={false} />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -250,9 +276,7 @@ export default function App() {
             <Route element={<AppShell />}>
               {dashboardRoutes()}
             </Route>
-            <Route element={<AppShell brand="esd-2026" />}>
-              <Route path="/nano/dashboard" element={<NanoStudyDashboard />} />
-            </Route>
+            <Route path="/nano/dashboard" element={<NanoDashboardExperience />} />
             <Route
               element={
                 <DiscoveryGate>

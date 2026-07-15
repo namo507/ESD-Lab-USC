@@ -36,6 +36,8 @@ const dashboardData: NanoDashboardData = {
     phases: [
       { phase: "Sustained", pct: null },
       { phase: "Orienting", pct: null },
+      { phase: "Inattention", pct: null },
+      { phase: "Termination", pct: null },
     ],
     hdaQualityBpm: null,
     byWindow: [{ window: "1-3m", sustainedPct: null }],
@@ -77,7 +79,14 @@ const dashboardData: NanoDashboardData = {
     dags: 0,
     syncHealth: "ok",
   },
-  models: { aim3Status: "not_started", bestMetric: null, shapReady: false, candidates: [] },
+  models: {
+    aim3Status: "not_started",
+    bestMetric: null,
+    bestModel: null,
+    metricName: null,
+    shapReady: false,
+    candidates: [],
+  },
   library: { href: "/docs", label: "Open Library", indexSource: "approved docs", indexedDocuments: 0, lastIndexed: null },
 };
 
@@ -113,56 +122,84 @@ describe("NanoStudyDashboard", () => {
     useUi.getState().setChatSeed(null);
   });
 
-  it("renders all ten progressively disclosed NANO dashboard sections", () => {
+  it("renders the supplied template structure as a standalone public dashboard", () => {
     renderDashboard();
 
-    expect(screen.queryByRole("main")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /heartbeat of every baby's first year/i })).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /heartbeat of every baby/i })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /primary navigation/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/nano study headline metrics/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /one cohort, three developmental pathways/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /what is due next/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /signal ingest to model-ready features/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /how regulation changes across infancy/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /completion at every milestone/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /the lab at a glance/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /study methods and sops/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /ask the lab, stay grounded/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/view details/i).length).toBeGreaterThan(1);
-    for (const sectionId of ["cohort", "schedule", "pipeline", "metrics", "assessments", "operations"]) {
-      const section = document.getElementById(sectionId);
-      const labelId = section?.getAttribute("aria-labelledby");
-      expect(labelId).toBeTruthy();
-      expect(document.getElementById(labelId!)?.tagName).toBe("H2");
-    }
+    expect(screen.getByText("Attention Phase Timeline")).toBeInTheDocument();
+    expect(screen.getByText("Pipeline Watch")).toBeInTheDocument();
+    expect(screen.getByText("Assistant Insight")).toBeInTheDocument();
+    expect(screen.getByText(/no participant identifiers are exposed/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /export dashboard/i })).toBeInTheDocument();
   });
 
-  it("renders numeric zero as 0 and null metrics as Awaiting data", () => {
+  it("renders numeric zero as 0 and preserves null as Awaiting data", () => {
     renderDashboard();
 
-    const enrolledCard = screen.getByText("Enrolled infants").closest("div");
-    expect(enrolledCard).not.toBeNull();
-    expect(within(enrolledCard!).getByText("0")).toBeInTheDocument();
-    expect(screen.getAllByText("Awaiting data").length).toBeGreaterThan(0);
+    const metrics = screen.getByLabelText(/nano study headline metrics/i);
+    expect(within(metrics).getAllByText("0").length).toBeGreaterThan(0);
+    expect(within(metrics).getAllByText("Awaiting data").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("cell", { name: "0" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: "Attention phase distribution awaiting data" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Overall HDA awaiting data")).toBeEmptyDOMElement();
   });
 
-  it("keeps the public schedule aggregate-only", () => {
+  it("does not collapse incomplete schedule aggregates to zero", () => {
+    queryState.data = {
+      ...dashboardData,
+      schedule: [
+        { id: "month_1", due: 2, upcoming14d: 1, overdue: 0, completed: 4, windowAdherencePct: 90 },
+        { id: "month_3", due: null, upcoming14d: null, overdue: null, completed: null, windowAdherencePct: null },
+      ],
+    };
+
     renderDashboard();
 
-    expect(screen.getByText(/public schedule reporting is restricted to counts/i)).toBeInTheDocument();
-    expect(screen.getByText(/public surface intentionally exposes counts only/i)).toBeInTheDocument();
-    const scheduleCaption = screen.getByText(/aggregate visit schedule counts/i);
-    const scheduleTable = scheduleCaption.closest("table");
-    expect(scheduleTable).not.toBeNull();
-    expect(within(scheduleTable!).queryByRole("columnheader", { name: /participant/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText("visits due")[0]?.parentElement).toHaveTextContent(/Awaiting data\s+visits due/);
+    expect(screen.getAllByText("visits upcoming")[0]?.parentElement).toHaveTextContent(/Awaiting data\s+visits upcoming/);
+    expect(screen.getAllByText("visits overdue")[0]?.parentElement).toHaveTextContent(/Awaiting data\s+visits overdue/);
   });
 
-  it("opens the existing local assistant drawer with a NANO aggregate prompt", () => {
+  it("keeps unknown enrollment progress indeterminate and prefers the precise sync timestamp", () => {
+    queryState.data = {
+      ...dashboardData,
+      meta: { ...dashboardData.meta, asOf: "2026-07-15" },
+      enrollment: { ...dashboardData.enrollment, target: null, enrolled: 12 },
+      redcap: { ...dashboardData.redcap, lastSync: "2026-07-15T14:30:00Z" },
+    };
+
     renderDashboard();
 
-    fireEvent.click(screen.getByRole("button", { name: /hda by window/i }));
+    expect(screen.getByLabelText("Enrollment progress awaiting data")).not.toHaveAttribute("value");
+    expect(screen.getByText(/Data refreshed Jul 15, 2026, 10:30 AM EDT/i)).toBeInTheDocument();
+  });
+
+  it("keeps the visible surface aggregate-only", () => {
+    renderDashboard();
+
+    expect(screen.getByText(/live aggregate nano metrics/i)).toBeInTheDocument();
+    expect(screen.queryByText(/NANO-\d{3,}/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /participant/i })).not.toBeInTheDocument();
+  });
+
+  it("opens the shared local assistant with a grounded NANO prompt", () => {
+    renderDashboard();
+
+    fireEvent.click(screen.getByRole("button", { name: /ask a follow-up/i }));
     expect(useUi.getState().chatOpen).toBe(true);
-    expect(useUi.getState().chatSeed).toMatch(/aggregate metrics only/i);
+    expect(useUi.getState().chatSeed).toMatch(/live aggregate nano attention/i);
+  });
+
+  it("supports the timeline controls and mobile navigation toggle", () => {
+    renderDashboard();
+
+    fireEvent.click(screen.getByRole("tab", { name: "All" }));
+    expect(screen.getByRole("tab", { name: "All" })).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    expect(screen.getByLabelText(/close menu/i)).toHaveAttribute("aria-expanded", "true");
   });
 
   it("shows final count-up values immediately for reduced-motion users", () => {
@@ -189,8 +226,7 @@ describe("NanoStudyDashboard", () => {
     renderDashboard();
 
     expect(screen.getAllByText("17").length).toBeGreaterThan(0);
-    expect(screen.getByText("70.1")).toBeInTheDocument();
-    expect(document.querySelectorAll("[data-reveal]").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("70.1").length).toBeGreaterThan(0);
     expect(document.querySelectorAll('[data-reveal]:not([data-revealed="true"])')).toHaveLength(0);
     Object.defineProperty(window, "matchMedia", { configurable: true, value: originalMatchMedia });
   });

@@ -255,8 +255,9 @@ export function MessageText({ text }: { text: string }) {
   );
 }
 
-export function ChatDrawer() {
-  const inNanoDashboard = typeof window !== "undefined" && window.location.pathname === "/nano/dashboard";
+export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) {
+  const inNanoDashboard = typeof window !== "undefined"
+    && window.location.pathname.replace(/\/+$/, "") === "/nano/dashboard";
   const fastPaths = inNanoDashboard ? NANO_DASHBOARD_FAST_PATHS : BUDDY_FAST_PATHS;
   const chatOpen = useUi((state) => state.chatOpen);
   const setChatOpen = useUi((state) => state.setChatOpen);
@@ -503,14 +504,15 @@ export function ChatDrawer() {
   return (
     <>
       <aside
-        className={`${styles.panel} ${chatOpen ? styles.open : ""}`}
+        className={`${styles.panel} ${chatOpen ? styles.open : ""} ${inNanoDashboard ? styles.nanoPanel : ""}`}
         aria-hidden={!chatOpen}
         aria-label="ESD Buddy"
+        {...(!chatOpen ? { inert: "" } : {})}
         role="dialog"
       >
         <div className={styles.head} style={{ position: "relative", overflow: "hidden" }}>
           <AmbientOrbit
-            tone="garnet"
+            tone={inNanoDashboard ? "ocean" : "garnet"}
             size={140}
             opacity={0.16}
             spin={42}
@@ -652,15 +654,17 @@ export function ChatDrawer() {
         </div>
       </aside>
 
-      <button
-        type="button"
-        className={styles.fab}
-        onClick={() => setChatOpen(!chatOpen)}
-        aria-expanded={chatOpen}
-        aria-label="Toggle ESD Buddy"
-      >
-        <Sparkles size={20} strokeWidth={1.5} color="var(--usc-gold)" />
-      </button>
+      {showLauncher && (
+        <button
+          type="button"
+          className={styles.fab}
+          onClick={() => setChatOpen(!chatOpen)}
+          aria-expanded={chatOpen}
+          aria-label="Toggle ESD Buddy"
+        >
+          <Sparkles size={20} strokeWidth={1.5} color="var(--usc-gold)" />
+        </button>
+      )}
     </>
   );
 }

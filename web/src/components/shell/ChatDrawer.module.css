@@ -28,6 +28,118 @@
   pointer-events: auto;
 }
 
+.nanoPanel {
+  --nano-blue: #3366ff;
+  --nano-blue-dark: #274fcc;
+  --nano-blue-soft: #e6eefc;
+  --nano-blue-pale: #f1f5ff;
+  --nano-ink: #0a0d14;
+  --nano-muted: #5a6472;
+  --nano-surface: #fff;
+  border-color: rgba(51, 102, 255, 0.16);
+  background: var(--nano-surface);
+  box-shadow: 0 24px 64px -18px rgba(30, 58, 138, 0.32);
+  color: var(--nano-ink);
+  font-family: "Libre Franklin", "Source Sans 3", system-ui, sans-serif;
+}
+
+.nanoPanel .head {
+  border-bottom-color: rgba(255, 255, 255, 0.16);
+  background: radial-gradient(120% 140% at 100% 0%, #4a7bff 0%, #3366ff 45%, #274fcc 100%);
+}
+
+.nanoPanel .headTitle {
+  color: #fff;
+  font-family: inherit;
+  font-weight: 800;
+}
+
+.nanoPanel .headSub {
+  color: #dce8ff;
+  font-family: inherit;
+}
+
+.nanoPanel .statusPill {
+  color: #eaf1ff;
+  font-family: inherit;
+}
+
+.nanoPanel .citations > span,
+.nanoPanel .provenance,
+.nanoPanel .deliveryNote {
+  color: var(--nano-muted);
+  font-family: inherit;
+}
+
+.nanoPanel .statusPill,
+.nanoPanel .retryBtn {
+  border-color: var(--nano-blue-soft);
+  background: var(--nano-surface);
+}
+
+.nanoPanel .statusPill {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, #fff 12%, transparent);
+}
+
+.nanoPanel .closeBtn {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: color-mix(in srgb, #fff 14%, transparent);
+  color: #fff;
+}
+
+.nanoPanel .closeBtn:hover {
+  background: color-mix(in srgb, #fff 24%, transparent);
+}
+
+.nanoPanel .body,
+.nanoPanel .suggestions {
+  background: var(--nano-surface);
+}
+
+.nanoPanel .botAvatar,
+.nanoPanel .sendBtn {
+  background: var(--nano-blue);
+  color: #fff;
+}
+
+.nanoPanel .sendBtn:hover:not(:disabled) {
+  background: var(--nano-blue-dark);
+}
+
+.nanoPanel .bubble {
+  border-color: var(--nano-blue-soft);
+  background: var(--nano-blue-pale);
+  color: var(--nano-ink);
+}
+
+.nanoPanel .youBubble {
+  border-color: var(--nano-blue);
+  background: var(--nano-blue);
+  color: #fff;
+}
+
+.nanoPanel .citations a,
+.nanoPanel .arrow {
+  color: var(--nano-blue);
+}
+
+.nanoPanel .form {
+  border-top-color: var(--nano-blue-soft);
+  background: var(--nano-surface);
+}
+
+.nanoPanel .textarea {
+  border-color: var(--nano-blue-soft);
+  background: #fff;
+  color: var(--nano-ink);
+}
+
+.nanoPanel .textarea:focus {
+  border-color: var(--nano-blue);
+  box-shadow: 0 0 0 4px rgba(51, 102, 255, 0.1);
+}
+
 @media (max-width: 480px) {
   .panel {
     right: 0;

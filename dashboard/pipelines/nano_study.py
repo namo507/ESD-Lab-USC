@@ -433,6 +433,21 @@ def _derive_attention_and_autonomic(
                     "group": group,
                     "window": window,
                     "sustained_pct": sustained,
+                    "orienting_pct": _percentage(
+                        override_attention.get(
+                            "orienting_pct", vector.get("orienting")
+                        )
+                    ),
+                    "termination_pct": _percentage(
+                        override_attention.get(
+                            "termination_pct", vector.get("termination")
+                        )
+                    ),
+                    "inattention_pct": _percentage(
+                        override_attention.get(
+                            "inattention_pct", vector.get("inattention")
+                        )
+                    ),
                     "hda_quality_bpm": quality,
                 }
             )

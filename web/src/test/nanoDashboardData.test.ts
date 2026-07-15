@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchNanoDashboardData,
   nanoQaPassedHeadline,
+  nanoRedcapIndicator,
   normalizeNanoDashboardData,
 } from "@/api/nanoDashboardData";
 
@@ -71,6 +72,48 @@ describe("normalizeNanoDashboardData", () => {
 
     expect(data.pipelineSummary.qaPassedSessions).toBeNull();
     expect(nanoQaPassedHeadline(data)).toBe(1266);
+  });
+
+  it("never substitutes a pipeline stage count for a missing QA total", () => {
+    const data = normalizeNanoDashboardData({
+      nano: {
+        pipeline: [
+          { stage: "Ingested", count: 1300 },
+          { stage: "Model-ready", count: 1266 },
+        ],
+      },
+    });
+
+    expect(nanoQaPassedHeadline(data)).toBeNull();
+  });
+
+  it("normalizes phase-by-group and model identity fields and derives a composite REDCap state", () => {
+    const data = normalizeNanoDashboardData({
+      nano: {
+        meta: { source: "secure", aggregate_only: true },
+        attention: {
+          by_group_window: [{
+            group: "ASIB",
+            window: "1-3m",
+            sustained_pct: 50,
+            orienting_pct: 20,
+            termination_pct: 10,
+            inattention_pct: 20,
+            hda_quality_bpm: 3.2,
+          }],
+        },
+        redcap: { api_token_valid: false, sync_health: "ok", last_sync: "2026-07-15T12:00:00Z" },
+        models: { best_model: "1D-CNN + LSTM", metric_name: "AUROC", best_metric: 0.899 },
+      },
+    });
+
+    expect(data.attention.byGroupWindow[0]).toMatchObject({
+      orientingPct: 20,
+      terminationPct: 10,
+      inattentionPct: 20,
+    });
+    expect(data.models).toMatchObject({ bestModel: "1D-CNN + LSTM", metricName: "AUROC" });
+    expect(nanoRedcapIndicator(data)).toEqual({ label: "Token issue", state: "warning" });
   });
 
   it("filters non-applicable assessment cells and prefers age-at-intake aggregates", () => {

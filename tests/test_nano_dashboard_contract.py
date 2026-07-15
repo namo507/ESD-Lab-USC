@@ -87,6 +87,17 @@ def test_synthetic_nano_contract_has_complete_typed_sections():
     assert round(sum(row["pct"] for row in attention["phases"]), 1) == 100.0
     assert [row["window"] for row in attention["by_window"]] == list(NANO_WINDOWS)
     assert len(attention["by_group_window"]) == len(NANO_TARGETS) * len(NANO_WINDOWS)
+    for row in attention["by_group_window"]:
+        phase_total = sum(
+            row[key]
+            for key in (
+                "sustained_pct",
+                "orienting_pct",
+                "termination_pct",
+                "inattention_pct",
+            )
+        )
+        assert round(phase_total, 1) == 100.0
     assert len(nano["autonomic"]["by_group_window"]) == len(NANO_TARGETS) * len(
         NANO_WINDOWS
     )
@@ -298,6 +309,16 @@ def test_secure_missing_sources_emit_typed_awaiting_data_without_fabrication():
     assert nano["enrollment"]["retention_pct"] is None
     assert nano["attention"]["hda_sustained_pct"] is None
     assert all(row["pct"] is None for row in nano["attention"]["phases"])
+    assert all(
+        row[key] is None
+        for row in nano["attention"]["by_group_window"]
+        for key in (
+            "sustained_pct",
+            "orienting_pct",
+            "termination_pct",
+            "inattention_pct",
+        )
+    )
     assert nano["autonomic"]["rsa_baseline_ms2"] is None
     assert all(row["completed"] == 0 for row in nano["schedule"]["timepoints"])
     assert all(
