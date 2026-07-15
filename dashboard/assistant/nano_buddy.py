@@ -10,6 +10,7 @@ document lookup without affecting the dashboard.
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 from dataclasses import dataclass
@@ -102,22 +103,40 @@ _FINAL_PREFIX_RE = re.compile(
 )
 _COMMON_QUERY_TOKENS = {
     "about",
+    "according",
+    "and",
+    "are",
+    "can",
     "current",
     "does",
+    "for",
     "from",
     "have",
     "how",
+    "into",
+    "its",
     "many",
     "nano",
+    "of",
+    "on",
     "please",
+    "required",
+    "should",
     "show",
     "study",
     "that",
     "the",
     "this",
+    "through",
+    "to",
+    "using",
     "what",
+    "when",
+    "where",
     "which",
     "with",
+    "you",
+    "your",
 }
 
 
@@ -1182,7 +1201,9 @@ class NanoBuddyAssistant:
                     "API attaches its own allowlisted citations."
                 ),
                 context_block=context_block[:12000],
-                max_tokens=180,
+                # Nemotron is a reasoning model, so leave enough budget for a
+                # complete concise answer after any hidden reasoning tokens.
+                max_tokens=420,
             )
         except (AssistantUnavailable, ValueError):
             return None
@@ -1310,7 +1331,22 @@ class NanoBuddyAssistant:
                     score=score,
                 )
             )
-        return sorted(matches, key=lambda item: (-item.score, item.path))[:limit]
+        ranked = sorted(matches, key=lambda item: (-item.score, item.path))
+        if not ranked:
+            return []
+        comparison_intent = bool(
+            _tokens(question)
+            & {"between", "compare", "comparison", "contrast", "difference", "differences", "versus", "vs"}
+        )
+        if comparison_intent:
+            return ranked[:limit]
+        # Keep citations focused on documents that are nearly as relevant as
+        # the strongest match. This prevents a precise SOP question from
+        # acquiring a second citation based only on generic words such as
+        # "protocol" or "required". Explicit comparisons retain their top
+        # sources above so Buddy can synthesize both documents.
+        minimum_score = max(3, math.ceil(ranked[0].score * 0.75))
+        return [item for item in ranked if item.score >= minimum_score][:limit]
 
     @staticmethod
     def _best_snippet(text: str, query_tokens: set[str]) -> str:

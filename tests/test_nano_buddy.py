@@ -29,6 +29,7 @@ class _Jobs:
 class _CapturingProvider:
     def __init__(self):
         self.messages = None
+        self.kwargs = None
 
     def status(self):
         return {
@@ -41,6 +42,7 @@ class _CapturingProvider:
 
     def complete(self, *, messages, **kwargs):
         self.messages = messages
+        self.kwargs = kwargs
         return (
             "<think>private reasoning</think><analysis>more reasoning</analysis>"
             "Use neurokit2 and review aggregate QC."
@@ -280,12 +282,22 @@ def test_buddy_document_lookup_cites_only_allowlisted_repo_path(tmp_path):
     docs_dir.mkdir()
     (docs_dir / "ecg_processing_protocol.md").write_text(
         "# ECG Processing SOP\n\n"
+        "Use a 3-lead ECG configuration and record a five-minute baseline. "
         "Run the bandpass filter, detect R-peaks with neurokit2, then review "
         "aggregate QC flags.\n",
         encoding="utf-8",
     )
+    (docs_dir / "archive_manifest.md").write_text(
+        "# Repository Archive and Retention Manifest\n\n"
+        "Approved processing records are retained when the protocol requires "
+        "a configuration and baseline duration.\n",
+        encoding="utf-8",
+    )
 
-    result = buddy.answer("How do I run ECG preprocessing?")
+    result = buddy.answer(
+        "According to the approved ECG processing protocol, what lead "
+        "configuration and baseline duration are required?"
+    )
 
     assert result["refused"] is False
     assert "neurokit2" in result["answer"]
@@ -296,6 +308,31 @@ def test_buddy_document_lookup_cites_only_allowlisted_repo_path(tmp_path):
             "path": "docs/ecg_processing_protocol.md",
             "loc": "document",
         }
+    ]
+
+
+def test_buddy_document_comparison_keeps_both_relevant_sources(tmp_path):
+    buddy = _buddy(tmp_path)
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "ecg_processing_protocol.md").write_text(
+        "# ECG Processing Protocol\n\n"
+        "ECG processing uses a 3-lead configuration and a five-minute baseline.\n",
+        encoding="utf-8",
+    )
+    (docs_dir / "temperature_processing_guide.md").write_text(
+        "# Temperature Processing Guide\n\n"
+        "Temperature processing guidance covers sensor calibration and artifact review.\n",
+        encoding="utf-8",
+    )
+
+    result = buddy.answer(
+        "Compare the ECG processing protocol with the temperature processing guidance."
+    )
+
+    assert [citation["path"] for citation in result["citations"]] == [
+        "docs/ecg_processing_protocol.md",
+        "docs/temperature_processing_guide.md",
     ]
 
 
@@ -321,6 +358,7 @@ def test_buddy_reuses_shared_provider_with_sanitized_grounding(tmp_path):
 
     assert result["answer"] == "Use neurokit2 and review aggregate QC."
     assert provider.messages is not None
+    assert provider.kwargs["max_tokens"] == 420
     grounding = json.dumps(provider.messages).casefold()
     assert "docs/ecg_processing_protocol.md" in grounding
     assert "use neurokit2, then review aggregate qc" in grounding
