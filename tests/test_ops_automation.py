@@ -280,6 +280,46 @@ if (!comparisonGrounding.includes("ecg_processing_protocol.md")
     || !comparisonGrounding.includes("temperature_processing_guide.md")) {
   throw new Error("Comparison grounding omitted one of the approved documents");
 }
+
+const pipelineGuide = await ask(
+    "Explain how to read the six NANO pipeline stages, including in-flight, done, fail, and when an operator should open run history.",
+);
+if (pipelineGuide.status !== 200 || pipelineGuide.payload.refused !== false) {
+    throw new Error("Pipeline guide request failed");
+}
+if (providerCalls.length !== 2) {
+    throw new Error("Pipeline guide should be handled deterministically without reaching the provider");
+}
+if (!pipelineGuide.payload.answer.includes("Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id")) {
+    throw new Error(`Pipeline guide answer omitted the six stages: ${pipelineGuide.payload.answer}`);
+}
+if (!pipelineGuide.payload.answer.toLowerCase().includes("run history")) {
+    throw new Error("Pipeline guide answer omitted run history guidance");
+}
+
+globalThis.fetch = async (_input, init = {}) => {
+    providerCalls.push({ input: String(_input), body: String(init.body || "") });
+    const providerPayload = {
+        choices: [{ message: { content: "We need to answer based on supplied allowlisted aggregate metrics and public document snippets. The provided grounding includes two documents." } }],
+    };
+    return new Response(JSON.stringify(providerPayload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+    });
+};
+
+const planningLeak = await ask(
+    "According to the approved ECG processing protocol, what lead configuration and baseline duration are required?",
+);
+if (planningLeak.status !== 200 || planningLeak.payload.refused !== false) {
+    throw new Error("Planning-leak request failed");
+}
+if (planningLeak.payload.answer.includes("We need to answer")) {
+    throw new Error(`Planning text leaked through the Pages buddy fallback: ${planningLeak.payload.answer}`);
+}
+if (!planningLeak.payload.answer.startsWith("According to ECG Processing SOP")) {
+    throw new Error(`Pages buddy did not fall back to the approved document snippet: ${planningLeak.payload.answer}`);
+}
 """
     result = subprocess.run(
         ["node", "--input-type=module", "--eval", script],

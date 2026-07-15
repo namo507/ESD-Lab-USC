@@ -21,6 +21,7 @@ from dashboard.assistant.local_chat_assistant import (
     AssistantUnavailable,
     DashboardChatAssistant,
 )
+from dashboard.assistant.provider import sanitize_response_content
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
@@ -558,10 +559,7 @@ def _scrub_prompt(value: str) -> str:
 
 
 def _clean_provider_answer(value: Any) -> str:
-    text = _REASONING_BLOCK_RE.sub(" ", str(value or ""))
-    text = _REASONING_OPEN_RE.sub(" ", text)
-    text = _REASONING_TAG_RE.sub(" ", text)
-    text = _FINAL_PREFIX_RE.sub("", text)
+    text = sanitize_response_content(str(value or ""))
     return _clean_snippet(text, limit=2400)
 
 
@@ -863,6 +861,52 @@ def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[s
     return None
 
 
+def _pipeline_guide_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
+    tokens = _tokens(question)
+    inflight_requested = "inflight" in tokens or {"in", "flight"} <= tokens
+    if not (
+        tokens & {"pipeline", "stage", "stages"}
+        and (
+            inflight_requested
+            or tokens
+            & {
+                "done",
+                "explain",
+                "fail",
+                "failed",
+                "history",
+                "operator",
+                "read",
+                "reading",
+                "run",
+            }
+        )
+    ):
+        return None
+
+    rows = nano.get("pipeline") or []
+    stage_names = [
+        str(row.get("stage") or "").strip()
+        for row in rows[:6]
+        if isinstance(row, dict) and str(row.get("stage") or "").strip()
+    ]
+    if stage_names:
+        stage_text = ", ".join(stage_names)
+        answer = (
+            f"Read the pipeline cards left to right across the currently listed stages: {stage_text}. "
+            "In flight is work currently moving through a stage, done is completed windows or jobs, and fail is a surfaced exception that needs review. "
+            "Open run history when a stage shows any fail count, when in-flight work stays active longer than expected, or when the operator needs the run-level detail behind a stage total."
+        )
+        return answer, [f"nano.pipeline[{stage}]" for stage in stage_names]
+
+    return (
+        "Read the pipeline cards left to right. In flight is work currently moving through a stage, done is completed windows or jobs, and fail is a surfaced exception that needs review. Open run history when a stage shows any fail count, when in-flight work stays active longer than expected, or when the operator needs the run-level detail behind a stage total.",
+        [],
+    )
+
+
 def _pipeline_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
     rows = nano.get("pipeline") or []
     summary = nano.get("pipeline_summary") or {}
@@ -967,6 +1011,7 @@ def answer_live_metric(question: str, nano: dict[str, Any], *, requested_as_of: 
         _inventory_answer,
         _enrollment_answer,
         _attention_answer,
+        _pipeline_guide_answer,
         _pipeline_answer,
         _model_answer,
         _assessment_or_checklist_answer,
@@ -1032,6 +1077,20 @@ class NanoBuddyAssistant:
             }
 
         nano = self._load_nano_metrics()
+        prompt_tokens = _tokens(prompt)
+        if prompt_tokens & {"pipeline", "stage", "stages"}:
+            metric_answer = answer_live_metric(
+                prompt, nano, requested_as_of=safe_context.get("as_of")
+            )
+            if metric_answer is not None:
+                answer, used_metrics = metric_answer
+                return {
+                    "answer": answer,
+                    "citations": [],
+                    "used_metrics": used_metrics,
+                    "refused": False,
+                }
+
         documents: list[_DocumentMatch] = []
         if self._is_document_help_request(prompt):
             documents = self._find_documents(prompt, limit=2)

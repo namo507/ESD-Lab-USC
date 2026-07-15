@@ -149,6 +149,20 @@ def _clean_public_document_text(value: str, *, limit: int) -> str:
 
 
 def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
+  resolved_root = repo_root.resolve()
+  if not (resolved_root / ".git").exists():
+    try:
+      resolved_root = pathlib.Path(
+        subprocess.run(
+          ["git", "rev-parse", "--show-toplevel"],
+          cwd=resolved_root,
+          check=True,
+          capture_output=True,
+          text=True,
+        ).stdout.strip()
+      )
+    except (OSError, subprocess.CalledProcessError):
+      resolved_root = REPO_ROOT
     try:
         tracked = (
             subprocess.run(
@@ -160,7 +174,7 @@ def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
                     "docs",
                     "dashboard/context_skill/references",
                 ],
-                cwd=repo_root,
+                  cwd=resolved_root,
                 check=True,
                 capture_output=True,
             )
@@ -172,7 +186,7 @@ def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
 
     documents = []
     for relative in sorted(filter(None, tracked)):
-        path = repo_root / relative
+        path = resolved_root / relative
         if (
             path.suffix.casefold() not in PUBLIC_BUDDY_DOCUMENT_SUFFIXES
             or not path.is_file()
@@ -617,6 +631,23 @@ function buddyAsOf(nano, requested) {
 function buddyMetricAnswer(message, nano, requestedAsOf) {
   const tokens = buddyTokens(message);
   const when = buddyAsOf(nano, requestedAsOf);
+  const inflightRequested = tokens.has("inflight") || (tokens.has("in") && tokens.has("flight"));
+  if ((tokens.has("pipeline") || tokens.has("stage") || tokens.has("stages"))
+      && (inflightRequested
+        || tokens.has("done")
+        || tokens.has("explain")
+        || tokens.has("fail")
+        || tokens.has("failed")
+        || tokens.has("read")
+        || tokens.has("reading")
+        || tokens.has("history")
+        || tokens.has("operator")
+        || tokens.has("run"))) {
+    return {
+      answer: "- Read the six cards left to right: Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id.\\n- In flight is work currently moving through a stage. Done is completed windows or jobs. Fail is a surfaced exception that needs human review.\\n- Open run history when a stage shows any fail count, when in-flight work looks stuck, or when the operator needs the run-level detail behind a stage total.",
+      used_metrics: [],
+    };
+  }
   const timepoints = nano?.schedule?.timepoints || [];
   if (timepoints.length && ["visit", "visits", "schedule", "due", "overdue", "upcoming", "completed", "adherence", "window"].some((key) => tokens.has(key))) {
     const compact = String(message).toLowerCase().replace(/[- ]/g, "_");
@@ -745,12 +776,28 @@ function cleanBuddyText(value, limit = 700) {
 }
 
 function cleanBuddyProviderOutput(value, limit = 2400) {
-  const withoutReasoning = String(value || "")
+  let text = String(value || "")
     .replace(/<(?:think|analysis|reasoning)\\s*>[\\s\\S]*?<[/](?:think|analysis|reasoning)\\s*>/gi, " ")
     .replace(/<(?:think|analysis|reasoning)\\s*>[\\s\\S]*$/gi, " ")
     .replace(/<[/]?(?:think|analysis|reasoning)\\s*>/gi, " ")
-    .replace(/^(?:final\\s+answer|answer)\\s*:\\s*/i, " ");
-  return cleanBuddyText(withoutReasoning, limit);
+    .trim();
+  if (!text) return "";
+
+  const normalized = text.toLowerCase().replace(/\\s+/g, " ").trim();
+  const looksLikePlanning = /^(?:(?:we|i)\\s+(?:need|must|should|have)\\s+to\\s+(?:answer|respond|explain|analy[sz]e|craft)|(?:the\\s+)?user\\s+(?:asks|wants|requested)|(?:let(?:'s|\\s+us))\\s+(?:reason|analy[sz]e|craft)|analysis\\s*:)/i.test(normalized)
+    && (normalized.startsWith("we need to answer")
+      || normalized.startsWith("i need to answer")
+      || ["allowlisted aggregate", "provided grounding", "context only", "be concise", "grounded in", "do not invent", "supplied"].filter((marker) => normalized.includes(marker)).length >= 2);
+
+  if (looksLikePlanning) {
+    const markers = [...text.matchAll(/(?:^|\\n|[.!?]\\s+)\\s*(?:final\\s+answer|answer)\\s*:\\s*/gi)];
+    if (!markers.length) return "";
+    const last = markers[markers.length - 1];
+    text = text.slice((last.index || 0) + last[0].length).trim();
+  } else {
+    text = text.replace(/^(?:final\\s+answer|answer)\\s*:\\s*/i, " ").trim();
+  }
+  return cleanBuddyText(text, limit);
 }
 
 function buddyDocumentMatches(message, readings, limit = 2) {

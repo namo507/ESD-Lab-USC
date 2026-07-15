@@ -49,6 +49,24 @@ class _CapturingProvider:
         )
 
 
+class _PlanningProvider:
+    def status(self):
+        return {
+            "ready": True,
+            "can_attempt": True,
+            "state": "ready",
+            "provider": "test-provider",
+            "dependencies": {"test": True},
+        }
+
+    def complete(self, *, messages, **kwargs):
+        return (
+            "We need to answer based on supplied allowlisted aggregate metrics and public document snippets. "
+            "The provided grounding includes two documents. "
+            "We should explain the pipeline carefully and open run history when needed."
+        )
+
+
 def _write_payloads(data_dir, *, with_nano=True):
     data_dir.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -365,6 +383,66 @@ def test_buddy_reuses_shared_provider_with_sanitized_grounding(tmp_path):
     assert "hda_features" not in grounding
     assert "flagged_participants" not in grounding
     assert "nano-001" not in grounding
+
+
+def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(tmp_path):
+    buddy = _buddy(tmp_path)
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "ecg_processing_protocol.md").write_text(
+        "# ECG Processing SOP\n\nUse a 3-lead configuration, record a five-minute baseline, and review aggregate QC flags.\n",
+        encoding="utf-8",
+    )
+    buddy.assistant._provider = _PlanningProvider()
+
+    result = buddy.answer(
+        "According to the approved ECG processing protocol, what lead configuration and baseline duration are required?"
+    )
+
+    assert result["refused"] is False
+    assert "We need to answer" not in result["answer"]
+    assert result["answer"].startswith("According to ECG Processing SOP")
+    assert result["citations"] == [
+        {
+            "title": "ECG Processing SOP",
+            "path": "docs/ecg_processing_protocol.md",
+            "loc": "document",
+        }
+    ]
+
+
+def test_buddy_explains_pipeline_stage_cards_without_provider(tmp_path):
+    buddy = _buddy(tmp_path)
+    buddy._load_nano_metrics = lambda: {
+        "meta": {"study": "NANO", "as_of": "2026-07-14"},
+        "pipeline": [
+            {"stage": "Ingest"},
+            {"stage": "Preprocess"},
+            {"stage": "Window QA"},
+            {"stage": "HRV features"},
+            {"stage": "HDA labeling"},
+            {"stage": "Merge · de-id"},
+        ],
+    }
+
+    result = buddy.answer(
+        "Explain how to read the six NANO pipeline stages, including in-flight, done, fail, and when an operator should open run history."
+    )
+
+    assert result["refused"] is False
+    assert "Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id" in result["answer"]
+    assert "In flight" in result["answer"]
+    assert "done" in result["answer"]
+    assert "fail" in result["answer"]
+    assert "run history" in result["answer"].lower()
+    assert result["used_metrics"] == [
+        "nano.pipeline[Ingest]",
+        "nano.pipeline[Preprocess]",
+        "nano.pipeline[Window QA]",
+        "nano.pipeline[HRV features]",
+        "nano.pipeline[HDA labeling]",
+        "nano.pipeline[Merge · de-id]",
+    ]
 
 
 def test_buddy_refuses_phi_and_raw_signal_requests_before_provider(tmp_path):
