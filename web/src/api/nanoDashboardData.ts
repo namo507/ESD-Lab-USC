@@ -49,6 +49,9 @@ export interface NanoAttentionWindow {
 export interface NanoGroupAttentionWindow extends NanoAttentionWindow {
   group: string;
   hdaQualityBpm: NullableNumber;
+  orientingPct: NullableNumber;
+  terminationPct: NullableNumber;
+  inattentionPct: NullableNumber;
 }
 
 export interface NanoAttention {
@@ -141,6 +144,8 @@ export interface NanoRedcap {
 export interface NanoModels {
   aim3Status: string | null;
   bestMetric: NullableNumber;
+  bestModel: string | null;
+  metricName: string | null;
   shapReady: boolean | null;
   candidates: Array<Record<string, unknown>>;
 }
@@ -179,9 +184,27 @@ export function nanoQaPassedHeadline(
     .map((stage) => stage.qaPassed)
     .filter((value): value is number => value !== null);
   if (stageQa.length) return Math.max(...stageQa);
-  const modelReady = data.pipeline.find((stage) => /model.?ready|models?/i.test(stage.stage))
-    ?? data.pipeline.at(-1);
-  return modelReady?.count ?? null;
+  return null;
+}
+
+export type NanoRedcapIndicatorState = "healthy" | "warning" | "unknown" | "synthetic";
+
+export function nanoRedcapIndicator(
+  data: Pick<NanoDashboardData, "meta" | "redcap">,
+): { label: string; state: NanoRedcapIndicatorState } {
+  if (/synthetic/i.test(data.meta.source ?? "")) {
+    return { label: "Synthetic feed", state: "synthetic" };
+  }
+  if (data.redcap.apiTokenValid === false) {
+    return { label: "Token issue", state: "warning" };
+  }
+  if (!data.redcap.syncHealth || data.redcap.apiTokenValid === null || !data.redcap.lastSync) {
+    return { label: "Awaiting data", state: "unknown" };
+  }
+  if (data.redcap.syncHealth.toLowerCase() !== "ok") {
+    return { label: data.redcap.syncHealth, state: "warning" };
+  }
+  return { label: "Healthy", state: "healthy" };
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -315,6 +338,9 @@ export function normalizeNanoDashboardData(payload: unknown): NanoDashboardData 
           window: text(row.window) ?? "",
           sustainedPct: number(row.sustained_pct),
           hdaQualityBpm: number(row.hda_quality_bpm),
+          orientingPct: number(row.orienting_pct),
+          terminationPct: number(row.termination_pct),
+          inattentionPct: number(row.inattention_pct),
         }))
         .filter((row) => row.group && row.window),
     },
@@ -400,6 +426,8 @@ export function normalizeNanoDashboardData(payload: unknown): NanoDashboardData 
     models: {
       aim3Status: text(models.aim3_status),
       bestMetric: number(models.best_metric),
+      bestModel: text(models.best_model),
+      metricName: text(models.metric_name),
       shapReady: boolean(models.shap_ready),
       candidates: records(models.candidates),
     },

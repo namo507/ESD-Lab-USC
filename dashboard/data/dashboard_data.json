@@ -33981,72 +33981,108 @@
           "group": "ASIB",
           "window": "1-3m",
           "sustained_pct": 34.0,
+          "orienting_pct": 26.0,
+          "termination_pct": 13.2,
+          "inattention_pct": 26.8,
           "hda_quality_bpm": 3.4
         },
         {
           "group": "ASIB",
           "window": "6m",
           "sustained_pct": 37.0,
+          "orienting_pct": 25.0,
+          "termination_pct": 12.4,
+          "inattention_pct": 25.6,
           "hda_quality_bpm": 3.65
         },
         {
           "group": "ASIB",
           "window": "9m",
           "sustained_pct": 38.5,
+          "orienting_pct": 24.5,
+          "termination_pct": 12.0,
+          "inattention_pct": 25.0,
           "hda_quality_bpm": 3.9
         },
         {
           "group": "ASIB",
           "window": "12m",
           "sustained_pct": 40.0,
+          "orienting_pct": 24.0,
+          "termination_pct": 11.6,
+          "inattention_pct": 24.4,
           "hda_quality_bpm": 4.15
         },
         {
           "group": "PT",
           "window": "1-3m",
           "sustained_pct": 38.9,
+          "orienting_pct": 23.8,
+          "termination_pct": 10.8,
+          "inattention_pct": 26.5,
           "hda_quality_bpm": 3.1
         },
         {
           "group": "PT",
           "window": "6m",
           "sustained_pct": 43.8,
+          "orienting_pct": 22.5,
+          "termination_pct": 9.6,
+          "inattention_pct": 24.1,
           "hda_quality_bpm": 3.45
         },
         {
           "group": "PT",
           "window": "9m",
           "sustained_pct": 46.2,
+          "orienting_pct": 21.9,
+          "termination_pct": 9.0,
+          "inattention_pct": 22.9,
           "hda_quality_bpm": 3.8
         },
         {
           "group": "PT",
           "window": "12m",
           "sustained_pct": 48.7,
+          "orienting_pct": 21.3,
+          "termination_pct": 8.3,
+          "inattention_pct": 21.7,
           "hda_quality_bpm": 4.15
         },
         {
           "group": "TD",
           "window": "1-3m",
           "sustained_pct": 45.0,
+          "orienting_pct": 22.6,
+          "termination_pct": 12.4,
+          "inattention_pct": 20.0,
           "hda_quality_bpm": 4.2
         },
         {
           "group": "TD",
           "window": "6m",
           "sustained_pct": 51.0,
+          "orienting_pct": 21.2,
+          "termination_pct": 10.8,
+          "inattention_pct": 17.0,
           "hda_quality_bpm": 4.6
         },
         {
           "group": "TD",
           "window": "9m",
           "sustained_pct": 54.0,
+          "orienting_pct": 20.5,
+          "termination_pct": 10.0,
+          "inattention_pct": 15.5,
           "hda_quality_bpm": 5.0
         },
         {
           "group": "TD",
           "window": "12m",
           "sustained_pct": 57.0,
+          "orienting_pct": 19.8,
+          "termination_pct": 9.2,
+          "inattention_pct": 14.0,
           "hda_quality_bpm": 5.4
         }
       ]
