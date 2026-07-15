@@ -175,15 +175,37 @@ const nano = {
 };
 const docs = {
   schema: "nano-buddy-documents.v1",
-  documents: [{
-    title: "ECG Processing SOP",
-    relative_path: "docs/ecg_processing_protocol.md",
-    excerpt: "Run ECG preprocessing with neurokit2 and review aggregate QC flags.",
-    search_text: "ECG preprocessing protocol neurokit2 aggregate QC steps",
-    source: "tracked repository documentation",
-    category: "SOP and methods",
-    keywords: ["ecg", "preprocessing", "protocol"],
-  }],
+  documents: [
+    {
+      title: "ECG Processing SOP",
+      relative_path: "docs/ecg_processing_protocol.md",
+      excerpt: "Use a 3-lead configuration, record a five-minute baseline, "
+        + "run ECG preprocessing with neurokit2, and review aggregate QC flags.",
+      search_text: "ECG preprocessing protocol lead configuration baseline duration neurokit2 aggregate QC steps",
+      source: "tracked repository documentation",
+      category: "SOP and methods",
+      keywords: ["ecg", "preprocessing", "protocol"],
+    },
+    {
+      title: "Repository Archive and Retention Manifest",
+      relative_path: "docs/archive_manifest.md",
+      excerpt: "Approved processing records are retained when a protocol "
+        + "requires a configuration and baseline duration.",
+      search_text: "approved processing protocol configuration baseline duration required",
+      source: "tracked repository documentation",
+      category: "governance",
+      keywords: ["approved", "protocol"],
+    },
+    {
+      title: "Temperature Processing Guide",
+      relative_path: "docs/temperature_processing_guide.md",
+      excerpt: "Temperature processing guidance covers sensor calibration and artifact review.",
+      search_text: "temperature processing guidance sensor calibration artifact review",
+      source: "tracked repository documentation",
+      category: "SOP and methods",
+      keywords: ["temperature", "processing", "guidance"],
+    },
+  ],
 };
 const assets = {
   async fetch(request) {
@@ -218,21 +240,45 @@ for (const message of [
 }
 if (providerCalls.length !== 0) throw new Error("PHI reached the provider");
 
-const result = await ask("How do I run ECG preprocessing using the approved protocol?");
+const result = await ask(
+  "According to the approved ECG processing protocol, what lead configuration "
+    + "and baseline duration are required?",
+);
 if (result.status !== 200 || result.payload.refused !== false) {
   throw new Error("Valid document question failed");
 }
 if (result.payload.citations?.[0]?.path !== "docs/ecg_processing_protocol.md") {
   throw new Error("Document citation missing");
 }
+if (result.payload.citations?.length !== 1) {
+  throw new Error("A marginal document match leaked into citations");
+}
 if (providerCalls.length !== 1) throw new Error("Provider was not called exactly once");
 const providerBody = JSON.parse(providerCalls[0].body);
+if (providerBody.max_tokens !== 420) throw new Error("Buddy response token budget regressed");
 const grounding = providerBody.messages
   .map((message) => message.content)
   .join(" ")
   .toLowerCase();
 if (!grounding.includes("neurokit2") || !grounding.includes("documents")) {
   throw new Error("Document snippet was absent from provider grounding");
+}
+
+const comparison = await ask("Compare the ECG processing protocol with the temperature processing guidance.");
+const comparisonPaths = comparison.payload.citations?.map((citation) => citation.path) || [];
+if (comparisonPaths.length !== 2
+    || !comparisonPaths.includes("docs/ecg_processing_protocol.md")
+    || !comparisonPaths.includes("docs/temperature_processing_guide.md")) {
+  throw new Error(`Comparison sources were not both retained: ${comparisonPaths.join(", ")}`);
+}
+if (providerCalls.length !== 2) throw new Error("Comparison did not reach the provider exactly once");
+const comparisonGrounding = JSON.parse(providerCalls[1].body).messages
+  .map((message) => message.content)
+  .join(" ")
+  .toLowerCase();
+if (!comparisonGrounding.includes("ecg_processing_protocol.md")
+    || !comparisonGrounding.includes("temperature_processing_guide.md")) {
+  throw new Error("Comparison grounding omitted one of the approved documents");
 }
 """
     result = subprocess.run(

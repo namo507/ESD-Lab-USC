@@ -754,7 +754,7 @@ function cleanBuddyProviderOutput(value, limit = 2400) {
 }
 
 function buddyDocumentMatches(message, readings, limit = 2) {
-  const common = new Set(["about", "current", "does", "from", "have", "how", "many", "nano", "please", "show", "study", "that", "the", "this", "what", "which", "with"]);
+  const common = new Set(["about", "according", "and", "are", "can", "current", "does", "for", "from", "have", "how", "into", "its", "many", "nano", "of", "on", "please", "required", "should", "show", "study", "that", "the", "this", "through", "to", "using", "what", "when", "where", "which", "with", "you", "your"]);
   const query = [...buddyTokens(message)].filter((token) => !common.has(token));
   if (!query.length) return [];
   const seen = new Set();
@@ -774,7 +774,12 @@ function buddyDocumentMatches(message, readings, limit = 2) {
       if (score >= 3) matches.push({ title, path, loc: "Library index", snippet, score });
     }
   }
-  return matches.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path)).slice(0, limit);
+  const ranked = matches.sort((a, b) => b.score - a.score || a.path.localeCompare(b.path));
+  if (!ranked.length) return [];
+  const comparisonIntent = ["between", "compare", "comparison", "contrast", "difference", "differences", "versus", "vs"].some((token) => buddyTokens(message).has(token));
+  if (comparisonIntent) return ranked.slice(0, limit);
+  const minimumScore = Math.max(3, Math.ceil(ranked[0].score * 0.75));
+  return ranked.filter((match) => match.score >= minimumScore).slice(0, limit);
 }
 
 function buddyDocumentHelpRequest(message) {
@@ -853,7 +858,9 @@ async function edgeBuddyProvider(message, nano, documents, env) {
         model: BUDDY_PROVIDER_MODEL,
         temperature: 0.2,
         top_p: 0.95,
-        max_tokens: 180,
+        // Nemotron is a reasoning model; reserve enough output budget for a
+        // complete concise answer after any hidden reasoning tokens.
+        max_tokens: 420,
         messages: [
           { role: "system", content: "You are ESD Lab Buddy for the NANO dashboard. Answer only from the supplied allowlisted aggregate metrics and public document snippets. Never infer, request, or reveal participant-level data, identifiers, raw signals, names, dates of birth, MRNs, contact details, or free-text notes. If evidence is missing, say so. Be concise. Do not invent citations or paths because the API attaches allowlisted citations." },
           { role: "user", content: `Grounding: ${grounding}\n\nQuestion: ${cleanBuddyText(message, 6000)}` },
