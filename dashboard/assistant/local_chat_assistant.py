@@ -2707,6 +2707,10 @@ class DashboardChatAssistant:
         redcap_platform = payload.get("redcap_platform") or {}
         redcap_predictive = payload.get("redcap_predictive") or {}
         clinical_cutoffs = payload.get("clinical_cutoffs") or {}
+        nano_payload = payload.get("nano") or {}
+        nano_pipeline = (
+            nano_payload.get("pipeline") if isinstance(nano_payload, dict) else []
+        )
         redcap_visit_records = (
             redcap_visit_health.get("data")
             if isinstance(redcap_visit_health, dict)
@@ -2873,6 +2877,9 @@ class DashboardChatAssistant:
                 sorted(str(group) for group in hda_by_group.keys())
                 if isinstance(hda_by_group, dict)
                 else []
+            ),
+            "nano_pipeline": (
+                nano_pipeline if isinstance(nano_pipeline, list) else []
             ),
             "hda_month_count": (
                 max(
@@ -3392,6 +3399,39 @@ class DashboardChatAssistant:
                         f"and currently has {int(total)} indexed readings."
                         f"{warning_text}"
                     )
+
+        inflight_requested = "inflight" in question_tokens or {
+            "in",
+            "flight",
+        } <= question_tokens
+        if question_tokens & {"pipeline", "stage", "stages"} and (
+            inflight_requested
+            or question_tokens
+            & {
+                "done",
+                "explain",
+                "fail",
+                "failed",
+                "history",
+                "open",
+                "operator",
+                "read",
+                "run",
+            }
+        ):
+            pipeline_rows = facts.get("nano_pipeline") or []
+            stage_names = [
+                str(row.get("stage") or "").strip()
+                for row in pipeline_rows[:6]
+                if isinstance(row, dict) and str(row.get("stage") or "").strip()
+            ]
+            if stage_names:
+                return (
+                    "Read the six NANO pipeline cards left to right: "
+                    f"{', '.join(stage_names)}. "
+                    "In flight is work currently moving through a stage, done is completed windows or jobs, and fail is a surfaced exception that needs review. "
+                    "Open run history when a stage shows any fail count, when in-flight work looks stuck, or when the operator needs the run-level detail behind a stage total."
+                )
 
         if question_tokens & {
             "cluster",
