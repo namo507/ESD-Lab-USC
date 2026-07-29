@@ -41,29 +41,63 @@ dashboard:
 
 assistant:
   enabled: true
-  provider: nvidia
-  runtime: nvidia-build-api
-  apiBase: https://integrate.api.nvidia.com/v1
+  provider: ollama
+  runtime: ollama
+  # Defaults to the in-cluster Ollama service below. Point this at an external
+  # Ollama endpoint (and set ollama.enabled=false) to share one GPU-backed host.
+  apiBase: ""
+  # Ollama needs no credential; the key is only read when a proxy fronts it.
   apiKeySecretKey: dashboardAssistantApiKey
-  model: nvidia/nemotron-3-super-120b-a12b
+  model: llama3.2:3b
   enableThinking: false
   reasoningBudget: 0
-  maxNewTokens: 16384
+  maxNewTokens: 768
   temperature: 0.2
-  topP: 0.95
+  topP: 0.9
   stream: true
-  requestTimeoutSeconds: 180
-  maxRetries: 6
-  retryBaseSeconds: 2
-  retryMaxSeconds: 30
+  requestTimeoutSeconds: 120
+  maxRetries: 2
+  retryBaseSeconds: 0.5
+  retryMaxSeconds: 4
   retryJitter: 0.25
   maxConcurrency: 2
   circuitFailureThreshold: 3
-  circuitRecoverySeconds: 60
-  queueTimeoutSeconds: 180
-  contextBudget: 12000
-  selfHostedEnabled: false
-  selfHostedBaseUrl: http://nemotron-nim:8000/v1
+  circuitRecoverySeconds: 30
+  queueTimeoutSeconds: 120
+  contextBudget: 7000
+  contextWindow: 8192
+
+# In-cluster Ollama runtime (https://github.com/ollama/ollama). The model is
+# pulled into a PersistentVolume on first start, so image builds stay small and
+# no weights are ever committed to the repository.
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: 0.32.5
+    pullPolicy: IfNotPresent
+  service:
+    port: 11434
+  keepAlive: 30m
+  # Keep >= assistant.contextWindow or packed grounding is truncated.
+  contextLength: 8192
+  numParallel: 2
+  maxLoadedModels: 1
+  # Cold loads on small nodes can exceed Ollama's 5m default.
+  loadTimeout: 15m
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+  nodeSelector: {}
+  tolerations: []
 
 watcher:
   enabled: true

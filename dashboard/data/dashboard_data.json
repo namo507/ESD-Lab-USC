@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-07-15T09:06:39",
+    "generated_at": "2026-07-18T16:48:58",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2242,7 +2242,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-07-15T09:06:39",
+      "generated_at": "2026-07-18T16:48:58",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8826,7 +8826,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-07-15T09:06:36",
+      "generated_at": "2026-07-18T16:48:54",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9792,7 +9792,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-07-15T09:06:39",
+      "generated_at": "2026-07-18T16:48:59",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9823,7 +9823,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-07-15T08:41:39",
+        "last_run": "2026-07-18T16:23:59",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9831,7 +9831,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-07-15T08:41:39",
+        "last_run": "2026-07-18T16:23:59",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9839,7 +9839,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-07-15T08:56:39",
+        "last_run": "2026-07-18T16:38:59",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9847,7 +9847,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-07-15T08:46:39",
+        "last_run": "2026-07-18T16:28:59",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9855,13 +9855,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "10:00",
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -9878,7 +9871,14 @@
         "06:00",
         "07:00",
         "08:00",
-        "09:00"
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00"
       ],
       "rows": [
         526,
@@ -10603,13 +10603,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-07-15T09:06:38Z",
+    "generated_at": "2026-07-18T20:48:56Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-07-15T09:06:38Z"
+    "payload_version": "2026-07-18T20:48:56Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33269,7 +33269,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-07-15T09:06:38Z",
+      "generated_at": "2026-07-18T20:48:56Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33283,7 +33283,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-7322fabb692d",
-        "started_at": "2026-07-15T09:06:38Z",
+        "started_at": "2026-07-18T20:48:56Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33323,7 +33323,7 @@
     }
   },
   "lab_operations": {
-    "generated_at": "2026-07-15T09:06:38Z",
+    "generated_at": "2026-07-18T20:48:56Z",
     "source_documents": [
       {
         "study": "NANO",
@@ -33375,7 +33375,7 @@
       {
         "area": "Assistant",
         "status": "live",
-        "shown": "Hover-aware Buddy glossary, NVIDIA-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
+        "shown": "Hover-aware Buddy glossary, Ollama-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
         "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard."
       }
     ],
@@ -33848,7 +33848,7 @@
       "study": "NANO",
       "long_name": "Neurodevelopment of Autonomic and Neural Organization",
       "state": "Actively Enrolling",
-      "as_of": "2026-07-15",
+      "as_of": "2026-07-18",
       "n_target": 260,
       "source": "synthetic",
       "aggregate_only": true
@@ -33935,7 +33935,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-07-15T09:06:38Z"
+      "last_updated": "2026-07-18T20:48:56Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -34954,7 +34954,7 @@
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-07-15T09:06:38Z",
+      "last_sync": "2026-07-18T20:48:56Z",
       "records_locked": 0,
       "double_entry_discrepancies": 25,
       "instruments_defined": 14,
@@ -35008,7 +35008,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-07-15T09:06:14"
+      "last_indexed": "2026-07-15T09:06:42"
     },
     "study_meta": {
       "award": "R01MH132925",
@@ -35343,7 +35343,7 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-07-15T09:06:38Z"
+      "last_updated": "2026-07-18T20:48:56Z"
     },
     "participants": [
       {
@@ -35707,7 +35707,7 @@
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-07-15T09:06:38Z",
+      "last_success": "2026-07-18T20:48:56Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35795,7 +35795,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-07-15T09:06:38Z",
+        "timestamp": "2026-07-18T20:48:56Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }

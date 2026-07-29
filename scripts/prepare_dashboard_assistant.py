@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Validate and prepare the NVIDIA-backed dashboard assistant.
+"""Validate and prepare the Ollama-backed dashboard assistant.
 
 This command performs no generation by default. It validates the environment,
-reports a sanitized readiness state, and can refresh repository grounding.
-``--probe-provider`` uses the provider abstraction's non-generation probe.
+reports a sanitized readiness state, checks that the configured model is
+installed in Ollama, and can refresh repository grounding.  ``--probe-provider``
+uses the provider abstraction's non-generation probe; ``--ensure-model`` pulls
+the configured model when it is missing.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from dashboard.assistant import ollama_runtime  # noqa: E402
 from dashboard.assistant.local_chat_assistant import (  # noqa: E402
     DashboardChatAssistant,
 )
@@ -103,7 +106,7 @@ def _reindex(assistant: DashboardChatAssistant, *, dry_run: bool) -> dict[str, A
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate and prepare the NVIDIA dashboard assistant."
+        description="Validate and prepare the Ollama dashboard assistant."
     )
     parser.add_argument(
         "--validate-config",
@@ -126,6 +129,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero unless provider status is ready.",
     )
     parser.add_argument(
+        "--ensure-model",
+        action="store_true",
+        help="Pull the configured Ollama model when it is not installed yet.",
+    )
+    parser.add_argument(
+        "--warm-model",
+        action="store_true",
+        help="Preload the model so the first dashboard question is not a cold start.",
+    )
+    parser.add_argument(
         "--install-deps",
         action="store_true",
         help="Install dashboard/requirements.txt before validating.",
@@ -146,6 +159,28 @@ def main(argv: list[str] | None = None) -> int:
     status = _sanitize(assistant.get_status())
     payload: dict[str, Any] = {"status": status}
 
+    host = ollama_runtime.host_from_api_base(str(status.get("api_base") or ""))
+    model = str(status.get("model_id") or "")
+    runtime_health = ollama_runtime.health(model, host)
+    payload["runtime"] = runtime_health
+
+    if args.ensure_model and not args.dry_run and runtime_health.get("reachable"):
+        try:
+            pulled = ollama_runtime.ensure_model(
+                model, host, on_progress=lambda line: print(f"pull: {line}")
+            )
+            payload["model_pull"] = {"ok": True, "pulled": pulled}
+            runtime_health = ollama_runtime.health(model, host)
+            payload["runtime"] = runtime_health
+        except ollama_runtime.OllamaRuntimeError as exc:
+            payload["model_pull"] = {"ok": False, "error": str(exc)}
+
+    if args.warm_model and not args.dry_run and runtime_health.get("model_installed"):
+        try:
+            payload["model_warm"] = {"ok": ollama_runtime.warm_model(model, host)}
+        except ollama_runtime.OllamaRuntimeError as exc:
+            payload["model_warm"] = {"ok": False, "error": str(exc)}
+
     if args.reindex:
         payload["grounding"] = _sanitize(_reindex(assistant, dry_run=args.dry_run))
 
@@ -165,12 +200,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True, default=str))
     else:
-        print(f"provider: {status.get('provider', 'nvidia')}")
-        print(f"runtime: {status.get('runtime', 'nvidia-build-api')}")
+        print(f"provider: {status.get('provider', 'ollama')}")
+        print(f"runtime: {status.get('runtime', 'ollama')}")
         print(f"model: {status.get('model_id') or status.get('model') or 'unknown'}")
         print(f"state: {status.get('state', 'degraded')}")
         print(f"ready: {bool(status.get('ready'))}")
         print(f"message: {status.get('message', '')}")
+        print(f"ollama_host: {runtime_health.get('host', '')}")
+        print(f"ollama_reachable: {bool(runtime_health.get('reachable'))}")
+        print(f"ollama_version: {runtime_health.get('version') or 'unknown'}")
+        print(f"model_installed: {bool(runtime_health.get('model_installed'))}")
+        if not runtime_health.get("reachable"):
+            print("hint: start the runtime with `make ollama-up`")
+        elif not runtime_health.get("model_installed"):
+            print(f"hint: install the model with `make ollama-pull` ({model})")
         if "grounding" in payload:
             print(
                 "grounding_reindexed: "
@@ -182,7 +225,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"probe_ready: {bool(payload['probe'].get('ready'))}")
             print(f"probe_message: {payload['probe'].get('message', '')}")
 
-    if args.require_ready and (not status.get("ready") or not probe_ready):
+    runtime_ready = bool(
+        runtime_health.get("reachable") and runtime_health.get("model_installed")
+    )
+    if args.require_ready and (
+        not status.get("ready") or not probe_ready or not runtime_ready
+    ):
         return 1
     return 0
 

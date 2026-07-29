@@ -109,7 +109,7 @@ export function AgenticQAPanel({ syncTick = 0 }: Props) {
               Insights from the pipeline
             </h2>
             <p className="text-[12px] text-[color:#9c9893] mt-1">
-              The backend-routed NVIDIA assistant reviews run output, REDCap forms, and QA flags.
+              The backend-routed Ollama assistant reviews run output, REDCap forms, and QA flags.
               SHAP attributions, DBSCAN cluster shifts, and HDA phase ratios are summarised continuously.
             </p>
           </div>

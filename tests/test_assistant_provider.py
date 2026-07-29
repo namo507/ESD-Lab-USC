@@ -1,4 +1,4 @@
-"""Focused reliability tests for the NVIDIA assistant provider seam."""
+"""Focused reliability tests for the Ollama assistant provider seam."""
 
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ from dashboard.assistant.local_chat_assistant import (
     DashboardChatAssistant,
 )
 from dashboard.assistant.provider import (
-    NVIDIA_HOSTED_API_BASE,
-    NVIDIA_NEMOTRON_MODEL,
-    NVIDIAOpenAIProvider,
+    OLLAMA_API_BASE,
+    OLLAMA_DEFAULT_MODEL,
+    OllamaProvider,
     ProviderConfig,
     ProviderError,
     sanitize_response_content,
@@ -46,8 +46,14 @@ ENV_NAMES = (
     "DASHBOARD_ASSISTANT_MAX_HISTORY_CHARS",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL",
+    "DASHBOARD_ASSISTANT_REMOTE_BASE_URL",
+    "DASHBOARD_ASSISTANT_MODEL_LABEL",
+    "DASHBOARD_ASSISTANT_MODEL_LICENSE",
     "OPENAI_BASE_URL",
     "OPENAI_API_KEY",
+    "OLLAMA_HOST",
+    "OLLAMA_MODEL",
+    "OLLAMA_API_KEY",
     "LLM_MAX_TOKENS",
     "LLM_TEMPERATURE",
     "LLM_N_CTX",
@@ -67,20 +73,20 @@ def _client(create, *, models_list=None):
     )
 
 
-def test_config_defaults_to_nvidia_hosted_contract(monkeypatch):
+def test_config_defaults_to_local_ollama_contract(monkeypatch):
     _clear_assistant_env(monkeypatch)
 
     config = AssistantConfig.from_env()
 
-    assert config.provider == "nvidia"
-    assert config.runtime == "nvidia-build-api"
-    assert config.api_base == NVIDIA_HOSTED_API_BASE
-    assert config.model_id == NVIDIA_NEMOTRON_MODEL
+    assert config.provider == "ollama"
+    assert config.runtime == "ollama"
+    assert config.api_base == OLLAMA_API_BASE
+    assert config.model_id == OLLAMA_DEFAULT_MODEL
     assert config.enable_thinking is False
     assert config.reasoning_budget == 0
-    assert config.max_new_tokens == 16384
+    assert config.max_new_tokens == 768
     assert config.temperature == 0.2
-    assert config.top_p == 0.95
+    assert config.top_p == 0.9
     assert config.stream_enabled is True
     assert config.model_dir is None and config.model_file is None
 
@@ -91,56 +97,67 @@ def test_config_canonical_values_override_openai_aliases(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "alias-key")
     monkeypatch.setenv("DASHBOARD_ASSISTANT_API_BASE", "https://canonical.example/v1")
     monkeypatch.setenv("DASHBOARD_ASSISTANT_API_KEY", "canonical-key")
-    monkeypatch.setenv("DASHBOARD_ASSISTANT_MODEL_ID", "nvidia/model-id-alias")
-    monkeypatch.setenv("DASHBOARD_ASSISTANT_MODEL", "nvidia/canonical-model")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_MODEL_ID", "qwen2.5:3b")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_MODEL", "llama3.1:8b")
 
     config = AssistantConfig.from_env()
 
     assert config.api_base == "https://canonical.example/v1"
     assert config.api_key == "canonical-key"
-    assert config.model_id == "nvidia/canonical-model"
+    assert config.model_id == "llama3.1:8b"
 
 
-def test_openai_aliases_are_used_when_canonical_values_are_absent(monkeypatch):
+def test_openai_base_url_alias_is_used_when_canonical_value_is_absent(monkeypatch):
     _clear_assistant_env(monkeypatch)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://alias.example/v1")
-    monkeypatch.setenv("OPENAI_API_KEY", "alias-key")
 
     config = AssistantConfig.from_env()
 
     assert config.api_base == "https://alias.example/v1"
-    assert config.api_key == "alias-key"
 
 
-def test_self_hosted_flag_takes_precedence_over_hosted_provider(monkeypatch):
+def test_bare_ollama_host_gains_the_openai_compatible_suffix(monkeypatch):
+    _clear_assistant_env(monkeypatch)
+    monkeypatch.setenv("OLLAMA_HOST", "gpu-box.lab.internal:11434")
+
+    config = AssistantConfig.from_env()
+
+    assert config.api_base == "http://gpu-box.lab.internal:11434/v1"
+    assert config.runtime == "ollama-remote"
+
+
+def test_retired_hosted_provider_env_degrades_to_the_local_runtime(monkeypatch):
+    """A stale .env must not break every request after the provider swap."""
     _clear_assistant_env(monkeypatch)
     monkeypatch.setenv("DASHBOARD_ASSISTANT_PROVIDER", "nvidia")
     monkeypatch.setenv("DASHBOARD_ASSISTANT_RUNTIME", "nvidia-build-api")
-    monkeypatch.setenv("DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED", "true")
     monkeypatch.setenv(
-        "DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL", "http://nim.internal:8000/v1"
+        "DASHBOARD_ASSISTANT_API_BASE", "https://integrate.api.nvidia.com/v1"
     )
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_MODEL", "nvidia/nemotron-3-super-120b-a12b")
 
     config = AssistantConfig.from_env()
     provider_config = config.provider_config()
 
-    assert config.provider == "nvidia-nim"
-    assert config.runtime == "nvidia-nim"
-    assert config.self_hosted_enabled is True
-    assert provider_config.uses_self_hosted_nim is True
-    assert provider_config.effective_api_base == "http://nim.internal:8000/v1"
+    assert config.provider == "ollama"
+    assert config.runtime == "ollama"
+    assert config.api_base == OLLAMA_API_BASE
+    assert config.model_id == OLLAMA_DEFAULT_MODEL
+    assert provider_config.normalized_provider == "ollama"
+    assert provider_config.effective_api_base == OLLAMA_API_BASE
 
 
-def test_self_hosted_false_keeps_hosted_default(monkeypatch):
+def test_remote_base_url_overrides_the_local_default(monkeypatch):
     _clear_assistant_env(monkeypatch)
-    monkeypatch.setenv("DASHBOARD_ASSISTANT_PROVIDER", "nvidia")
-    monkeypatch.setenv("DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED", "false")
+    monkeypatch.setenv(
+        "DASHBOARD_ASSISTANT_REMOTE_BASE_URL", "http://ollama.lab.internal:11434/v1"
+    )
 
     config = AssistantConfig.from_env()
 
-    assert config.provider == "nvidia"
-    assert config.runtime == "nvidia-build-api"
-    assert config.provider_config().effective_api_base == NVIDIA_HOSTED_API_BASE
+    assert config.api_base == "http://ollama.lab.internal:11434/v1"
+    assert config.runtime == "ollama-remote"
+    assert config.provider_config().uses_remote_host is True
 
 
 def test_legacy_local_runtime_env_aliases_are_ignored(monkeypatch):
@@ -151,9 +168,9 @@ def test_legacy_local_runtime_env_aliases_are_ignored(monkeypatch):
 
     config = AssistantConfig.from_env()
 
-    assert config.max_new_tokens == 16384
+    assert config.max_new_tokens == 768
     assert config.temperature == 0.2
-    assert config.context_window == 32768
+    assert config.context_window == 8192
 
 
 def test_input_limits_are_configurable_and_reported(monkeypatch, tmp_path):
@@ -250,7 +267,7 @@ def test_request_packs_only_recent_history_within_character_budget(tmp_path):
     assert messages_without_history[1:] == [{"role": "user", "content": "current"}]
 
 
-def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
+def test_retry_uses_exponential_backoff_jitter_and_ollama_request_shape():
     attempts = []
     delays = []
 
@@ -263,7 +280,7 @@ def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
             raise RateLimitFailure("provider details must remain internal")
         return {"choices": [{"message": {"content": "grounded answer"}}]}
 
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(
             api_key="test-key",
             max_retries=2,
@@ -285,11 +302,18 @@ def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
     assert answer == "grounded answer"
     assert delays == pytest.approx([0.55, 1.1])
     assert len(attempts) == 3
-    assert attempts[0]["model"] == NVIDIA_NEMOTRON_MODEL
+    assert attempts[0]["model"] == OLLAMA_DEFAULT_MODEL
     assert attempts[0]["stream"] is False
-    assert attempts[0]["extra_body"] == {
-        "chat_template_kwargs": {"enable_thinking": False},
-        "reasoning_budget": 0,
+    # Only fields Ollama implements are sent; provider-specific extras would be
+    # rejected or silently ignored by the local runtime.
+    assert "extra_body" not in attempts[0]
+    assert set(attempts[0]) == {
+        "model",
+        "messages",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "stream",
     }
 
 
@@ -328,7 +352,7 @@ def test_stream_strips_reasoning_markers_split_across_chunks():
             {"choices": [{"delta": {"content": " answer."}}]},
         ]
     )
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(api_key="test-key", max_retries=0),
         client=_client(lambda **kwargs: chunks),
     )
@@ -364,7 +388,7 @@ def test_stream_strips_planning_preamble_split_across_chunks():
             },
         ]
     )
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(api_key="test-key", max_retries=0),
         client=_client(lambda **kwargs: chunks),
     )
@@ -390,7 +414,7 @@ def test_timeout_state_opens_circuit_and_next_request_fails_fast():
         calls += 1
         raise TimeoutError("secret provider trace timed out")
 
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(
             api_key="test-key",
             max_retries=0,
@@ -429,7 +453,7 @@ def test_rate_limited_state_is_unready_but_remains_retryable():
     class RateLimited(RuntimeError):
         status_code = 429
 
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(
             api_key="test-key",
             max_retries=0,
@@ -468,7 +492,7 @@ def test_bounded_concurrency_times_out_queued_request():
 
         return chunks()
 
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(
             api_key="test-key",
             max_concurrency=1,
@@ -535,7 +559,7 @@ def test_stream_emits_content_only_and_closes_on_cancellation():
             self.closed = True
 
     remote = RemoteStream()
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(api_key="test-key", max_retries=0),
         client=_client(lambda **kwargs: remote),
     )
@@ -563,12 +587,12 @@ def test_probe_uses_models_list_without_generation():
         generation_calls += 1
         raise AssertionError("probe must not generate")
 
-    provider = NVIDIAOpenAIProvider(
+    provider = OllamaProvider(
         ProviderConfig(api_key="test-key", max_retries=0),
         client=_client(
             create,
             models_list=lambda: SimpleNamespace(
-                data=[SimpleNamespace(id=NVIDIA_NEMOTRON_MODEL)]
+                data=[SimpleNamespace(id=OLLAMA_DEFAULT_MODEL)]
             ),
         ),
     )
@@ -640,13 +664,38 @@ def test_assistant_probe_returns_sanitized_failure_payload():
     assert "super-secret-key" not in json.dumps(result)
 
 
-def test_deterministic_provider_policy_answer_works_without_credentials(tmp_path):
+def test_deterministic_provider_policy_answer_needs_no_credentials(tmp_path):
+    """Ollama needs no API key, so this answer must not depend on one."""
     assistant = DashboardChatAssistant(
         config=AssistantConfig(api_key=None), data_dir=tmp_path
     )
 
-    result = assistant.answer("Which NVIDIA assistant model and provider are active?")
+    result = assistant.answer("Which assistant model and provider are active?")
 
-    assert "NVIDIA assistant provider policy" in result["reply"]
+    assert "Assistant model policy" in result["reply"]
+    assert "llama3.2:3b" in result["reply"]
     assert isinstance(result["citations"], list)
-    assert result["status"]["state"] == "credentials-missing"
+    assert result["status"]["state"] == "ready"
+
+
+def test_missing_model_is_reported_as_an_actionable_state():
+    class NotFound(RuntimeError):
+        status_code = 404
+
+    def create(**kwargs):
+        raise NotFound('model "llama3.2:3b" not found, try pulling it first')
+
+    provider = OllamaProvider(ProviderConfig(max_retries=0), client=_client(create))
+
+    with pytest.raises(ProviderError) as raised:
+        provider.complete(
+            [{"role": "user", "content": "status"}],
+            max_tokens=32,
+            temperature=0.2,
+            top_p=0.9,
+        )
+
+    assert raised.value.state == "model-missing"
+    assert raised.value.retryable is False
+    assert "make ollama-pull" in str(raised.value)
+    assert provider.status()["state"] == "model-missing"

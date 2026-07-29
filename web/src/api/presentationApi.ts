@@ -4,7 +4,7 @@
  * Mirrors the chat assistant's hygiene discipline: the concept is scrubbed of
  * likely PHI *before* it leaves the page, the action is audit-logged, and the
  * response is validated with the same Zod-backed fetch client every other
- * route uses. The server drives the NVIDIA-hosted assistant through its
+ * route uses. The server drives the local Ollama assistant through its
  * provider boundary and returns a strict deck plan — never raw model text or
  * provider reasoning.
  */

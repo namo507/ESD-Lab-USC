@@ -37,7 +37,7 @@ data:
   DASHBOARD_ASSISTANT_ENABLED: {{ .Values.assistant.enabled | quote }}
   DASHBOARD_ASSISTANT_PROVIDER: {{ .Values.assistant.provider | quote }}
   DASHBOARD_ASSISTANT_RUNTIME: {{ .Values.assistant.runtime | quote }}
-  DASHBOARD_ASSISTANT_API_BASE: {{ .Values.assistant.apiBase | quote }}
+  DASHBOARD_ASSISTANT_API_BASE: {{ include "esd-lab-dashboard.assistantApiBase" . | quote }}
   DASHBOARD_ASSISTANT_MODEL: {{ .Values.assistant.model | quote }}
   DASHBOARD_ASSISTANT_MODEL_ID: {{ .Values.assistant.model | quote }}
   DASHBOARD_ASSISTANT_ENABLE_THINKING: {{ .Values.assistant.enableThinking | quote }}
@@ -56,6 +56,4 @@ data:
   DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS: {{ .Values.assistant.circuitRecoverySeconds | quote }}
   DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS: {{ .Values.assistant.queueTimeoutSeconds | quote }}
   DASHBOARD_ASSISTANT_CONTEXT_BUDGET: {{ .Values.assistant.contextBudget | quote }}
-  DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED: {{ .Values.assistant.selfHostedEnabled | quote }}
-  DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL: {{ .Values.assistant.selfHostedBaseUrl | quote }}
-  OPENAI_BASE_URL: {{ .Values.assistant.apiBase | quote }}
+  DASHBOARD_ASSISTANT_CONTEXT_WINDOW: {{ .Values.assistant.contextWindow | quote }}

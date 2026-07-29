@@ -65,7 +65,7 @@ describe("PresentationMaker async job flow", () => {
     fetchAssistantStatusMock.mockReset();
     createJobMock.mockReset();
     getJobMock.mockReset();
-    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "nvidia/nemotron-3-super-120b-a12b" });
+    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "llama3.2:3b" });
   });
 
   afterEach(() => {

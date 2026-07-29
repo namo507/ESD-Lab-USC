@@ -265,7 +265,7 @@ def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
     assert "hda_composition" in response
 
 
-def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
+def test_assistant_answers_model_policy_before_leaderboard(tmp_path):
     data_dir = tmp_path / "dashboard-data"
     data_dir.mkdir()
     (data_dir / "dashboard_data.json").write_text(
@@ -282,26 +282,26 @@ def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
 
     assistant = DashboardChatAssistant(
         config=AssistantConfig(
-            model_id="nvidia/nemotron-3-super-120b-a12b",
-            model_tier="hosted",
-            model_label="NVIDIA Nemotron 3 Super 120B A12B",
-            runtime="nvidia-build-api",
+            model_id="llama3.2:3b",
+            model_tier="local",
+            model_label="Ollama llama3.2 3B Instruct (local)",
+            runtime="ollama",
         ),
         data_dir=data_dir,
     )
 
     question = (
-        "Which NVIDIA model and provider are configured for ESD Buddy, and "
-        "what happens when the provider is rate limited?"
+        "Which model and provider are configured for ESD Buddy, and "
+        "what happens when the runtime is rate limited?"
     )
     context = assistant.build_context(question)
     response = assistant._maybe_short_circuit_response(question, context)
 
     assert response is not None
-    assert "NVIDIA assistant provider policy:" in response
-    assert "NVIDIA Nemotron 3 Super 120B A12B" in response
-    assert "nvidia-build-api" in response
-    assert "external rate limits still apply" in response
+    assert "Assistant model policy:" in response
+    assert "Ollama llama3.2 3B Instruct (local)" in response
+    assert "llama3.2:3b" in response
+    assert "circuit-breaker degradation" in response
     assert "model leaderboard" not in response.lower()
 
 
@@ -446,17 +446,18 @@ def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
     assert replies == ["ok", "ok"]
 
 
-def test_status_reports_missing_provider_credentials(tmp_path):
+def test_status_is_ready_without_any_provider_credential(tmp_path):
+    """Ollama is credential-free, so a blank API key must not degrade status."""
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        config=AssistantConfig(api_key=None),
         data_dir=tmp_path,
     )
 
     status = assistant.get_status()
 
-    assert not status["ready"]
-    assert status["state"] == "credentials-missing"
-    assert "credentials" in status["message"].lower()
+    assert status["ready"]
+    assert status["state"] == "ready"
+    assert status["provider"] == "ollama"
     assert status["model_path"] is None
 
 
@@ -471,8 +472,8 @@ def test_status_ready_with_injected_provider_client(tmp_path):
 
     assert status["ready"] is True
     assert status["state"] == "ready"
-    assert status["provider"] == "nvidia"
-    assert status["runtime"] == "nvidia-build-api"
+    assert status["provider"] == "ollama"
+    assert status["runtime"] == "ollama"
     assert status["model_path"] is None
 
 

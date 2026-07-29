@@ -36,7 +36,7 @@ describe("PresentationMaker", () => {
   });
 
   it("renders the feature and accepts a concept input when the assistant is ready", async () => {
-    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "nvidia/nemotron-3-super-120b-a12b" });
+    fetchAssistantStatusMock.mockResolvedValue({ status: "ready", error: null, model: "llama3.2:3b" });
 
     renderPage();
 

@@ -1,11 +1,11 @@
-"""Resilient OpenAI-compatible providers for the dashboard assistant.
+"""Resilient Ollama provider seam for the dashboard assistant.
 
-The dashboard defaults to NVIDIA's hosted build API.  A self-hosted NVIDIA
-NIM endpoint uses the same protocol, but is accepted only after the explicit
-``DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED`` opt-in has been set.  Importing this
-module never imports the OpenAI SDK or contacts the provider, which keeps the
-dashboard process healthy when assistant dependencies or credentials are not
-available.
+The dashboard talks to a local `Ollama <https://github.com/ollama/ollama>`_
+server through its OpenAI-compatible ``/v1`` surface.  A remote Ollama host
+(another workstation, a GPU box, or the Compose ``ollama`` service) is the same
+protocol and is selected purely by base URL.  Importing this module never
+imports the OpenAI SDK or contacts the provider, which keeps the dashboard
+process healthy when the assistant runtime is not running.
 """
 
 from __future__ import annotations
@@ -18,22 +18,39 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Protocol
 
-NVIDIA_HOSTED_API_BASE = "https://integrate.api.nvidia.com/v1"
-NVIDIA_NEMOTRON_MODEL = "nvidia/nemotron-3-super-120b-a12b"
-NVIDIA_HOSTED_RUNTIME = "nvidia-build-api"
-NVIDIA_SELF_HOSTED_RUNTIME = "nvidia-nim"
+OLLAMA_API_BASE = "http://127.0.0.1:11434/v1"
+OLLAMA_DEFAULT_MODEL = "llama3.2:3b"
+OLLAMA_RUNTIME = "ollama"
+OLLAMA_REMOTE_RUNTIME = "ollama-remote"
+# Ollama needs no credential; the SDK still requires a non-empty placeholder.
+OLLAMA_PLACEHOLDER_KEY = "ollama"
+
+# Base URLs left behind by the retired hosted-provider configuration. They are
+# unreachable now, so a stale .env, Compose file, or Helm value silently falls
+# back to the local runtime instead of failing every assistant request.
+RETIRED_API_BASE_HOSTS = (
+    "integrate.api.nvidia.com",
+    "nemotron-nim",
+    "api.openai.com",
+)
 
 PROVIDER_ALIASES = {
-    "": "nvidia",
-    "nvidia": "nvidia",
-    "nvidia-hosted": "nvidia",
-    "nvidia-build": "nvidia",
-    "nvidia-build-api": "nvidia",
-    "openai-compatible": "nvidia",
-    "nim": "nvidia-nim",
-    "nvidia-nim": "nvidia-nim",
-    "self-hosted": "nvidia-nim",
-    "self-hosted-nim": "nvidia-nim",
+    "": "ollama",
+    "ollama": "ollama",
+    "ollama-local": "ollama",
+    "local": "ollama",
+    "openai-compatible": "ollama",
+    "ollama-remote": "ollama-remote",
+    "remote": "ollama-remote",
+    # Retired hosted-provider names keep older deployments importable.
+    "nvidia": "ollama",
+    "nvidia-hosted": "ollama",
+    "nvidia-build": "ollama",
+    "nvidia-build-api": "ollama",
+    "nim": "ollama",
+    "nvidia-nim": "ollama",
+    "self-hosted": "ollama",
+    "self-hosted-nim": "ollama",
 }
 
 _REASONING_TAG_PATTERN = re.compile(
@@ -132,51 +149,90 @@ class AssistantProvider(Protocol):
     ) -> Iterator[str]: ...
 
 
+def normalize_api_base(value: str | None) -> str:
+    """Return a usable Ollama ``/v1`` base URL, dropping retired endpoints."""
+    candidate = (value or "").strip().rstrip("/")
+    if not candidate:
+        return OLLAMA_API_BASE
+    lowered = candidate.lower()
+    if any(host in lowered for host in RETIRED_API_BASE_HOSTS):
+        return OLLAMA_API_BASE
+    if not lowered.startswith(("http://", "https://")):
+        candidate = f"http://{candidate}"
+        lowered = candidate.lower()
+    # Accept a bare Ollama host (OLLAMA_HOST style) and add the OpenAI surface.
+    if not lowered.rstrip("/").endswith("/v1"):
+        candidate = f"{candidate.rstrip('/')}/v1"
+    return candidate
+
+
+def _is_local_host(api_base: str) -> bool:
+    lowered = api_base.lower()
+    return any(
+        f"//{host}" in lowered or f"//{host}:" in lowered
+        for host in ("localhost", "127.0.0.1", "0.0.0.0", "[::1]", "host.docker.internal")
+    )
+
+
 @dataclass(frozen=True)
 class ProviderConfig:
     """Provider-only configuration, separated from dashboard grounding knobs."""
 
     enabled: bool = True
-    provider: str = "nvidia"
-    runtime: str = NVIDIA_HOSTED_RUNTIME
-    api_base: str = NVIDIA_HOSTED_API_BASE
+    provider: str = "ollama"
+    runtime: str = OLLAMA_RUNTIME
+    api_base: str = OLLAMA_API_BASE
     api_key: str | None = None
-    model: str = NVIDIA_NEMOTRON_MODEL
+    model: str = OLLAMA_DEFAULT_MODEL
     # Dashboard chat needs short final answers, not a visible reasoning trace.
     enable_thinking: bool = False
     reasoning_budget: int = 0
-    request_timeout_seconds: float = 180.0
-    max_retries: int = 6
-    retry_base_seconds: float = 2.0
-    retry_max_seconds: float = 30.0
+    # A local runtime fails fast and recovers fast, so the queue never stacks up
+    # behind a stalled request the way a metered hosted endpoint could.
+    request_timeout_seconds: float = 120.0
+    max_retries: int = 2
+    retry_base_seconds: float = 0.5
+    retry_max_seconds: float = 4.0
     retry_jitter: float = 0.25
-    queue_timeout_seconds: float = 180.0
+    queue_timeout_seconds: float = 120.0
     max_concurrency: int = 2
     circuit_failure_threshold: int = 3
-    circuit_recovery_seconds: float = 60.0
+    circuit_recovery_seconds: float = 30.0
+    # Deprecated hosted-provider knobs: accepted so older callers still build,
+    # and honored only as a plain base-URL override for a remote Ollama host.
     self_hosted_enabled: bool = False
-    self_hosted_base_url: str = "http://nemotron-nim:8000/v1"
+    self_hosted_base_url: str = ""
 
     @property
     def normalized_provider(self) -> str:
-        value = (self.provider or "nvidia").strip().lower()
+        value = (self.provider or "ollama").strip().lower()
         return PROVIDER_ALIASES.get(value, value)
 
     @property
-    def uses_self_hosted_nim(self) -> bool:
-        return self.normalized_provider == "nvidia-nim"
+    def effective_api_base(self) -> str:
+        override = (self.self_hosted_base_url or "").strip()
+        if self.self_hosted_enabled and override:
+            normalized = normalize_api_base(override)
+            if normalized != OLLAMA_API_BASE:
+                return normalized
+        return normalize_api_base(self.api_base)
 
     @property
-    def effective_api_base(self) -> str:
-        if self.uses_self_hosted_nim:
-            return self.self_hosted_base_url.rstrip("/")
-        return self.api_base.rstrip("/")
+    def uses_remote_host(self) -> bool:
+        return not _is_local_host(self.effective_api_base)
 
     @property
     def effective_runtime(self) -> str:
-        if self.uses_self_hosted_nim:
-            return NVIDIA_SELF_HOSTED_RUNTIME
-        return self.runtime or NVIDIA_HOSTED_RUNTIME
+        runtime = (self.runtime or "").strip().lower()
+        if runtime in {"", "nvidia-build-api", "nvidia-nim", "pages-edge-nvidia-build-api"}:
+            runtime = ""
+        if runtime:
+            return runtime
+        return OLLAMA_REMOTE_RUNTIME if self.uses_remote_host else OLLAMA_RUNTIME
+
+    @property
+    def effective_api_key(self) -> str:
+        return (self.api_key or "").strip() or OLLAMA_PLACEHOLDER_KEY
 
 
 class ProviderError(RuntimeError):
@@ -311,9 +367,10 @@ def _could_start_internal_planning(text: str) -> bool:
 def sanitize_response_content(content: str) -> str:
     """Return final answer text while suppressing model reasoning artifacts.
 
-    Nemotron may place reasoning in ``content`` rather than a dedicated field and
-    may emit an orphan ``</think>`` marker even when thinking is disabled.  This
-    boundary therefore treats tagged or recognizable planning text as private.
+    Small local models routinely place reasoning in ``content`` rather than a
+    dedicated field, and thinking-capable Ollama models can emit an orphan
+    ``</think>`` marker.  This boundary therefore treats tagged or recognizable
+    planning text as private.
     """
     text = (content or "").lstrip("\ufeff")
     if not text.strip():
@@ -330,7 +387,7 @@ def sanitize_response_content(content: str) -> str:
     if open_match is not None:
         text = text[: open_match.start()]
 
-    # NVIDIA can return a leading closing marker for non-thinking completions.
+    # Models can return a leading closing marker for non-thinking completions.
     text = _REASONING_TAG_PATTERN.sub("", text).strip()
     if not text:
         return ""
@@ -415,8 +472,8 @@ def stream_content(chunk: Any) -> str:
     return _content_text(_read_attr(delta, "content", ""))
 
 
-class NVIDIAOpenAIProvider:
-    """NVIDIA hosted/NIM provider with bounded, retry-safe generation."""
+class OllamaProvider:
+    """Local/remote Ollama provider with bounded, retry-safe generation."""
 
     def __init__(
         self,
@@ -450,15 +507,10 @@ class NVIDIAOpenAIProvider:
             return ProviderError(
                 "Assistant is disabled by configuration.", state="disabled"
             )
-        if self.config.normalized_provider not in {"nvidia", "nvidia-nim"}:
+        if self.config.normalized_provider not in {"ollama", "ollama-remote"}:
             return ProviderError(
                 "The configured assistant provider is not supported.",
                 state="degraded",
-            )
-        if self.config.uses_self_hosted_nim and not self.config.self_hosted_enabled:
-            return ProviderError(
-                "Self-hosted NVIDIA NIM is disabled; explicitly opt in before using it.",
-                state="disabled",
             )
         if not self.config.effective_api_base:
             return ProviderError(
@@ -467,16 +519,6 @@ class NVIDIAOpenAIProvider:
         if not self.config.model:
             return ProviderError(
                 "The assistant model identifier is not configured.", state="degraded"
-            )
-        if (
-            not self.config.uses_self_hosted_nim
-            and not (self.config.api_key or "").strip()
-            and self._client is None
-            and self._client_factory is None
-        ):
-            return ProviderError(
-                "NVIDIA assistant credentials are missing.",
-                state="credentials-missing",
             )
         return None
 
@@ -524,7 +566,7 @@ class NVIDIAOpenAIProvider:
             state = "ready"
             ready = True
             can_attempt = True
-            message = "NVIDIA assistant provider is configured and ready."
+            message = "Ollama assistant provider is configured and ready."
 
         return {
             "enabled": self.config.enabled,
@@ -549,7 +591,8 @@ class NVIDIAOpenAIProvider:
             "request_timeout_seconds": self.config.request_timeout_seconds,
             "max_retries": max(0, self.config.max_retries),
             "circuit_breaker": circuit,
-            "self_hosted": self.config.uses_self_hosted_nim,
+            "self_hosted": True,
+            "remote_host": self.config.uses_remote_host,
         }
 
     def _get_client(self) -> Any:
@@ -573,12 +616,10 @@ class NVIDIAOpenAIProvider:
                     state="degraded",
                 ) from exc
 
-            key = (self.config.api_key or "").strip()
-            if self.config.uses_self_hosted_nim and not key:
-                key = "self-hosted-nim"
             self._client = OpenAI(
                 base_url=self.config.effective_api_base,
-                api_key=key,
+                # Ollama ignores the credential; the SDK requires a non-empty one.
+                api_key=self.config.effective_api_key,
                 timeout=max(0.1, self.config.request_timeout_seconds),
                 # Retry behavior is centralized here so queue/circuit state remains
                 # deterministic and observable.
@@ -612,6 +653,8 @@ class NVIDIAOpenAIProvider:
         stream: bool,
         response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        # Only fields Ollama's OpenAI-compatible surface implements are sent, so
+        # a request never fails on a parameter the local runtime cannot honor.
         kwargs: dict[str, Any] = {
             "model": self.config.model,
             "messages": messages,
@@ -619,12 +662,6 @@ class NVIDIAOpenAIProvider:
             "top_p": top_p,
             "max_tokens": max(1, int(max_tokens)),
             "stream": stream,
-            "extra_body": {
-                "chat_template_kwargs": {
-                    "enable_thinking": bool(self.config.enable_thinking)
-                },
-                "reasoning_budget": max(0, int(self.config.reasoning_budget)),
-            },
         }
         if response_format is not None:
             kwargs["response_format"] = response_format
@@ -672,16 +709,26 @@ class NVIDIAOpenAIProvider:
         name = type(exc).__name__.lower()
         text = str(exc).lower()
 
+        # A model that has not been pulled yet is the one failure an operator can
+        # fix directly, so it gets its own state and instruction.
+        if numeric_status == 404 or "try pulling it" in text or "model not found" in text:
+            return ProviderError(
+                f"The assistant model {self.config.model!r} is not installed in "
+                "Ollama. Run `make ollama-pull` to download it.",
+                state="model-missing",
+                http_status=503,
+                retryable=False,
+            )
         if numeric_status == 429 or "ratelimit" in name or "rate limit" in text:
             return ProviderError(
-                "The NVIDIA assistant is rate-limited. Please try again shortly.",
+                "The assistant runtime is busy. Please try again shortly.",
                 state="rate-limited",
                 http_status=429,
                 retryable=True,
             )
         if numeric_status in {408, 504} or "timeout" in name or "timed out" in text:
             return ProviderError(
-                "The NVIDIA assistant request timed out. Please try again.",
+                "The assistant request timed out. Please try again.",
                 state="timeout",
                 http_status=504,
                 retryable=True,
@@ -693,20 +740,21 @@ class NVIDIAOpenAIProvider:
             or "unreachable" in text
         ):
             return ProviderError(
-                "The NVIDIA assistant provider is currently unreachable.",
+                "The Ollama assistant runtime is not reachable. Start it with "
+                "`make ollama-up` and try again.",
                 state="provider-unreachable",
                 http_status=503,
                 retryable=True,
             )
         if numeric_status in {409, 425}:
             return ProviderError(
-                "The NVIDIA assistant could not complete the request yet.",
+                "The assistant could not complete the request yet.",
                 state="degraded",
                 http_status=503,
                 retryable=True,
             )
         return ProviderError(
-            "The NVIDIA assistant could not complete this request.",
+            "The assistant could not complete this request.",
             state="degraded",
             http_status=503,
             retryable=False,
@@ -792,7 +840,7 @@ class NVIDIAOpenAIProvider:
                     return {
                         "ok": True,
                         "state": "ready",
-                        "message": "NVIDIA assistant provider probe succeeded.",
+                        "message": "Ollama assistant provider probe succeeded.",
                         "provider": self.config.normalized_provider,
                         "runtime": self.config.effective_runtime,
                         "model_id": self.config.model,
@@ -919,9 +967,9 @@ def build_provider(
     sleep: Callable[[float], None] = time.sleep,
     random_value: Callable[[], float] = random.random,
     clock: Callable[[], float] = time.monotonic,
-) -> NVIDIAOpenAIProvider:
+) -> OllamaProvider:
     """Build the configured provider without performing network I/O."""
-    return NVIDIAOpenAIProvider(
+    return OllamaProvider(
         config,
         client=client,
         client_factory=client_factory,
@@ -933,14 +981,17 @@ def build_provider(
 
 __all__ = [
     "AssistantProvider",
-    "NVIDIA_HOSTED_API_BASE",
-    "NVIDIA_HOSTED_RUNTIME",
-    "NVIDIA_NEMOTRON_MODEL",
-    "NVIDIAOpenAIProvider",
+    "OLLAMA_API_BASE",
+    "OLLAMA_DEFAULT_MODEL",
+    "OLLAMA_PLACEHOLDER_KEY",
+    "OLLAMA_REMOTE_RUNTIME",
+    "OLLAMA_RUNTIME",
+    "OllamaProvider",
     "ProviderConfig",
     "ProviderError",
     "build_provider",
     "completion_content",
+    "normalize_api_base",
     "sanitize_response_content",
     "stream_content",
 ]

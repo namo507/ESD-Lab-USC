@@ -1507,7 +1507,7 @@ interface MockPresentationOptions {
 /**
  * Deterministic, schema-valid deck plan for development + the public Pages
  * demo (where there is no live Python assistant). The real route is driven by
- * the backend-routed NVIDIA assistant; this mirror keeps the page fully
+ * the backend-routed Ollama assistant; this mirror keeps the page fully
  * functional offline without fabricating lab citations.
  */
 function mockPresentationPlan(concept: string, options: MockPresentationOptions) {

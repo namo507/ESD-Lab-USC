@@ -13,7 +13,7 @@ import styles from "./PresentationMaker.module.css";
  * Simplified Presentation Maker.
  *
  * Turns a single concept into a minimal, easy-to-understand slide deck using
- * the same backend-routed NVIDIA assistant that powers ESD Buddy. The server returns a
+ * the same backend-routed Ollama assistant that powers ESD Buddy. The server returns a
  * strict, structured deck plan (/api/presentation/plan); this route previews
  * it as calm slide cards and exports a real .pptx entirely on the client.
  *

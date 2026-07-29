@@ -136,10 +136,12 @@ function normalizeAssistantState(payload: AssistantStatusPayload, model: string 
     case "setup-required":
     case "dependencies-missing":
     case "dependency-missing":
+    // An unpulled Ollama model is a setup step the operator can complete, not a
+    // deliberately disabled assistant.
+    case "model-missing":
       return "setup-required";
     case "disabled":
     case "unloaded":
-    case "model-missing":
       return "disabled";
     case "credentials-missing":
     case "credential-missing":
@@ -191,7 +193,7 @@ export function isAssistantUsable(status: AssistantStatus | null | undefined): b
 export function assistantStatusLabel(status: AssistantStatus | null | undefined): string {
   switch (status?.status) {
     case "ready":
-      return "NVIDIA assistant ready";
+      return "Assistant ready";
     case "setup-required":
       return "Assistant setup required";
     case "degraded":
@@ -314,7 +316,7 @@ function parseChunks(buffer: string): { remainder: string; deltas: string[]; don
 /**
  * Stream a grounded assistant answer through the same-origin dashboard API.
  *
- * The browser never talks to NVIDIA (or any other model provider) directly.
+ * The browser never talks to Ollama (or any other model runtime) directly.
  * `/api` is handled by Vite's local backend proxy, the dashboard server, or the
  * Cloudflare Pages worker. The legacy JSON endpoint remains a compatibility
  * fallback for older deployments.

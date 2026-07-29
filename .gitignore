@@ -186,6 +186,11 @@ models/
 config/llm_model.local.json
 models/local_llms/
 models/_metrics.json
+# Ollama runtime + weights: rebuildable with `make ollama-install` and
+# `make ollama-pull`, far too large to track here.
+models/ollama/
+/.tools/ollama/
+/.tools/ollama-state/
 
 # ─── Generated design exports ───────────────────────────────
 design-ideas/**/*.html

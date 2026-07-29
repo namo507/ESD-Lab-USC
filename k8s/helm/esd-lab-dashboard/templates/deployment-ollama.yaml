@@ -1,0 +1,132 @@
+{{- if .Values.ollama.enabled }}
+{{- if .Values.ollama.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "esd-lab-dashboard.ollamaFullname" . }}-models
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: assistant-runtime
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.ollama.persistence.size }}
+  {{- with .Values.ollama.persistence.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "esd-lab-dashboard.ollamaFullname" . }}
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: assistant-runtime
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.ollama.service.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: assistant-runtime
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esd-lab-dashboard.ollamaFullname" . }}
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: assistant-runtime
+spec:
+  # Model weights sit on a ReadWriteOnce volume, so a single replica owns them.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: assistant-runtime
+  template:
+    metadata:
+      labels:
+        {{- include "esd-lab-dashboard.labels" . | nindent 8 }}
+        app.kubernetes.io/component: assistant-runtime
+    spec:
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0:{{ .Values.ollama.service.port }}"
+            - name: OLLAMA_KEEP_ALIVE
+              value: {{ .Values.ollama.keepAlive | quote }}
+            # Keep >= assistant.contextWindow or packed grounding is truncated.
+            - name: OLLAMA_CONTEXT_LENGTH
+              value: {{ .Values.ollama.contextLength | quote }}
+            - name: OLLAMA_NUM_PARALLEL
+              value: {{ .Values.ollama.numParallel | quote }}
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: {{ .Values.ollama.maxLoadedModels | quote }}
+            - name: OLLAMA_LOAD_TIMEOUT
+              value: {{ .Values.ollama.loadTimeout | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ollama.service.port }}
+          # The model is pulled on first start, so the readiness gate must not
+          # trip while a multi-gigabyte download is still in flight.
+          startupProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          lifecycle:
+            postStart:
+              exec:
+                # Idempotent: a model already in the volume is a no-op pull.
+                command: ["/bin/sh", "-c", "ollama pull {{ .Values.assistant.model }} || true"]
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      {{- with .Values.ollama.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.ollama.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: models
+        {{- if .Values.ollama.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "esd-lab-dashboard.ollamaFullname" . }}-models
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+{{- end }}

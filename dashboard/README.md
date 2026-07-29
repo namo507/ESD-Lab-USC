@@ -9,7 +9,7 @@ canonical frontend.
 |------|---------|
 | `server/live_dashboard_server.py` | Local HTTP runtime, API endpoints, SPA serving, rebuild watcher |
 | `pipelines/` | Python/R builders for dashboard JSON payloads |
-| `assistant/` | Grounded assistant orchestration and NVIDIA OpenAI-compatible provider |
+| `assistant/` | Grounded assistant orchestration and the local Ollama provider seam |
 | `context_skill/` | Dashboard schema/context references for grounded assistant behavior |
 | `data/` | Generated, de-identified dashboard payloads and runtime status |
 | `research_questions/` | Research-question source material and generated dashboard block |

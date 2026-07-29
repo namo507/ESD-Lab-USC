@@ -11,11 +11,11 @@ describe("ChatDrawer message text", () => {
   });
 
   it("renders bullet answers as semantic lists", () => {
-    render(<MessageText text={"Assistant availability:\n\n- NVIDIA ready\n- Limited fallback"} />);
+    render(<MessageText text={"Assistant availability:\n\n- Ollama ready\n- Limited fallback"} />);
 
     expect(screen.getByText("Assistant availability:")).toBeInTheDocument();
     expect(screen.getByRole("list")).toBeInTheDocument();
-    expect(screen.getByText("NVIDIA ready").closest("li")).not.toBeNull();
+    expect(screen.getByText("Ollama ready").closest("li")).not.toBeNull();
     expect(screen.getByText("Limited fallback").closest("li")).not.toBeNull();
   });
 });

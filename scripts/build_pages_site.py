@@ -271,8 +271,19 @@ def _api_origin_is_healthy(origin: str, timeout: float) -> bool:
 def _worker_source(api_origin: str | None) -> str:
     return ("""
 const API_ORIGIN = __API_ORIGIN__;
-const BUDDY_PROVIDER_BASE = "https://integrate.api.nvidia.com/v1";
-const BUDDY_PROVIDER_MODEL = "nvidia/nemotron-3-super-120b-a12b";
+// The edge worker has no local runtime. Live generation happens only when the
+// operator publishes an Ollama endpoint the edge can actually reach (for
+// example through a named tunnel) and binds it as DASHBOARD_ASSISTANT_API_BASE;
+// otherwise Buddy stays on packaged aggregate grounding.
+const BUDDY_PROVIDER_MODEL_DEFAULT = "llama3.2:3b";
+function buddyProviderBase(env) {
+  const base = String(env?.DASHBOARD_ASSISTANT_API_BASE || "").trim().replace(/\\/+$/, "");
+  if (!base || !/^https:\\/\\//i.test(base)) return null;
+  return base.endsWith("/v1") ? base : `${base}/v1`;
+}
+function buddyProviderModel(env) {
+  return String(env?.DASHBOARD_ASSISTANT_MODEL || "").trim() || BUDDY_PROVIDER_MODEL_DEFAULT;
+}
 const BUDDY_MAX_BODY_BYTES = 32 * 1024;
 const BUDDY_RATE_LIMIT = 12;
 const BUDDY_RATE_WINDOW_MS = 60 * 1000;
@@ -356,17 +367,17 @@ async function redcapProxy(request, env) {
 }
 
 function assistantStatus(reason = "upstream-unavailable", env = null) {
-  if (env?.DASHBOARD_ASSISTANT_API_KEY) {
+  if (buddyProviderBase(env)) {
     return {
       status: "ready",
       ready: true,
       state: "ready",
       error: null,
-      provider: "nvidia",
-      runtime: "pages-edge-nvidia-build-api",
-      model: BUDDY_PROVIDER_MODEL,
-      model_id: BUDDY_PROVIDER_MODEL,
-      message: "The NVIDIA assistant is ready through the Pages edge runtime.",
+      provider: "ollama",
+      runtime: "pages-edge-ollama",
+      model: buddyProviderModel(env),
+      model_id: buddyProviderModel(env),
+      message: "The Ollama assistant is reachable through the Pages edge runtime.",
       fallback: false,
       reason,
       freshness: {
@@ -469,11 +480,11 @@ function assistantReply(message) {
   if (text.includes("passport")) {
     return "The infant passport summarizes longitudinal modalities, completeness, and risk trend for a selected NANO ID using de-identified labels only.";
   }
-  return "The public Pages fallback assistant can answer high-level dashboard navigation questions while the hosted NVIDIA assistant is unavailable. Dashboard data remains mocked and de-identified in the browser build.";
+  return "The public Pages fallback assistant can answer high-level dashboard navigation questions while the Ollama assistant is unavailable. Dashboard data remains mocked and de-identified in the browser build.";
 }
 
 function buddyStatus(reason, env) {
-  const providerReady = Boolean(env?.DASHBOARD_ASSISTANT_API_KEY);
+  const providerReady = Boolean(buddyProviderBase(env));
   return {
     endpoint: "/api/buddy",
     state: providerReady ? "ready" : "degraded",
@@ -482,9 +493,9 @@ function buddyStatus(reason, env) {
     local_fallback: true,
     metrics_available: true,
     documents_available: true,
-    model_id: providerReady ? BUDDY_PROVIDER_MODEL : null,
+    model_id: providerReady ? buddyProviderModel(env) : null,
     message: providerReady
-      ? "Buddy is ready with packaged aggregate grounding and the shared NVIDIA provider."
+      ? "Buddy is ready with packaged aggregate grounding and the shared Ollama runtime."
       : "Buddy generation is offline; packaged aggregate metrics and reading lookup remain available.",
     contract: "nano-buddy.v1",
     reason,
@@ -888,8 +899,9 @@ async function parseBuddyRequest(request) {
 }
 
 async function edgeBuddyProvider(message, nano, documents, env) {
-  const apiKey = env?.DASHBOARD_ASSISTANT_API_KEY;
-  if (!apiKey) return null;
+  const providerBase = buddyProviderBase(env);
+  if (!providerBase) return null;
+  const apiKey = String(env?.DASHBOARD_ASSISTANT_API_KEY || "").trim();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   const safeDocuments = documents.map(({ title, path, loc, snippet }) => ({ title, path, loc, snippet }));
@@ -898,16 +910,19 @@ async function edgeBuddyProvider(message, nano, documents, env) {
     : { nano };
   const grounding = JSON.stringify(groundingPayload).slice(0, 12000);
   try {
-    const response = await fetch(`${BUDDY_PROVIDER_BASE}/chat/completions`, {
+    const response = await fetch(`${providerBase}/chat/completions`, {
       method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      headers: {
+        // Ollama ignores credentials; the header is sent only when an
+        // authenticating proxy fronts the published endpoint.
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+        "content-type": "application/json",
+      },
       body: JSON.stringify({
-        model: BUDDY_PROVIDER_MODEL,
+        model: buddyProviderModel(env),
         temperature: 0.2,
-        top_p: 0.95,
-        // Nemotron is a reasoning model; reserve enough output budget for a
-        // complete concise answer after any hidden reasoning tokens.
-        max_tokens: 420,
+        top_p: 0.9,
+        max_tokens: 320,
         messages: [
           { role: "system", content: "You are ESD Lab Buddy for the NANO dashboard. Answer only from the supplied allowlisted aggregate metrics and public document snippets. Never infer, request, or reveal participant-level data, identifiers, raw signals, names, dates of birth, MRNs, contact details, or free-text notes. If evidence is missing, say so. Be concise. Do not invent citations or paths because the API attaches allowlisted citations." },
           { role: "user", content: `Grounding: ${grounding}\n\nQuestion: ${cleanBuddyText(message, 6000)}` },
@@ -1031,7 +1046,7 @@ function presentationPlan(concept, options = {}) {
       audience_level: audience,
       summary: `A clear, ${audience} introduction to ${title}.`,
       disclaimer:
-        "This deck was generated by the Cloudflare Pages fallback while the hosted NVIDIA assistant was unavailable. It is de-identified and carries no lab-specific citations.",
+        "This deck was generated by the Cloudflare Pages fallback while the Ollama assistant was unavailable. It is de-identified and carries no lab-specific citations.",
       grounded: false,
       citations: [],
       concept: topic,

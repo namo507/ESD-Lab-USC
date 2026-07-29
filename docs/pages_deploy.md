@@ -24,8 +24,8 @@ and smoke-tested now that the public site is the React/Vite dashboard in
 
 - The public Pages site serves the React SPA from `web/build/`.
 - Dashboard data is intentionally mocked in production by building with `VITE_USE_MOCKS=true`.
-- Live NVIDIA assistant chat prefers a healthy durable backend origin. If no such origin exists, the Pages worker uses the project-level `DASHBOARD_ASSISTANT_API_KEY` secret for bounded provider calls and keeps deterministic aggregate and document fallbacks available.
-- The browser never receives the NVIDIA key and never calls the provider directly.
+- Live assistant chat prefers a healthy durable backend origin. The Pages edge has no model runtime of its own, so it makes bounded provider calls only when `DASHBOARD_ASSISTANT_API_BASE` is bound to an HTTPS Ollama endpoint it can reach; otherwise deterministic aggregate and document fallbacks remain available.
+- The browser never calls the model runtime directly.
 - External `200` rewrites in `_redirects` are not enough for this on Cloudflare Pages because Pages only supports proxy-style rewrites to relative paths on the same site.
 
 ## How a change reaches production

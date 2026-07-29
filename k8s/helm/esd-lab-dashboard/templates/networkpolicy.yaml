@@ -17,6 +17,11 @@ spec:
     - ports:
         - protocol: TCP
           port: 8080
+  {{- if .Values.ollama.enabled }}
+        # Dashboard pods reach the assistant runtime on its own port.
+        - protocol: TCP
+          port: {{ .Values.ollama.service.port }}
+  {{- end }}
   egress:
     - ports:
         - protocol: UDP

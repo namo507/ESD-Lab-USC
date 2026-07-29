@@ -109,7 +109,7 @@ describe("chatApi", () => {
     expect(chunks).toEqual(["Legacy reply"]);
   });
 
-  it("normalizes the legacy status endpoint into an NVIDIA-ready state", async () => {
+  it("normalizes the legacy status endpoint into a ready state", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
@@ -117,8 +117,8 @@ describe("chatApi", () => {
         new Response(JSON.stringify({
           ready: true,
           state: "ready",
-          model_id: "nvidia/nemotron-3-super-120b-a12b",
-          runtime: "nvidia-build-api",
+          model_id: "llama3.2:3b",
+          runtime: "ollama",
         }), {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -131,12 +131,12 @@ describe("chatApi", () => {
     expect(status).toEqual({
       status: "ready",
       error: null,
-      model: "nvidia/nemotron-3-super-120b-a12b",
+      model: "llama3.2:3b",
       fallback: false,
       freshness: undefined,
       message: null,
     });
-    expect(assistantStatusLabel(status)).toBe("NVIDIA assistant ready");
+    expect(assistantStatusLabel(status)).toBe("Assistant ready");
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       "/api/assistant/status",
       "/api/chat/status",
@@ -184,6 +184,26 @@ describe("chatApi", () => {
     const status = await fetchAssistantStatus();
     expect(status.status).toBe("setup-required");
     expect(status.error).toBe("The assistant setup is incomplete for this deployment.");
+    expect(assistantStatusLabel(status)).toBe("Assistant setup required");
+  });
+
+  it("maps an unpulled Ollama model to setup-required copy", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        state: "model-missing",
+        ready: false,
+        can_attempt: false,
+        model_id: "llama3.2:3b",
+        message: "The assistant model 'llama3.2:3b' is not installed in Ollama. Run `make ollama-pull` to download it.",
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const status = await fetchAssistantStatus();
+    expect(status.status).toBe("setup-required");
     expect(assistantStatusLabel(status)).toBe("Assistant setup required");
   });
 

@@ -1,9 +1,9 @@
-"""Assistant provider catalog and legacy selection compatibility helpers.
+"""Assistant model catalog and legacy selection compatibility helpers.
 
-The dashboard no longer selects or downloads local weight files.  The public
-function names in this module are retained so deployment/preparation tooling
-can transition without import failures; every selection resolves to an
-OpenAI-compatible NVIDIA provider configuration instead of a filesystem model.
+Weight files are owned by the Ollama server, not by this repository.  The public
+function names here are retained so deployment/preparation tooling keeps
+importing cleanly; every selection resolves to the configured Ollama model tag
+instead of a filesystem path.
 """
 
 from __future__ import annotations
@@ -15,40 +15,40 @@ from pathlib import Path
 from typing import Any
 
 from dashboard.assistant.provider import (
-    NVIDIA_HOSTED_API_BASE,
-    NVIDIA_HOSTED_RUNTIME,
-    NVIDIA_NEMOTRON_MODEL,
+    OLLAMA_API_BASE,
+    OLLAMA_DEFAULT_MODEL,
+    OLLAMA_RUNTIME,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
-# Kept as a compatibility constant; no runtime path reads from this directory.
+# Kept as a compatibility constant; Ollama stores weights under its own root.
 LOCAL_MODEL_ROOT = PROJECT_ROOT / "models" / "local_llms"
-DEFAULT_TIER = "hosted"
-CATALOG_VERSION = 4
+DEFAULT_TIER = "local"
+CATALOG_VERSION = 5
 DEFAULT_THREAD_COUNT = 0
 
 MODEL_CATALOG: tuple[dict[str, Any], ...] = (
     {
-        "tier": "hosted",
-        "label": "NVIDIA Nemotron 3 Super 120B A12B",
-        "provider": "nvidia",
-        "runtime": NVIDIA_HOSTED_RUNTIME,
-        "api_base": NVIDIA_HOSTED_API_BASE,
-        "repo_id": NVIDIA_NEMOTRON_MODEL,
-        "model_id": NVIDIA_NEMOTRON_MODEL,
+        "tier": "local",
+        "label": "Ollama llama3.2 3B Instruct (local)",
+        "provider": "ollama",
+        "runtime": OLLAMA_RUNTIME,
+        "api_base": OLLAMA_API_BASE,
+        "repo_id": OLLAMA_DEFAULT_MODEL,
+        "model_id": OLLAMA_DEFAULT_MODEL,
         "filename": None,
         "model_dir": None,
-        "context_length": 32768,
-        "max_tokens": 16384,
-        "temperature": 1.0,
-        "top_p": 0.95,
-        "license": "NVIDIA API terms",
+        "context_length": 8192,
+        "max_tokens": 768,
+        "temperature": 0.2,
+        "top_p": 0.9,
+        "license": "Llama 3.2 Community License",
         "priority": 100,
-        "source": "nvidia-build-api",
+        "source": "ollama",
         "reason": (
-            "Default hosted runtime for Nemotron 3 Super; no local weights or "
-            "high-end GPU host are assumed."
+            "Default local runtime: ~2 GB, CPU-friendly, and fast enough for "
+            "short grounded dashboard answers without any provider account."
         ),
     },
 )
@@ -57,10 +57,12 @@ TIER_ALIASES = {
     "": DEFAULT_TIER,
     "auto": DEFAULT_TIER,
     "default": DEFAULT_TIER,
+    "local": DEFAULT_TIER,
+    "ollama": DEFAULT_TIER,
+    # Historical tiers now resolve to the single supported provider runtime.
     "hosted": DEFAULT_TIER,
     "nvidia": DEFAULT_TIER,
     "nvidia-build-api": DEFAULT_TIER,
-    # Historical tiers now resolve to the single supported provider runtime.
     "tiny": DEFAULT_TIER,
     "fast": DEFAULT_TIER,
     "small": DEFAULT_TIER,
@@ -86,7 +88,7 @@ def normalize_tier(tier: str | None) -> str:
 
 
 def available_memory_gib() -> float:
-    """Compatibility-only host probe; provider selection does not use it."""
+    """Compatibility-only host probe; model selection does not use it."""
     try:
         import psutil  # type: ignore
 
@@ -119,7 +121,7 @@ def model_fits_host(
     disk_free_gib: float | None = None,
     include_disk: bool = False,
 ) -> bool:
-    """Hosted selection is independent of dashboard host memory and disk."""
+    """Ollama enforces its own memory limits; selection is host-independent."""
     return True
 
 
@@ -136,13 +138,13 @@ def build_llm_config(selected: dict[str, Any] | None = None) -> dict[str, Any]:
     entry = _public_model_entry(selected or MODEL_CATALOG[0])
     return {
         "schema_version": CATALOG_VERSION,
-        "policy": "nvidia-hosted-default",
+        "policy": "ollama-local-default",
         "selected_tier": DEFAULT_TIER,
         **entry,
-        "self_hosted": {
+        "remote": {
             "enabled": False,
-            "runtime": "nvidia-nim",
-            "api_base": "http://nemotron-nim:8000/v1",
+            "runtime": "ollama-remote",
+            "api_base": "http://ollama:11434/v1",
         },
         "fallbacks": [],
         "catalog": [copy.deepcopy(entry)],
@@ -180,7 +182,7 @@ def configured_models(
 def find_existing_model_path(
     model: dict[str, Any], project_root: Path = PROJECT_ROOT
 ) -> None:
-    """Local model files are intentionally not part of the provider runtime."""
+    """Weight files live in the Ollama store, never in the repository tree."""
     return None
 
 
@@ -190,11 +192,11 @@ def select_runtime_model_config(
     requested_tier: str | None = None,
     project_root: Path = PROJECT_ROOT,
 ) -> dict[str, Any]:
-    """Normalize old or new config into the hosted provider entry."""
+    """Normalize old or new config into the Ollama provider entry."""
     selected = copy.deepcopy(MODEL_CATALOG[0])
     if isinstance(config, dict):
         provider = str(config.get("provider") or "").strip().lower()
-        if provider in {"nvidia", "nvidia-nim", "nim"}:
+        if provider in {"ollama", "ollama-remote", "local"}:
             for source_key, target_key in (
                 ("provider", "provider"),
                 ("runtime", "runtime"),
@@ -210,7 +212,7 @@ def select_runtime_model_config(
                 value = config.get(source_key)
                 if value not in {None, ""}:
                     selected[target_key] = copy.deepcopy(value)
-            selected["repo_id"] = selected.get("model_id") or NVIDIA_NEMOTRON_MODEL
+            selected["repo_id"] = selected.get("model_id") or OLLAMA_DEFAULT_MODEL
     selected["tier"] = DEFAULT_TIER
     selected["filename"] = None
     selected["model_dir"] = None

@@ -1,8 +1,8 @@
-"""Grounded ESD Lab dashboard assistant backed by NVIDIA Nemotron.
+"""Grounded ESD Lab dashboard assistant backed by a local Ollama model.
 
 Grounding and deterministic dashboard answers remain local to this module.  A
-small, lazy provider seam handles hosted NVIDIA generation so provider failures
-never prevent the rest of the dashboard from starting or serving data.
+small, lazy provider seam handles Ollama generation so runtime failures never
+prevent the rest of the dashboard from starting or serving data.
 """
 
 from __future__ import annotations
@@ -17,26 +17,33 @@ from pathlib import Path
 from typing import Any, Callable
 
 from dashboard.assistant.provider import (
-    NVIDIA_HOSTED_API_BASE,
-    NVIDIA_HOSTED_RUNTIME,
-    NVIDIA_NEMOTRON_MODEL,
+    OLLAMA_API_BASE,
+    OLLAMA_DEFAULT_MODEL,
+    OLLAMA_RUNTIME,
     AssistantProvider,
     ProviderConfig,
     ProviderError,
     build_provider,
     completion_content,
+    normalize_api_base,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
-DEFAULT_MODEL_ID = NVIDIA_NEMOTRON_MODEL
+DEFAULT_MODEL_ID = OLLAMA_DEFAULT_MODEL
+DEFAULT_MODEL_LABEL = "Ollama llama3.2 3B Instruct (local)"
+DEFAULT_MODEL_LICENSE = "Llama 3.2 Community License"
 # Nullable legacy fields remain in status responses for older dashboard clients.
 DEFAULT_MODEL_DIR: Path | None = None
 DEFAULT_MODEL_FILE: str | None = None
-DEFAULT_CONTEXT_WINDOW = 32768
+# Matches OLLAMA_CONTEXT_LENGTH in the shipped runtime configuration; packing
+# beyond it would be silently truncated by the server and lose grounding.
+DEFAULT_CONTEXT_WINDOW = 8192
 DEFAULT_BATCH_SIZE = 0
-DEFAULT_MAX_NEW_TOKENS = 16384
+# A local 3B model answers dashboard questions in a few hundred tokens; a large
+# ceiling only lets a degenerate response run long before the user sees it.
+DEFAULT_MAX_NEW_TOKENS = 768
 DEFAULT_THREAD_COUNT = 0
 DEFAULT_MAX_MESSAGE_CHARS = 6000
 DEFAULT_MAX_HISTORY_CHARS = 8000
@@ -701,6 +708,43 @@ def _env_first(*names: str) -> str | None:
     return None
 
 
+# Model identifiers left behind by the retired hosted provider. Ollama would
+# reject them outright, so they resolve to the packaged local model instead.
+_RETIRED_MODEL_MARKERS = ("nemotron", "nvidia/", "gpt-4", "gpt-3.5")
+
+
+def _normalize_model_id(value: str | None) -> str:
+    candidate = (value or "").strip()
+    if not candidate:
+        return DEFAULT_MODEL_ID
+    lowered = candidate.lower()
+    if any(marker in lowered for marker in _RETIRED_MODEL_MARKERS):
+        return DEFAULT_MODEL_ID
+    return candidate
+
+
+def _model_label_for(model_id: str) -> str:
+    """Render a human label for an Ollama tag such as ``llama3.2:3b``."""
+    candidate = (model_id or "").strip()
+    if not candidate or candidate == DEFAULT_MODEL_ID:
+        return DEFAULT_MODEL_LABEL
+    name, _, tag = candidate.partition(":")
+    pretty = name.replace("-", " ").replace("_", " ").strip()
+    suffix = f" {tag}" if tag and tag != "latest" else ""
+    return f"Ollama {pretty}{suffix} (local)".replace("  ", " ")
+
+
+def _normalize_runtime(value: str | None, api_base: str) -> str:
+    candidate = (value or "").strip().lower()
+    if candidate in {"", "nvidia-build-api", "nvidia-nim", "nim", "nvidia"}:
+        candidate = ""
+    if candidate:
+        return candidate
+    local_markers = ("127.0.0.1", "localhost", "0.0.0.0", "[::1]", "host.docker.internal")
+    is_local = any(marker in api_base.lower() for marker in local_markers)
+    return OLLAMA_RUNTIME if is_local else "ollama-remote"
+
+
 class AssistantUnavailable(RuntimeError):
     """Raised when the assistant is configured but cannot answer yet."""
 
@@ -713,35 +757,38 @@ class AssistantUnavailable(RuntimeError):
 @dataclass
 class AssistantConfig:
     enabled: bool = True
-    provider: str = "nvidia"
-    runtime: str = NVIDIA_HOSTED_RUNTIME
-    api_base: str = NVIDIA_HOSTED_API_BASE
+    provider: str = "ollama"
+    runtime: str = OLLAMA_RUNTIME
+    api_base: str = OLLAMA_API_BASE
     api_key: str | None = field(default=None, repr=False)
     model_id: str = DEFAULT_MODEL_ID
     model_dir: Path | None = DEFAULT_MODEL_DIR
     model_file: str | None = DEFAULT_MODEL_FILE
-    model_tier: str = "hosted"
-    model_label: str = "NVIDIA Nemotron 3 Super 120B A12B"
-    model_license: str = "NVIDIA API terms"
+    model_tier: str = "local"
+    model_label: str = DEFAULT_MODEL_LABEL
+    model_license: str = DEFAULT_MODEL_LICENSE
     auto_download: bool = False
-    device_preference: str = "provider-managed"
+    device_preference: str = "ollama-managed"
     enable_thinking: bool = False
     reasoning_budget: int = 0
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
     temperature: float = 0.2
-    top_p: float = 0.95
+    top_p: float = 0.9
     stream_enabled: bool = True
-    request_timeout_seconds: float = 180.0
-    max_retries: int = 6
-    retry_base_seconds: float = 2.0
-    retry_max_seconds: float = 30.0
+    request_timeout_seconds: float = 120.0
+    max_retries: int = 2
+    retry_base_seconds: float = 0.5
+    retry_max_seconds: float = 4.0
     retry_jitter: float = 0.25
     max_concurrency: int = 2
     circuit_failure_threshold: int = 3
-    circuit_recovery_seconds: float = 60.0
+    circuit_recovery_seconds: float = 30.0
+    # Deprecated hosted-provider knobs; honored only as a remote base override.
     self_hosted_enabled: bool = False
-    self_hosted_base_url: str = "http://nemotron-nim:8000/v1"
-    context_char_budget: int = 12000
+    self_hosted_base_url: str = ""
+    # Local prefill is CPU-bound, so a tighter context keeps answers fast while
+    # still covering the packed dashboard sections for a question.
+    context_char_budget: int = 7000
     # Deprecated local-runtime knobs remain constructor-compatible only.
     min_available_memory_gib: float = 0.0
     history_turns: int = 6
@@ -758,47 +805,43 @@ class AssistantConfig:
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
-        provider = _env_first("DASHBOARD_ASSISTANT_PROVIDER") or "nvidia"
-        normalized_provider = provider.strip().lower()
-        provider_requests_self_hosted = normalized_provider in {
-            "nim",
-            "nvidia-nim",
-            "self-hosted",
-            "self-hosted-nim",
-        }
-        self_hosted_enabled = _parse_bool(
-            os.getenv("DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED"), default=False
+        # Retired hosted-provider values are normalized rather than rejected so a
+        # stale .env or Compose file degrades to the local runtime instead of
+        # failing every assistant request.
+        api_base = normalize_api_base(
+            _env_first(
+                "DASHBOARD_ASSISTANT_API_BASE",
+                "OPENAI_BASE_URL",
+                "OLLAMA_HOST",
+            )
         )
-        use_self_hosted = provider_requests_self_hosted or self_hosted_enabled
-        effective_provider = "nvidia-nim" if use_self_hosted else provider
+        model_id = _normalize_model_id(
+            _env_first(
+                "DASHBOARD_ASSISTANT_MODEL",
+                "DASHBOARD_ASSISTANT_MODEL_ID",
+                "OLLAMA_MODEL",
+            )
+        )
+        remote_base = _env_first("DASHBOARD_ASSISTANT_REMOTE_BASE_URL") or ""
+        if remote_base:
+            api_base = normalize_api_base(remote_base)
+        runtime = _normalize_runtime(_env_first("DASHBOARD_ASSISTANT_RUNTIME"), api_base)
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
-            provider=effective_provider,
-            runtime=(
-                "nvidia-nim"
-                if use_self_hosted
-                else (
-                    _env_first("DASHBOARD_ASSISTANT_RUNTIME") or NVIDIA_HOSTED_RUNTIME
-                )
-            ),
-            api_base=(
-                _env_first("DASHBOARD_ASSISTANT_API_BASE", "OPENAI_BASE_URL")
-                or NVIDIA_HOSTED_API_BASE
-            ),
-            api_key=_env_first("DASHBOARD_ASSISTANT_API_KEY", "OPENAI_API_KEY"),
-            model_id=(
-                _env_first("DASHBOARD_ASSISTANT_MODEL", "DASHBOARD_ASSISTANT_MODEL_ID")
-                or DEFAULT_MODEL_ID
-            ),
+            provider="ollama",
+            runtime=runtime,
+            api_base=api_base,
+            api_key=_env_first("DASHBOARD_ASSISTANT_API_KEY", "OLLAMA_API_KEY"),
+            model_id=model_id,
             model_dir=None,
             model_file=None,
-            model_tier="self-hosted" if use_self_hosted else "hosted",
-            model_label="NVIDIA Nemotron 3 Super 120B A12B",
-            model_license="NVIDIA API terms",
+            model_tier="local",
+            model_label=_env_first("DASHBOARD_ASSISTANT_MODEL_LABEL")
+            or _model_label_for(model_id),
+            model_license=_env_first("DASHBOARD_ASSISTANT_MODEL_LICENSE")
+            or DEFAULT_MODEL_LICENSE,
             auto_download=False,
-            device_preference=(
-                "self-hosted-gpu" if use_self_hosted else "provider-managed"
-            ),
+            device_preference="ollama-managed",
             enable_thinking=_parse_bool(
                 os.getenv("DASHBOARD_ASSISTANT_ENABLE_THINKING"), default=False
             ),
@@ -815,23 +858,23 @@ class AssistantConfig:
             ),
             top_p=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_TOP_P"),
-                default=0.95,
+                default=0.9,
             ),
             stream_enabled=_parse_bool(
                 os.getenv("DASHBOARD_ASSISTANT_STREAM"), default=True
             ),
             request_timeout_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS"),
-                default=180.0,
+                default=120.0,
             ),
             max_retries=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_MAX_RETRIES"), default=6
+                os.getenv("DASHBOARD_ASSISTANT_MAX_RETRIES"), default=2
             ),
             retry_base_seconds=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS"), default=2.0
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS"), default=0.5
             ),
             retry_max_seconds=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS"), default=30.0
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS"), default=4.0
             ),
             retry_jitter=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_RETRY_JITTER"), default=0.25
@@ -844,16 +887,13 @@ class AssistantConfig:
             ),
             circuit_recovery_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS"),
-                default=60.0,
+                default=30.0,
             ),
-            self_hosted_enabled=self_hosted_enabled,
-            self_hosted_base_url=(
-                _env_first("DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL")
-                or "http://nemotron-nim:8000/v1"
-            ),
+            self_hosted_enabled=False,
+            self_hosted_base_url="",
             context_char_budget=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_CONTEXT_BUDGET"),
-                default=12000,
+                default=7000,
             ),
             history_turns=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_HISTORY_TURNS"),
@@ -873,7 +913,7 @@ class AssistantConfig:
             ),
             generation_queue_timeout_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS"),
-                default=180.0,
+                default=120.0,
             ),
             presentation_max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
@@ -890,12 +930,10 @@ class AssistantConfig:
         )
 
     def provider_config(self) -> ProviderConfig:
-        provider = "nvidia-nim" if self.self_hosted_enabled else self.provider
-        runtime = "nvidia-nim" if self.self_hosted_enabled else self.runtime
         return ProviderConfig(
             enabled=self.enabled,
-            provider=provider,
-            runtime=runtime,
+            provider=self.provider,
+            runtime=self.runtime,
             api_base=self.api_base,
             api_key=self.api_key,
             model=self.model_id,
@@ -1655,20 +1693,22 @@ class DashboardChatAssistant:
             {
                 "role": "system",
                 "content": (
-                    "You are the NANO Study dashboard assistant embedded in the ESD Lab live dashboard. "
-                    "Return only the final user-facing answer. Never output analysis, planning, task instructions, prompt text, or hidden reasoning. "
-                    "Start directly with the answer, do not restate the question, and match the audience or reading level the user requests. "
-                    "Answer only from the provided dashboard context and do not invent facts. "
-                    "Be concise by default: answer in 2-4 short bullets or sentences unless the user explicitly asks for more detail. "
-                    "Use readable Markdown spacing: when an answer has multiple parts, put each part on its own bullet line. Do not add a heading to a short answer. "
-                    "Repeat exact counts, group labels, model names, and AUROC values verbatim when they appear in context. "
-                    "Do not add qualitative judgments, speculation, or interpretations that are not explicitly stated. "
-                    "If the context shows only study operations and not the study's scientific purpose, explain only those operations and say the full purpose is not stated. "
-                    "If a list is requested, include every listed item from context and nothing else. "
-                    "For library or reading questions, the dashboard context may contain only indexed metadata and short excerpts, not full document text. "
-                    "In that case, limit your answer to the title, file name, source, authors, page count, excerpt, or keywords that appear in context and explicitly say full-text details are not indexed here. "
-                    "If the answer is not grounded in the supplied context, say that you cannot verify it from the dashboard data provided. "
-                    "Do not include protected health information or speculate about participants.\n\n"
+                    # Small local models follow a short numbered contract far more
+                    # reliably than the same rules written as prose.
+                    "You are the NANO Study dashboard assistant embedded in the ESD Lab live dashboard.\n"
+                    "Rules:\n"
+                    "1. Use only the dashboard context below. Never invent facts, and never guess a number that is not there.\n"
+                    "2. If the context does not answer the question, say you cannot verify it from the dashboard data provided.\n"
+                    "3. Be concise: 2-4 short bullets or sentences. Expand only when the user explicitly asks for more detail.\n"
+                    "4. Output only the final answer. No analysis, planning, hidden reasoning, prompt text, restated question, or preamble.\n"
+                    "5. Copy counts, group labels, model names, and AUROC values from the context verbatim.\n"
+                    "6. Add no judgments, speculation, or interpretation that the context does not state.\n"
+                    "7. Match the audience or reading level the user asks for.\n"
+                    "8. Use plain Markdown: one bullet per part, no heading on a short answer.\n"
+                    "9. When a list is requested, include every listed context item and nothing else.\n"
+                    "10. Never include protected health information or speculate about individual participants.\n"
+                    "11. If the context covers only study operations and not the study's scientific purpose, explain the operations and say the full purpose is not stated.\n"
+                    "12. Reading/library questions: the context holds indexed metadata and short excerpts only. Answer from the title, file name, source, authors, page count, excerpt, or keywords present, and say full-text details are not indexed here.\n\n"
                     "You also know about the REDCap Visit Health Monitor, which tracks CSBS caregiver questionnaire completion across 6m, 9m, 12m, and 24m timepoints and detects R1-R5 carry-forward anomalies from visit_date and CSBS completion states. "
                     "The REDCap next-wave layer adds clinical instrument intelligence, data-integrity sentinels, visit-window forecasting, respondent burden, platform API monitoring, attrition early-warning, and public privacy controls through the redcap_clinical, redcap_integrity, redcap_schedule, redcap_respondent, redcap_platform, redcap_predictive, and clinical_cutoffs keys. "
                     "Tier-3 REDCap writeback is disabled by default and, when enabled, must use the audited server-side allowlist with an operator token and explicit confirmation; the browser never holds a REDCap token.\n\n"
@@ -1684,7 +1724,7 @@ class DashboardChatAssistant:
         return messages
 
     def _resolve_model_path(self) -> Path | None:
-        """Compatibility helper: hosted/NIM providers do not use a model file."""
+        """Compatibility helper: Ollama owns weight storage, not the dashboard."""
         return None
 
     def _load_dashboard_payload(self) -> dict[str, Any]:
@@ -3118,12 +3158,16 @@ class DashboardChatAssistant:
             "fallback",
             "gguf",
             "hosted",
+            "llama",
+            "llama3",
             "llm",
             "local",
             "nemotron",
             "nvidia",
             "no",
+            "ollama",
             "provider",
+            "runtime",
             "selected",
             "smaller",
             "tier",
@@ -4149,17 +4193,17 @@ class DashboardChatAssistant:
         return None
 
     def _format_local_model_policy_response(self) -> str:
-        """Compatibility name for the current NVIDIA provider policy answer."""
-        model_label = self.config.model_label or self.config.model_file
-        model_id = self.config.model_id or self.config.model_file
-        runtime = self.config.runtime or NVIDIA_HOSTED_RUNTIME
+        """Answer questions about which model backs the assistant."""
+        model_label = self.config.model_label or self.config.model_id
+        model_id = self.config.model_id or DEFAULT_MODEL_ID
+        runtime = self.config.runtime or OLLAMA_RUNTIME
 
         return (
-            "NVIDIA assistant provider policy:\n\n"
-            f"- Configured model: {model_label} ({model_id}) via {runtime}.\n"
-            "- Default runtime: NVIDIA's hosted OpenAI-compatible endpoint; an API key is required and external rate limits still apply.\n"
-            "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
-            "- Self-hosting: NVIDIA NIM is optional and disabled by default because this model requires dedicated high-end GPU infrastructure."
+            "Assistant model policy:\n\n"
+            f"- Configured model: {model_label} ({model_id}) served by {runtime}.\n"
+            "- Runtime: Ollama runs the model on this deployment's own hardware, so prompts and dashboard context never leave it and no provider API key is used.\n"
+            "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive if the runtime stops.\n"
+            "- Grounding: answers are restricted to indexed dashboard aggregates and repository documents; ungrounded questions get an explicit 'not in context' reply."
         )
 
     def _format_nano_study_explainer_response(

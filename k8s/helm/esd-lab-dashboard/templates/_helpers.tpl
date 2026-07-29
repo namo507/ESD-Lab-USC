@@ -36,3 +36,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "esd-lab-dashboard.requiredDataClaim" -}}
 {{- required "existingClaims.data is required; set it to the RWX PVC mounted at /app/dashboard/data." .Values.existingClaims.data -}}
 {{- end -}}
+
+{{- define "esd-lab-dashboard.ollamaFullname" -}}
+{{- printf "%s-ollama" (include "esd-lab-dashboard.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "esd-lab-dashboard.assistantApiBase" -}}
+{{- if .Values.assistant.apiBase -}}
+{{- .Values.assistant.apiBase -}}
+{{- else if .Values.ollama.enabled -}}
+{{- printf "http://%s:%v/v1" (include "esd-lab-dashboard.ollamaFullname" .) .Values.ollama.service.port -}}
+{{- else -}}
+{{- fail "assistant.apiBase is required when ollama.enabled is false" -}}
+{{- end -}}
+{{- end -}}

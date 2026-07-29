@@ -11,9 +11,14 @@ The canonical root stack is defined in `../docker-compose.yml`; see
 | `compose.prod.yml` | Production-like runtime with only generated data and readings mounted |
 | `dashboard/Dockerfile` | Dashboard runtime image |
 
-The dashboard image uses the hosted NVIDIA OpenAI-compatible client. It does
-not build llama.cpp, download GGUF weights, or mount a Hugging Face cache. The
-API key is supplied only at runtime through `.env` or an orchestrator Secret.
+The dashboard image talks to the sibling `ollama` service over its
+OpenAI-compatible API. The image itself contains no model weights: Ollama pulls
+them once into the `ollama-models` volume, so rebuilds stay small and nothing
+large enters the repository. No credential is required.
+
+```bash
+docker compose exec ollama ollama pull llama3.2:3b
+```
 
 Use the dev compose file explicitly from the repository root:
 

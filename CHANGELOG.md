@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Assistant runtime moved from the hosted NVIDIA Nemotron endpoint to a local
+  [Ollama](https://github.com/ollama/ollama) model (`llama3.2:3b` by default).**
+  ESD Buddy, NANO Buddy, and Presentation Maker share the same runtime through
+  the existing provider seam, so the dashboard API contract, grounding,
+  citations, deterministic short-circuit answers, and PHI refusals are
+  unchanged. No provider account or API key is required, and prompts never leave
+  the deployment. Retired hosted-provider values in an existing `.env`, Compose
+  file, or Helm values resolve to the local runtime instead of failing requests.
+- Assistant defaults retuned for a local model: 768 max output tokens, top-p
+  `0.9`, 8192 context window, 7000-character context budget, 2 retries with
+  0.5s base backoff, and a 120s request timeout.
+- Chat and Buddy system prompts restructured as numbered rules, which small
+  local models follow far more reliably than equivalent prose.
+
+### Added
+- `scripts/ollama.sh` plus `make ollama-install|ollama-up|ollama-down|ollama-pull|ollama-status`
+  to install a checksum-verified pinned Ollama release into `.tools/ollama`,
+  serve it, and pull/preload the configured model. Neither the binary nor the
+  weights are committed; both are gitignored and rebuildable.
+- `dashboard/assistant/ollama_runtime.py`, a dependency-free client for Ollama's
+  management API (health, installed tags, pull with progress, preload).
+- `scripts/check_assistant_runtime.py` and `make assistant-smoke`: end-to-end
+  verification that the runtime is up, the model is installed, both buddies
+  answer, and NANO Buddy still refuses PHI requests.
+- `ollama` service in all three Compose files with a persistent model volume, and
+  an in-cluster Ollama Deployment, Service, and PVC in the Helm chart
+  (`ollama.enabled`, default true) with an idempotent model-pull hook.
+- `model-missing` assistant state with an actionable message, so an unpulled
+  model is distinguishable from an unreachable runtime.
+- `OLLAMA.md` operator runbook, replacing the NVIDIA migration prompt.
+
 ### Added
 - Additive NANO Study dashboard at `/nano/dashboard` with ESD-branded motion,
   aggregate enrollment and visit operations, HDA/RSA research metrics, pipeline

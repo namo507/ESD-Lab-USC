@@ -29,7 +29,7 @@ const BUDDY_FAST_PATHS: FastPathPrompt[] = [
   { lane: "model",  label: "HDA gauge explained",         prompt: "What does the HDA gauge on the dashboard tell me, and what triggers a phase shift?" },
   { lane: "model",  label: "SHAP explorer",                prompt: "Explain how to read the SHAP Explorer beeswarm and what participant highlighting changes." },
   { lane: "model",  label: "Model leaderboard",            prompt: "Summarize the Model Leaderboard and which metrics I should compare before trusting a model." },
-  { lane: "model",  label: "NVIDIA assistant",               prompt: "How does the NVIDIA-hosted ESD Buddy stay grounded in repository context, and what happens when the assistant is degraded or unavailable?" },
+  { lane: "model",  label: "Assistant model",                prompt: "How does the locally hosted ESD Buddy stay grounded in repository context, and what happens when the assistant is degraded or unavailable?" },
   { lane: "redcap", label: "REDCap PHI handling",         prompt: "Which REDCap fields count as PHI in this study, and how are they stripped before processed/ export?" },
   { lane: "redcap", label: "Participant ID legend",       prompt: "What does the participant ID legend mean for NANO, NICO, ANONICO, and dual-enrolled participants? Explain 5-series versus 9-series and visit markers." },
   { lane: "redcap", label: "Dual forms policy",           prompt: "For a dual-enrolled participant, should AIH and EH be one shared master form or duplicate study-specific forms? Explain the linking ID rule." },
@@ -524,7 +524,7 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
             <div
               className={styles.statusPill}
               data-insight="assistant-model-clinical"
-              data-insight-body="ESD Buddy uses the hosted NVIDIA assistant through the dashboard backend. Prompts are scrubbed before the proxy request, and limited fallback answers remain available when the live provider is degraded."
+              data-insight-body="ESD Buddy runs on the lab's own Ollama model through the dashboard backend. Prompts are scrubbed before the proxy request, never leave the deployment, and limited fallback answers remain available when the runtime is degraded."
             >
               <span className={`${styles.statusDot} ${styles[statusTone]}`} aria-hidden />
               <span>{statusLabel}</span>

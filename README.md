@@ -136,6 +136,7 @@ The **NANO Study** (Neurodevelopment of Autonomic and Neural Organization) is a 
 ### Prerequisites
 - Python >= 3.10
 - R >= 4.3
+- ~3 GB free RAM and 2 GB disk for the local assistant model (see [`OLLAMA.md`](OLLAMA.md))
 - Access to USC Secure Server (VPN required)
 - REDCap API token (from PI)
 - CITI training certificate on file
@@ -162,9 +163,20 @@ make install
 cp .env.example .env
 # Edit .env with your actual credentials (NEVER commit .env)
 
-# 6. Verify setup
+# 6. Install the dashboard assistant runtime (Ollama; no account or API key)
+make ollama-install   # pinned release into .tools/ollama (gitignored)
+make ollama-up        # serve on 127.0.0.1:11434
+make ollama-pull      # download llama3.2:3b (~2 GB) and preload it
+
+# 7. Verify setup
 make test
+make assistant-smoke  # ESD Buddy + NANO Buddy answer end to end
 ```
+
+The assistants (ESD Buddy in the chat drawer and NANO Buddy at `/api/buddy`) run
+that local model — prompts never leave the machine. The dashboard starts and
+stays healthy without it; only assistant answers degrade. See
+[`OLLAMA.md`](OLLAMA.md) for the runbook and host requirements.
 
 ### Environment Configuration
 
@@ -252,9 +264,10 @@ The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
 depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
 hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
 Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
-is attached, the canonical site can run the NVIDIA-backed assistant at the
-Pages edge from the project-level `DASHBOARD_ASSISTANT_API_KEY` secret. The
-current direct quick-tunnel URL continues to expose the full local runtime.
+is attached, the canonical site serves deterministic aggregate and document
+answers at the Pages edge; live generation there requires binding
+`DASHBOARD_ASSISTANT_API_BASE` to an HTTPS Ollama endpoint the edge can reach.
+The current direct quick-tunnel URL continues to expose the full local runtime.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or

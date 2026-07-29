@@ -26,7 +26,7 @@ describe("AgenticQAPanel", () => {
     const ready = {
       status: "ready",
       error: null,
-      model: "nvidia/nemotron-3-super-120b-a12b",
+      model: "llama3.2:3b",
     };
     fetchStatusMock.mockResolvedValue(ready);
     streamChatMock.mockImplementation(() => (async function* () {

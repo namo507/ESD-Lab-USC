@@ -79,13 +79,9 @@ spec:
                   name: {{ .Values.secret.name }}
                   key: pagesDeployHookUrl
                   optional: true
+            # Ollama itself needs no credential; this stays optional so an
+            # authenticating proxy in front of a shared runtime still works.
             - name: DASHBOARD_ASSISTANT_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secret.name }}
-                  key: {{ .Values.assistant.apiKeySecretKey }}
-                  optional: true
-            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secret.name }}

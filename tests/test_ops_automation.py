@@ -119,7 +119,8 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
     assert 'path === "/api/buddy"' in worker
     assert "sanitizeNanoForBuddy" in worker
     assert "DASHBOARD_ASSISTANT_API_KEY" in worker
-    assert "BUDDY_PROVIDER_MODEL" in worker
+    assert "buddyProviderBase(env)" in worker
+    assert "BUDDY_PROVIDER_MODEL_DEFAULT" in worker
     assert "buddyFallbackResponse(request, url, env, reason)" in worker
     assert "cleanBuddyProviderOutput" in worker
 
@@ -216,7 +217,11 @@ const assets = {
     return new Response("not found", { status: 404 });
   },
 };
-const env = { ASSETS: assets, DASHBOARD_ASSISTANT_API_KEY: "test-only" };
+const env = {
+  ASSETS: assets,
+  DASHBOARD_ASSISTANT_API_BASE: "https://ollama.example.test/v1",
+  DASHBOARD_ASSISTANT_MODEL: "llama3.2:3b",
+};
 
 async function ask(message) {
   const response = await worker.fetch(new Request("https://example.test/api/buddy", {
@@ -255,7 +260,7 @@ if (result.payload.citations?.length !== 1) {
 }
 if (providerCalls.length !== 1) throw new Error("Provider was not called exactly once");
 const providerBody = JSON.parse(providerCalls[0].body);
-if (providerBody.max_tokens !== 420) throw new Error("Buddy response token budget regressed");
+if (providerBody.max_tokens !== 320) throw new Error("Buddy response token budget regressed");
 const grounding = providerBody.messages
   .map((message) => message.content)
   .join(" ")
@@ -433,7 +438,7 @@ def test_share_compose_defaults_cloudflared_to_http2():
         assert errors == []
 
 
-def test_compose_uses_nvidia_contract_and_scoped_autoheal():
+def test_compose_uses_ollama_contract_and_scoped_autoheal():
     root = Path(__file__).resolve().parents[1]
     for compose_file in [
         root / "docker-compose.yml",
@@ -444,9 +449,21 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         services = payload["services"]
         environment = services["dashboard"]["environment"]
 
-        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-nvidia}")
-        assert "nemotron-3-super-120b-a12b" in environment["DASHBOARD_ASSISTANT_MODEL"]
+        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-ollama}")
+        assert "llama3.2:3b" in environment["DASHBOARD_ASSISTANT_MODEL"]
+        # The dashboard reaches the sibling runtime by service name, never a
+        # public provider endpoint.
+        assert "ollama:11434" in environment["DASHBOARD_ASSISTANT_API_BASE"]
         assert "${" in environment["DASHBOARD_ASSISTANT_API_KEY"]
+
+        # The assistant runtime ships with the stack and keeps its weights in a
+        # named volume rather than the image or the repository.
+        ollama = services["ollama"]
+        assert ollama["image"].startswith("ollama/ollama:")
+        assert any(
+            mount.get("source") == "ollama-models" for mount in ollama["volumes"]
+        )
+        assert payload["volumes"]["ollama-models"] is None
         assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
             "${DASHBOARD_ASSISTANT_ENABLED:-true}"
         )
@@ -532,7 +549,7 @@ def test_share_script_normalizes_legacy_tunnel_token_for_compose_secret():
     assert 'export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"' in script
 
 
-def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
+def test_helm_assistant_runtime_is_in_cluster_and_reliability_is_configured():
     root = Path(__file__).resolve().parents[1]
     chart = root / "k8s" / "helm" / "esd-lab-dashboard"
     values = yaml.safe_load((chart / "values.yaml").read_text(encoding="utf-8"))
@@ -541,8 +558,19 @@ def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
         encoding="utf-8"
     )
 
-    assert values["assistant"]["provider"] == "nvidia"
+    assert values["assistant"]["provider"] == "ollama"
+    assert values["assistant"]["model"] == "llama3.2:3b"
     assert values["assistant"]["apiKeySecretKey"] == "dashboardAssistantApiKey"
+    # The runtime is deployed in-cluster; the dashboard resolves it by service
+    # name instead of requiring an operator-supplied endpoint.
+    assert values["ollama"]["enabled"] is True
+    assert values["ollama"]["persistence"]["enabled"] is True
+    ollama_deployment = (chart / "templates" / "deployment-ollama.yaml").read_text(
+        encoding="utf-8"
+    )
+    assert "kind: PersistentVolumeClaim" in ollama_deployment
+    assert "ollama pull" in ollama_deployment
+    assert "esd-lab-dashboard.assistantApiBase" in configmap
     for key in (
         "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",
         "DASHBOARD_ASSISTANT_RETRY_JITTER",

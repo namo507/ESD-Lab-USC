@@ -26,7 +26,7 @@ import { useUi } from "@/store/ui";
 const READY_STATUS = {
   status: "ready" as const,
   error: null,
-  model: "nvidia/test-model",
+  model: "llama3.2:3b",
 };
 
 describe("ChatDrawer response controls", () => {

@@ -27,6 +27,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 BUDDY_ENDPOINT = "/api/buddy"
 BUDDY_MAX_CONTEXT_CHARS = 64
+# Ceiling for evidence packed into a Buddy generation request; the effective cap
+# also honors the assistant's configured context budget.
+BUDDY_MAX_GROUNDING_CHARS = 7000
 BUDDY_CITATION_ROOTS = (
     "docs/",
     "esd-lab-readings/",
@@ -1246,23 +1249,40 @@ class NanoBuddyAssistant:
             return {}
         return sanitize_nano_metrics(payload)
 
+    def _grounding_char_cap(self) -> int:
+        """Bound packed Buddy evidence by the assistant's own context budget."""
+        configured = getattr(getattr(self.assistant, "config", None), "context_char_budget", 0)
+        try:
+            budget = int(configured)
+        except (TypeError, ValueError):
+            budget = 0
+        return max(600, min(BUDDY_MAX_GROUNDING_CHARS, budget or BUDDY_MAX_GROUNDING_CHARS))
+
     def _try_provider(self, prompt: str, context_block: str) -> str | None:
         try:
             answer = self.assistant.complete_grounded_answer(
                 message=_scrub_prompt(prompt),
                 system_prompt=(
-                    "You are ESD Lab Buddy for the NANO dashboard. Answer only from the "
-                    "allowlisted aggregate metrics and document snippets supplied below. "
-                    "Never infer, request, or reveal participant-level data, identifiers, "
-                    "raw signals, names, dates of birth, MRNs, contact details, or free-text "
-                    "notes. If evidence is missing, say so. Be concise and distinguish live "
-                    "metrics from document guidance. Do not invent citations or paths; the "
-                    "API attaches its own allowlisted citations."
+                    # Numbered rules keep a small local model on contract.
+                    "You are ESD Lab Buddy for the NANO dashboard.\n"
+                    "Rules:\n"
+                    "1. Answer only from the allowlisted aggregate metrics and document "
+                    "snippets supplied below.\n"
+                    "2. Never infer, request, or reveal participant-level data, identifiers, "
+                    "raw signals, names, dates of birth, MRNs, contact details, or free-text notes.\n"
+                    "3. If the evidence is missing, say so plainly instead of guessing.\n"
+                    "4. Answer in at most 3 short sentences or bullets, and state whether a "
+                    "fact comes from a live metric or from document guidance.\n"
+                    "5. Do not invent citations or file paths; the API attaches its own "
+                    "allowlisted citations.\n"
+                    "6. Output only the answer: no reasoning, planning, or preamble."
                 ),
-                context_block=context_block[:12000],
-                # Nemotron is a reasoning model, so leave enough budget for a
-                # complete concise answer after any hidden reasoning tokens.
-                max_tokens=420,
+                # Local prefill is CPU-bound, so the packed evidence stays small
+                # enough to answer quickly. The cap follows the assistant's
+                # configured budget: a deployment that shrinks the context window
+                # for a small host would otherwise overflow the server context.
+                context_block=context_block[: self._grounding_char_cap()],
+                max_tokens=320,
             )
         except (AssistantUnavailable, ValueError):
             return None

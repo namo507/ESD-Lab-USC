@@ -1,22 +1,23 @@
 {
-  "schema_version": 4,
-  "policy": "hosted-provider",
-  "provider": "nvidia",
-  "runtime": "nvidia-build-api",
+  "schema_version": 5,
+  "policy": "ollama-local-default",
+  "provider": "ollama",
+  "runtime": "ollama",
   "api_base_env": "DASHBOARD_ASSISTANT_API_BASE",
   "api_key_env": "DASHBOARD_ASSISTANT_API_KEY",
   "model_env": "DASHBOARD_ASSISTANT_MODEL",
-  "default_api_base": "https://integrate.api.nvidia.com/v1",
-  "default_model": "nvidia/nemotron-3-super-120b-a12b",
-  "self_hosted": {
+  "default_api_base": "http://127.0.0.1:11434/v1",
+  "default_model": "llama3.2:3b",
+  "remote": {
     "enabled_by_default": false,
-    "enabled_env": "DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED",
-    "base_url_env": "DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL",
-    "example_base_url": "http://nemotron-nim:8000/v1"
+    "base_url_env": "DASHBOARD_ASSISTANT_REMOTE_BASE_URL",
+    "example_base_url": "http://ollama:11434/v1"
   },
   "notes": [
     "Runtime values are sourced from environment variables; this file contains no credentials.",
-    "The hosted NVIDIA endpoint is the supported default.",
-    "Self-hosted NIM requires dedicated GPU infrastructure and is opt-in only."
+    "Ollama (https://github.com/ollama/ollama) runs the model on this deployment's own hardware; no provider API key is required.",
+    "Install the runtime with `make ollama-install`, then `make ollama-up` and `make ollama-pull`.",
+    "Model weights live in the Ollama store and are never committed to this repository.",
+    "Point DASHBOARD_ASSISTANT_REMOTE_BASE_URL at another host to use a shared or GPU-backed Ollama server."
   ]
 }

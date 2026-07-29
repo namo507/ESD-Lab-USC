@@ -49,10 +49,12 @@ Values belong in `.env`; commit only `.env.example`.
 | --- | --- |
 | `DASHBOARD_HOST_PORT` | Host port mapped to dashboard container port `8080`. |
 | `DASHBOARD_MEM_LIMIT` | Compose memory limit for the dashboard service. |
-| `DASHBOARD_ASSISTANT_API_BASE` | NVIDIA OpenAI-compatible endpoint; hosted NVIDIA is the default. |
-| `DASHBOARD_ASSISTANT_API_KEY` | NVIDIA key loaded from local `.env`; never bake it into the image. |
-| `DASHBOARD_ASSISTANT_MODEL` | Hosted model identifier. |
-| `DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS` | Provider request timeout; it does not affect app health checks. |
+| `DASHBOARD_ASSISTANT_API_BASE` | Ollama OpenAI-compatible endpoint; the Compose `ollama` service is the default. |
+| `DASHBOARD_ASSISTANT_API_KEY` | Unused by Ollama; set only when an authenticating proxy fronts a shared runtime. |
+| `DASHBOARD_ASSISTANT_MODEL` | Ollama model tag, e.g. `llama3.2:3b`. Pull it before use. |
+| `DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS` | Runtime request timeout; it does not affect app health checks. |
+| `OLLAMA_KEEP_ALIVE` | How long the model stays resident between questions (default `30m`). |
+| `OLLAMA_CONTEXT_LENGTH` | Runtime context length; keep >= `DASHBOARD_ASSISTANT_CONTEXT_WINDOW`. |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Named tunnel token; Compose mounts it as a secret. |
 | `CLOUDFLARED_TUNNEL_TOKEN` | Backward-compatible alias used by `scripts/share_dashboard.sh`; Compose uses the canonical key above. |
 | `DASHBOARD_PUBLIC_HOSTNAME` | Public hostname for a stable dashboard tunnel. |

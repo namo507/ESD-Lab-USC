@@ -6,7 +6,7 @@ from .local_chat_assistant import (
     DashboardChatAssistant,
 )
 from .nano_buddy import BuddyRequestError, NanoBuddyAssistant
-from .provider import NVIDIAOpenAIProvider, ProviderConfig, ProviderError
+from .provider import OllamaProvider, ProviderConfig, ProviderError
 
 __all__ = [
     "AssistantConfig",
@@ -14,7 +14,7 @@ __all__ = [
     "BuddyRequestError",
     "DashboardChatAssistant",
     "NanoBuddyAssistant",
-    "NVIDIAOpenAIProvider",
+    "OllamaProvider",
     "ProviderConfig",
     "ProviderError",
 ]

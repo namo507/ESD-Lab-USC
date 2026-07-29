@@ -78,7 +78,7 @@ def build_lab_operations_payload(generated_at: str | None = None) -> dict[str, A
             {
                 "area": "Assistant",
                 "status": "live",
-                "shown": "Hover-aware Buddy glossary, NVIDIA-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
+                "shown": "Hover-aware Buddy glossary, Ollama-backed chat drawer, provider status, REDCap freshness, and fast-path prompts.",
                 "next_need": "Ground assistant answers in the same lab-operations payload shown on the dashboard.",
             },
         ],

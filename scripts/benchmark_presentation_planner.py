@@ -2,8 +2,8 @@
 """Evaluate presentation planning through the configured assistant provider.
 
 The default mode is offline and only validates configuration/normalization
-fixtures. Pass ``--live`` explicitly to send metered requests to the configured
-NVIDIA OpenAI-compatible endpoint.
+fixtures. Pass ``--live`` explicitly to generate against the configured Ollama
+runtime, which occupies the model for the duration of the benchmark.
 """
 
 from __future__ import annotations
@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-        print("Live mode sends metered NVIDIA provider requests.")
+        print("Live mode generates on the local Ollama runtime; the model stays busy.")
         results["rows"] = [
             _live_row(assistant, concept, audience, grounded)
             for concept, audience, grounded in BENCHMARK_CONCEPTS

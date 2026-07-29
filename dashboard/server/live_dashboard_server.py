@@ -4649,7 +4649,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         if provider_state == "ready" and payload.get("ready"):
             status = "ready"
             error = None
-        elif provider_state in {"disabled", "credentials-missing", "unloaded"}:
+        elif provider_state in {"disabled", "credentials-missing", "unloaded", "model-missing"}:
             status = "unloaded"
             error = payload.get("message")
         else:

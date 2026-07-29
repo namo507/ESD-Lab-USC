@@ -21,7 +21,7 @@ Automation path:
 2. Pull and QC REDCap data.
 3. Rebuild `dashboard/data/dashboard_data.json`.
 4. Regenerate TypeScript REDCap constants.
-5. Emit assistant context and reindex the NVIDIA-hosted grounded assistant.
+5. Emit assistant context and reindex the Ollama-backed grounded assistant.
 6. Build Pages and run Docker/Kubernetes health checks.
 
 Privacy stance:

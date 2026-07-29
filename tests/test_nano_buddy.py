@@ -376,7 +376,8 @@ def test_buddy_reuses_shared_provider_with_sanitized_grounding(tmp_path):
 
     assert result["answer"] == "Use neurokit2 and review aggregate QC."
     assert provider.messages is not None
-    assert provider.kwargs["max_tokens"] == 420
+    # Local generation is CPU-bound, so Buddy answers stay short by contract.
+    assert provider.kwargs["max_tokens"] == 320
     grounding = json.dumps(provider.messages).casefold()
     assert "docs/ecg_processing_protocol.md" in grounding
     assert "use neurokit2, then review aggregate qc" in grounding

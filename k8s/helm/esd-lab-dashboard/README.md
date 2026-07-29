@@ -21,14 +21,20 @@ and optional Pages packaging trigger metadata.
 Secrets are never hardcoded. To enable the optional Pages redeploy hook, create
 or render a Secret named by `secret.name` with key `pagesDeployHookUrl`.
 
-The default assistant runtime is NVIDIA's hosted OpenAI-compatible endpoint and
-does not download model weights into the pod. Inject the API key through the
-existing Secret (key `dashboardAssistantApiKey` by default):
+The assistant runtime is Ollama, deployed in-cluster by default
+(`ollama.enabled=true`) as a single-replica Deployment with a ReadWriteOnce PVC
+for the model store; a `postStart` hook pulls `assistant.model` idempotently. The
+dashboard resolves the endpoint from the chart, so no API key and no endpoint
+value are required. To use an external runtime instead:
 
 ```bash
-kubectl -n esd-lab create secret generic esd-lab-dashboard-secrets \
-  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY"
+helm upgrade --install esd-lab-dashboard k8s/helm/esd-lab-dashboard \
+  --set ollama.enabled=false \
+  --set assistant.apiBase=http://ollama.lab.internal:11434/v1
 ```
+
+`dashboardAssistantApiKey` remains supported and optional, for the case where an
+authenticating proxy fronts a shared runtime.
 
 The dashboard starts and passes readiness checks when that key is missing or the
 provider is unavailable; only the assistant reports a degraded state. A future
