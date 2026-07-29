@@ -1,6 +1,6 @@
 # NANO dashboard runtime dependencies.
-# Hosted NVIDIA inference uses the OpenAI-compatible client; no local model
-# weights or compiler-specific llama.cpp wheels are required.
+# The assistant talks to the Ollama service over its OpenAI-compatible API, so
+# the image needs that client but no model weights and no llama.cpp wheels.
 
 numpy>=1.26.0
 pandas>=2.1.0
