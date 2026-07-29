@@ -87,6 +87,139 @@ SUMMARY_KEYS = (
     "lab_operations",
 )
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_]{2,}")
+# Function words carry no topic signal, so they are ignored when deciding
+# whether a question can possibly be about the indexed dashboard data.
+QUESTION_STOPWORDS = {
+    "about",
+    "all",
+    "also",
+    "an",
+    "and",
+    "any",
+    "anything",
+    "are",
+    "as",
+    "ask",
+    "at",
+    "be",
+    "been",
+    "being",
+    "best",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "could",
+    "current",
+    "currently",
+    "describe",
+    "did",
+    "do",
+    "does",
+    "explain",
+    "for",
+    "from",
+    "get",
+    "give",
+    "got",
+    "had",
+    "has",
+    "have",
+    "how",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "just",
+    "know",
+    "like",
+    "list",
+    "long",
+    "look",
+    "made",
+    "make",
+    "many",
+    "may",
+    "me",
+    "mean",
+    "means",
+    "might",
+    "more",
+    "most",
+    "much",
+    "must",
+    "my",
+    "need",
+    "now",
+    "of",
+    "on",
+    "one",
+    "only",
+    "or",
+    "other",
+    "our",
+    "out",
+    "over",
+    "please",
+    "put",
+    "quick",
+    "right",
+    "same",
+    "say",
+    "see",
+    "should",
+    "show",
+    "so",
+    "some",
+    "still",
+    "such",
+    "summarize",
+    "summary",
+    "take",
+    "tell",
+    "than",
+    "that",
+    "the",
+    "their",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "to",
+    "today",
+    "told",
+    "too",
+    "under",
+    "up",
+    "us",
+    "use",
+    "used",
+    "using",
+    "very",
+    "want",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "why",
+    "will",
+    "with",
+    "would",
+    "you",
+    "your",
+}
 SECTION_KEYWORDS: dict[str, set[str]] = {
     "enrollment": {
         "enrollment",
@@ -631,6 +764,28 @@ SECTION_KEYWORDS: dict[str, set[str]] = {
         "coverage",
     },
 }
+READING_LIBRARY_TOKENS = {
+    "library",
+    "paper",
+    "papers",
+    "publication",
+    "publications",
+    "reading",
+    "readings",
+    "titles",
+}
+READING_LOOKUP_REQUEST_TOKENS = {
+    "catalog",
+    "collection",
+    "have",
+    "indexed",
+    "library",
+    "list",
+    "papers",
+    "reading",
+    "readings",
+    "titles",
+}
 READING_SUMMARY_REQUEST_TOKENS = {
     "summarize",
     "summarise",
@@ -997,6 +1152,7 @@ class DashboardChatAssistant:
         self._generator = None
         self._last_error: str | None = None
         self._json_cache: dict[Path, tuple[int, Any]] = {}
+        self._vocabulary_cache: tuple[tuple[int, ...], set[str]] | None = None
 
         self._maybe_load_dotenv()
         self.config = config or AssistantConfig.from_env()
@@ -1637,10 +1793,17 @@ class DashboardChatAssistant:
                 citations = [source_path, *[c for c in citations if c != source_path]]
                 break
 
+        topical = self._is_topical(question, focus_sections)
+        if not topical:
+            # Irrelevant evidence is worse than none: it invites the model to
+            # answer from world-knowledge and cite unrelated dashboard keys.
+            grounded = False
+
         return {
             "context": "\n".join(part for part in context_parts if part),
-            "citations": citations[:6],
+            "citations": citations[:6] if topical else [],
             "grounded": grounded,
+            "topical": topical,
             "focus_sections": sorted(focus_sections),
             "reading_matches": reading_matches,
             "reading_metadata_only": bool(reading_matches)
@@ -1726,7 +1889,8 @@ class DashboardChatAssistant:
                     "2. If the context does not answer the question, say you cannot verify it from the dashboard data provided.\n"
                     "3. Be concise: 2-4 short bullets or sentences. Expand only when the user explicitly asks for more detail.\n"
                     "4. Output only the final answer. No analysis, planning, hidden reasoning, prompt text, restated question, or preamble.\n"
-                    "5. Copy counts, group labels, model names, and AUROC values from the context verbatim.\n"
+                    "5. Copy counts, group labels, model names, and AUROC values from the context verbatim, and report no number that is not in the context.\n"
+                    "5a. Never expand or define an acronym unless the context defines it; use it as written.\n"
                     "6. Add no judgments, speculation, or interpretation that the context does not state.\n"
                     "7. Match the audience or reading level the user asks for.\n"
                     "8. Use plain Markdown: one bullet per part, no heading on a short answer.\n"
@@ -1751,6 +1915,60 @@ class DashboardChatAssistant:
     def _resolve_model_path(self) -> Path | None:
         """Compatibility helper: Ollama owns weight storage, not the dashboard."""
         return None
+
+    def _domain_vocabulary(self) -> set[str]:
+        """Every word that appears anywhere in the indexed dashboard data.
+
+        Used to answer one question cheaply: could this question possibly be
+        about the indexed data at all?  Rebuilt only when a payload file
+        changes, so the common path is a dictionary lookup.
+        """
+        dashboard_path = self.data_dir / "dashboard_data.json"
+        readings_path = self.data_dir / "readings_data.json"
+        signature = tuple(
+            path.stat().st_mtime_ns if path.exists() else 0
+            for path in (dashboard_path, readings_path)
+        )
+        cached = self._vocabulary_cache
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+
+        blob = json.dumps(self._load_dashboard_payload(), default=str)
+        blob += json.dumps(self._load_readings_payload(), default=str)
+        vocabulary: set[str] = set()
+        for token in _tokenize(blob):
+            if token.isdigit():
+                continue
+            vocabulary.add(token)
+            # Payload keys are snake_case, so their component words have to
+            # count too or a question phrased in plain English looks foreign.
+            vocabulary.update(part for part in token.split("_") if len(part) > 1)
+        for keywords in SECTION_KEYWORDS.values():
+            vocabulary |= keywords
+        self._vocabulary_cache = (signature, vocabulary)
+        return vocabulary
+
+    def _is_topical(self, question: str, focus_sections: set[str] | list[str]) -> bool:
+        """Reject questions the indexed data cannot speak to at all.
+
+        The retriever always packs *some* context, so an off-topic question
+        otherwise reaches the model with irrelevant evidence and gets answered
+        from model world-knowledge.  A question is treated as topical when the
+        retriever resolved a dashboard section, or - when it did not - when
+        every meaningful word in the question exists in the indexed data.
+        """
+        if focus_sections:
+            return True
+        content = {
+            token
+            for token in set(_tokenize(question)) - QUESTION_STOPWORDS
+            if not token.isdigit()
+        }
+        if not content:
+            # A question with no content words (a greeting, punctuation) has
+            # nothing to contradict; let the normal grounding checks decide.
+            return True
+        return content <= self._domain_vocabulary()
 
     def _load_dashboard_payload(self) -> dict[str, Any]:
         path = self.data_dir / "dashboard_data.json"
@@ -3398,32 +3616,21 @@ class DashboardChatAssistant:
                     f"Future option: {family.get('future_option')}"
                 )
 
-        if question_tokens & {
+        # "status" on its own is ambiguous - it appears in data quality, REDCap,
+        # and pipeline questions - so the surface inventory needs an explicit
+        # surface subject before it can claim the question.
+        surface_subject = question_tokens & {
             "shown",
             "showing",
-            "dashboard",
-            "website",
             "surface",
             "surfaces",
             "feature",
             "features",
-            "status",
-        }:
+        }
+        surface_scope = question_tokens & {"dashboard", "website"}
+        if surface_subject or (surface_scope and "status" in question_tokens):
             surfaces = facts.get("lab_operations_surfaces") or []
-            if (
-                question_tokens
-                & {
-                    "shown",
-                    "showing",
-                    "surface",
-                    "surfaces",
-                    "feature",
-                    "features",
-                    "status",
-                }
-                and isinstance(surfaces, list)
-                and surfaces
-            ):
+            if isinstance(surfaces, list) and surfaces:
                 return "Dashboard surface status: " + " ".join(
                     f"{row.get('area')} is {row.get('status')}: {row.get('shown')}"
                     for row in surfaces
@@ -4203,14 +4410,19 @@ class DashboardChatAssistant:
                 f"The aggregate QC block lists ecg_transfer_late={flags.get('ecg_transfer_late', 'not available')} and temp_quality_rejected={flags.get('temp_quality_rejected', 'not available')}."
             )
 
-        if (
-            context.get("reading_metadata_only")
-            and question_tokens & READING_SUMMARY_REQUEST_TOKENS
+        if context.get("reading_metadata_only") and question_tokens & (
+            READING_SUMMARY_REQUEST_TOKENS | READING_LOOKUP_REQUEST_TOKENS
         ):
             return self._format_reading_metadata_response(reading_matches)
 
+        # A question naming the reading library is a catalog lookup. Only
+        # metadata and short excerpts are indexed, so the deterministic answer is
+        # both the honest one and instant; synthesis would invent full text.
+        if reading_matches and question_tokens & READING_LIBRARY_TOKENS:
+            return self._format_reading_metadata_response(reading_matches)
+
         if not context.get("grounded"):
-            if reading_matches:
+            if reading_matches and context.get("topical", True):
                 return self._format_reading_metadata_response(reading_matches)
             return (
                 "I can't verify that from the indexed NANO dashboard context right now. "

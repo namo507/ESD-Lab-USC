@@ -90,6 +90,8 @@ _REDACTED_PHI_RE = re.compile(
     re.IGNORECASE,
 )
 _PROMPT_ID_RE = re.compile(r"\b(?:nano|asib|pt|td|vpt)[-_ ]?\d{1,8}\b", re.IGNORECASE)
+# Numbers a generated answer states, used to check them against the evidence.
+_ANSWER_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 _REASONING_BLOCK_RE = re.compile(
     r"<(?:think|analysis|reasoning)\s*>.*?</(?:think|analysis|reasoning)\s*>",
     re.IGNORECASE | re.DOTALL,
@@ -136,6 +138,29 @@ _COMMON_QUERY_TOKENS = {
     "you",
     "your",
 }
+
+
+def _is_study_overview_request(prompt_tokens: set[str]) -> bool:
+    """Detect a question about what the study is or measures."""
+    subject = prompt_tokens & {"nano", "study", "research", "project"}
+    intent = prompt_tokens & {
+        "about",
+        "aim",
+        "aims",
+        "does",
+        "do",
+        "goal",
+        "goals",
+        "measure",
+        "measures",
+        "measuring",
+        "overview",
+        "purpose",
+        "study",
+        "studying",
+        "what",
+    }
+    return bool(subject and intent)
 
 
 class BuddyRequestError(ValueError):
@@ -1308,6 +1333,31 @@ class NanoBuddyAssistant:
                     "refused": False,
                 }
 
+        # "What does the NANO study measure?" is answerable from the public study
+        # description. Leaving it to open-ended generation over metric JSON
+        # produced answers about the data source rather than the study.
+        if _is_study_overview_request(prompt_tokens):
+            overview = self._public_study_overview()
+            if overview:
+                return {
+                    "answer": overview,
+                    "citations": [],
+                    "used_metrics": ["nano.study_meta.public_summary"],
+                    "refused": False,
+                }
+            # Metric JSON cannot describe what a study measures; asking the model
+            # to try produced answers about the data source instead.
+            return {
+                "answer": (
+                    "I don't have the study description indexed here. "
+                    "I can answer from NANO aggregate metrics - enrollment, visit counts, "
+                    "HDA, RSA, pipeline QC, inventory, REDCap health - or from an indexed SOP."
+                ),
+                "citations": [],
+                "used_metrics": [],
+                "refused": False,
+            }
+
         documents: list[_DocumentMatch] = []
         if self._is_document_help_request(prompt):
             documents = self._find_documents(prompt, limit=2)
@@ -1335,11 +1385,15 @@ class NanoBuddyAssistant:
                 {"nano": nano}, ensure_ascii=True, separators=(",", ":")
             )
             generated = self._try_provider(prompt, context_block)
-            if generated:
+            if generated and self._answer_is_supported(generated, context_block):
                 return {
                     "answer": generated,
+                    # Name the evidence that was actually supplied so an
+                    # open-ended answer is never returned as evidence-free.
                     "citations": [],
-                    "used_metrics": [],
+                    "used_metrics": [
+                        f"nano.{key}" for key in sorted(nano) if key != "meta"
+                    ][:8],
                     "refused": False,
                 }
 
@@ -1471,6 +1525,60 @@ class NanoBuddyAssistant:
             return {}
         return sanitize_nano_metrics(payload)
 
+    def _public_study_overview(self) -> str | None:
+        """Describe the study from its published, participant-facing summary.
+
+        Only the public website fields are read, so this stays inside the
+        aggregate, non-PHI Buddy allowlist.
+        """
+        payload = self.assistant._load_dashboard_payload()
+        organization = payload.get("organization_site")
+        studies = (
+            organization.get("studies") if isinstance(organization, dict) else None
+        )
+        if not isinstance(studies, list):
+            return None
+        for study in studies:
+            if not isinstance(study, dict):
+                continue
+            label = str(study.get("title") or study.get("slug") or "").casefold()
+            if "nano" not in label:
+                continue
+            public_only = {
+                key: study.get(key)
+                for key in (
+                    "title",
+                    "summary",
+                    "details",
+                    "eligibility",
+                    "compensation",
+                )
+                if study.get(key)
+            }
+            return self.assistant._format_nano_study_explainer_response(public_only)
+        return None
+
+    @staticmethod
+    def _answer_is_supported(answer: str, context_block: str) -> bool:
+        """Reject a generated answer that states a number absent from evidence.
+
+        The provider only ever sees the allowlisted metric block, so any figure
+        it reports that is not in that block was invented.
+        """
+        numbers = _ANSWER_NUMBER_RE.findall(answer or "")
+        if not numbers:
+            return True
+        evidence = set(_ANSWER_NUMBER_RE.findall(context_block or ""))
+        for number in numbers:
+            if number in evidence:
+                continue
+            # Tolerate a rounded restatement such as 12.0 for 12.
+            trimmed = number.rstrip("0").rstrip(".") if "." in number else number
+            if trimmed and trimmed in evidence:
+                continue
+            return False
+        return True
+
     def _grounding_char_cap(self) -> int:
         """Bound packed Buddy evidence by the assistant's own context budget."""
         configured = getattr(
@@ -1501,7 +1609,10 @@ class NanoBuddyAssistant:
                     "fact comes from a live metric or from document guidance.\n"
                     "5. Do not invent citations or file paths; the API attaches its own "
                     "allowlisted citations.\n"
-                    "6. Output only the answer: no reasoning, planning, or preamble."
+                    "6. Never expand or define an acronym unless the supplied text "
+                    "defines it; name it as written instead.\n"
+                    "7. Report only numbers that appear in the supplied evidence.\n"
+                    "8. Output only the answer: no reasoning, planning, or preamble."
                 ),
                 # Local prefill is CPU-bound, so the packed evidence stays small
                 # enough to answer quickly. The cap follows the assistant's

@@ -786,3 +786,108 @@ def test_assistant_answers_lab_reporting_from_payload(tmp_path):
     assert response is not None
     assert "Budget reporting goal" in response
     assert "prepared aggregate inputs" in response
+
+
+def _grounded_assistant(tmp_path):
+    """Assistant over a small but realistic dashboard payload."""
+    data_dir = tmp_path / "dashboard-data"
+    data_dir.mkdir()
+    (data_dir / "dashboard_data.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "data_source": "repo_demo_inputs",
+                    "study": {"name": "NANO Study"},
+                },
+                "enrollment": {"overall": {"current": 210, "target": 260}},
+                "data_quality": {
+                    "missingness": [{"stream": "ecg", "missing_pct": 4.1}],
+                    "qc_flags": {"ecg_transfer_late": 45, "temp_quality_rejected": 27},
+                },
+                "lab_operations": {
+                    "dashboard_surface_status": [
+                        {"area": "Overview", "status": "live", "shown": "KPIs"}
+                    ]
+                },
+            }
+        )
+    )
+    (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
+    return DashboardChatAssistant(
+        config=AssistantConfig(status_probe_enabled=False),
+        data_dir=data_dir,
+        client=object(),
+    )
+
+
+def test_off_topic_question_is_refused_without_reaching_the_model(tmp_path):
+    """The retriever always packs some context, so relevance must be checked."""
+    assistant = _grounded_assistant(tmp_path)
+
+    for question in (
+        "What is the average rainfall in Seattle?",
+        "Who won the 2022 World Cup?",
+        "What is the capital of France?",
+        "Write me a python function to sort a list.",
+    ):
+        context = assistant.build_context(question)
+        reply = assistant._maybe_short_circuit_response(question, context)
+
+        assert context["topical"] is False, question
+        assert context["grounded"] is False, question
+        # An unrelated question must not carry dashboard citations either.
+        assert context["citations"] == [], question
+        assert reply is not None and reply.startswith("I can't verify"), question
+
+
+def test_dashboard_questions_remain_topical(tmp_path):
+    assistant = _grounded_assistant(tmp_path)
+
+    for question in (
+        "How many participants are enrolled?",
+        "What is the current data quality status?",
+        "Tell me about the cohort.",
+        "Is the pipeline healthy?",
+    ):
+        assert assistant.build_context(question)["topical"] is True, question
+
+
+def test_status_questions_route_to_their_own_topic_not_the_surface_list():
+    """`status` alone used to hand every question to the surface inventory.
+
+    Uses the repository payload because the routing only matters against the
+    full set of competing handlers.
+    """
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(status_probe_enabled=False), client=object()
+    )
+
+    for question in (
+        "What is the current data quality status?",
+        "What is the REDCap visit health status?",
+    ):
+        context = assistant.build_context(question)
+        reply = assistant._maybe_short_circuit_response(question, context) or ""
+        assert not reply.startswith("Dashboard surface status"), question
+
+    surface_question = "What dashboard surfaces are shown?"
+    surface_context = assistant.build_context(surface_question)
+    surface_reply = assistant._maybe_short_circuit_response(
+        surface_question, surface_context
+    )
+    assert surface_reply is not None
+    assert surface_reply.startswith("Dashboard surface status")
+
+
+def test_reading_library_lookup_is_answered_from_the_index_not_the_model():
+    """Only metadata and excerpts are indexed, so synthesis would invent text."""
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(status_probe_enabled=False), client=object()
+    )
+
+    question = "What readings are in the library about attention?"
+    context = assistant.build_context(question)
+    reply = assistant._maybe_short_circuit_response(question, context)
+
+    assert reply is not None
+    assert "full PDF text" in reply or "indexed reading" in reply.lower()

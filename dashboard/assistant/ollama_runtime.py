@@ -167,7 +167,9 @@ def pull_model(
             percent = int(min(100.0, max(0.0, (done / total) * 100.0)))
         if on_progress is not None and status:
             # Report each new phase, and each whole 5% of a download phase.
-            if status != last_status or (percent >= 0 and percent // 5 != last_percent // 5):
+            if status != last_status or (
+                percent >= 0 and percent // 5 != last_percent // 5
+            ):
                 suffix = f" {percent}%" if percent >= 0 else ""
                 on_progress(f"{status}{suffix}")
         if status:

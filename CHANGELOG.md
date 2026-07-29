@@ -22,6 +22,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Chat and Buddy system prompts restructured as numbered rules, which small
   local models follow far more reliably than equivalent prose.
 
+### Fixed
+- Off-topic questions were answered from model world-knowledge. The retriever
+  always packs some context, so relevance is now checked before generation: a
+  question is answerable when the retriever resolved a dashboard section, or
+  when every meaningful word in it exists in the indexed data. Unrelated
+  questions get the "cannot verify" reply instantly, with no citations and no
+  model call.
+- `status` in a question routed it to the dashboard surface inventory, so "data
+  quality status" and "REDCap visit health status" both returned the list of
+  live dashboard surfaces. The surface answer now needs an explicit surface
+  subject.
+- Reading-library lookups went to the model, which took tens of seconds and
+  named loosely related papers. Only metadata and excerpts are indexed, so these
+  are answered from the index instead.
+- NANO Buddy answered "what does the study measure" from metric JSON, describing
+  the data source rather than the study; it now uses the published study
+  summary.
+- NANO Buddy could return a generated answer stating a figure absent from its
+  evidence. Numbers in a generated answer are now checked against the supplied
+  metrics, and open-ended answers declare the evidence they were given.
+- Buddy grounding was capped at a fixed 7000 characters, overflowing the server
+  context on a deployment configured for a smaller context window.
+
 ### Added
 - `scripts/ollama.sh` plus `make ollama-install|ollama-up|ollama-down|ollama-pull|ollama-status`
   to install a checksum-verified pinned Ollama release into `.tools/ollama`,

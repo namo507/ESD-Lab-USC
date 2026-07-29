@@ -386,7 +386,9 @@ def test_buddy_reuses_shared_provider_with_sanitized_grounding(tmp_path):
     assert "nano-001" not in grounding
 
 
-def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(tmp_path):
+def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(
+    tmp_path,
+):
     buddy = _buddy(tmp_path)
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
@@ -431,7 +433,10 @@ def test_buddy_explains_pipeline_stage_cards_without_provider(tmp_path):
     )
 
     assert result["refused"] is False
-    assert "Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id" in result["answer"]
+    assert (
+        "Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id"
+        in result["answer"]
+    )
     assert "In flight" in result["answer"]
     assert "done" in result["answer"]
     assert "fail" in result["answer"]
@@ -532,3 +537,87 @@ def test_buddy_http_post_get_head_origin_and_content_type(monkeypatch, tmp_path)
     assert head is None
     assert forbidden == 403
     assert unsupported == 415
+
+
+class _FixedProvider:
+    """Provider stub that returns one canned answer."""
+
+    def __init__(self, answer: str):
+        self.answer = answer
+        self.calls = 0
+
+    def status(self):
+        return {
+            "ready": True,
+            "can_attempt": True,
+            "state": "ready",
+            "provider": "test-provider",
+            "dependencies": {"test": True},
+        }
+
+    def complete(self, *, messages, **kwargs):
+        self.calls += 1
+        return self.answer
+
+
+# An open-ended prompt with no metric or document match, so it reaches the
+# last-resort generation branch.
+OPEN_ENDED_PROMPT = "Give me a short narrative for the newsletter."
+
+
+def test_generated_answer_stating_an_unsupplied_number_is_discarded(tmp_path):
+    """A fabricated statistic is the highest-harm Buddy failure."""
+    buddy = _buddy(tmp_path)
+    provider = _FixedProvider("Retention across the cohort is 87 percent this quarter.")
+    buddy.assistant._provider = provider
+
+    result = buddy.answer(OPEN_ENDED_PROMPT)
+
+    assert provider.calls == 1
+    assert "87" not in result["answer"]
+    assert result["refused"] is False
+    # The operator-facing fallback still points at what Buddy can answer.
+    assert "dashboard metrics are still available" in result["answer"]
+
+
+def test_generated_answer_using_supplied_numbers_is_kept(tmp_path):
+    buddy = _buddy(tmp_path)
+    enrolled = str((buddy._load_nano_metrics().get("enrollment") or {}).get("enrolled"))
+    buddy.assistant._provider = _FixedProvider(
+        f"Enrollment currently stands at {enrolled} participants."
+    )
+
+    result = buddy.answer(OPEN_ENDED_PROMPT)
+
+    assert enrolled in result["answer"]
+    # An open-ended answer must declare the evidence it was given.
+    assert result["used_metrics"]
+
+
+def test_study_overview_uses_the_public_summary_without_the_model(tmp_path):
+    buddy = _buddy(tmp_path)
+    payload = json.loads(
+        (buddy.assistant.data_dir / "dashboard_data.json").read_text(encoding="utf-8")
+    )
+    payload["organization_site"] = {
+        "studies": [
+            {
+                "slug": "nano-study",
+                "title": "NANO Study",
+                "summary": "Follows newborn development through the first 3 years.",
+                "details": ["Tracks early social, motor, and language skills."],
+            }
+        ]
+    }
+    (buddy.assistant.data_dir / "dashboard_data.json").write_text(
+        json.dumps(payload), encoding="utf-8"
+    )
+    provider = _FixedProvider("The study measures a synthetic population.")
+    buddy.assistant._provider = provider
+
+    result = buddy.answer("What does the NANO study measure?")
+
+    assert provider.calls == 0
+    assert "synthetic" not in result["answer"].casefold()
+    assert "newborn" in result["answer"].casefold()
+    assert result["refused"] is False
