@@ -170,7 +170,13 @@ def _is_local_host(api_base: str) -> bool:
     lowered = api_base.lower()
     return any(
         f"//{host}" in lowered or f"//{host}:" in lowered
-        for host in ("localhost", "127.0.0.1", "0.0.0.0", "[::1]", "host.docker.internal")
+        for host in (
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",
+            "[::1]",
+            "host.docker.internal",
+        )
     )
 
 
@@ -198,6 +204,12 @@ class ProviderConfig:
     max_concurrency: int = 2
     circuit_failure_threshold: int = 3
     circuit_recovery_seconds: float = 30.0
+    # A local runtime can be stopped at any moment, so status runs a cheap,
+    # cached liveness check rather than reporting readiness from configuration
+    # alone. Generation paths never wait on it.
+    status_probe_enabled: bool = True
+    status_probe_ttl_seconds: float = 15.0
+    status_probe_timeout_seconds: float = 1.0
     # Deprecated hosted-provider knobs: accepted so older callers still build,
     # and honored only as a plain base-URL override for a remote Ollama host.
     self_hosted_enabled: bool = False
@@ -224,7 +236,12 @@ class ProviderConfig:
     @property
     def effective_runtime(self) -> str:
         runtime = (self.runtime or "").strip().lower()
-        if runtime in {"", "nvidia-build-api", "nvidia-nim", "pages-edge-nvidia-build-api"}:
+        if runtime in {
+            "",
+            "nvidia-build-api",
+            "nvidia-nim",
+            "pages-edge-nvidia-build-api",
+        }:
             runtime = ""
         if runtime:
             return runtime
@@ -496,11 +513,61 @@ class OllamaProvider:
         self._active_requests = 0
         self._last_state: str | None = None
         self._last_error: str | None = None
+        self._clock = clock
+        self._liveness_lock = threading.Lock()
+        self._liveness_cache: tuple[float, dict[str, Any]] | None = None
         self._breaker = _CircuitBreaker(
             failure_threshold=config.circuit_failure_threshold,
             recovery_seconds=config.circuit_recovery_seconds,
             clock=clock,
         )
+
+    def _liveness(self) -> dict[str, Any] | None:
+        """Cheap cached check that the runtime is up and holds the model.
+
+        Returns ``None`` when the check does not apply: a disabled probe, or an
+        injected client that stands in for the runtime.  Never raises, and never
+        blocks longer than the configured probe timeout.
+        """
+        if not self.config.status_probe_enabled:
+            return None
+        if self._client is not None or self._client_factory is not None:
+            return None
+
+        ttl = max(0.0, float(self.config.status_probe_ttl_seconds))
+        now = self._clock()
+        with self._liveness_lock:
+            cached = self._liveness_cache
+            if cached is not None and now - cached[0] < ttl:
+                return cached[1]
+
+        # Imported lazily so this module keeps its import-time I/O guarantee.
+        from dashboard.assistant import ollama_runtime
+
+        timeout = max(0.1, float(self.config.status_probe_timeout_seconds))
+        snapshot: dict[str, Any]
+        try:
+            installed = ollama_runtime.installed_models(
+                ollama_runtime.host_from_api_base(self.config.effective_api_base),
+                timeout=timeout,
+            )
+            wanted = {self.config.model, f"{self.config.model}:latest"}
+            snapshot = {
+                "reachable": True,
+                "model_installed": any(name in wanted for name in installed),
+                "installed_models": installed,
+            }
+        except Exception:
+            # A probe failure is only ever a status signal, never a request error.
+            snapshot = {
+                "reachable": False,
+                "model_installed": None,
+                "installed_models": [],
+            }
+
+        with self._liveness_lock:
+            self._liveness_cache = (self._clock(), snapshot)
+        return snapshot
 
     def _configuration_error(self) -> ProviderError | None:
         if not self.config.enabled:
@@ -568,6 +635,26 @@ class OllamaProvider:
             can_attempt = True
             message = "Ollama assistant provider is configured and ready."
 
+        # Configuration alone cannot prove a local runtime is up, and reporting
+        # "ready" for a stopped server would send the user into a failing chat.
+        liveness = self._liveness() if state == "ready" else None
+        if liveness is not None and not liveness.get("reachable"):
+            state = "provider-unreachable"
+            ready = False
+            can_attempt = True
+            message = (
+                "The Ollama assistant runtime is not reachable. Start it with "
+                "`make ollama-up` and try again."
+            )
+        elif liveness is not None and liveness.get("model_installed") is False:
+            state = "model-missing"
+            ready = False
+            can_attempt = False
+            message = (
+                f"The assistant model {self.config.model!r} is not installed in "
+                "Ollama. Run `make ollama-pull` to download it."
+            )
+
         return {
             "enabled": self.config.enabled,
             "provider": self.config.normalized_provider,
@@ -593,6 +680,12 @@ class OllamaProvider:
             "circuit_breaker": circuit,
             "self_hosted": True,
             "remote_host": self.config.uses_remote_host,
+            "runtime_reachable": (
+                None if liveness is None else bool(liveness.get("reachable"))
+            ),
+            "model_installed": (
+                None if liveness is None else liveness.get("model_installed")
+            ),
         }
 
     def _get_client(self) -> Any:
@@ -711,7 +804,11 @@ class OllamaProvider:
 
         # A model that has not been pulled yet is the one failure an operator can
         # fix directly, so it gets its own state and instruction.
-        if numeric_status == 404 or "try pulling it" in text or "model not found" in text:
+        if (
+            numeric_status == 404
+            or "try pulling it" in text
+            or "model not found" in text
+        ):
             return ProviderError(
                 f"The assistant model {self.config.model!r} is not installed in "
                 "Ollama. Run `make ollama-pull` to download it.",

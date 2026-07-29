@@ -105,9 +105,7 @@ def test_build_context_keeps_enrollment_questions_tight_and_relevant(tmp_path):
             ],
         },
         "organization_site": {
-            "stories": [
-                {"title": "Enrollment news", "summary": "Public site summary."}
-            ]
+            "stories": [{"title": "Enrollment news", "summary": "Public site summary."}]
         },
     }
     (data_dir / "dashboard_data.json").write_text(json.dumps(dashboard_payload))
@@ -449,7 +447,8 @@ def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
 def test_status_is_ready_without_any_provider_credential(tmp_path):
     """Ollama is credential-free, so a blank API key must not degrade status."""
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(api_key=None),
+        # The liveness probe is a separate concern; this asserts credentials only.
+        config=AssistantConfig(api_key=None, status_probe_enabled=False),
         data_dir=tmp_path,
     )
 

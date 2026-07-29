@@ -740,7 +740,13 @@ def _normalize_runtime(value: str | None, api_base: str) -> str:
         candidate = ""
     if candidate:
         return candidate
-    local_markers = ("127.0.0.1", "localhost", "0.0.0.0", "[::1]", "host.docker.internal")
+    local_markers = (
+        "127.0.0.1",
+        "localhost",
+        "0.0.0.0",
+        "[::1]",
+        "host.docker.internal",
+    )
     is_local = any(marker in api_base.lower() for marker in local_markers)
     return OLLAMA_RUNTIME if is_local else "ollama-remote"
 
@@ -783,6 +789,10 @@ class AssistantConfig:
     max_concurrency: int = 2
     circuit_failure_threshold: int = 3
     circuit_recovery_seconds: float = 30.0
+    # Status reports real runtime liveness, cached so it stays cheap.
+    status_probe_enabled: bool = True
+    status_probe_ttl_seconds: float = 15.0
+    status_probe_timeout_seconds: float = 1.0
     # Deprecated hosted-provider knobs; honored only as a remote base override.
     self_hosted_enabled: bool = False
     self_hosted_base_url: str = ""
@@ -825,7 +835,9 @@ class AssistantConfig:
         remote_base = _env_first("DASHBOARD_ASSISTANT_REMOTE_BASE_URL") or ""
         if remote_base:
             api_base = normalize_api_base(remote_base)
-        runtime = _normalize_runtime(_env_first("DASHBOARD_ASSISTANT_RUNTIME"), api_base)
+        runtime = _normalize_runtime(
+            _env_first("DASHBOARD_ASSISTANT_RUNTIME"), api_base
+        )
         return cls(
             enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
             provider="ollama",
@@ -889,6 +901,16 @@ class AssistantConfig:
                 os.getenv("DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS"),
                 default=30.0,
             ),
+            status_probe_enabled=_parse_bool(
+                os.getenv("DASHBOARD_ASSISTANT_STATUS_PROBE"), default=True
+            ),
+            status_probe_ttl_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_STATUS_PROBE_TTL_SECONDS"), default=15.0
+            ),
+            status_probe_timeout_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_STATUS_PROBE_TIMEOUT_SECONDS"),
+                default=1.0,
+            ),
             self_hosted_enabled=False,
             self_hosted_base_url="",
             context_char_budget=_parse_int(
@@ -948,6 +970,9 @@ class AssistantConfig:
             max_concurrency=max(1, self.max_concurrency),
             circuit_failure_threshold=max(1, self.circuit_failure_threshold),
             circuit_recovery_seconds=max(0.0, self.circuit_recovery_seconds),
+            status_probe_enabled=self.status_probe_enabled,
+            status_probe_ttl_seconds=max(0.0, self.status_probe_ttl_seconds),
+            status_probe_timeout_seconds=max(0.1, self.status_probe_timeout_seconds),
             self_hosted_enabled=self.self_hosted_enabled,
             self_hosted_base_url=self.self_hosted_base_url,
         )
@@ -2918,9 +2943,7 @@ class DashboardChatAssistant:
                 if isinstance(hda_by_group, dict)
                 else []
             ),
-            "nano_pipeline": (
-                nano_pipeline if isinstance(nano_pipeline, list) else []
-            ),
+            "nano_pipeline": (nano_pipeline if isinstance(nano_pipeline, list) else []),
             "hda_month_count": (
                 max(
                     (
@@ -3444,10 +3467,14 @@ class DashboardChatAssistant:
                         f"{warning_text}"
                     )
 
-        inflight_requested = "inflight" in question_tokens or {
-            "in",
-            "flight",
-        } <= question_tokens
+        inflight_requested = (
+            "inflight" in question_tokens
+            or {
+                "in",
+                "flight",
+            }
+            <= question_tokens
+        )
         if question_tokens & {"pipeline", "stage", "stages"} and (
             inflight_requested
             or question_tokens

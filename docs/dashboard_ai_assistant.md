@@ -131,6 +131,14 @@ Assistant status is runtime-oriented:
 | `timeout` | Queue or request timeout elapsed. |
 | `degraded` | The circuit is open or another sanitized failure occurred. |
 
+Status is not inferred from configuration alone: it runs a cached, 1-second
+liveness check against the runtime (`DASHBOARD_ASSISTANT_STATUS_PROBE`, TTL
+`DASHBOARD_ASSISTANT_STATUS_PROBE_TTL_SECONDS`), so a stopped server or an
+unpulled model is reported before the user asks a question. The check never runs
+on a generation request, and a probe failure only affects the reported state.
+The response also carries `runtime_reachable` and `model_installed` for
+operators.
+
 Older clients may still receive nullable `model_dir`, `model_file`, and
 `model_path` fields. They are compatibility fields only and no longer represent
 a runtime dependency.

@@ -71,7 +71,7 @@ OLLAMA_CONTEXT_LENGTH=2048
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Status `provider-unreachable` | Server not running | `make ollama-up` |
+| Status `provider-unreachable` | Server not running (detected by the cached status probe, before you ask anything) | `make ollama-up` |
 | Status `model-missing` | Tag never pulled | `make ollama-pull` |
 | First question slow, later ones fast | Cold model load | Expected; `OLLAMA_KEEP_ALIVE=30m` keeps it resident |
 | `llama-server process has terminated: signal: killed` in the log | Out of memory | Smaller model or shorter context (table above) |

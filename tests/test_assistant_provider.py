@@ -667,7 +667,8 @@ def test_assistant_probe_returns_sanitized_failure_payload():
 def test_deterministic_provider_policy_answer_needs_no_credentials(tmp_path):
     """Ollama needs no API key, so this answer must not depend on one."""
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(api_key=None), data_dir=tmp_path
+        config=AssistantConfig(api_key=None, status_probe_enabled=False),
+        data_dir=tmp_path,
     )
 
     result = assistant.answer("Which assistant model and provider are active?")
@@ -676,6 +677,72 @@ def test_deterministic_provider_policy_answer_needs_no_credentials(tmp_path):
     assert "llama3.2:3b" in result["reply"]
     assert isinstance(result["citations"], list)
     assert result["status"]["state"] == "ready"
+
+
+def test_status_reports_an_unreachable_runtime_instead_of_ready(monkeypatch):
+    """A stopped local runtime must not be advertised as ready to the chat UI."""
+    from dashboard.assistant import ollama_runtime
+
+    def unreachable(*_args, **_kwargs):
+        raise ollama_runtime.OllamaRuntimeError("connection refused")
+
+    monkeypatch.setattr(ollama_runtime, "installed_models", unreachable)
+    provider = OllamaProvider(ProviderConfig())
+
+    status = provider.status()
+
+    assert status["state"] == "provider-unreachable"
+    assert status["ready"] is False
+    # The dashboard stays usable, so another attempt is still allowed.
+    assert status["can_attempt"] is True
+    assert status["runtime_reachable"] is False
+    assert "make ollama-up" in status["message"]
+
+
+def test_status_reports_an_uninstalled_model_and_caches_the_probe(monkeypatch):
+    from dashboard.assistant import ollama_runtime
+
+    calls: list[float] = []
+    clock_value = [1000.0]
+
+    def installed(*_args, **kwargs):
+        calls.append(kwargs.get("timeout", 0.0))
+        return ["some-other-model:latest"]
+
+    monkeypatch.setattr(ollama_runtime, "installed_models", installed)
+    provider = OllamaProvider(
+        ProviderConfig(status_probe_ttl_seconds=15.0),
+        clock=lambda: clock_value[0],
+    )
+
+    first = provider.status()
+    provider.status()
+
+    assert first["state"] == "model-missing"
+    assert first["model_installed"] is False
+    assert "make ollama-pull" in first["message"]
+    # Status is polled continuously, so the probe must be cached within its TTL.
+    assert len(calls) == 1
+
+    clock_value[0] += 30.0
+    provider.status()
+    assert len(calls) == 2
+
+
+def test_status_probe_can_be_disabled_for_offline_deployments(monkeypatch):
+    from dashboard.assistant import ollama_runtime
+
+    monkeypatch.setattr(
+        ollama_runtime,
+        "installed_models",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("probe must not run")),
+    )
+    provider = OllamaProvider(ProviderConfig(status_probe_enabled=False))
+
+    status = provider.status()
+
+    assert status["state"] == "ready"
+    assert status["runtime_reachable"] is None
 
 
 def test_missing_model_is_reported_as_an_actionable_state():

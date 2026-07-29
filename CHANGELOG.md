@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ollama.enabled`, default true) with an idempotent model-pull hook.
 - `model-missing` assistant state with an actionable message, so an unpulled
   model is distinguishable from an unreachable runtime.
+- Assistant status now runs a cached, 1-second liveness check against the
+  runtime instead of inferring readiness from configuration, so a stopped
+  server or unpulled model is reported before a user asks a question. Disable
+  with `DASHBOARD_ASSISTANT_STATUS_PROBE=false`.
 - `OLLAMA.md` operator runbook, replacing the NVIDIA migration prompt.
 
 ### Added

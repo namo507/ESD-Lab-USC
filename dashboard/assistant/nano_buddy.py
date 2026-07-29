@@ -89,9 +89,7 @@ _REDACTED_PHI_RE = re.compile(
     r"\[redacted (?:phi|date|mrn|phone|ssn|email|name|address|study id)\]",
     re.IGNORECASE,
 )
-_PROMPT_ID_RE = re.compile(
-    r"\b(?:nano|asib|pt|td|vpt)[-_ ]?\d{1,8}\b", re.IGNORECASE
-)
+_PROMPT_ID_RE = re.compile(r"\b(?:nano|asib|pt|td|vpt)[-_ ]?\d{1,8}\b", re.IGNORECASE)
 _REASONING_BLOCK_RE = re.compile(
     r"<(?:think|analysis|reasoning)\s*>.*?</(?:think|analysis|reasoning)\s*>",
     re.IGNORECASE | re.DOTALL,
@@ -99,12 +97,8 @@ _REASONING_BLOCK_RE = re.compile(
 _REASONING_OPEN_RE = re.compile(
     r"<(?:think|analysis|reasoning)\s*>.*$", re.IGNORECASE | re.DOTALL
 )
-_REASONING_TAG_RE = re.compile(
-    r"</?(?:think|analysis|reasoning)\s*>", re.IGNORECASE
-)
-_FINAL_PREFIX_RE = re.compile(
-    r"^\s*(?:final\s+answer|answer)\s*:\s*", re.IGNORECASE
-)
+_REASONING_TAG_RE = re.compile(r"</?(?:think|analysis|reasoning)\s*>", re.IGNORECASE)
+_FINAL_PREFIX_RE = re.compile(r"^\s*(?:final\s+answer|answer)\s*:\s*", re.IGNORECASE)
 _COMMON_QUERY_TOKENS = {
     "about",
     "according",
@@ -175,10 +169,14 @@ def _scalar(value: Any) -> bool:
 def _pick_scalars(source: Any, keys: Iterable[str]) -> dict[str, Any]:
     if not isinstance(source, dict):
         return {}
-    return {key: source.get(key) for key in keys if key in source and _scalar(source[key])}
+    return {
+        key: source.get(key) for key in keys if key in source and _scalar(source[key])
+    }
 
 
-def _pick_rows(value: Any, keys: Iterable[str], *, limit: int = 100) -> list[dict[str, Any]]:
+def _pick_rows(
+    value: Any, keys: Iterable[str], *, limit: int = 100
+) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
     return [
@@ -589,7 +587,9 @@ def _as_of(nano: dict[str, Any], requested: str | None) -> str:
     )
 
 
-def _timepoint_match(question: str, rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _timepoint_match(
+    question: str, rows: list[dict[str, Any]]
+) -> dict[str, Any] | None:
     compact = question.casefold().replace("-", "_").replace(" ", "_")
     for row in rows:
         timepoint = str(row.get("id") or "").casefold()
@@ -606,9 +606,24 @@ def _timepoint_match(question: str, rows: list[dict[str, Any]]) -> dict[str, Any
     return None
 
 
-def _schedule_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _schedule_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     rows = (nano.get("schedule") or {}).get("timepoints") or []
-    if not rows or not (_tokens(question) & {"visit", "visits", "schedule", "due", "overdue", "upcoming", "completed", "adherence", "window"}):
+    if not rows or not (
+        _tokens(question)
+        & {
+            "visit",
+            "visits",
+            "schedule",
+            "due",
+            "overdue",
+            "upcoming",
+            "completed",
+            "adherence",
+            "window",
+        }
+    ):
         return None
     row = _timepoint_match(question, rows)
     if row is None:
@@ -645,18 +660,32 @@ def _schedule_answer(question: str, nano: dict[str, Any], when: str) -> tuple[st
     )
 
 
-def _redcap_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _redcap_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     redcap = nano.get("redcap") or {}
     tokens = _tokens(question)
     if not redcap or "redcap" not in tokens:
         return None
     fields = (
-        ("double_entry_discrepancies", {"discrepancy", "discrepancies", "double", "entry"}, "open double-entry discrepancies"),
+        (
+            "double_entry_discrepancies",
+            {"discrepancy", "discrepancies", "double", "entry"},
+            "open double-entry discrepancies",
+        ),
         ("sync_health", {"sync", "health", "healthy", "status"}, "sync health"),
         ("last_sync", {"last", "sync", "fresh", "freshness"}, "last successful sync"),
-        ("api_token_valid", {"api", "token", "valid", "validity"}, "API token validity"),
+        (
+            "api_token_valid",
+            {"api", "token", "valid", "validity"},
+            "API token validity",
+        ),
         ("records_locked", {"locked", "records"}, "locked records"),
-        ("instruments_defined", {"instrument", "instruments", "defined"}, "defined instruments"),
+        (
+            "instruments_defined",
+            {"instrument", "instruments", "defined"},
+            "defined instruments",
+        ),
         ("dags", {"dag", "dags", "coverage"}, "DAG count"),
     )
     for field, terms, label in fields:
@@ -665,34 +694,73 @@ def _redcap_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str,
                 f"NANO REDCap {label} is {_format_value(redcap[field], field)} as of {when}.",
                 [f"nano.redcap.{field}"],
             )
-    selected = [key for key in ("sync_health", "last_sync", "double_entry_discrepancies") if key in redcap]
+    selected = [
+        key
+        for key in ("sync_health", "last_sync", "double_entry_discrepancies")
+        if key in redcap
+    ]
     if selected:
-        text = "; ".join(f"{key.replace('_', ' ')}: {_format_value(redcap[key], key)}" for key in selected)
-        return f"NANO REDCap status as of {when}: {text}.", [f"nano.redcap.{key}" for key in selected]
+        text = "; ".join(
+            f"{key.replace('_', ' ')}: {_format_value(redcap[key], key)}"
+            for key in selected
+        )
+        return f"NANO REDCap status as of {when}: {text}.", [
+            f"nano.redcap.{key}" for key in selected
+        ]
     return None
 
 
-def _inventory_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _inventory_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     rows = nano.get("inventory") or []
     tokens = _tokens(question)
-    if not rows or not tokens & {"inventory", "equipment", "actiheart", "squirrel", "electrode", "electrodes", "kit", "kits", "calibration", "stock", "available"}:
+    if not rows or not tokens & {
+        "inventory",
+        "equipment",
+        "actiheart",
+        "squirrel",
+        "electrode",
+        "electrodes",
+        "kit",
+        "kits",
+        "calibration",
+        "stock",
+        "available",
+    }:
         return None
     ranked = sorted(
         rows,
-        key=lambda row: len(tokens & _tokens(row.get("item"))) + (2 if tokens & _tokens(row.get("item")) else 0),
+        key=lambda row: len(tokens & _tokens(row.get("item")))
+        + (2 if tokens & _tokens(row.get("item")) else 0),
         reverse=True,
     )
     row = ranked[0]
     item = str(row.get("item") or "selected equipment")
-    fields = [key for key in ("available", "in_use", "calibration_due", "low_stock", "reorder_threshold", "status") if key in row]
-    details = "; ".join(f"{key.replace('_', ' ')}: {_format_value(row[key], key)}" for key in fields)
+    fields = [
+        key
+        for key in (
+            "available",
+            "in_use",
+            "calibration_due",
+            "low_stock",
+            "reorder_threshold",
+            "status",
+        )
+        if key in row
+    ]
+    details = "; ".join(
+        f"{key.replace('_', ' ')}: {_format_value(row[key], key)}" for key in fields
+    )
     return (
         f"{item} aggregate inventory as of {when}: {details or 'Awaiting data'}.",
         [f"nano.inventory[{item}].{key}" for key in fields],
     )
 
 
-def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _enrollment_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     enrollment = nano.get("enrollment") or {}
     tokens = _tokens(question)
     if not enrollment or not tokens & {
@@ -720,15 +788,25 @@ def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[
             if group_tokens and group not in group_tokens:
                 continue
             if group:
-                details.append(f"{group.upper()} {row.get('enrolled', 'Awaiting data')} of {row.get('target', 'Awaiting data')}")
-                paths.extend([f"nano.enrollment.by_group[{group.upper()}].enrolled", f"nano.enrollment.by_group[{group.upper()}].target"])
+                details.append(
+                    f"{group.upper()} {row.get('enrolled', 'Awaiting data')} of {row.get('target', 'Awaiting data')}"
+                )
+                paths.extend(
+                    [
+                        f"nano.enrollment.by_group[{group.upper()}].enrolled",
+                        f"nano.enrollment.by_group[{group.upper()}].target",
+                    ]
+                )
     if not details:
         for group in ("asib", "pt", "td"):
             if group in enrollment and (not group_tokens or group in group_tokens):
                 details.append(f"{group.upper()} {enrollment[group]}")
                 paths.append(f"nano.enrollment.{group}")
     if details and (group_tokens or "group" in tokens or "cohort" in tokens):
-        return f"NANO enrollment by group as of {when}: " + "; ".join(details) + ".", paths
+        return (
+            f"NANO enrollment by group as of {when}: " + "; ".join(details) + ".",
+            paths,
+        )
     enrolled_key = "enrolled" if "enrolled" in enrollment else "total"
     enrolled = enrollment.get(enrolled_key)
     target = enrollment.get("target")
@@ -741,14 +819,34 @@ def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[
         target_path = "nano.study_meta.n_target"
     if enrolled is not None:
         suffix = f" of {target}" if target is not None else ""
-        paths = [f"nano.enrollment.{enrolled_key}"] + ([target_path] if target is not None else [])
-        return f"Current NANO aggregate enrollment is {enrolled}{suffix} as of {when}.", paths
+        paths = [f"nano.enrollment.{enrolled_key}"] + (
+            [target_path] if target is not None else []
+        )
+        return (
+            f"Current NANO aggregate enrollment is {enrolled}{suffix} as of {when}.",
+            paths,
+        )
     return None
 
 
-def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _attention_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     tokens = _tokens(question)
-    if not tokens & {"hda", "attention", "sustained", "orienting", "termination", "inattention", "deceleration", "quality", "rsa", "autonomic", "cptd", "temperature"}:
+    if not tokens & {
+        "hda",
+        "attention",
+        "sustained",
+        "orienting",
+        "termination",
+        "inattention",
+        "deceleration",
+        "quality",
+        "rsa",
+        "autonomic",
+        "cptd",
+        "temperature",
+    }:
         return None
     attention = nano.get("attention") or {}
     autonomic = nano.get("autonomic") or {}
@@ -782,9 +880,11 @@ def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[s
         field = (
             "hda_quality_bpm"
             if tokens & {"quality", "deceleration"}
-            else "hda_sustained_pct"
-            if any("hda_sustained_pct" in row for row in selected)
-            else "sustained_pct"
+            else (
+                "hda_sustained_pct"
+                if any("hda_sustained_pct" in row for row in selected)
+                else "sustained_pct"
+            )
         )
         selected = [row for row in selected if field in row][:12]
         if selected:
@@ -796,12 +896,21 @@ def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[s
                 f"nano.attention.by_group_window[{str(row.get('group')).upper()}-{row.get('window')}].{field}"
                 for row in selected
             ]
-            label = "HDA quality" if field == "hda_quality_bpm" else "sustained-attention HDA share"
-            return f"NANO aggregate {label} by group and window as of {when}: {details}.", paths
+            label = (
+                "HDA quality"
+                if field == "hda_quality_bpm"
+                else "sustained-attention HDA share"
+            )
+            return (
+                f"NANO aggregate {label} by group and window as of {when}: {details}.",
+                paths,
+            )
 
     autonomic_group_windows = autonomic.get("by_group_window") or []
     if autonomic_group_windows and tokens & {"rsa", "autonomic", "cptd", "temperature"}:
-        field = "cptd_mean_c" if tokens & {"cptd", "temperature"} else "rsa_baseline_ms2"
+        field = (
+            "cptd_mean_c" if tokens & {"cptd", "temperature"} else "rsa_baseline_ms2"
+        )
         selected = [
             row
             for row in autonomic_group_windows
@@ -821,7 +930,10 @@ def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[s
                 for row in selected
             ]
             label = "mean CPTd (°C)" if field == "cptd_mean_c" else "baseline RSA (ms²)"
-            return f"NANO aggregate {label} by group and window as of {when}: {details}.", paths
+            return (
+                f"NANO aggregate {label} by group and window as of {when}: {details}.",
+                paths,
+            )
 
     if tokens & {"rsa", "autonomic"} and "rsa_baseline_ms2" in autonomic:
         return (
@@ -852,15 +964,39 @@ def _attention_answer(question: str, nano: dict[str, Any], when: str) -> tuple[s
                 [f"nano.attention.phases[{phase}].pct"],
             )
 
-    legacy_metric = "rsa" if "rsa" in tokens else "hr_decel" if tokens & {"quality", "deceleration"} else "pct_sa"
-    curves = ((nano.get("lgcm_results") or {}).get(legacy_metric) or {}).get("growth_curves") or []
+    legacy_metric = (
+        "rsa"
+        if "rsa" in tokens
+        else "hr_decel" if tokens & {"quality", "deceleration"} else "pct_sa"
+    )
+    curves = ((nano.get("lgcm_results") or {}).get(legacy_metric) or {}).get(
+        "growth_curves"
+    ) or []
     if curves:
-        selected = [row for row in curves if not requested_groups or str(row.get("group")).casefold() in requested_groups]
+        selected = [
+            row
+            for row in curves
+            if not requested_groups
+            or str(row.get("group")).casefold() in requested_groups
+        ]
         selected = selected[:9]
-        label = {"pct_sa": "sustained-attention share", "hr_decel": "heart-rate deceleration", "rsa": "RSA"}[legacy_metric]
-        details = "; ".join(f"{str(row.get('group')).upper()} {row.get('timepoint_m')}m {_format_value(row.get('mean'), 'pct' if legacy_metric == 'pct_sa' else '')}" for row in selected)
-        paths = [f"nano.lgcm_results.{legacy_metric}.growth_curves[{str(row.get('group')).upper()}-{row.get('timepoint_m')}m].mean" for row in selected]
-        return f"NANO aggregate {label} by group and age as of {when}: {details}.", paths
+        label = {
+            "pct_sa": "sustained-attention share",
+            "hr_decel": "heart-rate deceleration",
+            "rsa": "RSA",
+        }[legacy_metric]
+        details = "; ".join(
+            f"{str(row.get('group')).upper()} {row.get('timepoint_m')}m {_format_value(row.get('mean'), 'pct' if legacy_metric == 'pct_sa' else '')}"
+            for row in selected
+        )
+        paths = [
+            f"nano.lgcm_results.{legacy_metric}.growth_curves[{str(row.get('group')).upper()}-{row.get('timepoint_m')}m].mean"
+            for row in selected
+        ]
+        return (
+            f"NANO aggregate {label} by group and age as of {when}: {details}.",
+            paths,
+        )
     return None
 
 
@@ -910,11 +1046,27 @@ def _pipeline_guide_answer(
     )
 
 
-def _pipeline_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _pipeline_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     rows = nano.get("pipeline") or []
     summary = nano.get("pipeline_summary") or {}
     tokens = _tokens(question)
-    if not (rows or summary) or not tokens & {"pipeline", "qc", "qa", "quality", "ingested", "preproc", "preprocessing", "imputation", "model", "ready", "sessions", "week", "actions"}:
+    if not (rows or summary) or not tokens & {
+        "pipeline",
+        "qc",
+        "qa",
+        "quality",
+        "ingested",
+        "preproc",
+        "preprocessing",
+        "imputation",
+        "model",
+        "ready",
+        "sessions",
+        "week",
+        "actions",
+    }:
         return None
     if summary and tokens & {"qc", "qa", "quality", "sessions", "week", "actions"}:
         if tokens & {"action", "actions", "open"} and "open_qc_actions" in summary:
@@ -938,28 +1090,47 @@ def _pipeline_answer(question: str, nano: dict[str, Any], when: str) -> tuple[st
             )
     if not rows:
         return None
-    ranked = sorted(rows, key=lambda row: len(tokens & _tokens(row.get("stage"))), reverse=True)
+    ranked = sorted(
+        rows, key=lambda row: len(tokens & _tokens(row.get("stage"))), reverse=True
+    )
     row = ranked[0]
     stage = str(row.get("stage") or "pipeline")
     fields = [
-        key
-        for key in ("count", "delta_7d", "qc_pass_pct", "qa_passed")
-        if key in row
+        key for key in ("count", "delta_7d", "qc_pass_pct", "qa_passed") if key in row
     ]
-    details = "; ".join(f"{key.replace('_', ' ')}: {_format_value(row[key], key)}" for key in fields)
+    details = "; ".join(
+        f"{key.replace('_', ' ')}: {_format_value(row[key], key)}" for key in fields
+    )
     return (
         f"NANO {stage} as of {when}: {details}.",
         [f"nano.pipeline[{stage}].{key}" for key in fields],
     )
 
 
-def _model_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _model_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     tokens = _tokens(question)
     models = nano.get("models") or {}
-    if models and tokens & {"aim3", "aim", "model", "models", "shap", "training", "evaluated"}:
-        fields = [key for key in ("aim3_status", "best_metric", "shap_ready") if key in models]
-        details = "; ".join(f"{key.replace('_', ' ')}: {_format_value(models[key], key)}" for key in fields)
-        return f"NANO Aim 3 model status as of {when}: {details}.", [f"nano.models.{key}" for key in fields]
+    if models and tokens & {
+        "aim3",
+        "aim",
+        "model",
+        "models",
+        "shap",
+        "training",
+        "evaluated",
+    }:
+        fields = [
+            key for key in ("aim3_status", "best_metric", "shap_ready") if key in models
+        ]
+        details = "; ".join(
+            f"{key.replace('_', ' ')}: {_format_value(models[key], key)}"
+            for key in fields
+        )
+        return f"NANO Aim 3 model status as of {when}: {details}.", [
+            f"nano.models.{key}" for key in fields
+        ]
     finding = nano.get("preliminary_finding") or {}
     if finding and tokens & {"model", "accuracy", "finding", "pilot", "classification"}:
         return (
@@ -969,26 +1140,64 @@ def _model_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, 
     return None
 
 
-def _assessment_or_checklist_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
+def _assessment_or_checklist_answer(
+    question: str, nano: dict[str, Any], when: str
+) -> tuple[str, list[str]] | None:
     tokens = _tokens(question)
     rows = nano.get("assessments") or []
-    if rows and tokens & {"assessment", "assessments", "nnns", "csbs", "bayley", "ados", "mchat", "asq", "complete", "completion"}:
-        ranked = sorted(rows, key=lambda row: len(tokens & (_tokens(row.get("instrument")) | _tokens(row.get("timepoint")))), reverse=True)
+    if rows and tokens & {
+        "assessment",
+        "assessments",
+        "nnns",
+        "csbs",
+        "bayley",
+        "ados",
+        "mchat",
+        "asq",
+        "complete",
+        "completion",
+    }:
+        ranked = sorted(
+            rows,
+            key=lambda row: len(
+                tokens
+                & (_tokens(row.get("instrument")) | _tokens(row.get("timepoint")))
+            ),
+            reverse=True,
+        )
         row = ranked[0]
         name = str(row.get("instrument") or "assessment")
         timepoint = str(row.get("timepoint") or "configured timepoint")
         return (
             f"{name} at {timepoint} is {row.get('complete', 'Awaiting data')} complete of {row.get('expected', 'Awaiting data')} expected as of {when}.",
-            [f"nano.assessments[{name}-{timepoint}].complete", f"nano.assessments[{name}-{timepoint}].expected"],
+            [
+                f"nano.assessments[{name}-{timepoint}].complete",
+                f"nano.assessments[{name}-{timepoint}].expected",
+            ],
         )
     checklists = nano.get("checklists") or {}
-    if checklists and tokens & {"checklist", "checklists", "consent", "citi", "irb", "dua", "sop", "acknowledgement", "acknowledgements", "action", "actions"}:
+    if checklists and tokens & {
+        "checklist",
+        "checklists",
+        "consent",
+        "citi",
+        "irb",
+        "dua",
+        "sop",
+        "acknowledgement",
+        "acknowledgements",
+        "action",
+        "actions",
+    }:
         if tokens & {"action", "actions", "qc"} and "open_qc_actions" in checklists:
             return (
                 f"There are {checklists['open_qc_actions']} open aggregate QC actions as of {when}.",
                 ["nano.checklists.open_qc_actions"],
             )
-        if tokens & {"sop", "acknowledgement", "acknowledgements"} and "sop_ack_pct" in checklists:
+        if (
+            tokens & {"sop", "acknowledgement", "acknowledgements"}
+            and "sop_ack_pct" in checklists
+        ):
             return (
                 f"NANO SOP acknowledgement is {_format_value(checklists['sop_ack_pct'], 'pct')} as of {when}.",
                 ["nano.checklists.sop_ack_pct"],
@@ -999,12 +1208,17 @@ def _assessment_or_checklist_answer(question: str, nano: dict[str, Any], when: s
             if key and _tokens(key) & tokens:
                 return (
                     f"NANO onboarding {key.replace('_', ' ')} is complete for {row.get('done', 'Awaiting data')} of {row.get('total', 'Awaiting data')} aggregate records as of {when}.",
-                    [f"nano.checklists.onboarding[{key}].done", f"nano.checklists.onboarding[{key}].total"],
+                    [
+                        f"nano.checklists.onboarding[{key}].done",
+                        f"nano.checklists.onboarding[{key}].total",
+                    ],
                 )
     return None
 
 
-def answer_live_metric(question: str, nano: dict[str, Any], *, requested_as_of: str | None = None) -> tuple[str, list[str]] | None:
+def answer_live_metric(
+    question: str, nano: dict[str, Any], *, requested_as_of: str | None = None
+) -> tuple[str, list[str]] | None:
     """Resolve common Buddy metric questions without model availability."""
 
     when = _as_of(nano, requested_as_of)
@@ -1204,7 +1418,9 @@ class NanoBuddyAssistant:
             "refused": False,
         }
 
-    def _validate_request(self, message: Any, context: Any) -> tuple[str, dict[str, str]]:
+    def _validate_request(
+        self, message: Any, context: Any
+    ) -> tuple[str, dict[str, str]]:
         if not isinstance(message, str):
             raise BuddyRequestError("Buddy message must be text.")
         prompt = message.strip()
@@ -1234,13 +1450,19 @@ class NanoBuddyAssistant:
                 or len(as_of) > BUDDY_MAX_CONTEXT_CHARS
                 or not re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:T[0-9:.+-]+Z?)?", as_of)
             ):
-                raise BuddyRequestError("Buddy context as_of must be an ISO-8601 date or timestamp.")
+                raise BuddyRequestError(
+                    "Buddy context as_of must be an ISO-8601 date or timestamp."
+                )
             safe["as_of"] = as_of
         return prompt, safe
 
     def _load_nano_metrics(self) -> dict[str, Any]:
         public_path = self.data_dir / "nano_dashboard_data.json"
-        path = public_path if public_path.is_file() else self.data_dir / "dashboard_data.json"
+        path = (
+            public_path
+            if public_path.is_file()
+            else self.data_dir / "dashboard_data.json"
+        )
         if not path.is_file():
             return {}
         try:
@@ -1251,12 +1473,16 @@ class NanoBuddyAssistant:
 
     def _grounding_char_cap(self) -> int:
         """Bound packed Buddy evidence by the assistant's own context budget."""
-        configured = getattr(getattr(self.assistant, "config", None), "context_char_budget", 0)
+        configured = getattr(
+            getattr(self.assistant, "config", None), "context_char_budget", 0
+        )
         try:
             budget = int(configured)
         except (TypeError, ValueError):
             budget = 0
-        return max(600, min(BUDDY_MAX_GROUNDING_CHARS, budget or BUDDY_MAX_GROUNDING_CHARS))
+        return max(
+            600, min(BUDDY_MAX_GROUNDING_CHARS, budget or BUDDY_MAX_GROUNDING_CHARS)
+        )
 
     def _try_provider(self, prompt: str, context_block: str) -> str | None:
         try:
@@ -1365,13 +1591,21 @@ class NanoBuddyAssistant:
                     continue
                 seen.add(safe_path)
                 title = _clean_snippet(
-                    item.get("title") or item.get("display_name") or Path(safe_path).name,
+                    item.get("title")
+                    or item.get("display_name")
+                    or Path(safe_path).name,
                     limit=160,
                 )
                 snippet = _clean_snippet(
                     " ".join(
                         str(item.get(key) or "")
-                        for key in ("excerpt", "search_text", "keywords", "source", "category")
+                        for key in (
+                            "excerpt",
+                            "search_text",
+                            "keywords",
+                            "source",
+                            "category",
+                        )
                     ),
                     limit=2000,
                 )
@@ -1415,7 +1649,16 @@ class NanoBuddyAssistant:
             return []
         comparison_intent = bool(
             _tokens(question)
-            & {"between", "compare", "comparison", "contrast", "difference", "differences", "versus", "vs"}
+            & {
+                "between",
+                "compare",
+                "comparison",
+                "contrast",
+                "difference",
+                "differences",
+                "versus",
+                "vs",
+            }
         )
         if comparison_intent:
             return ranked[:limit]
