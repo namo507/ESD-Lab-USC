@@ -189,6 +189,7 @@ models/_metrics.json
 
 # ─── Generated design exports ───────────────────────────────
 design-ideas/**/*.html
+/.design-qa/
 
 # ─── Retired non-runtime archives ───────────────────────────
 # Restore historical source packages from the pre-sweep Git tag instead of

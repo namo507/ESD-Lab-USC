@@ -6,6 +6,7 @@ import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
+import styles from "./Sidebar.module.css";
 
 interface SidebarProps {
   study: StudySummary;
@@ -157,9 +158,24 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
   },
 ];
 
+const CORE_NAV_ITEMS: NavItem[] = [
+  { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+  { to: "/nano/attention", label: "Attention & Autonomic", icon: "activity" },
+  { to: "/nano/lgcm-trajectories", label: "LGCM Trajectories", icon: "line-chart", flag: "NANO_LGCM_TRAJECTORIES" },
+  { to: DOC_ROUTE, label: "Documentation", icon: "book-open" },
+];
+
+const CORE_ROUTE_KEYS = new Set(CORE_NAV_ITEMS.map((item) => `${item.to}|${item.label}`));
+
 export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: SidebarProps) {
   const location = useLocation();
-  const groups = executiveMode ? EXECUTIVE_NAV_GROUPS : NAV_GROUPS;
+  const groups = executiveMode
+    ? EXECUTIVE_NAV_GROUPS
+    : NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !CORE_ROUTE_KEYS.has(`${item.to}|${item.label}`)),
+      })).filter((group) => group.items.length > 0);
+  const coreItems = executiveMode ? [] : CORE_NAV_ITEMS;
   const inDiscovery = isDiscoveryPath(location.pathname);
   const isNew = (flag?: FeatureFlag) => {
     if (!flag) return false;
@@ -168,122 +184,118 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
     return Date.now() < new Date(releaseDate).getTime() + 14 * 24 * 60 * 60 * 1000;
   };
 
+  const renderItem = (it: NavItem, key: string, core = false) => {
+    const to = inDiscovery && it.to !== "/nano/dashboard" ? toDiscoveryRoute(it.to) : it.to;
+    const badge =
+      it.label === "Window QA" && qaPending > 0
+        ? qaPending
+        : it.label === "NANO Study (VPT)"
+          ? enrolled
+          : undefined;
+
+    return (
+      <NavLink
+        key={key}
+        to={to}
+        end={it.to === "/overview" || to === "/discovery/overview"}
+        data-tour={
+          it.label === "Documentation"
+            ? "operator-docs"
+            : it.label === "Help / Tour"
+              ? "operator-help"
+              : undefined
+        }
+        className={({ isActive }) => `${styles.navItem} ${core ? styles.coreItem : ""} ${isActive ? styles.active : ""}`}
+      >
+        {({ isActive }) => (
+          <>
+            <span className={styles.navIcon} aria-hidden>
+              <Icon name={it.icon} size={core ? 15 : 14} stroke={1.7} color={isActive ? "var(--esd-discovery-blue, #3366ff)" : "currentColor"} />
+            </span>
+            <span className={styles.navLabel}>{it.label}</span>
+            {isNew(it.flag) && <Badge kind="neutral" size="sm">NEW</Badge>}
+            {badge !== undefined && (
+              <span className={`${styles.badge} ${isActive ? styles.badgeActive : ""} ${it.label === "Window QA" && qaPending > 0 ? "badge-pending" : ""}`}>
+                {badge}
+              </span>
+            )}
+          </>
+        )}
+      </NavLink>
+    );
+  };
+
   return (
-    <aside
-      className="w-60 flex-shrink-0 bg-[color:var(--warm-card)] border-r border-[color:var(--warm-border)] py-5 px-3.5 flex flex-col gap-6 sticky top-0 self-start h-screen overflow-y-auto"
-      aria-label="Primary navigation"
-    >
-      <div className="px-2">
-        <div className="flex items-center gap-2.5">
-          <div
-            data-brand-mark="esd"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-serif font-bold text-lg"
-            style={{
-              background: "var(--brand-mark-bg, linear-gradient(135deg, var(--usc-garnet) 0%, #a51124 100%))",
-              boxShadow: "var(--brand-mark-shadow, 0 4px 12px rgba(115,0,10,0.25))",
-            }}
-            aria-hidden
-          >
-            e
-          </div>
-          <div>
-            <div className="font-serif text-[15px] font-semibold text-[color:var(--warm-fg1)] -tracking-[0.01em]">
-              ESD Lab
+    <aside className={styles.sidebar} aria-label="Primary navigation">
+      <NavLink to={inDiscovery ? "/discovery" : "/"} className={styles.brand} aria-label="ESD Lab home">
+        <span className={styles.brandMark} data-brand-mark="esd" aria-hidden />
+        <span>
+          <span className={styles.brandName}>ESD Lab</span>
+          <span className={styles.brandMeta}>UofSC · IMB</span>
+        </span>
+      </NavLink>
+
+      {!executiveMode && (
+        <div className={styles.studyBlock}>
+          <div className={`${styles.studyCard} surface-card`}>
+            <span className={styles.eyebrow}>Active study</span>
+            <div className={styles.studyName}><span className={styles.liveDot} aria-hidden />NANO</div>
+            <div className={styles.studyMeta}>Actively enrolling · {study.enrolled} / {study.target}</div>
+            <div
+              className={styles.progress}
+              role="progressbar"
+              aria-label={`${study.enrolled} of ${study.target} enrolled`}
+              aria-valuemin={0}
+              aria-valuemax={study.target}
+              aria-valuenow={study.enrolled}
+            >
+              <span style={{ width: `${Math.min(100, (study.enrolled / Math.max(1, study.target)) * 100)}%` }} />
             </div>
-            <div className="text-[10px] font-mono text-[color:var(--warm-fg4)] tracking-[0.04em]">
-              UofSC · IMB
-            </div>
           </div>
+          <div className={styles.studyScope}><StudySelector /></div>
         </div>
-      </div>
+      )}
 
-      {!executiveMode && <StudySelector />}
+      {coreItems.length > 0 && (
+        <nav className={styles.coreNav} aria-label="Study areas">
+          <div className={styles.groupLabel}>Areas</div>
+          {coreItems.filter((it) => !it.flag || isFeatureFlagEnabled(it.flag)).map((it, index) => renderItem(it, `core-${index}`, true))}
+        </nav>
+      )}
 
-      {groups.map((g) => (
-        <div key={g.id}>
-          <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--warm-fg4)]">
-            {g.title}
-          </div>
-          <div className="flex flex-col gap-px">
-            {g.items.filter((it) => !it.flag || isFeatureFlagEnabled(it.flag)).map((it, i) => {
-              const to = inDiscovery && it.to !== "/nano/dashboard" ? toDiscoveryRoute(it.to) : it.to;
-              const badge =
-                it.label === "Window QA" && qaPending > 0
-                  ? qaPending
-                  : it.label === "NANO Study (VPT)"
-                    ? enrolled
-                    : undefined;
-              return (
-                <NavLink
-                  key={`${g.id}-${i}`}
-                  to={to}
-                  end={it.to === "/overview" || to === "/discovery/overview"}
-                  data-tour={
-                    it.label === "Documentation"
-                      ? "operator-docs"
-                      : it.label === "Help / Tour"
-                        ? "operator-help"
-                        : undefined
-                  }
-                  className={({ isActive }) =>
-                    `relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-sans text-left transition ${
-                      isActive
-                        ? "bg-[color:var(--vpt-bg)] text-garnet font-semibold"
-                        : "text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)]"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <span
-                          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-sm bg-garnet"
-                          aria-hidden
-                        />
-                      )}
-                      <Icon name={it.icon} size={16} stroke={1.5} color={isActive ? "var(--usc-garnet)" : "var(--warm-fg2)"} />
-                      <span className="flex-1">{it.label}</span>
-                      {isNew(it.flag) && (
-                        <Badge kind="neutral" size="sm">NEW</Badge>
-                      )}
-                      {badge !== undefined && (
-                        <span
-                          className={`text-[10px] font-mono px-1.5 py-px rounded-full ${
-                            isActive ? "bg-garnet text-white" : "bg-[color:var(--slate-100)] text-[color:var(--warm-fg3)]"
-                          } ${it.label === "Window QA" && qaPending > 0 ? "badge-pending" : ""}`}
-                        >
-                          {badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      <details className="mt-auto p-3 bg-[color:var(--warm-pill)] rounded-lg border border-[color:var(--warm-border)] text-[10px] text-[color:var(--warm-fg4)] font-mono leading-relaxed">
-        <summary className="cursor-pointer text-[color:var(--warm-fg3)]">Keyboard shortcuts</summary>
-        <div className="pt-2 grid gap-1">
-          <span>Cmd/Ctrl + K · ESD Buddy</span>
-          <span>Arrow keys · scrub timelines</span>
-          <span>Space · play/pause players</span>
+      <details className={styles.surfaceDirectory}>
+        <summary className={styles.directoryIntro}>
+          <span>All lab surfaces</span>
+          <span className={styles.directoryCount}>Browse</span>
+        </summary>
+        <div className={styles.directoryGroups}>
+          {groups.map((group) => (
+            <section className={styles.group} key={group.id} aria-labelledby={`sidebar-${group.id}`}>
+              <h2 className={styles.groupLabel} id={`sidebar-${group.id}`}>{group.title}</h2>
+              <div className={styles.groupItems}>
+                {group.items
+                  .filter((item) => !item.flag || isFeatureFlagEnabled(item.flag))
+                  .map((item, index) => renderItem(item, `${group.id}-${index}`))}
+              </div>
+            </section>
+          ))}
         </div>
       </details>
 
-      <div className="p-3 bg-[color:var(--warm-pill)] rounded-xl text-[11px] text-[color:var(--warm-fg3)] leading-relaxed">
-        <div className="font-serif text-[13px] text-[color:var(--warm-fg2)] font-semibold mb-1">
-          Dr. Bradshaw&apos;s lab
+      <div className={styles.sidebarFooter}>
+        <div className={styles.searchNote}>
+          <strong>42 more surfaces live behind search.</strong>
+          <span><kbd>⌘K</kbd> Ask ESD Buddy</span>
         </div>
-        Institute for Mind &amp; Brain
-        <br />
-        1800 Gervais St · Columbia, SC
-        <br />
-        <span className="text-[color:var(--warm-fg4)] font-mono text-[10px]">
-          {study.enrolled} / {study.target} enrolled · year 3
-        </span>
+        <details className={styles.shortcuts}>
+          <summary>Keyboard shortcuts</summary>
+          <div>
+            <span>Cmd/Ctrl + K · ESD Buddy</span>
+            <span>Arrow keys · scrub timelines</span>
+            <span>Space · play/pause players</span>
+          </div>
+        </details>
+        <p className={styles.privacyNote}>Aggregate only. No PHI.<br />Dr. Bradshaw · Institute for Mind &amp; Brain</p>
       </div>
     </aside>
   );

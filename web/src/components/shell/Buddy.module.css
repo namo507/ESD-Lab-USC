@@ -1,45 +1,55 @@
 .stage {
+  --buddy-blue: var(--esd-discovery-blue, #3366ff);
+  --buddy-science: var(--esd-science-blue, #91baf4);
+  --buddy-surface: var(--surface, #fff);
+  --buddy-line: var(--line, #e3e7f0);
+  --buddy-fg: var(--fg, #000);
+  --buddy-fg-2: var(--fg2, #4a5163);
+  width: 278px;
   position: fixed;
-  /* Anchor is driven by custom properties so each surface can place Buddy
-     in context. Defaults keep the operator shell behaviour: sit just past
-     the dashboard sidebar, lifted above the footer/HIPAA banner. */
-  left: var(--buddy-left, calc(var(--sidebar-w-dashboard) + 24px));
+  left: var(--buddy-left, calc(var(--shell-sidebar-width, 236px) + 24px));
   bottom: var(--buddy-bottom, 88px);
   z-index: 92;
-  width: 260px;
-  pointer-events: none;
   display: none;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
+  pointer-events: none;
+  font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
 }
 
 .active {
   display: flex;
 }
 
-/* Public landing has no operator sidebar, so the dashboard offset shoves
-   Buddy toward the centre of the page. This modifier re-anchors it to the
-   true bottom-left of the viewport. */
 .page {
   --buddy-left: 24px;
   --buddy-bottom: 24px;
 }
 
 .buddy {
+  width: 78px;
+  height: 78px;
   position: relative;
-  width: 88px;
-  height: 88px;
   pointer-events: auto;
   cursor: pointer;
   transform-style: preserve-3d;
-  animation: buddy-float 4s var(--ease-soft, cubic-bezier(0.32, 0.72, 0, 1)) infinite;
+  animation: buddy-float 4s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  filter: drop-shadow(0 12px 22px color-mix(in srgb, var(--buddy-blue) 25%, transparent));
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .buddy {
-    animation: none;
-  }
+.buddy::after {
+  content: "";
+  width: 42px;
+  height: 7px;
+  position: absolute;
+  left: 18px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #07112b 15%, transparent);
+  filter: blur(5px);
+  opacity: 0.62;
+  transform: translateZ(-1px);
 }
 
 .buddy svg {
@@ -50,41 +60,40 @@
 }
 
 .body {
-  fill: var(--you-bubble-fg);
-  stroke: var(--you-bubble-bg);
+  fill: var(--buddy-blue);
+  stroke: color-mix(in srgb, var(--buddy-science) 70%, #fff);
   stroke-width: 1.5;
-  filter: drop-shadow(0 8px 20px rgba(58, 50, 38, 0.22));
 }
 
 .blush {
-  fill: var(--peach);
-  opacity: 0.7;
+  fill: var(--esd-pink, #f8b2b1);
+  opacity: 0.82;
 }
 
 .eye {
-  fill: var(--you-bubble-bg);
-  transition: transform 220ms var(--ease-soft, cubic-bezier(0.32, 0.72, 0, 1));
+  fill: #fff;
   transform-origin: center;
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .talking .eye {
-  animation: buddy-blink 2.6s var(--ease-soft) infinite;
+  animation: buddy-blink 2.6s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
 
 .mouth {
   fill: none;
-  stroke: var(--you-bubble-bg);
-  stroke-width: 1.5;
+  stroke: #fff;
+  stroke-width: 1.7;
   stroke-linecap: round;
 }
 
 .antenna {
   fill: none;
-  stroke: var(--usc-garnet);
-  stroke-width: 1.5;
+  stroke: var(--buddy-blue);
+  stroke-width: 1.8;
   stroke-linecap: round;
-  animation: antenna-wig 3s var(--ease-soft) infinite;
   transform-origin: 50% 100%;
+  animation: antenna-wig 3s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
 
 .talking .antenna {
@@ -92,38 +101,44 @@
 }
 
 .antennaDot {
-  fill: var(--usc-gold);
+  fill: var(--esd-yellow, #f4da26);
+  stroke: color-mix(in srgb, var(--esd-orange, #f57f00) 48%, transparent);
+  stroke-width: 1;
 }
 
 .heartPulse {
-  fill: var(--usc-garnet);
+  fill: var(--esd-yellow, #f4da26);
   opacity: 0;
   transform-origin: center;
 }
 
 .talking .heartPulse {
-  animation: heart-pulse 1.4s var(--ease-soft) infinite;
+  animation: heart-pulse 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
 }
 
 .bubble {
+  max-width: 268px;
   position: relative;
-  pointer-events: auto;
-  background: var(--glass-400);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  border: 1px solid var(--glass-stroke);
-  border-radius: 18px;
-  box-shadow: var(--glass-shadow);
-  padding: 12px 16px 14px;
-  max-width: 240px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--warm-700);
-  opacity: 0;
-  transform: translateY(8px) scale(0.96);
-  transition: opacity 220ms var(--ease-soft), transform 260ms var(--ease-soft);
-  margin-left: 18px;
+  order: -1;
   isolation: isolate;
+  margin-left: 14px;
+  padding: 14px 16px 15px;
+  pointer-events: auto;
+  border: 1px solid color-mix(in srgb, var(--buddy-blue) 18%, var(--buddy-line));
+  border-radius: 18px 18px 18px 5px;
+  background: color-mix(in srgb, var(--buddy-surface) 92%, transparent);
+  color: var(--buddy-fg-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, #07112b 7%, transparent),
+    0 16px 38px color-mix(in srgb, #0d265d 15%, transparent);
+  opacity: 0;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  transform: translateY(8px) scale(0.97);
+  transform-origin: bottom left;
+  transition: opacity 200ms ease, transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .show {
@@ -133,107 +148,85 @@
 
 .bubble::after {
   content: "";
-  position: absolute;
-  left: 12px;
-  bottom: -6px;
   width: 12px;
   height: 12px;
-  background: var(--glass-400);
-  border-left: 1px solid var(--glass-stroke);
-  border-bottom: 1px solid var(--glass-stroke);
-  transform: rotate(-45deg);
+  position: absolute;
+  left: 16px;
+  bottom: -7px;
   z-index: -1;
+  border-right: 1px solid color-mix(in srgb, var(--buddy-blue) 18%, var(--buddy-line));
+  border-bottom: 1px solid color-mix(in srgb, var(--buddy-blue) 18%, var(--buddy-line));
+  background: var(--buddy-surface);
+  transform: rotate(45deg);
 }
 
 .termTag {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--usc-garnet);
-  background: rgba(115, 0, 10, 0.1);
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 7px;
+  padding: 3px 8px;
   border-radius: 999px;
-  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--buddy-blue) 11%, var(--buddy-surface));
+  color: var(--buddy-blue);
+  font: 800 9px/1.4 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .bodyText {
-  color: var(--ink);
+  color: var(--buddy-fg);
 }
 
 .bodyText strong {
-  color: var(--ink);
-  font-weight: 600;
+  color: var(--buddy-fg);
+  font-weight: 750;
 }
 
 .tourButton {
-  margin-top: 10px;
-  border: 1px solid rgba(115, 0, 10, 0.22);
+  min-height: 30px;
+  margin-top: 11px;
+  padding: 6px 11px;
+  border: 1px solid color-mix(in srgb, var(--buddy-blue) 24%, var(--buddy-line));
   border-radius: 999px;
-  background: rgba(115, 0, 10, 0.08);
-  color: var(--usc-garnet);
-  padding: 6px 10px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--buddy-blue);
+  color: #fff;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition:
-    background 160ms var(--ease-soft),
-    border-color 160ms var(--ease-soft);
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--buddy-blue) 20%, transparent);
+  transition: background 150ms ease, transform 150ms ease;
 }
 
 .tourButton:hover {
-  background: rgba(115, 0, 10, 0.14);
-  border-color: rgba(115, 0, 10, 0.38);
+  background: color-mix(in srgb, var(--buddy-blue) 84%, #000);
+  transform: translateY(-1px);
+}
+
+.tourButton:focus-visible {
+  outline: 2px solid var(--buddy-blue);
+  outline-offset: 2px;
 }
 
 @keyframes buddy-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-
-  50% {
-    transform: translateY(-6px) rotate(2deg);
-  }
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
 }
 
 @keyframes buddy-blink {
-  0%,
-  92%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  94%,
-  96% {
-    transform: scaleY(0.1);
-  }
+  0%, 92%, 100% { transform: scaleY(1); }
+  94%, 96% { transform: scaleY(0.1); }
 }
 
 @keyframes antenna-wig {
-  0%,
-  100% {
-    transform: rotate(-4deg);
-  }
-
-  50% {
-    transform: rotate(6deg);
-  }
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(6deg); }
 }
 
 @keyframes heart-pulse {
-  0%,
-  100% {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-
-  50% {
-    opacity: 0.85;
-    transform: scale(1);
-  }
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 0.9; transform: scale(1); }
 }
 
 :global([data-insight]) {
@@ -244,8 +237,25 @@
   content: "";
   position: absolute;
   inset: -4px;
+  border: 1.5px solid color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 55%, transparent);
   border-radius: inherit;
-  border: 1.5px solid rgba(115, 0, 10, 0.4);
-  box-shadow: 0 0 0 4px rgba(255, 204, 0, 0.18);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--esd-yellow, #f4da26) 18%, transparent);
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buddy,
+  .talking .eye,
+  .antenna,
+  .heartPulse {
+    animation: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .stage {
+    --buddy-left: 16px;
+    --buddy-bottom: 76px;
+    width: min(278px, calc(100vw - 32px));
+  }
 }

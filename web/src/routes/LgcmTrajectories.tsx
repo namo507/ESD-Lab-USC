@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card, SectionLabel, Segmented, Badge } from "@/components/primitives";
 import { useStudyData, type LgcmOutcomeData, type GrowthPointData } from "@/api/studyData";
+import styles from "./LgcmTrajectories.module.css";
 
 /**
  * NANO Aim 1 — Latent Growth Curve Models.
@@ -20,9 +21,9 @@ const OUTCOME_OPTIONS: Array<{ value: Outcome; label: string }> = [
 ];
 
 const GROUP_META: Record<Group, { label: string; color: string }> = {
-  asib: { label: "ASIB", color: "#F59E0B" },
-  pt: { label: "PT", color: "#14B8A6" },
-  td: { label: "TD", color: "#6366F1" },
+  asib: { label: "ASIB", color: "var(--fg3)" },
+  pt: { label: "PT", color: "var(--science)" },
+  td: { label: "TD", color: "var(--blue)" },
 };
 
 const OUTCOME_UNIT: Record<Outcome, string> = { pct_sa: "%", hr_decel: "bpm", rsa: "ln(ms²)" };
@@ -50,17 +51,17 @@ export function LgcmTrajectories() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-9 max-[768px]:px-4 max-[768px]:py-6">
-      <header>
-        <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg3)]">
-          NANO · R01MH132925 · Aim 1
+    <div className={`${styles.page} flex flex-col gap-6 p-9 max-[768px]:px-4 max-[768px]:py-6`}>
+      <header className={styles.routeHeader}>
+        <div className={styles.eyebrow}>
+          Aim 1 · Latent growth curves · R01MH132925
         </div>
-        <h1 className="m-0 mt-1.5 font-serif text-[30px] font-semibold -tracking-[0.02em] text-[color:var(--warm-fg1)]">
+        <h1>
           LGCM Growth Trajectories
         </h1>
-        <p className="mt-2 text-[13px] text-[color:var(--warm-fg3)] max-w-[680px]">
+        <p>
           Latent growth curve intercepts and slopes on heart-defined attention and RSA from 1–3 months,
-          in corrected age. Group means use bootstrapped 95% CI ribbons when available.{" "}
+          in corrected age. One question, one live chart, and one model table. Group means use bootstrapped 95% CI ribbons when available.{" "}
           {result
             ? hasIndividualTraces
               ? "Dimmed lines show the individual traces included in this approved data release."
@@ -69,7 +70,7 @@ export function LgcmTrajectories() {
         </p>
       </header>
 
-      <Card pad={16}>
+      <Card pad={16} className={styles.controlCard}>
         <div className="flex flex-wrap items-center gap-4 justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--warm-fg4)]">Outcome</span>
@@ -95,9 +96,9 @@ export function LgcmTrajectories() {
         </div>
       </Card>
 
-      {isLoading && <Card pad={20}><span className="text-[13px] text-[color:var(--warm-fg3)]">Loading trajectories…</span></Card>}
+      {isLoading && <Card pad={20} className={styles.routeCard}><span className="text-[13px] text-[color:var(--warm-fg3)]">Loading trajectories…</span></Card>}
       {(isError || (!isLoading && !result)) && (
-        <Card pad={20}>
+        <Card pad={20} className={styles.routeCard}>
           <span className="text-[13px] text-[color:var(--warm-fg3)]">
             No LGCM results available yet. Run the NANO Aim 1 stage of the dashboard build to populate this view.
           </span>
@@ -106,12 +107,12 @@ export function LgcmTrajectories() {
 
       {result && (
         <>
-          <Card pad={20}>
+          <Card pad={20} className={styles.chartCard}>
             <SectionLabel>Growth curve · {OUTCOME_OPTIONS.find((o) => o.value === outcome)?.label}</SectionLabel>
             <GrowthChart result={result} visible={groups} unit={OUTCOME_UNIT[outcome]} />
           </Card>
 
-          <Card pad={20}>
+          <Card pad={20} className={styles.routeCard}>
             <SectionLabel>{hasSignificance ? "Group difference significance" : "Group comparison availability"}</SectionLabel>
             {hasSignificance ? (
               <SignificanceTable result={result} />
@@ -168,7 +169,7 @@ function GrowthChart({ result, visible, unit }: { result: LgcmOutcomeData; visib
   if (!geom) return <div className="text-[13px] text-[color:var(--warm-fg3)] py-6">No growth-curve points.</div>;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto mt-2" role="img" aria-label="LGCM growth curves">
+    <svg viewBox={`0 0 ${W} ${H}`} className={`${styles.growthChart} w-full h-auto mt-2`} role="img" aria-label="LGCM growth curves">
       {/* axes */}
       <line x1={M.left} y1={H - M.bottom} x2={W - M.right} y2={H - M.bottom} stroke="var(--warm-border)" />
       <line x1={M.left} y1={M.top} x2={M.left} y2={H - M.bottom} stroke="var(--warm-border)" />
@@ -238,7 +239,8 @@ function SignificanceTable({ result }: { result: LgcmOutcomeData }) {
     { label: "Slope diff · PT vs TD", p: result.pt_vs_td_slope_p },
   ];
   return (
-    <table className="w-full mt-2 text-[13px]">
+    <div className={styles.tableWrap}>
+    <table className={`${styles.modelTable} w-full mt-2 text-[13px]`}>
       <thead>
         <tr className="text-left text-[11px] uppercase tracking-[0.06em] text-[color:var(--warm-fg4)]">
           <th className="py-1.5 font-semibold">Contrast</th>
@@ -263,5 +265,6 @@ function SignificanceTable({ result }: { result: LgcmOutcomeData }) {
         })}
       </tbody>
     </table>
+    </div>
   );
 }
