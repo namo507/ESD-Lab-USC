@@ -68,6 +68,9 @@ const ExecutiveMode = lazy(() => import("@/routes/ExecutiveMode").then((m) => ({
 const NanoStudyDashboard = lazy(() =>
   import("@/routes/NanoStudyDashboard").then((m) => ({ default: m.NanoStudyDashboard })),
 );
+const AttentionAutonomic = lazy(() =>
+  import("@/routes/AttentionAutonomic").then((m) => ({ default: m.AttentionAutonomic })),
+);
 const LgcmTrajectories = lazy(() => import("@/routes/LgcmTrajectories").then((m) => ({ default: m.LgcmTrajectories })));
 const Aim3Clusters = lazy(() => import("@/routes/Aim3Clusters").then((m) => ({ default: m.Aim3Clusters })));
 
@@ -148,6 +151,7 @@ function dashboardRoutes(prefix = "") {
       <Route path={path("/guided-explorer")} element={<GuidedExplorer />} />
       <Route path={path("/public-insights")} element={<PublicInsights />} />
       <Route path={path("/executive")} element={<ExecutiveMode />} />
+      <Route path={path("/nano/attention")} element={<AttentionAutonomic />} />
       <Route path={path("/nano/lgcm-trajectories")} element={<LgcmTrajectories />} />
       <Route path={path("/nico/aim3-clusters")} element={<Aim3Clusters />} />
       <Route path={path("/nano")} element={<Navigate to={path("/nano/lgcm-trajectories")} replace />} />

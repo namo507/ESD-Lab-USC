@@ -1,0 +1,116 @@
+.page {
+  gap: 16px !important;
+  padding: 0 clamp(24px, 3.5vw, 48px) 60px !important;
+  color: var(--fg);
+}
+
+.routeHeader {
+  margin: 0 calc(clamp(24px, 3.5vw, 48px) * -1) 20px;
+  padding: 44px clamp(24px, 3.5vw, 48px) 34px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.eyebrow {
+  color: var(--blue-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.routeHeader h1 {
+  margin: 12px 0 0;
+  color: var(--fg);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+
+.routeHeader p {
+  max-width: 68ch;
+  margin: 14px 0 0;
+  color: var(--fg2);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.controlCard,
+.routeCard,
+.chartCard {
+  border-color: var(--line) !important;
+  border-radius: 18px !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-card-rest) !important;
+}
+
+.controlCard {
+  position: sticky;
+  top: 76px;
+  z-index: 4;
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.chartCard,
+.routeCard {
+  padding: 28px 30px !important;
+}
+
+.growthChart {
+  display: block;
+  max-height: 430px;
+  margin-top: 24px;
+}
+
+.tableWrap {
+  margin-top: 18px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.modelTable {
+  min-width: 620px;
+  margin-top: 0 !important;
+  border-collapse: collapse;
+}
+
+.modelTable th {
+  padding: 13px 18px !important;
+  background: var(--bg-sub);
+  color: var(--fg2) !important;
+  font-family: var(--font);
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.modelTable td {
+  padding: 13px 18px !important;
+  background: var(--surface);
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 0 18px 48px !important;
+  }
+
+  .routeHeader {
+    margin-inline: -18px;
+    padding: 30px 18px 26px;
+  }
+
+  .routeHeader h1 {
+    font-size: 35px;
+  }
+
+  .controlCard {
+    position: static;
+  }
+
+  .chartCard,
+  .routeCard {
+    padding: 22px 20px !important;
+  }
+}

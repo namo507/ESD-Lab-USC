@@ -17,6 +17,7 @@ import {
 import { useHdaDist, useParticipants, useRuns, useStages, useStudySummary, useTrajectory } from "@/api/hooks";
 import { fromDiscoveryPath, isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import { useUi } from "@/store/ui";
+import esdLogo from "@/assets/nano-dashboard/logo-horizontal-discovery-blue.png";
 import styles from "./Docs.module.css";
 
 const DOC_TOC = [
@@ -56,10 +57,10 @@ function HelpNav() {
   return (
     <nav className={styles.nav} aria-label="Documentation navigation">
       <Link to={route("/")} className={styles.brand}>
-        <span className={styles.mark}>e</span>
+        <span className={styles.mark}><img src={esdLogo} alt="ESD Lab" /></span>
         <span className={styles.brandText}>
-          <strong>ESD Lab</strong>
-          <small>NANO . UofSC</small>
+          <strong>NANO Study</strong>
+          <small>Dashboard reference</small>
         </span>
       </Link>
       <div className={styles.links}>

@@ -31,7 +31,9 @@ import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
 import type { ShellContext } from "@/components/shell/AppShell";
 import type { StudySummary } from "@/api/schemas";
+import { nanoRedcapIndicator, useNanoDashboardData } from "@/api/nanoDashboardData";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
+import styles from "./Overview.module.css";
 
 /**
  * Overview — the warm "Lab Pulse" page.
@@ -47,11 +49,7 @@ import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
  * - AgenticQAPanel uses the shared assistant API + scrubPhi; UI is data-independent
  */
 export function Overview() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const { syncTick, syncing } = useOutletContext<ShellContext>();
-  const inDiscovery = isDiscoveryPath(location.pathname);
-  const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
   const selected = useUi((s) => s.selectedStageId);
   const setStage = useUi((s) => s.setStage);
 
@@ -62,6 +60,7 @@ export function Overview() {
   const { data: traj } = useTrajectory("rmssd");
   const { data: redcapPayload } = useRedcapData();
   const { data: pubSyncStatus } = usePublicationSyncStatus();
+  const { data: nanoPayload } = useNanoDashboardData();
   const publicationsEnabled = useFeatureFlag("PUBLICATIONS_FEED");
   const readingsLibrary = useReadingsLibrary();
   const liveReadings = useMemo(
@@ -86,6 +85,45 @@ export function Overview() {
     ? redcapEvents.reduce((sum, row) => sum + row.completed / Math.max(row.expected, 1), 0) / redcapEvents.length * 100
     : null;
   const redcapFreshness = redcapPayload?.redcap_ops.freshness;
+  const nano = nanoPayload?.meta.aggregateOnly === true ? nanoPayload : undefined;
+  const overviewEnrolled = nano?.enrollment.enrolled ?? study?.enrolled ?? 0;
+  const overviewTarget = nano?.enrollment.target ?? study?.target ?? 0;
+  const overviewActive = nano?.enrollment.active;
+  const overviewRetention = nano?.enrollment.retentionPct;
+  const adherenceValues = (nano?.schedule ?? [])
+    .map((row) => row.windowAdherencePct)
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  const overviewAdherence = adherenceValues.length
+    ? adherenceValues.reduce((sum, value) => sum + value, 0) / adherenceValues.length
+    : totals.passRate;
+  const overviewUpcoming = (nano?.schedule ?? []).reduce((sum, row) => sum + (row.upcoming14d ?? 0), 0);
+  const overviewOverdue = (nano?.schedule ?? []).reduce((sum, row) => sum + (row.overdue ?? 0), 0);
+  const overviewFunnel = nano?.enrollment.funnel.length
+    ? nano.enrollment.funnel
+    : (redcapPayload?.redcap_trackers.queue_funnel ?? []);
+  const overviewGroups = nano?.enrollment.byGroup.length
+    ? nano.enrollment.byGroup
+    : study
+      ? [
+          { group: "VPT", enrolled: study.groups.VPT.count, target: study.groups.VPT.target },
+          { group: "ASIB", enrolled: study.groups.ASIB.count, target: study.groups.ASIB.target },
+          { group: "TD", enrolled: study.groups.TD.count, target: study.groups.TD.target },
+        ]
+      : [];
+  const overviewSites = nano?.enrollment.bySite.length
+    ? nano.enrollment.bySite
+    : Object.entries(
+        participants.reduce<Record<string, number>>((sites, participant) => {
+          const site = participant.site.trim() || "Site pending";
+          sites[site] = (sites[site] ?? 0) + 1;
+          return sites;
+        }, {}),
+      ).map(([label, count]) => ({ label, count }));
+  const redcapIndicator = nano ? nanoRedcapIndicator(nano) : null;
+  const overviewAsOf = nano?.meta.asOf
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(nano.meta.asOf) ? `${nano.meta.asOf}T00:00:00Z` : nano.meta.asOf)
+        .toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+    : new Date().toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 
   const kpis: Array<{
     id: string;
@@ -178,40 +216,138 @@ export function Overview() {
   }
 
   return (
-    <div className="flex flex-col gap-7 p-9 max-[768px]:px-4 max-[768px]:py-6">
-      <header className="mb-1 flex items-end justify-between gap-6">
+    <div className={`${styles.page} flex flex-col gap-7 p-9 max-[768px]:px-4 max-[768px]:py-6`}>
+      <header className={styles.routeHeader}>
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-[0.08em] text-[color:var(--warm-fg3)]">
-            Lab Pulse · {new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}
+          <div className={styles.eyebrow}>
+            NANO Study
           </div>
-          {/* Display scale intentionally stays 38px while the page heading is semantically h1. */}
-          <h1 className="m-0 mt-1.5 font-serif text-[38px] font-semibold -tracking-[0.02em] leading-[1.05] text-[color:var(--warm-fg1)]">
-            Live <span className="italic text-garnet">NANO</span> Pipeline &amp; Lab Operations
-          </h1>
-          <p className="mt-2 text-[14px] text-[color:var(--warm-fg3)] max-w-[640px]">
-            From <Gloss term="Actiheart">Actiheart-5</Gloss> 1024 Hz ingest through Pan-Tompkins R-peak detection,{" "}
-            continuous wavelet transforms for <Gloss term="HF">RSA</Gloss>, SHAP attribution, and DBSCAN cluster
-            shifts — six stages, one heartbeat. HeRO HRC scores, DataVyu video coding, and dual-thermistor
-            thermal gradients all converge on the de-identified export. Click any node for stage detail.
-          </p>
+          <h1>Overview</h1>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(route("/results"))}
-            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
-          >
-            Trajectories
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(route("/runs"))}
-            className="px-3.5 py-2 rounded-lg border border-[color:var(--warm-border)] bg-[color:var(--warm-card)] text-[12px] text-[color:var(--warm-fg2)] hover:bg-[color:var(--warm-pill)] transition"
-          >
-            Last 24 h
-          </button>
+        <div className={styles.headerStatus} aria-label="Study status">
+          <span className={styles.activePill}>Actively enrolling</span>
+          <span className={styles.datePill}>As of {overviewAsOf}</span>
         </div>
       </header>
+
+      <section className={styles.summaryGrid} aria-label="NANO overview metrics" data-tour="operator-kpis">
+        <OverviewSummaryCard
+          label="Enrollment"
+          value={overviewEnrolled.toLocaleString()}
+          unit={overviewTarget ? `/ ${overviewTarget.toLocaleString()}` : "participants"}
+          progress={overviewTarget ? overviewEnrolled / overviewTarget * 100 : 0}
+          note={overviewTarget ? `${(overviewEnrolled / overviewTarget * 100).toFixed(1)}% of target` : "Awaiting target"}
+          insight="kpi-enroll"
+        />
+        <OverviewSummaryCard
+          label="Retention"
+          value={overviewRetention === null || overviewRetention === undefined ? "—" : overviewRetention.toFixed(1)}
+          unit="%"
+          progress={overviewRetention ?? 0}
+          note={overviewActive === null || overviewActive === undefined ? "Awaiting active count" : `${overviewActive} active of ${overviewEnrolled}`}
+          insight="kpi-retention"
+        />
+        <OverviewSummaryCard
+          label="Window adherence"
+          value={Number.isFinite(overviewAdherence) ? overviewAdherence.toFixed(1) : "—"}
+          unit="%"
+          progress={overviewAdherence}
+          note="Across timepoints with visits"
+          insight="kpi-adherence"
+        />
+        <OverviewSummaryCard
+          label="Next 14 days"
+          value={(overviewUpcoming || evalsPending).toLocaleString()}
+          unit="visits"
+          progress={Math.min(100, (overviewUpcoming || evalsPending) * 8)}
+          note="Scheduled windows"
+          insight="kpi-upcoming"
+        />
+        <article className={`${styles.summaryCard} ${styles.redcapCard} surface-card`} data-insight="kpi-redcap">
+          <span className={styles.metricLabel}>REDCap sync</span>
+          <div className={styles.healthValue}>
+            <span aria-hidden />
+            {redcapIndicator?.label ?? (redcapFreshness ? "Healthy" : "Awaiting data")}
+          </div>
+          <p>
+            {nano?.redcap.instrumentsDefined ?? redcapEvents.length} instruments
+            {nano?.redcap.doubleEntryDiscrepancies !== null && nano?.redcap.doubleEntryDiscrepancies !== undefined
+              ? <> · <strong>{nano.redcap.doubleEntryDiscrepancies} discrepancies</strong></>
+              : null}
+          </p>
+        </article>
+      </section>
+
+      {(overviewFunnel.length || overviewGroups.length) ? (
+        <section className={styles.operationsGrid} aria-label="Enrollment operations">
+          <article className={`${styles.operationsCard} surface-card`}>
+            <div className={styles.panelHeading}>
+              <h2>Recruitment funnel</h2>
+              <p>Referral through active follow-up</p>
+            </div>
+            <div className={styles.funnelList}>
+              {overviewFunnel.map((stage, index, rows) => {
+                const max = Math.max(...rows.map((row) => row.count ?? 0), 1);
+                const width = Math.max(3, ((stage.count ?? 0) / max) * 100);
+                return (
+                  <div className={styles.funnelRow} key={stage.stage}>
+                    <span>{stage.stage}</span>
+                    <div aria-hidden><i style={{ width: `${width}%` }} data-tone={index < 2 ? "science" : "blue"} /></div>
+                    <strong>{stage.count?.toLocaleString() ?? "—"}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+
+          <article className={`${styles.operationsCard} surface-card`}>
+            <div className={styles.panelHeading}>
+              <h2>Groups against target</h2>
+              <p>ASIB, preterm, and term-born controls</p>
+            </div>
+            <div className={styles.groupList}>
+              {overviewGroups.map((group) => {
+                const pct = group.target ? Math.min(100, (group.enrolled ?? 0) / group.target * 100) : 0;
+                return (
+                  <div key={group.group}>
+                    <div><strong>{group.group}</strong><span>{group.enrolled ?? "—"} / {group.target ?? "—"}</span></div>
+                    <div aria-hidden><i style={{ width: `${pct}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+            {overviewSites.length ? (
+              <div className={styles.siteSplit}>
+                {overviewSites.map((site) => (
+                  <div key={site.label}><strong>{site.count ?? "—"}</strong><span>{site.label}</span></div>
+                ))}
+              </div>
+            ) : null}
+          </article>
+        </section>
+      ) : null}
+
+      {nano?.schedule.some((row) => (row.overdue ?? 0) > 0) ? (
+        <section className={`${styles.attentionCard} surface-card`} aria-label="Needs attention">
+          <div className={styles.attentionHead}>
+            <div className={styles.panelHeading}>
+              <h2>Needs attention</h2>
+              <p>Overdue visits by timepoint</p>
+            </div>
+            <span>{overviewOverdue} overdue total</span>
+          </div>
+          <div className={styles.overdueGrid}>
+            {nano.schedule.filter((row) => (row.overdue ?? 0) > 0).map((row, index) => (
+              <div key={row.id}><span>{row.id}</span><strong data-leading={index === 0 ? "true" : undefined}>{row.overdue}</strong></div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <div className={styles.detailHeading}>
+        <span>Live research operations</span>
+        <p>Full pipeline controls and scientific detail remain available below.</p>
+      </div>
 
       <StudyHero />
 
@@ -270,6 +406,32 @@ export function Overview() {
 
       <OverviewProgressRings study={study} />
     </div>
+  );
+}
+
+function OverviewSummaryCard({
+  label,
+  value,
+  unit,
+  progress,
+  note,
+  insight,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  progress: number;
+  note: string;
+  insight: string;
+}) {
+  const safeProgress = Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0));
+  return (
+    <article className={`${styles.summaryCard} surface-card`} data-insight={insight}>
+      <span className={styles.metricLabel}>{label}</span>
+      <div className={styles.metricValue}><strong>{value}</strong><span>{unit}</span></div>
+      <div className={styles.metricTrack} aria-hidden><i style={{ width: `${safeProgress}%` }} /></div>
+      <p>{note}</p>
+    </article>
   );
 }
 

@@ -100,7 +100,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
   void runs;
 
   return (
-    <div className={styles.shell} data-brand={brand}>
+    <div className={styles.shell} data-brand={brand ?? "esd-2026"}>
       <a href="#main-content" className={styles.skipNav}>Skip to main content</a>
       <button type="button" className={styles.mobileMenuButton} onClick={() => setSidebarOpen(true)} aria-label="Open navigation">
         Menu
@@ -110,7 +110,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
         <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} executiveMode={executiveMode} />
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className={styles.content}>
         <TopNav
           query={query}
           onSearch={setQuery}
@@ -127,11 +127,11 @@ export function AppShell({ brand }: AppShellProps = {}) {
           </div>
         )}
 
-        <main className={`app-main ${density === "compact" ? "compact" : ""}`} id="main-content">
+        <main className={`${styles.main} app-main ${density === "compact" ? "compact" : ""}`} id="main-content">
           <RouteErrorBoundary key={location.pathname}>
             <Outlet context={{ query, syncTick, syncing } satisfies ShellContext} />
           </RouteErrorBoundary>
-          <footer className="app-footer">
+          <footer className={`${styles.footer} app-footer`}>
             <span>Early Social Development Lab · Dr. Bradshaw · UofSC</span>
             <span>{inNanoDashboard
               ? "NIH R01 MH132925 · Aggregate-only public dashboard · v0.15.0"

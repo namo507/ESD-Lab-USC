@@ -160,8 +160,10 @@ export function resolveTheme(t: ThemeMode): "light" | "dark" {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-/** Write the resolved theme to the <html data-theme> attribute. */
+/** Write the resolved theme to both the legacy and ESD 2026 theme hooks. */
 export function applyTheme(t: ThemeMode): void {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = resolveTheme(t);
+  const resolved = resolveTheme(t);
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.esdTheme = resolved;
 }

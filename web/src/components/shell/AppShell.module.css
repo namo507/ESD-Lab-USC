@@ -1,11 +1,42 @@
 .shell {
+  --shell-sidebar-width: 236px;
   min-height: 100vh;
   display: flex;
-  background: var(--warm-bg);
+  align-items: stretch;
+  background: var(--bg, #fff);
+  color: var(--fg, #000);
+  font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
+}
+
+.content {
+  min-width: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .sidebarLayer {
-  flex: 0 0 auto;
+  width: var(--shell-sidebar-width);
+  flex: 0 0 var(--shell-sidebar-width);
+}
+
+.main {
+  width: 100%;
+  max-width: none;
+  padding: 32px clamp(24px, 3vw, 48px);
+  background: var(--bg, #fff);
+}
+
+.footer {
+  gap: 18px;
+  margin-top: 52px;
+  padding: 18px 0 4px;
+  border-top-color: var(--line, #e3e7f0);
+  color: var(--fg3, #7c8497);
+  font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .mobileMenuButton {
@@ -19,18 +50,20 @@
 .skipNav {
   position: absolute;
   top: -100%;
-  left: 8px;
+  left: 12px;
   z-index: 9999;
-  background: var(--usc-garnet);
-  color: var(--fg-on-brand);
-  padding: 8px 16px;
-  border-radius: 0 0 4px 4px;
-  font-size: var(--text-small);
-  font-weight: var(--w-semibold);
+  padding: 10px 16px;
+  border-radius: 0 0 10px 10px;
+  background: var(--esd-discovery-blue, #3366ff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
   text-decoration: none;
 }
+
 .skipNav:focus {
   top: 0;
+  color: #fff;
 }
 
 .executiveBanner {
@@ -40,22 +73,29 @@
   gap: 16px;
   margin: 14px 24px 0;
   padding: 10px 14px;
-  border: 1px solid var(--usc-gold);
-  border-radius: var(--r-2);
-  background: color-mix(in srgb, var(--usc-gold) 14%, var(--bg-surface));
-  color: var(--ink);
-  font-size: 13px;
+  border: 1px solid color-mix(in srgb, var(--esd-yellow, #f4da26) 55%, var(--line, #e3e7f0));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--esd-yellow, #f4da26) 15%, var(--surface, #fff));
+  color: var(--fg, #000);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .executiveBanner a {
-  color: var(--usc-garnet);
-  font-weight: var(--w-bold);
+  color: var(--esd-discovery-blue, #3366ff);
+  font-weight: 800;
   text-decoration: none;
 }
 
 .executiveBanner a:focus-visible {
-  outline: 2px solid var(--usc-garnet);
+  outline: 2px solid var(--esd-discovery-blue, #3366ff);
   outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .main {
+    padding: 28px 24px;
+  }
 }
 
 @media (max-width: 767px) {
@@ -64,30 +104,49 @@
   }
 
   .mobileMenuButton {
+    width: 40px;
+    height: 40px;
     position: fixed;
-    left: 12px;
+    left: 10px;
     top: 12px;
     z-index: 60;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 34px;
-    border: 1px solid var(--warm-border);
-    border-radius: var(--r-2);
-    background: var(--warm-card);
-    color: var(--warm-fg1);
-    font: inherit;
-    font-size: var(--text-small);
-    padding: 0 12px;
-    box-shadow: var(--shadow-card);
+    padding: 0;
+    border: 1px solid var(--line, #e3e7f0);
+    border-radius: 999px;
+    background: var(--surface, #fff);
+    color: var(--fg2, #4a5163);
+    font: 0/0 a;
+    box-shadow: 0 8px 24px color-mix(in srgb, #07112b 13%, transparent);
+  }
+
+  .mobileMenuButton::before,
+  .mobileMenuButton::after {
+    content: "";
+    width: 15px;
+    height: 1.5px;
+    position: absolute;
+    border-radius: 2px;
+    background: currentColor;
+  }
+
+  .mobileMenuButton::before { transform: translateY(-3px); }
+  .mobileMenuButton::after { transform: translateY(3px); }
+
+  .mobileMenuButton:focus-visible {
+    outline: 2px solid var(--esd-discovery-blue, #3366ff);
+    outline-offset: 2px;
   }
 
   .sidebarLayer {
+    width: auto;
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 70;
-    transform: translateX(-100%);
-    transition: transform var(--dur-base) var(--ease-sharp);
+    transform: translateX(-105%);
+    transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   .sidebarOpen {
@@ -99,6 +158,15 @@
     inset: 0;
     z-index: 65;
     display: block;
-    background: color-mix(in srgb, var(--warm-fg1) 32%, transparent);
+    background: color-mix(in srgb, #07112b 42%, transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  .main {
+    padding: 24px 16px;
+  }
+
+  .footer {
+    flex-direction: column;
   }
 }

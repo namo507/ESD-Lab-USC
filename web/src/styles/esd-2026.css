@@ -1,0 +1,408 @@
+/* ========================================================================
+   ESD Lab 2026 — canonical visual layer
+
+   This file is intentionally loaded last. It translates the existing token
+   vocabulary onto the supplied Discovery Blue design without changing any
+   route, data, assistant, or deployment contract.
+   ======================================================================== */
+
+:root {
+  /* Fixed brand palette from the supplied design package. */
+  --esd-discovery-blue: #3366ff;
+  --esd-science-blue: #91baf4;
+  --esd-cool-blue: #e6eefc;
+  --esd-cool-white: #f4f4f6;
+  --esd-jet-black: #000000;
+  --esd-orange: #f57f00;
+  --esd-red: #d74e2d;
+  --esd-yellow: #f4da26;
+  --esd-pink: #f8b2b1;
+  --esd-garnet: #73000a;
+
+  /* Canonical semantic palette. */
+  --bg: #ffffff;
+  --bg-sub: #f4f4f6;
+  --bg-tint: #e6eefc;
+  --surface: #ffffff;
+  --line: #e3e7f0;
+  --line-soft: #eef1f7;
+  --fg: #000000;
+  --fg2: #4a5163;
+  --fg3: #7c8497;
+  --blue: #3366ff;
+  --blue-ink: #3366ff;
+  --science: #91baf4;
+  --coolblue: #e6eefc;
+  --orange: #f57f00;
+
+  /* Bridge the legacy dashboard vocabulary onto the new semantic layer. */
+  --paper: var(--bg);
+  --white: var(--surface);
+  --ink: var(--fg);
+  --slate-900: var(--fg);
+  --slate-800: #242938;
+  --slate-700: var(--fg2);
+  --slate-600: #616a7c;
+  --slate-500: var(--fg3);
+  --slate-400: #9ba3b4;
+  --slate-300: #cbd1de;
+  --slate-200: var(--line);
+  --slate-100: var(--line-soft);
+  --slate-75: #f5f7fb;
+  --slate-50: var(--bg-sub);
+  --bg-page: var(--bg);
+  --bg-surface: var(--surface);
+  --bg-subtle: var(--bg-sub);
+  --bg-hover: var(--bg-tint);
+  --bg-active: #dbe6ff;
+  --bg-inverse: var(--fg);
+  --border: var(--line);
+  --border-strong: #cbd1de;
+  --border-focus: var(--esd-discovery-blue);
+  --fg1: var(--fg);
+  --fg-muted: var(--fg3);
+  --fg-link: var(--blue-ink);
+
+  --warm-bg: var(--bg);
+  --warm-card: var(--surface);
+  --warm-border: var(--line);
+  --warm-rule: var(--line-soft);
+  --warm-pill: var(--bg-sub);
+  --warm-fg1: var(--fg);
+  --warm-fg2: var(--fg2);
+  --warm-fg3: var(--fg3);
+  --warm-fg4: #929bad;
+  --warm-fg5: #bbc2cf;
+  --dot-grid: rgba(51, 102, 255, 0.055);
+
+  /* Existing components use these aliases for their primary action color. */
+  --usc-garnet: var(--esd-discovery-blue);
+  --usc-garnet-600: #2856e8;
+  --usc-garnet-800: #2044b8;
+  --usc-gold: var(--esd-yellow);
+  --usc-gold-tint: #fff9c9;
+  --red: var(--esd-red);
+  --red-tint: #fae9e3;
+  --green: #2d9b69;
+  --green-tint: #e7f5ee;
+  --purple: #796ac5;
+  --purple-tint: #efecfa;
+  --blue-tint: var(--bg-tint);
+  --amber: var(--esd-orange);
+  --amber-warn: #bf6500;
+  --sage: #2d9b69;
+  --sage-tint: #e7f5ee;
+  --sage-ring: #70c39b;
+  --ocean: var(--esd-discovery-blue);
+  --ocean-tint: var(--bg-tint);
+  --ocean-ring: var(--esd-science-blue);
+  --sand: var(--esd-orange);
+  --sand-tint: #fff1e2;
+  --sand-ring: #ffb462;
+  --mint: #2d9b69;
+  --mint-tint: #e7f5ee;
+  --mint-ring: #70c39b;
+
+  --font: "Libre Franklin", "Source Sans 3", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font);
+  --font-serif: var(--font);
+  --text-display: clamp(50px, 7.2vw, 104px);
+  --text-h1: clamp(34px, 4.6vw, 62px);
+  --text-h2: 40px;
+  --text-h3: 21px;
+  --r-2: 8px;
+  --r-4: 10px;
+  --r-card: 18px;
+  --r-input: 12px;
+  --r-glass: 24px;
+  --r-panel: 24px;
+  --r-pill: 999px;
+  --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --shadow-overlay:
+    0 1px 2px rgba(16, 24, 48, 0.05),
+    0 14px 36px rgba(16, 24, 48, 0.07);
+  --shadow-card-rest:
+    0 1px 2px rgba(16, 24, 48, 0.045),
+    0 4px 12px rgba(16, 24, 48, 0.05);
+  --shadow-focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px rgba(51, 102, 255, 0.55);
+  --glass-100: rgba(255, 255, 255, 0.55);
+  --glass-200: rgba(255, 255, 255, 0.7);
+  --glass-300: rgba(255, 255, 255, 0.84);
+  --glass-400: rgba(255, 255, 255, 0.94);
+  --glass-stroke: rgba(51, 102, 255, 0.14);
+  --glass-stroke-soft: rgba(51, 102, 255, 0.08);
+  --glass-shadow: var(--shadow-overlay);
+  --you-bubble-bg: var(--esd-discovery-blue);
+  --you-bubble-fg: #ffffff;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"],
+:root[data-esd-theme="dark"] {
+  --bg: #07090f;
+  --bg-sub: #0c1017;
+  --bg-tint: #111a2e;
+  --surface: #10141d;
+  --line: #232a3a;
+  --line-soft: #1a202c;
+  --fg: #f4f4f6;
+  --fg2: #a9b2c4;
+  --fg3: #6e7789;
+  --blue-ink: #91baf4;
+
+  --slate-800: #d8ddea;
+  --slate-600: #939daf;
+  --slate-400: #697387;
+  --slate-300: #394256;
+  --border-strong: #394256;
+  --bg-active: #19233a;
+  --warm-fg4: #687286;
+  --warm-fg5: #485266;
+  --dot-grid: rgba(145, 186, 244, 0.065);
+  --usc-garnet-600: #4c78ff;
+  --usc-garnet-800: #91baf4;
+  --amber-warn: #ffad4f;
+  --red-tint: #341d19;
+  --green-tint: #132a21;
+  --purple-tint: #211d35;
+  --sand-tint: #2f2113;
+  --mint-tint: #132a21;
+  --sage-tint: #132a21;
+  --glass-100: rgba(16, 20, 29, 0.56);
+  --glass-200: rgba(16, 20, 29, 0.7);
+  --glass-300: rgba(16, 20, 29, 0.84);
+  --glass-400: rgba(16, 20, 29, 0.94);
+  --glass-stroke: rgba(145, 186, 244, 0.16);
+  --glass-stroke-soft: rgba(145, 186, 244, 0.1);
+  --shadow-overlay:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 18px 44px rgba(0, 0, 0, 0.45);
+  --shadow-card-rest:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 6px 16px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body,
+#root {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+}
+
+body {
+  transition: background-color 400ms var(--ease-standard), color 400ms var(--ease-standard);
+}
+
+/* The previous brand drew a patterned strip above every operator route. */
+[data-brand="esd-2026"] .app-main::before {
+  display: none;
+}
+
+::selection {
+  background: var(--esd-discovery-blue);
+  color: #ffffff;
+}
+
+a {
+  color: var(--blue-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+h1,
+h2,
+h3,
+.font-serif,
+.t-display,
+.t-h1 {
+  font-family: var(--font);
+  text-wrap: balance;
+}
+
+h1 {
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+}
+
+h2,
+h3 {
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font);
+}
+
+button {
+  transition:
+    transform 200ms var(--ease-standard),
+    border-color 200ms var(--ease-standard),
+    background-color 200ms var(--ease-standard),
+    color 200ms var(--ease-standard),
+    box-shadow 200ms var(--ease-standard);
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--fg3);
+}
+
+*:focus-visible {
+  outline: 3px solid rgba(51, 102, 255, 0.38);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* Shared dashboard surfaces. Modules keep their layout; this unifies finish. */
+.surface-card,
+.glass-panel,
+.app-main [class*="_card_"],
+.app-main [class*="_panel_"] {
+  border-color: var(--line) !important;
+  border-radius: var(--r-card) !important;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-card-rest) !important;
+}
+
+.glass-panel,
+.glass-header {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border-color: var(--line);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.accent-wash-sage,
+.accent-wash-ocean,
+.accent-wash-mint {
+  background: linear-gradient(135deg, var(--bg-tint), color-mix(in srgb, var(--surface) 84%, var(--esd-science-blue))) !important;
+}
+
+.accent-wash-sand {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--esd-orange) 11%, var(--surface)), var(--surface)) !important;
+}
+
+.agentic-panel {
+  border: 0 !important;
+  border-radius: var(--r-panel) !important;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(255, 255, 255, 0.2), transparent 27%),
+    linear-gradient(145deg, #3366ff 0%, #234fd4 100%) !important;
+  box-shadow: 0 18px 42px rgba(51, 102, 255, 0.25) !important;
+  color: #ffffff;
+}
+
+.agentic-panel input {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: rgba(4, 16, 62, 0.28) !important;
+  color: #ffffff !important;
+}
+
+.agentic-panel input::placeholder {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.app-main table {
+  border-color: var(--line);
+  color: var(--fg2);
+}
+
+.app-main thead {
+  background: var(--bg-sub);
+}
+
+.app-main tbody tr {
+  border-color: var(--line-soft);
+}
+
+.app-footer {
+  border-color: var(--line);
+  color: var(--fg3);
+}
+
+.esd-eyebrow {
+  color: var(--blue-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.esd-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-card-rest);
+}
+
+.esd-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--esd-discovery-blue);
+  box-shadow: 0 6px 20px rgba(51, 102, 255, 0.24);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.esd-button:hover {
+  box-shadow: 0 11px 28px rgba(51, 102, 255, 0.32);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --text-h2: 32px;
+    --r-panel: 20px;
+  }
+
+  .app-main [class*="_card_"],
+  .app-main [class*="_panel_"] {
+    border-radius: 15px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
