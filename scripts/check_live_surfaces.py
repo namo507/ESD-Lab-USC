@@ -37,6 +37,7 @@ RETIRED_REDCAP_PATH = "/api/redcap"
 METRICS_SCHEMA = "dashboard.metrics.v1"
 METRICS_VERSION_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 EXPECTED_PROJECTS = 8
+PROBE_USER_AGENT = "ESD-Lab-USC-health-probe/1.0"
 DEFAULT_CANONICAL_ROUTES = (
     "/",
     "/overview",
@@ -136,7 +137,14 @@ def probe_dashboard_metrics(
     print(f"[surface] live-metrics -> {url}")
     try:
         status, raw = _fetch(
-            Request(url, headers={"Accept": "application/json"}), timeout
+            Request(
+                url,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": PROBE_USER_AGENT,
+                },
+            ),
+            timeout,
         )
         if status != 200:
             raise ValueError(f"dashboard metrics returned HTTP {status}")
@@ -167,7 +175,11 @@ def probe_retired_redcap(base_url: str, *, timeout: int) -> dict[str, object]:
         url,
         data=b'{"content":"project"}',
         method="POST",
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": PROBE_USER_AGENT,
+        },
     )
     try:
         status, _raw = _fetch(request, timeout)

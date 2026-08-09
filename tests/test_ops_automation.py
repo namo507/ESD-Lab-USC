@@ -211,6 +211,43 @@ def test_live_metrics_validation_rejects_stale_or_partial_snapshots():
         check_live_surfaces.validate_live_metrics(partial, max_age_minutes=15, now=now)
 
 
+def test_secure_surface_probes_identify_themselves_to_the_edge(monkeypatch):
+    requests = []
+
+    def fake_fetch(request, _timeout):
+        requests.append(request)
+        if request.full_url.endswith(check_live_surfaces.METRICS_PATH):
+            return 200, b"{}"
+        return 410, b"{}"
+
+    monkeypatch.setattr(check_live_surfaces, "_fetch", fake_fetch)
+    monkeypatch.setattr(
+        check_live_surfaces,
+        "validate_live_metrics",
+        lambda *args, **kwargs: {
+            "schema": check_live_surfaces.METRICS_SCHEMA,
+            "projects_total": 8,
+            "projects_ok": 8,
+            "age_minutes": 0,
+        },
+    )
+
+    metrics = check_live_surfaces.probe_dashboard_metrics(
+        "https://example.test/", timeout=5, max_age_minutes=15
+    )
+    retired = check_live_surfaces.probe_retired_redcap(
+        "https://example.test/", timeout=5
+    )
+
+    assert metrics["ok"] is True
+    assert retired["ok"] is True
+    assert len(requests) == 2
+    assert all(
+        request.get_header("User-agent") == check_live_surfaces.PROBE_USER_AGENT
+        for request in requests
+    )
+
+
 def test_pages_packager_rejects_ephemeral_origin_without_network(monkeypatch, tmp_path):
     probed: list[str] = []
 
