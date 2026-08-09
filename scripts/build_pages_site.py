@@ -19,7 +19,7 @@ Outputs
 
 Run locally
 -----------
-    cd web && VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true npm run build
+    cd web && VITE_USE_MOCKS=false VITE_LIVE_ASSISTANT=true npm run build
     python scripts/build_pages_site.py
 """
 
@@ -51,6 +51,10 @@ PUBLIC_NANO_FORBIDDEN_KEYS = {
     "participants",
     "participant_id",
     "participant_ids",
+    "token",
+    "api_token",
+    "primary_key",
+    "primary_key_field",
     "record_id",
     "record_ids",
     "subject_id",
@@ -70,6 +74,26 @@ PUBLIC_NANO_FORBIDDEN_KEYS = {
 }
 PUBLIC_NANO_ID_RE = re.compile(r"\b(?:NANO|ASIB|PT|TD|VPT)[-_ ]?\d+\b", re.I)
 PUBLIC_BUDDY_DOCUMENT_SUFFIXES = {".md", ".txt", ".rst"}
+PUBLIC_METRICS_SCHEMA = "dashboard.metrics.v1"
+PUBLIC_METRICS_VERSION_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+PUBLIC_METRICS_SMALL_CELL_THRESHOLD = 5
+PUBLIC_METRICS_PROJECT_IDS = {
+    "abc_surveys": 1140,
+    "ipsa_surveys": 1289,
+    "action": 1556,
+    "ipsa_lab": 2084,
+    "abc_lab": 2263,
+    "nico": 3836,
+    "nano_surveys": 4218,
+    "nano_lab": 5484,
+}
+PUBLIC_METRICS_STUDY_PROJECTS = {
+    "abc": 2,
+    "ipsa": 2,
+    "action": 1,
+    "nico": 1,
+    "nano": 2,
+}
 
 
 def _read(path: pathlib.Path) -> str:
@@ -105,6 +129,337 @@ def _validate_public_nano_payload(payload: object) -> dict:
     serialized = json.dumps(payload, ensure_ascii=True, allow_nan=False)
     if PUBLIC_NANO_ID_RE.search(serialized):
         raise ValueError("public NANO payload contains a study identifier")
+    return payload
+
+
+def _is_nonnegative_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _validate_metrics_forms(value: object, *, include_instruments: bool) -> None:
+    if not isinstance(value, dict):
+        raise ValueError("public dashboard metrics forms must be an object")
+    expected = {
+        "incomplete",
+        "unverified",
+        "complete",
+        "unknown",
+        "total",
+        "completion_rate",
+        "counts_suppressed",
+    }
+    if include_instruments:
+        expected.add("instruments_total")
+    if set(value) != expected:
+        raise ValueError("public dashboard metrics forms have unexpected fields")
+    if not isinstance(value["counts_suppressed"], bool):
+        raise ValueError("public dashboard metrics form suppression flag is invalid")
+    if include_instruments and not _is_nonnegative_int(value["instruments_total"]):
+        raise ValueError("public dashboard metrics instrument count is invalid")
+
+    count_keys = ("incomplete", "unverified", "complete", "unknown", "total")
+    if value["counts_suppressed"]:
+        if any(value[key] is not None for key in count_keys):
+            raise ValueError("suppressed dashboard form buckets must not expose counts")
+        if value["completion_rate"] is not None:
+            raise ValueError("suppressed dashboard form counts must not expose a rate")
+        return
+
+    if any(not _is_nonnegative_int(value[key]) for key in count_keys):
+        raise ValueError("public dashboard metrics form counts must be nonnegative")
+    subtotal = sum(
+        int(value[key]) for key in ("incomplete", "unverified", "complete", "unknown")
+    )
+    if subtotal != value["total"]:
+        raise ValueError("public dashboard metrics form total is inconsistent")
+    if any(
+        0 < value[key] < PUBLIC_METRICS_SMALL_CELL_THRESHOLD
+        for key in ("incomplete", "unverified", "complete", "unknown")
+    ):
+        raise ValueError("public dashboard metrics expose an unsuppressed small cell")
+    expected_rate = round(value["complete"] / subtotal, 3) if subtotal else None
+    if value["completion_rate"] != expected_rate:
+        raise ValueError("public dashboard metrics completion rate is inconsistent")
+
+
+def _validate_metrics_events(value: object) -> None:
+    if not isinstance(value, list):
+        raise ValueError("public dashboard metrics events must be a list")
+    for event in value:
+        if not isinstance(event, dict) or set(event) != {
+            "event",
+            "records",
+            "suppressed",
+        }:
+            raise ValueError("public dashboard metrics event has unexpected fields")
+        if not isinstance(event["event"], str) or not event["event"]:
+            raise ValueError("public dashboard metrics event name is invalid")
+        if not isinstance(event["suppressed"], bool):
+            raise ValueError("public dashboard metrics suppression flag is invalid")
+        if event["suppressed"]:
+            if event["records"] is not None:
+                raise ValueError("suppressed dashboard metric must not expose a count")
+        elif not _is_nonnegative_int(event["records"]):
+            raise ValueError("public dashboard metrics event count is invalid")
+        elif 0 < event["records"] < PUBLIC_METRICS_SMALL_CELL_THRESHOLD:
+            raise ValueError(
+                "public dashboard metrics expose an unsuppressed event cell"
+            )
+
+
+def _validate_event_total(value: dict, *, label: str) -> None:
+    suppressed = value.get("event_records_suppressed")
+    total = value.get("event_records")
+    if not isinstance(suppressed, bool):
+        raise ValueError(
+            f"public dashboard metrics {label} suppression flag is invalid"
+        )
+    if suppressed:
+        if total is not None:
+            raise ValueError(
+                f"suppressed public dashboard metrics {label} total must be null"
+            )
+    elif not _is_nonnegative_int(total):
+        raise ValueError(f"public dashboard metrics {label} total is invalid")
+
+
+def _validate_public_dashboard_metrics(
+    payload: object,
+    *,
+    max_age_minutes: float | None = None,
+    now: dt.datetime | None = None,
+) -> dict:
+    """Reject malformed, partial, or participant-level public metrics."""
+    if not isinstance(payload, dict):
+        raise ValueError("public dashboard metrics must be a JSON object")
+    if payload.get("schema") != PUBLIC_METRICS_SCHEMA:
+        raise ValueError(f"public dashboard metrics must use {PUBLIC_METRICS_SCHEMA}")
+    if payload.get("aggregate_only") is not True:
+        raise ValueError("public dashboard metrics must be marked aggregate_only")
+    if not PUBLIC_METRICS_VERSION_RE.fullmatch(str(payload.get("data_version", ""))):
+        raise ValueError(
+            "public dashboard metrics data_version must be a sha256 digest"
+        )
+
+    if set(payload) != {
+        "schema",
+        "data_version",
+        "generated_at",
+        "aggregate_only",
+        "source",
+        "portfolio",
+        "studies",
+        "projects",
+    }:
+        raise ValueError("public dashboard metrics have unexpected top-level fields")
+
+    for key, _value in _walk_json(payload):
+        if key.casefold() in PUBLIC_NANO_FORBIDDEN_KEYS:
+            raise ValueError(f"public dashboard metrics contain forbidden key: {key}")
+    serialized = json.dumps(payload, ensure_ascii=True, allow_nan=False)
+    if PUBLIC_NANO_ID_RE.search(serialized):
+        raise ValueError("public dashboard metrics contain a study identifier")
+
+    generated_at = str(payload.get("generated_at", ""))
+    try:
+        generated = dt.datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(
+            "public dashboard metrics generated_at must be ISO-8601"
+        ) from exc
+    if generated.tzinfo is None:
+        raise ValueError("public dashboard metrics generated_at needs a timezone")
+    if max_age_minutes is not None:
+        current = now or dt.datetime.now(dt.timezone.utc)
+        age_minutes = (
+            current - generated.astimezone(dt.timezone.utc)
+        ).total_seconds() / 60
+        if age_minutes < -5:
+            raise ValueError("public dashboard metrics timestamp is in the future")
+        if age_minutes > max_age_minutes:
+            raise ValueError("public dashboard metrics are stale")
+
+    source = payload.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("public dashboard metrics source must be an object")
+    if set(source) != {
+        "kind",
+        "transport",
+        "system",
+        "cadence",
+        "sla",
+        "projects_total",
+        "projects_ok",
+    }:
+        raise ValueError("public dashboard metrics source has unexpected fields")
+    if (
+        source.get("kind") != "live"
+        or source.get("transport") != "api"
+        or source.get("system") != "REDCap"
+    ):
+        raise ValueError("public dashboard metrics must identify the live REDCap API")
+    if source.get("cadence") != "every_5_minutes":
+        raise ValueError("public dashboard metrics cadence must be five minutes")
+    if source.get("sla") != {"max_age_minutes": 15}:
+        raise ValueError("public dashboard metrics freshness SLA must be 15 minutes")
+    if source.get("projects_total") != 8 or source.get("projects_ok") != 8:
+        raise ValueError("public dashboard metrics require 8/8 healthy projects")
+
+    portfolio = payload.get("portfolio")
+    if not isinstance(portfolio, dict) or set(portfolio) != {
+        "status",
+        "studies_total",
+        "studies_reporting",
+        "study_enrollments",
+        "event_records",
+        "event_records_suppressed",
+        "forms",
+    }:
+        raise ValueError("public dashboard metrics portfolio has unexpected fields")
+    if (
+        portfolio.get("status") != "ok"
+        or portfolio.get("studies_total") != 5
+        or portfolio.get("studies_reporting") != 5
+    ):
+        raise ValueError("public dashboard metrics require 5/5 healthy studies")
+    if not _is_nonnegative_int(portfolio.get("study_enrollments")):
+        raise ValueError(
+            "public dashboard metrics study_enrollments must be nonnegative"
+        )
+    _validate_event_total(portfolio, label="portfolio event")
+    _validate_metrics_forms(portfolio.get("forms"), include_instruments=False)
+
+    studies = payload.get("studies")
+    if not isinstance(studies, list) or len(studies) != 5:
+        raise ValueError("public dashboard metrics require exactly five studies")
+    if {study.get("key") for study in studies if isinstance(study, dict)} != set(
+        PUBLIC_METRICS_STUDY_PROJECTS
+    ):
+        raise ValueError("public dashboard metrics study set is invalid")
+    for study in studies:
+        if not isinstance(study, dict) or set(study) != {
+            "key",
+            "label",
+            "status",
+            "projects_total",
+            "projects_ok",
+            "target",
+            "enrollment",
+            "event_records",
+            "event_records_suppressed",
+            "events",
+            "forms",
+        }:
+            raise ValueError("public dashboard metrics study has unexpected fields")
+        project_count = PUBLIC_METRICS_STUDY_PROJECTS[study["key"]]
+        if (
+            study["status"] != "ok"
+            or study["projects_total"] != project_count
+            or study["projects_ok"] != project_count
+        ):
+            raise ValueError("public dashboard metrics contain an unhealthy study")
+        if not _is_nonnegative_int(study.get("enrollment")):
+            raise ValueError("public dashboard metrics study enrollment is invalid")
+        _validate_event_total(study, label="study event")
+        if study["target"] is not None and not _is_nonnegative_int(study["target"]):
+            raise ValueError("public dashboard metrics study target is invalid")
+        if not isinstance(study["label"], str) or not study["label"]:
+            raise ValueError("public dashboard metrics study label is invalid")
+        _validate_metrics_events(study["events"])
+        _validate_metrics_forms(study["forms"], include_instruments=False)
+
+    projects = payload.get("projects")
+    if not isinstance(projects, list) or len(projects) != 8:
+        raise ValueError("public dashboard metrics require exactly eight projects")
+    if any(
+        not isinstance(project, dict) or project.get("status") != "ok"
+        for project in projects
+    ):
+        raise ValueError("every public dashboard metrics project must be healthy")
+    if {project.get("key") for project in projects} != set(PUBLIC_METRICS_PROJECT_IDS):
+        raise ValueError("public dashboard metrics project set is invalid")
+    for project in projects:
+        if set(project) != {
+            "key",
+            "study",
+            "role",
+            "project_id",
+            "title",
+            "status",
+            "enrollment_authority",
+            "records",
+            "event_records",
+            "event_records_suppressed",
+            "events",
+            "forms",
+            "error",
+        }:
+            raise ValueError("public dashboard metrics project has unexpected fields")
+        if project["project_id"] != PUBLIC_METRICS_PROJECT_IDS[project["key"]]:
+            raise ValueError("public dashboard metrics project identity is invalid")
+        if project["study"] not in PUBLIC_METRICS_STUDY_PROJECTS:
+            raise ValueError("public dashboard metrics project study is invalid")
+        if not isinstance(project["role"], str) or not project["role"]:
+            raise ValueError("public dashboard metrics project role is invalid")
+        if not isinstance(project["title"], str) or not project["title"]:
+            raise ValueError("public dashboard metrics project title is invalid")
+        if not isinstance(project["enrollment_authority"], bool):
+            raise ValueError("public dashboard metrics enrollment authority is invalid")
+        if not _is_nonnegative_int(project.get("records")):
+            raise ValueError("public dashboard metrics project records is invalid")
+        _validate_event_total(project, label="project event")
+        if project["error"] is not None:
+            raise ValueError("healthy public dashboard metrics project has an error")
+        _validate_metrics_events(project["events"])
+        _validate_metrics_forms(project["forms"], include_instruments=True)
+
+    studies_by_key = {study["key"]: study for study in studies}
+    authority_projects = [
+        project for project in projects if project["enrollment_authority"]
+    ]
+    for project in projects:
+        study = studies_by_key[project["study"]]
+        if (
+            project["forms"]["counts_suppressed"]
+            and not study["forms"]["counts_suppressed"]
+        ):
+            raise ValueError(
+                "public dashboard metrics study form totals reveal a suppressed project cell"
+            )
+        if (
+            project["enrollment_authority"]
+            and project["event_records_suppressed"]
+            and not study["event_records_suppressed"]
+        ):
+            raise ValueError(
+                "public dashboard metrics study event total reveals a suppressed cell"
+            )
+    if (
+        any(project["forms"]["counts_suppressed"] for project in projects)
+        and not portfolio["forms"]["counts_suppressed"]
+    ):
+        raise ValueError(
+            "public dashboard metrics portfolio form totals reveal a suppressed project cell"
+        )
+    if (
+        any(project["event_records_suppressed"] for project in authority_projects)
+        and not portfolio["event_records_suppressed"]
+    ):
+        raise ValueError(
+            "public dashboard metrics portfolio event total reveals a suppressed cell"
+        )
+
+    hash_input = {
+        key: value
+        for key, value in payload.items()
+        if key not in {"data_version", "generated_at"}
+    }
+    canonical = json.dumps(
+        hash_input, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    expected_version = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+    if payload["data_version"] != expected_version:
+        raise ValueError("public dashboard metrics data_version does not match content")
     return payload
 
 
@@ -149,20 +504,21 @@ def _clean_public_document_text(value: str, *, limit: int) -> str:
 
 
 def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
-  resolved_root = repo_root.resolve()
-  if not (resolved_root / ".git").exists():
-    try:
-      resolved_root = pathlib.Path(
-        subprocess.run(
-          ["git", "rev-parse", "--show-toplevel"],
-          cwd=resolved_root,
-          check=True,
-          capture_output=True,
-          text=True,
-        ).stdout.strip()
-      )
-    except (OSError, subprocess.CalledProcessError):
-      resolved_root = REPO_ROOT
+    resolved_root = repo_root.resolve()
+    if not (resolved_root / ".git").exists():
+        try:
+            resolved_root = pathlib.Path(
+                subprocess.run(
+                    ["git", "rev-parse", "--show-toplevel"],
+                    cwd=resolved_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+            )
+        except (OSError, subprocess.CalledProcessError):
+            resolved_root = REPO_ROOT
+
     try:
         tracked = (
             subprocess.run(
@@ -174,7 +530,7 @@ def _build_public_buddy_documents(repo_root: pathlib.Path) -> dict:
                     "docs",
                     "dashboard/context_skill/references",
                 ],
-                  cwd=resolved_root,
+                cwd=resolved_root,
                 check=True,
                 capture_output=True,
             )
@@ -313,46 +669,11 @@ async function readJson(request) {
   }
 }
 
-async function redcapProxy(request, env) {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "access-control-allow-methods": "POST, OPTIONS",
-        "access-control-allow-headers": "Content-Type",
-      },
-    });
-  }
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Use POST for REDCap proxy calls." }, 405);
-  }
-  const token = env.REDCAP_API_TOKEN;
-  const apiUrl = env.REDCAP_API_URL;
-  if (!token || !apiUrl) {
-    return jsonResponse({ error: "REDCap env vars not set in Cloudflare Pages." }, 500);
-  }
-  const body = await readJson(request);
-  const allowed = new Set(["project", "metadata", "event", "formEventMapping", "record"]);
-  if (body.content && !allowed.has(body.content)) {
-    return jsonResponse({ error: `content '${body.content}' not permitted via proxy.` }, 403);
-  }
-  if (body.action === "import" || body.action === "delete") {
-    return jsonResponse({ error: "Write actions are not allowed through the browser proxy." }, 403);
-  }
-  const form = new URLSearchParams({ ...body, token, format: "json", returnFormat: "json" });
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: form.toString(),
-    });
-    return new Response(await response.text(), {
-      status: response.status,
-      headers: { "content-type": "application/json", "cache-control": "no-store" },
-    });
-  } catch (error) {
-    return jsonResponse({ error: `Cannot reach REDCap: ${String(error?.message || error)}` }, 502);
-  }
+function retiredRedcapResponse() {
+  return jsonResponse(
+    { error: "The public REDCap proxy has been permanently retired.", status: "gone" },
+    410,
+  );
 }
 
 function assistantStatus(reason = "upstream-unavailable", env = null) {
@@ -612,6 +933,35 @@ function sanitizeNanoForBuddy(payload) {
   }
   if (Object.keys(lgcm).length) safe.lgcm_results = lgcm;
   return safe;
+}
+
+function applyPortfolioMetricsToBuddy(nano, metrics) {
+  if (!nano || typeof nano !== "object") return {};
+  if (metrics?.schema !== "dashboard.metrics.v1" || metrics?.aggregate_only !== true) return nano;
+  const study = Array.isArray(metrics.studies)
+    ? metrics.studies.find((item) => item?.key === "nano")
+    : null;
+  if (!study || typeof study.enrollment !== "number") return nano;
+
+  nano.meta = {
+    ...(nano.meta || {}),
+    study: "NANO",
+    as_of: metrics.generated_at || nano.meta?.as_of,
+    n_target: typeof study.target === "number" ? study.target : nano.meta?.n_target,
+    source: "live REDCap aggregate",
+  };
+  nano.enrollment = {
+    enrolled: study.enrollment,
+    target: typeof study.target === "number" ? study.target : undefined,
+    last_updated: metrics.generated_at || undefined,
+  };
+  nano.redcap = {
+    last_sync: metrics.generated_at || undefined,
+    sync_health: metrics.source?.kind === "live"
+      ? `${metrics.source?.projects_ok || 0}/${metrics.source?.projects_total || 0} projects healthy`
+      : "aggregate snapshot unavailable",
+  };
+  return nano;
 }
 
 function buddyValue(value, path = "") {
@@ -932,12 +1282,13 @@ async function buddyFallbackResponse(request, url, env, reason) {
   const parsed = await parseBuddyRequest(request);
   if (parsed.error) return parsed.error;
   if (buddyRefuses(parsed.message)) return jsonResponse(buddyRefusal());
-  const [dashboard, readings, repositoryDocuments] = await Promise.all([
+  const [dashboard, metrics, readings, repositoryDocuments] = await Promise.all([
     readPackagedJson(env, url, "/dashboard/data/nano_dashboard_data.json"),
+    readPackagedJson(env, url, "/dashboard/data/dashboard_metrics.json"),
     readPackagedJson(env, url, "/dashboard/data/readings_data.json"),
     readPackagedJson(env, url, "/dashboard/data/buddy_documents.json"),
   ]);
-  const nano = sanitizeNanoForBuddy(dashboard);
+  const nano = applyPortfolioMetricsToBuddy(sanitizeNanoForBuddy(dashboard), metrics);
   const documentCatalog = {
     featured: readings?.featured || [],
     readings: [...(readings?.readings || []), ...(repositoryDocuments?.documents || [])],
@@ -1193,7 +1544,7 @@ export default {
     }
 
     if (url.pathname === "/api/redcap") {
-      return redcapProxy(request, env);
+      return retiredRedcapResponse();
     }
 
     if (url.pathname === "/api/buddy") {
@@ -1311,12 +1662,13 @@ def build(
     api_origin: str | None = None,
     stamp: str | None = None,
     origin_probe_timeout: float = 8.0,
+    require_live_metrics: bool = False,
 ) -> pathlib.Path:
     index_path = build_dir / "index.html"
     if not index_path.exists():
         sys.exit(
             f"[build_pages_site] missing built SPA at {index_path}. "
-            "Run `cd web && VITE_USE_MOCKS=true VITE_LIVE_ASSISTANT=true npm run build` first."
+            "Run `cd web && VITE_USE_MOCKS=false VITE_LIVE_ASSISTANT=true npm run build` first."
         )
 
     if out_dir.exists():
@@ -1324,22 +1676,50 @@ def build(
     shutil.copytree(build_dir, out_dir)
     dashboard_data_out = out_dir / "dashboard" / "data"
     dashboard_data_out.mkdir(parents=True, exist_ok=True)
-    for name in ("dashboard_data.json", "readings_data.json", "runtime_status.json"):
+
+    # Vite copies web/public verbatim. Explicitly remove the historical full
+    # dashboard payload before adding privacy-validated public snapshots.
+    legacy_dashboard_data = dashboard_data_out / "dashboard_data.json"
+    if legacy_dashboard_data.exists():
+        legacy_dashboard_data.unlink()
+
+    for name in ("readings_data.json", "runtime_status.json"):
         source = REPO_ROOT / "dashboard" / "data" / name
         if source.exists():
             shutil.copy2(source, dashboard_data_out / name)
 
-    nano_source = REPO_ROOT / "dashboard" / "data" / "nano_dashboard_data.json"
-    if nano_source.exists():
+    metrics_source = REPO_ROOT / "dashboard" / "data" / "dashboard_metrics.json"
+    if require_live_metrics and not metrics_source.exists():
+        sys.exit(
+            "[build_pages_site] missing live aggregate dashboard_metrics.json; "
+            "run scripts/sync_redcap_portfolio.py --require-all first"
+        )
+    if metrics_source.exists():
         try:
-            nano_payload = json.loads(nano_source.read_text(encoding="utf-8"))
-            _validate_public_nano_payload(nano_payload)
+            metrics_payload = json.loads(metrics_source.read_text(encoding="utf-8"))
+            _validate_public_dashboard_metrics(
+                metrics_payload,
+                max_age_minutes=15 if require_live_metrics else None,
+            )
         except (json.JSONDecodeError, ValueError) as exc:
-            sys.exit(f"[build_pages_site] unsafe public NANO payload: {exc}")
-        (dashboard_data_out / nano_source.name).write_text(
-            json.dumps(nano_payload, indent=2, ensure_ascii=True, allow_nan=False),
+            sys.exit(f"[build_pages_site] unsafe public dashboard metrics: {exc}")
+        (dashboard_data_out / metrics_source.name).write_text(
+            json.dumps(metrics_payload, indent=2, ensure_ascii=True, allow_nan=False),
             encoding="utf-8",
         )
+
+    nano_source = REPO_ROOT / "dashboard" / "data" / "nano_dashboard_data.json"
+    if not nano_source.exists():
+        sys.exit("[build_pages_site] missing aggregate-only NANO dashboard payload")
+    try:
+        nano_payload = json.loads(nano_source.read_text(encoding="utf-8"))
+        _validate_public_nano_payload(nano_payload)
+    except (json.JSONDecodeError, ValueError) as exc:
+        sys.exit(f"[build_pages_site] unsafe public NANO payload: {exc}")
+    (dashboard_data_out / nano_source.name).write_text(
+        json.dumps(nano_payload, indent=2, ensure_ascii=True, allow_nan=False),
+        encoding="utf-8",
+    )
 
     buddy_documents = _build_public_buddy_documents(REPO_ROOT)
     (dashboard_data_out / "buddy_documents.json").write_text(
@@ -1408,6 +1788,11 @@ def main() -> int:
     parser.add_argument("--api-origin", type=str, default=None)
     parser.add_argument("--stamp", type=str, default=None)
     parser.add_argument("--origin-probe-timeout", type=float, default=8.0)
+    parser.add_argument(
+        "--require-live-metrics",
+        action="store_true",
+        help="Fail unless a validated live 8/8 REDCap aggregate snapshot is packaged.",
+    )
     args = parser.parse_args()
 
     build(
@@ -1417,6 +1802,7 @@ def main() -> int:
         api_origin=args.api_origin,
         stamp=args.stamp,
         origin_probe_timeout=args.origin_probe_timeout,
+        require_live_metrics=args.require_live_metrics,
     )
     return 0
 

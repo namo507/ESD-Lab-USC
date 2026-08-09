@@ -301,8 +301,9 @@ export function useRsaTrajectories(ageBasis: "adjusted" | "chronological" = "adj
   });
 }
 
-export function useRedcapCompleteness() {
+export function useRedcapCompleteness(enabled = true) {
   return useQuery({
+    enabled,
     queryKey: ["v2", "redcap-completeness"],
     queryFn: () => api.get("/api/v2/redcap-completeness", S.RedcapCompletenessResponse),
     staleTime: 5 * 60_000,

@@ -14,12 +14,12 @@ on:
       - "web/tailwind.config.ts"
       - "web/postcss.config.js"
       - "config/redcap_config.yml"
+      - "config/redcap_projects.yml"
       - "functions/**"
       - "dashboard/assistant/local_chat_assistant.py"
       - "dashboard/assistant/nano_buddy.py"
       - "dashboard/context_skill/extract_context.py"
       - "dashboard/context_skill/references/**"
-      - "dashboard/data/dashboard_data.json"
       - "dashboard/data/nano_dashboard_data.json"
       - "dashboard/data/readings_data.json"
       - "dashboard/pipelines/build_dashboard_data.py"
@@ -28,6 +28,7 @@ on:
       - "dashboard/pipelines/nano_study.py"
       - "dashboard/pipelines/study_blocks.py"
       - "dashboard/server/live_dashboard_server.py"
+      - "scripts/sync_redcap_portfolio.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"
@@ -38,8 +39,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: pages-deploy
-  cancel-in-progress: true
+  group: pages-production-deploy
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -47,13 +48,11 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: production
+    timeout-minutes: 30
+    environment: redcap-sync
     env:
       CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
       CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
-      # Only stable, operator-managed origins are eligible. The packager probes
-      # this value and falls back locally when it is absent or unhealthy.
       PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || (vars.DASHBOARD_PUBLIC_HOSTNAME && format('https://{0}', vars.DASHBOARD_PUBLIC_HOSTNAME)) || '' }}
     steps:
       - name: Check out repo
@@ -71,19 +70,35 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install generator Python deps
-        run: python -m pip install "PyYAML>=6.0.1,<7"
+      - name: Install sync and generator dependencies
+        run: python -m pip install "requests>=2.31,<3" "PyYAML>=6.0.1,<7"
 
-      - name: Install frontend deps
+      - name: Install frontend dependencies
         working-directory: web
         run: npm ci
 
-      - name: Generate REDCap TS constants
+      - name: Synchronize all eight REDCap projects
+        env:
+          REDCAP_API_URL: ${{ vars.REDCAP_API_URL || 'https://redcap.research.sc.edu/api/' }}
+          REDCAP_ABC_SURVEYS_TOKEN: ${{ secrets.REDCAP_ABC_SURVEYS_TOKEN }}
+          REDCAP_IPSA_SURVEYS_TOKEN: ${{ secrets.REDCAP_IPSA_SURVEYS_TOKEN }}
+          REDCAP_ACTION_TOKEN: ${{ secrets.REDCAP_ACTION_TOKEN }}
+          REDCAP_IPSA_LAB_TOKEN: ${{ secrets.REDCAP_IPSA_LAB_TOKEN }}
+          REDCAP_ABC_LAB_TOKEN: ${{ secrets.REDCAP_ABC_LAB_TOKEN }}
+          REDCAP_NICO_TOKEN: ${{ secrets.REDCAP_NICO_TOKEN }}
+          REDCAP_NANO_SURVEYS_TOKEN: ${{ secrets.REDCAP_NANO_SURVEYS_TOKEN }}
+          REDCAP_NANO_LAB_TOKEN: ${{ secrets.REDCAP_NANO_LAB_TOKEN }}
+        run: |
+          umask 077
+          python scripts/sync_redcap_portfolio.py --require-all
+          test -s dashboard/data/dashboard_metrics.json
+
+      - name: Generate REDCap TypeScript constants
         run: |
           node scripts/gen_redcap_constants.mjs
           git diff --exit-code web/src/constants/redcapConfig.ts
 
-      - name: Build React SPA
+      - name: Build production React SPA without mocks
         working-directory: web
         env:
           VITE_FEATURE_RSA_GROWTH_CURVES: "true"
@@ -96,8 +111,8 @@ jobs:
           VITE_FEATURE_CLUSTER_VIEWER: "true"
           VITE_FEATURE_MODEL_LEADERBOARD: "true"
           VITE_FEATURE_CASCADE_DAG: "true"
-          VITE_FEATURE_REDCAP_COMPLETENESS: "true"
-          VITE_FEATURE_REDCAP_VISIT_HEALTH: "true"
+          VITE_FEATURE_REDCAP_COMPLETENESS: "false"
+          VITE_FEATURE_REDCAP_VISIT_HEALTH: "false"
           VITE_FEATURE_ECG_QUALITY_MONITOR: "true"
           VITE_FEATURE_SPATIAL_ASSESSMENT_MATRIX: "true"
           VITE_FEATURE_ATTACHMENT_HEATMAP: "true"
@@ -113,19 +128,20 @@ jobs:
           VITE_FEATURE_DYN_CASCADE_SIMULATOR: "true"
           VITE_FEATURE_MULTIMODAL_SYNCHRONY: "true"
           VITE_FEATURE_DYN_CO_REGULATION_BRAID: "true"
-          VITE_USE_MOCKS: "true"
+          VITE_USE_MOCKS: "false"
           VITE_LIVE_ASSISTANT: "true"
         run: |
           npm run build
           test -s build/index.html
 
-      - name: Package deploy artifact
+      - name: Package privacy-validated deploy artifact
         run: |
-          python scripts/build_pages_site.py
+          python scripts/build_pages_site.py --require-live-metrics
           test -s dist/pages-wrapper/index.html
           test -s dist/pages-wrapper/_worker.js
           test -s dist/pages-wrapper/_redirects
-          ls -lah dist/pages-wrapper/
+          test -s dist/pages-wrapper/dashboard/data/dashboard_metrics.json
+          test ! -e dist/pages-wrapper/dashboard/data/dashboard_data.json
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
@@ -145,5 +161,7 @@ jobs:
           python scripts/check_live_surfaces.py \
             --canonical-url "$canonical_url" \
             --skip-runtime \
+            --require-live-metrics \
+            --max-metrics-age-minutes 15 \
             --timeout 30 \
             --max-stamp-age-hours 24

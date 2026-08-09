@@ -1,67 +1,19 @@
-// Server-side REDCap proxy for Cloudflare Pages.
-// Required env vars in Pages: REDCAP_API_TOKEN and REDCAP_API_URL.
+// REDCap credentials and raw project responses must never enter the public
+// Cloudflare Pages runtime. Metrics are synchronized server-side, privacy
+// validated, and published as an aggregate-only JSON snapshot instead.
 
-export async function onRequestPost(context) {
-  const { REDCAP_API_TOKEN, REDCAP_API_URL } = context.env;
-  if (!REDCAP_API_TOKEN || !REDCAP_API_URL) {
-    return json({ error: "REDCap env vars not set in Cloudflare Pages." }, 500);
-  }
-
-  let body;
-  try {
-    body = await context.request.json();
-  } catch {
-    return json({ error: "Invalid JSON body." }, 400);
-  }
-
-  const allowedContent = new Set(["project", "metadata", "event", "formEventMapping", "record"]);
-  if (body.content && !allowedContent.has(body.content)) {
-    return json({ error: `content '${body.content}' not permitted via proxy.` }, 403);
-  }
-  if (body.action === "import" || body.action === "delete") {
-    return json({ error: "Write actions are not allowed through the browser proxy." }, 403);
-  }
-
-  // Spread the client body first so the trusted server credentials/format below
-  // always win — a request can never override the token or response format.
-  const form = new URLSearchParams({
-    ...body,
-    token: REDCAP_API_TOKEN,
-    format: "json",
-    returnFormat: "json",
-  });
-
-  try {
-    const response = await fetch(REDCAP_API_URL, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: form.toString(),
-    });
-    return new Response(await response.text(), {
-      status: response.status,
+export async function onRequest() {
+  return new Response(
+    JSON.stringify({
+      error: "The public REDCap proxy has been permanently retired.",
+      status: "gone",
+    }),
+    {
+      status: 410,
       headers: {
-        "content-type": "application/json",
+        "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store",
       },
-    });
-  } catch (error) {
-    return json({ error: `Cannot reach REDCap: ${error.message}` }, 502);
-  }
-}
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "access-control-allow-methods": "POST, OPTIONS",
-      "access-control-allow-headers": "Content-Type",
     },
-  });
-}
-
-function json(payload, status) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+  );
 }

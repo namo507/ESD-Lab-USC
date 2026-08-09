@@ -1,89 +1,133 @@
-name: REDCap Sync and Propagate
+name: REDCap Portfolio Sync and Deploy
 
 on:
   schedule:
-    - cron: "0 8 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: redcap-sync
+  group: pages-production-deploy
   cancel-in-progress: false
 
 jobs:
-  sync:
+  sync-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: redcap-sync
     env:
-      PAGES_DEPLOY_HOOK_URL: ${{ secrets.PAGES_DEPLOY_HOOK_URL }}
-      REDCAP_CONFIGURED: ${{ secrets.REDCAP_API_URL != '' && (secrets.REDCAP_API_TOKEN != '' || secrets.REDCAP_API_KEY != '') && secrets.PARTICIPANT_ID_SALT != '' }}
+      CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'esd-lab-namo' }}
+      CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH || 'main' }}
+      PAGES_API_ORIGIN: ${{ vars.PAGES_API_ORIGIN || vars.DASHBOARD_API_ORIGIN || (vars.DASHBOARD_PUBLIC_HOSTNAME && format('https://{0}', vars.DASHBOARD_PUBLIC_HOSTNAME)) || '' }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out trusted main branch
+        uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
 
-      - uses: actions/setup-node@v6
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
-      - uses: r-lib/actions/setup-r@v2
-        if: env.REDCAP_CONFIGURED == 'true'
-        with:
-          r-version: "release"
+      - name: Install sync and generator dependencies
+        run: python -m pip install "requests>=2.31,<3" "PyYAML>=6.0.1,<7"
 
-      - name: Install Python dependencies
-        if: env.REDCAP_CONFIGURED == 'true'
-        run: pip install -r requirements.txt
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm ci
 
-      - name: Report unconfigured REDCap sync
-        if: env.REDCAP_CONFIGURED != 'true'
-        run: echo "::notice::REDCap sync skipped because the required repository secrets are not configured."
-
-      - name: Pull REDCap and build dashboard payload
-        if: env.REDCAP_CONFIGURED == 'true'
+      - name: Synchronize all eight REDCap projects
         env:
-          NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
-          REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
-          REDCAP_API_TOKEN: ${{ secrets.REDCAP_API_TOKEN || secrets.REDCAP_API_KEY }}
-          REDCAP_API_KEY: ${{ secrets.REDCAP_API_TOKEN || secrets.REDCAP_API_KEY }}
-          PARTICIPANT_ID_SALT: ${{ secrets.PARTICIPANT_ID_SALT }}
-          NANO_ID_SALT: ${{ secrets.PARTICIPANT_ID_SALT }}
+          REDCAP_API_URL: ${{ vars.REDCAP_API_URL || 'https://redcap.research.sc.edu/api/' }}
+          REDCAP_ABC_SURVEYS_TOKEN: ${{ secrets.REDCAP_ABC_SURVEYS_TOKEN }}
+          REDCAP_IPSA_SURVEYS_TOKEN: ${{ secrets.REDCAP_IPSA_SURVEYS_TOKEN }}
+          REDCAP_ACTION_TOKEN: ${{ secrets.REDCAP_ACTION_TOKEN }}
+          REDCAP_IPSA_LAB_TOKEN: ${{ secrets.REDCAP_IPSA_LAB_TOKEN }}
+          REDCAP_ABC_LAB_TOKEN: ${{ secrets.REDCAP_ABC_LAB_TOKEN }}
+          REDCAP_NICO_TOKEN: ${{ secrets.REDCAP_NICO_TOKEN }}
+          REDCAP_NANO_SURVEYS_TOKEN: ${{ secrets.REDCAP_NANO_SURVEYS_TOKEN }}
+          REDCAP_NANO_LAB_TOKEN: ${{ secrets.REDCAP_NANO_LAB_TOKEN }}
         run: |
-          mkdir -p "$NANO_DATA_ROOT/processed" "$NANO_DATA_ROOT/redcap_exports"
-          python redcap/api/redcap_pull.py
-          test -s "$NANO_DATA_ROOT/processed/redcap_latest.parquet"
-          python dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+          umask 077
+          python scripts/sync_redcap_portfolio.py --require-all
+          test -s dashboard/data/dashboard_metrics.json
 
-      - name: Regenerate REDCap constants and context
-        if: env.REDCAP_CONFIGURED == 'true'
-        env:
-          NANO_DATA_ROOT: ${{ runner.temp }}/nano-data
-          REDCAP_API_URL: ${{ secrets.REDCAP_API_URL }}
-          REDCAP_API_TOKEN: ${{ secrets.REDCAP_API_TOKEN || secrets.REDCAP_API_KEY }}
-          REDCAP_API_KEY: ${{ secrets.REDCAP_API_TOKEN || secrets.REDCAP_API_KEY }}
+      - name: Generate REDCap TypeScript constants
         run: |
           node scripts/gen_redcap_constants.mjs
-          python dashboard/context_skill/extract_context.py --verify-redcap
-          python dashboard/context_skill/extract_context.py --emit
+          git diff --exit-code web/src/constants/redcapConfig.ts
 
-      - name: Re-index assistant grounding
-        if: env.REDCAP_CONFIGURED == 'true'
-        run: python scripts/prepare_dashboard_assistant.py --reindex || true
-
-      - name: Commit propagated data and context
-        if: env.REDCAP_CONFIGURED == 'true'
+      - name: Build production React SPA without mocks
+        working-directory: web
+        env:
+          VITE_FEATURE_RSA_GROWTH_CURVES: "true"
+          VITE_FEATURE_HDA_TIMELINE_PLAYER: "true"
+          VITE_FEATURE_THERMAL_HEATMAP: "true"
+          VITE_FEATURE_SWIMMER_PLOT: "true"
+          VITE_FEATURE_ATTRITION_FUNNEL: "true"
+          VITE_FEATURE_SDOH_MAP: "true"
+          VITE_FEATURE_SHAP_BEESWARM: "true"
+          VITE_FEATURE_CLUSTER_VIEWER: "true"
+          VITE_FEATURE_MODEL_LEADERBOARD: "true"
+          VITE_FEATURE_CASCADE_DAG: "true"
+          VITE_FEATURE_REDCAP_COMPLETENESS: "false"
+          VITE_FEATURE_REDCAP_VISIT_HEALTH: "false"
+          VITE_FEATURE_ECG_QUALITY_MONITOR: "true"
+          VITE_FEATURE_SPATIAL_ASSESSMENT_MATRIX: "true"
+          VITE_FEATURE_ATTACHMENT_HEATMAP: "true"
+          VITE_FEATURE_CGA_RIVER: "true"
+          VITE_FEATURE_COUNTY_COMPARATOR: "true"
+          VITE_FEATURE_PARTICIPANT_TIMELINE_V2: "true"
+          VITE_FEATURE_MODEL_CONFIDENCE_TERRAIN: "true"
+          VITE_FEATURE_ATTRITION_FUNNEL_V2: "true"
+          VITE_FEATURE_GUIDED_EXPLORER: "true"
+          VITE_FEATURE_PUBLIC_INSIGHTS: "true"
+          VITE_FEATURE_EXECUTIVE_MODE: "true"
+          VITE_FEATURE_DYN_INFANT_PASSPORT: "true"
+          VITE_FEATURE_DYN_CASCADE_SIMULATOR: "true"
+          VITE_FEATURE_MULTIMODAL_SYNCHRONY: "true"
+          VITE_FEATURE_DYN_CO_REGULATION_BRAID: "true"
+          VITE_USE_MOCKS: "false"
+          VITE_LIVE_ASSISTANT: "true"
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dashboard/data/dashboard_data.json config/dashboard_controls.json dashboard/context_skill/references/tables/redcap.md dashboard/context_skill/references/dashboard_schema.md web/src/constants/redcapConfig.ts
-          git diff --cached --quiet || git commit -m "Auto: REDCap sync + context regen [skip ci]"
-          git push || true
+          npm run build
+          test -s build/index.html
 
-      - name: Trigger Pages deploy hook
-        if: env.REDCAP_CONFIGURED == 'true' && env.PAGES_DEPLOY_HOOK_URL != ''
-        run: curl -fsS -X POST "$PAGES_DEPLOY_HOOK_URL"
+      - name: Package privacy-validated Pages artifact
+        run: |
+          python scripts/build_pages_site.py --require-live-metrics
+          test -s dist/pages-wrapper/index.html
+          test -s dist/pages-wrapper/_worker.js
+          test -s dist/pages-wrapper/dashboard/data/dashboard_metrics.json
+          test ! -e dist/pages-wrapper/dashboard/data/dashboard_data.json
+
+      - name: Deploy aggregate metrics to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy dist/pages-wrapper
+            --project-name=${{ env.CLOUDFLARE_PAGES_PROJECT }}
+            --branch=${{ env.CLOUDFLARE_PAGES_BRANCH }}
+            --commit-dirty=true
+
+      - name: Verify live aggregate health and retired proxy
+        run: |
+          sleep 60
+          canonical_url="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev/"
+          python scripts/check_live_surfaces.py \
+            --canonical-url "$canonical_url" \
+            --skip-runtime \
+            --require-live-metrics \
+            --max-metrics-age-minutes 15 \
+            --timeout 30 \
+            --max-stamp-age-hours 24

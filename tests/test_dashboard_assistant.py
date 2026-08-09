@@ -105,9 +105,7 @@ def test_build_context_keeps_enrollment_questions_tight_and_relevant(tmp_path):
             ],
         },
         "organization_site": {
-            "stories": [
-                {"title": "Enrollment news", "summary": "Public site summary."}
-            ]
+            "stories": [{"title": "Enrollment news", "summary": "Public site summary."}]
         },
     }
     (data_dir / "dashboard_data.json").write_text(json.dumps(dashboard_payload))

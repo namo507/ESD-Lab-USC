@@ -385,12 +385,15 @@ def test_buddy_reuses_shared_provider_with_sanitized_grounding(tmp_path):
     assert "nano-001" not in grounding
 
 
-def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(tmp_path):
+def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(
+    tmp_path,
+):
     buddy = _buddy(tmp_path)
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
     (docs_dir / "ecg_processing_protocol.md").write_text(
-        "# ECG Processing SOP\n\nUse a 3-lead configuration, record a five-minute baseline, and review aggregate QC flags.\n",
+        "# ECG Processing SOP\n\nUse a 3-lead configuration, record a "
+        "five-minute baseline, and review aggregate QC flags.\n",
         encoding="utf-8",
     )
     buddy.assistant._provider = _PlanningProvider()
@@ -426,11 +429,15 @@ def test_buddy_explains_pipeline_stage_cards_without_provider(tmp_path):
     }
 
     result = buddy.answer(
-        "Explain how to read the six NANO pipeline stages, including in-flight, done, fail, and when an operator should open run history."
+        "Explain how to read the six NANO pipeline stages, including in-flight, "
+        "done, fail, and when an operator should open run history."
     )
 
     assert result["refused"] is False
-    assert "Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id" in result["answer"]
+    assert (
+        "Ingest, Preprocess, Window QA, HRV features, HDA labeling, Merge · de-id"
+        in result["answer"]
+    )
     assert "In flight" in result["answer"]
     assert "done" in result["answer"]
     assert "fail" in result["answer"]

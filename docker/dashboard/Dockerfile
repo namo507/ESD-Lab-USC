@@ -5,7 +5,7 @@ LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
     description="Runtime image for the ESD Lab USC NANO live dashboard"
 
 ARG PIP_VERSION=25.3
-ARG NPM_VERSION=11.18.0
+ARG NPM_VERSION=11.19.0
 ARG SETUPTOOLS_VERSION=80.10.2
 ARG WHEEL_VERSION=0.46.3
 
@@ -33,6 +33,25 @@ RUN apt-get update \
     && apt-get update \
     && apt-get install -y --no-install-recommends nodejs \
     && npm install -g "npm@${NPM_VERSION}" --no-audit --no-fund \
+    && npm_root="$(npm root -g)" \
+    && npm_ip_address_dir="${npm_root}/npm/node_modules/ip-address" \
+    && npm_brace_expansion_dir="${npm_root}/npm/node_modules/brace-expansion" \
+    && test -d "${npm_ip_address_dir}" \
+    && test -d "${npm_brace_expansion_dir}" \
+    && patched_ip_dir="$(mktemp -d)" \
+    && npm pack "ip-address@10.4.0" --pack-destination "${patched_ip_dir}" \
+       --ignore-scripts --silent \
+    && npm pack "brace-expansion@5.0.9" --pack-destination "${patched_ip_dir}" \
+       --ignore-scripts --silent \
+    && rm -rf "${npm_ip_address_dir}" \
+    && rm -rf "${npm_brace_expansion_dir}" \
+    && mkdir -p "${npm_ip_address_dir}" \
+    && mkdir -p "${npm_brace_expansion_dir}" \
+    && tar -xzf "${patched_ip_dir}/ip-address-10.4.0.tgz" \
+       --strip-components=1 -C "${npm_ip_address_dir}" \
+    && tar -xzf "${patched_ip_dir}/brace-expansion-5.0.9.tgz" \
+       --strip-components=1 -C "${npm_brace_expansion_dir}" \
+    && rm -rf "${patched_ip_dir}" \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g 1000 appuser \

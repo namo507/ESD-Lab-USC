@@ -1,9 +1,9 @@
 .git
 .github
-.env
-.env.local
-.env.*.local
+.env*
 .dev.vars
+.design-qa/
+.tools/
 config/redcap_config_local.yml
 credentials/
 .cloudflared/
@@ -16,6 +16,8 @@ cloudflared/
 .pytest_cache
 .venv
 .venv-*/
+**/.venv/
+**/.venv-*/
 .Rlibs/
 **/__pycache__
 **/*.pyc
@@ -40,6 +42,7 @@ tmp/
 *.tar.gz
 *.pptx
 *.log
+*.bak
 **/*.js.map
 dashboard/data/*.sqlite3
 dashboard/data/*.sqlite3-*

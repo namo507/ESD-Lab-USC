@@ -8,7 +8,13 @@ import { Buddy } from "./Buddy";
 import { ChatDrawer } from "./ChatDrawer";
 import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { useIdleTimer } from "./useIdleTimer";
-import { useStudySummary, useStages, useRuns } from "@/api/hooks";
+import { useStages } from "@/api/hooks";
+import {
+  DASHBOARD_METRICS_QUERY_KEY,
+  getDashboardSourceState,
+  selectNanoMetrics,
+  useDashboardMetrics,
+} from "@/api/dashboardMetrics";
 import { useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import styles from "./AppShell.module.css";
@@ -29,12 +35,12 @@ export function AppShell({ brand }: AppShellProps = {}) {
   const toggleChat = useUi((s) => s.toggleChat);
   const setChatOpen = useUi((s) => s.setChatOpen);
   const density = useUi((s) => s.density);
-  const lastSyncAt = useUi((s) => s.lastSyncAt);
   const setLastSyncAt = useUi((s) => s.setLastSyncAt);
 
-  const { data: study } = useStudySummary();
+  const dashboardMetrics = useDashboardMetrics();
   const { data: stages } = useStages();
-  const { data: runs } = useRuns(20);
+  const nano = selectNanoMetrics(dashboardMetrics.data);
+  const sourceState = getDashboardSourceState(dashboardMetrics.data);
 
   const [query, setQuery] = useState("");
   const [syncTick, setSyncTick] = useState(0);
@@ -48,6 +54,12 @@ export function AppShell({ brand }: AppShellProps = {}) {
     void logAudit({ action: "route.navigate", scope: location.pathname });
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (dashboardMetrics.data?.generatedAt) {
+      setLastSyncAt(dashboardMetrics.data.generatedAt);
+    }
+  }, [dashboardMetrics.data?.generatedAt, setLastSyncAt]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -70,34 +82,32 @@ export function AppShell({ brand }: AppShellProps = {}) {
     if (import.meta.env.DEV) console.warn("idle timeout reached");
   });
 
-  function forceSync() {
+  async function forceSync() {
     if (syncing) return;
     setSyncing(true);
     setSyncTick((t) => t + 1);
-    void qc.invalidateQueries();
     void logAudit({ action: "run.trigger", scope: "/forceSync" });
-    setTimeout(() => {
-      setLastSyncAt(new Date().toISOString());
+    try {
+      await qc.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey.length !== DASHBOARD_METRICS_QUERY_KEY.length
+          || query.queryKey.some((part, index) => part !== DASHBOARD_METRICS_QUERY_KEY[index]),
+        refetchType: "active",
+      });
+      const refreshed = await dashboardMetrics.refetch();
+      if (refreshed.data?.generatedAt) setLastSyncAt(refreshed.data.generatedAt);
+    } finally {
       setSyncing(false);
-    }, 1800);
+    }
   }
 
   const qaPending = stages?.find((s) => s.id === "qa")?.inflight ?? 0;
-  const enrolled = study?.enrolled ?? 0;
   const showHipaaBanner = import.meta.env.PROD ? true : showHipaa;
   const searchParams = new URLSearchParams(location.search);
   const executiveMode = searchParams.get("mode") === "executive";
   const exitExecutiveSearch = new URLSearchParams(location.search);
   exitExecutiveSearch.delete("mode");
   const exitExecutiveHref = `${location.pathname}${exitExecutiveSearch.toString() ? `?${exitExecutiveSearch.toString()}` : ""}`;
-
-  const safeStudy = study ?? {
-    enrolled: 0,
-    target: 1,
-    groups: { VPT: { count: 0, target: 0 }, ASIB: { count: 0, target: 0 }, TD: { count: 0, target: 0 } },
-  };
-
-  void runs;
 
   return (
     <div className={styles.shell} data-brand={brand ?? "esd-2026"}>
@@ -107,7 +117,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
       </button>
       {sidebarOpen && <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} aria-hidden />}
       <div className={`${styles.sidebarLayer} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
-        <Sidebar study={safeStudy} qaPending={qaPending} enrolled={enrolled} executiveMode={executiveMode} />
+        <Sidebar study={nano} sourceState={sourceState} qaPending={qaPending} executiveMode={executiveMode} />
       </div>
 
       <div className={styles.content}>
@@ -117,7 +127,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
           syncing={syncing}
           onForceSync={forceSync}
           idleMinutes={idleMinutes}
-          lastSyncAt={lastSyncAt}
+          lastSyncAt={sourceState.generatedAt}
         />
         {showHipaaBanner && <HipaaBanner onDismiss={import.meta.env.PROD ? undefined : () => setHipaa(false)} idleMinutes={idleMinutes} />}
         {executiveMode && (

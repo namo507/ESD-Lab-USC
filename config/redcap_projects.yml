@@ -1,0 +1,95 @@
+# REDCap portfolio contract. This file contains project metadata and the names
+# of environment variables only; API tokens must never be stored here.
+schema: redcap.portfolio.v1
+api_url_env: REDCAP_API_URL
+refresh_cadence_seconds: 300
+sla_seconds: 900
+small_cell_threshold: 5
+
+http:
+  timeout_seconds: 30
+  retries: 3
+  backoff_seconds: 0.5
+  record_batch_size: 100
+
+studies:
+  - key: abc
+    label: ABC
+    target:
+  - key: ipsa
+    label: IPSA
+    target:
+  - key: action
+    label: ACTION
+    target:
+  - key: nico
+    label: NICO
+    target:
+  - key: nano
+    label: NANO
+    target: 260
+
+projects:
+  - key: abc_surveys
+    study: abc
+    role: surveys
+    enrollment_authority: true
+    token_env: REDCAP_ABC_SURVEYS_TOKEN
+    expected_project_id: 1140
+    expected_title: ABC Study Surveys
+
+  - key: ipsa_surveys
+    study: ipsa
+    role: surveys
+    enrollment_authority: true
+    token_env: REDCAP_IPSA_SURVEYS_TOKEN
+    expected_project_id: 1289
+    expected_title: IPSA Study Surveys and Data Entry
+
+  - key: action
+    study: action
+    role: combined
+    enrollment_authority: true
+    token_env: REDCAP_ACTION_TOKEN
+    expected_project_id: 1556
+    expected_title: ACTION Study
+
+  - key: ipsa_lab
+    study: ipsa
+    role: assessments
+    enrollment_authority: false
+    token_env: REDCAP_IPSA_LAB_TOKEN
+    expected_project_id: 2084
+    expected_title: IPSA Lab Assessments and Double Data Entry
+
+  - key: abc_lab
+    study: abc
+    role: assessments
+    enrollment_authority: false
+    token_env: REDCAP_ABC_LAB_TOKEN
+    expected_project_id: 2263
+    expected_title: ABC Study (Lab Assessments and Double Data Entry)
+
+  - key: nico
+    study: nico
+    role: combined
+    enrollment_authority: true
+    token_env: REDCAP_NICO_TOKEN
+    expected_project_id: 3836
+    expected_title: NICO Study
+
+  - key: nano_surveys
+    study: nano
+    role: surveys
+    enrollment_authority: true
+    token_env: REDCAP_NANO_SURVEYS_TOKEN
+    expected_project_id: 4218
+    expected_title: NANO Study Surveys
+
+  - key: nano_lab
+    study: nano
+    role: assessments
+    enrollment_authority: false
+    token_env: REDCAP_NANO_LAB_TOKEN
+    expected_project_id: 5484
+    expected_title: NANO Lab Assessments & Double Data Entry

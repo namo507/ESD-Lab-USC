@@ -28,6 +28,12 @@ import {
   type NanoAttentionPhase,
   type NanoDashboardData,
 } from "@/api/nanoDashboardData";
+import {
+  getDashboardSourceState,
+  selectNanoMetrics,
+  useDashboardMetrics,
+} from "@/api/dashboardMetrics";
+import { DataProvenance } from "@/components/data/DataProvenance";
 import { useUi } from "@/store/ui";
 import { NanoDashboardDetails } from "@/routes/nano/NanoDashboardDetails";
 import babyIcon from "@/assets/nano-dashboard/icon-baby-blue.png";
@@ -390,14 +396,14 @@ function AssistantInsight({ data }: { data: NanoDashboardData }) {
   const windowValues = data.attention.byWindow.map((item) => item.sustainedPct).filter((value): value is number => value !== null);
   const change = windowValues.length > 1 ? windowValues.at(-1)! - windowValues.at(-2)! : null;
   const openFollowUp = () => {
-    setChatSeed("Summarize the live aggregate NANO attention, autonomic, enrollment, and pipeline metrics. Highlight only operationally useful changes and cite the metrics used.");
+    setChatSeed("Summarize the NANO dashboard, clearly distinguishing live REDCap enrollment from snapshot attention, autonomic, and pipeline metrics. Cite the metrics used.");
     setChatOpen(true);
   };
   return (
     <div className={styles.panel} id="assistant">
       <div className={styles.panelHead}>
         <div className={styles.panelTitle}><span className={styles.eyebrow}>Assistant Insight</span></div>
-        <span className={styles.newTag}>Live</span>
+        <span className={styles.newTag}>Snapshot</span>
       </div>
       <div className={styles.insightBody}>
         <img src={sunburstBlue} alt="" />
@@ -414,14 +420,44 @@ function AssistantInsight({ data }: { data: NanoDashboardData }) {
           <MessageCircle size={15} aria-hidden /> Ask a follow-up
         </button>
       </div>
-      <p className={styles.insightTimestamp}>Insights use aggregate data through {dateText(data.meta.asOf)}.</p>
+      <p className={styles.insightTimestamp}>Scientific insights use the aggregate snapshot through {dateText(data.meta.asOf)}.</p>
     </div>
   );
 }
 
 export function NanoStudyDashboard() {
   const query = useNanoDashboardData();
+  const dashboardMetrics = useDashboardMetrics();
   const pageRef = useRef<HTMLDivElement>(null);
+
+  const sourceState = getDashboardSourceState(dashboardMetrics.data);
+  const liveNano = selectNanoMetrics(dashboardMetrics.data);
+  const resolvedData = useMemo<NanoDashboardData | null>(() => {
+    if (!query.data) return null;
+    if (liveNano?.enrollment === null || liveNano?.enrollment === undefined) return query.data;
+    return {
+      ...query.data,
+      enrollment: {
+        ...query.data.enrollment,
+        enrolled: liveNano.enrollment,
+        target: liveNano.target ?? query.data.enrollment.target,
+        // Cohort splits in the packaged research snapshot do not share the
+        // portfolio contract's authority, so hide them instead of mixing totals.
+        active: null,
+        retentionPct: null,
+        byGroup: [],
+        funnel: [],
+        byGaStratum: [],
+        bySite: [],
+      },
+      redcap: {
+        ...query.data.redcap,
+        apiTokenValid: null,
+        lastSync: dashboardMetrics.data?.generatedAt ?? null,
+        syncHealth: sourceState.isLive ? "ok" : sourceState.status,
+      },
+    };
+  }, [dashboardMetrics.data?.generatedAt, liveNano?.enrollment, liveNano?.target, query.data, sourceState.isLive, sourceState.status]);
 
   useEffect(() => {
     document.title = "Overview · NANO Study · ESD Lab at UofSC";
@@ -447,7 +483,7 @@ export function NanoStudyDashboard() {
     return () => observer.disconnect();
   }, [query.data]);
 
-  const phases = useMemo(() => orderedPhases(query.data?.attention.phases ?? []), [query.data?.attention.phases]);
+  const phases = useMemo(() => orderedPhases(resolvedData?.attention.phases ?? []), [resolvedData?.attention.phases]);
   const phaseDistributionComplete = phases.every((phase) => phase.pct !== null && Number.isFinite(phase.pct));
   const donutSegments = useMemo<DonutSegment[]>(() => phases.map((phase) => ({
     label: phase.phase,
@@ -456,17 +492,21 @@ export function NanoStudyDashboard() {
   })), [phaseDistributionComplete, phases]);
 
   if (query.isLoading) return <LoadingState />;
-  if (query.isError || !query.data) return <ErrorState retry={() => void query.refetch()} />;
+  if (query.isError || !query.data || !resolvedData) return <ErrorState retry={() => void query.refetch()} />;
   if (query.data.meta.aggregateOnly !== true) return <DataSafetyState status={query.data.meta.aggregateOnly} />;
 
-  const data = query.data;
+  const data = resolvedData;
   const target = data.enrollment.target ?? data.meta.target;
   const qaPassed = nanoQaPassedHeadline(data);
   const due = strictSum(data.schedule.map((item) => item.due));
   const upcoming = strictSum(data.schedule.map((item) => item.upcoming14d));
   const overdue = strictSum(data.schedule.map((item) => item.overdue));
   const modelReady = data.pipeline.find((stage) => /^model[-\s]?ready$/i.test(stage.stage.trim()))?.count ?? null;
-  const redcap = nanoRedcapIndicator(data);
+  const redcap = sourceState.isLive
+    ? { label: `Live · ${sourceState.projectsOk}/${sourceState.projectsTotal}`, state: "healthy" as const }
+    : sourceState.status === "partial" || sourceState.status === "stale"
+      ? { label: sourceState.label, state: "warning" as const }
+      : nanoRedcapIndicator(data);
   const marqueeItems = [
     { icon: babyIcon, value: compactNumber(data.enrollment.enrolled), label: "infants enrolled" },
     { icon: babyIcon, value: compactNumber(data.enrollment.active), label: "active infants" },
@@ -495,6 +535,9 @@ export function NanoStudyDashboard() {
     <div className={styles.page} ref={pageRef}>
       <DashboardHeader data={data} />
       <main id="overview">
+        <div className={styles.wrap}>
+          <DataProvenance source={sourceState} detail="Enrollment and REDCap health only; scientific panels remain labeled snapshots." />
+        </div>
         <section className={styles.hero} id="study-details">
           <img className={styles.floatMark} src={sunburstBlue} alt="" aria-hidden />
           <div className={`${styles.wrap} ${styles.heroGrid}`}>
@@ -595,7 +638,7 @@ export function NanoStudyDashboard() {
           </div>
         </section>
 
-        <section className={`${styles.wrap} ${styles.marqueeSection}`} aria-label="Live aggregate metrics">
+        <section className={`${styles.wrap} ${styles.marqueeSection}`} aria-label="Aggregate metrics with mixed provenance">
           <div className={styles.marquee}>
             <div className={styles.marqueeTrack}>
               {[...marqueeItems, ...marqueeItems].map((item, index) => (
@@ -636,8 +679,8 @@ export function NanoStudyDashboard() {
             </div>
           </div>
           <p className={styles.aggregateNote}>
-            Live aggregate NANO metrics. No participant identifiers are exposed on this public surface.
-            {data.meta.source?.toLowerCase().includes("synthetic") && <span className={styles.sourceChip}>Synthetic data</span>}
+            Enrollment and REDCap health use the live aggregate portfolio. Attention, autonomic, pipeline, and model panels retain their aggregate research snapshot. No participant identifiers are exposed.
+            {data.meta.source?.toLowerCase().includes("synthetic") && <span className={styles.sourceChip}>Mixed provenance</span>}
           </p>
           <div className={styles.footerBar}>
             <div className={styles.footerLogos}>

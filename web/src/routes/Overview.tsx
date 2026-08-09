@@ -4,63 +4,46 @@ import { Card, Gloss, SectionLabel } from "@/components/primitives";
 import {
   AnimatedDAG,
   MetricCard,
-  AgenticQAPanel,
-  ParticipantFlow,
   ReadingsGeoMap,
   type MetricAccent,
 } from "@/components/warm";
 import {
   useStages,
-  useStudySummary,
-  useParticipants,
-  useRedcapData,
   useRuns,
-  useTrajectory,
   useReadingsLibrary,
   useCohortSwimmer,
   useEcgQualitySummary,
   useRedcapCompleteness,
   usePublicationSyncStatus,
 } from "@/api/hooks";
+import {
+  formatDashboardTimestamp,
+  getDashboardSourceState,
+  selectNanoMetrics,
+  selectRedcapSummary,
+  useDashboardMetrics,
+  type DashboardStudyMetrics,
+} from "@/api/dashboardMetrics";
+import { DataProvenance } from "@/components/data/DataProvenance";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
-import { StudyHero } from "@/components/studies/StudyHero";
-import { LabOperationsPanel } from "@/components/studies/LabOperationsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
 import { useUi } from "@/store/ui";
 import { isFeatureFlagEnabled, useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { FeatureFlag } from "@/config/featureFlags";
 import type { ShellContext } from "@/components/shell/AppShell";
-import type { StudySummary } from "@/api/schemas";
-import { nanoRedcapIndicator, useNanoDashboardData } from "@/api/nanoDashboardData";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import styles from "./Overview.module.css";
 
-/**
- * Overview — the warm "Lab Pulse" page.
- *
- * Real clinical logic still drives every surface:
- * - `useStudySummary` → MetricCard "Active Enrollees"
- * - `useRuns` (status === "running") → MetricCard "Evaluations Pending"
- * - `useStages.find(qa).done` → MetricCard "Epochs Processed · 24 h"
- * - `useStages` failure rate → MetricCard "REDCap Health"
- * - `useStages` (full list) → AnimatedDAG with traveling dots
- * - `useTrajectory("rmssd")` → KPI delta string ("Median RMSSD ↗")
- * - `useParticipants.slice(0, 7)` → ParticipantFlow card
- * - AgenticQAPanel uses the shared assistant API + scrubPhi; UI is data-independent
- */
+/** REDCap authority at the top; explicitly labeled operational snapshots below. */
 export function Overview() {
   const { syncTick, syncing } = useOutletContext<ShellContext>();
   const selected = useUi((s) => s.selectedStageId);
   const setStage = useUi((s) => s.setStage);
 
-  const { data: study } = useStudySummary();
+  const dashboardMetrics = useDashboardMetrics();
   const { data: stages = [] } = useStages();
   const { data: runs = [] } = useRuns(20);
-  const { data: participants = [] } = useParticipants();
-  const { data: traj } = useTrajectory("rmssd");
-  const { data: redcapPayload } = useRedcapData();
   const { data: pubSyncStatus } = usePublicationSyncStatus();
-  const { data: nanoPayload } = useNanoDashboardData();
   const publicationsEnabled = useFeatureFlag("PUBLICATIONS_FEED");
   const readingsLibrary = useReadingsLibrary();
   const liveReadings = useMemo(
@@ -78,52 +61,16 @@ export function Overview() {
 
   const evalsPending = runs.filter((r) => r.status === "running" || r.status === "queued").length;
 
-  const last3 = traj?.series.VPT.slice(-3).map((p) => p.y) ?? [];
-  const rmssdDelta = last3.length >= 2 ? (last3[last3.length - 1]! - last3[0]!).toFixed(1) : "0";
-  const redcapEvents = redcapPayload?.redcap_trackers.enrollment ?? [];
-  const redcapCompletion = redcapEvents.length
-    ? redcapEvents.reduce((sum, row) => sum + row.completed / Math.max(row.expected, 1), 0) / redcapEvents.length * 100
-    : null;
-  const redcapFreshness = redcapPayload?.redcap_ops.freshness;
-  const nano = nanoPayload?.meta.aggregateOnly === true ? nanoPayload : undefined;
-  const overviewEnrolled = nano?.enrollment.enrolled ?? study?.enrolled ?? 0;
-  const overviewTarget = nano?.enrollment.target ?? study?.target ?? 0;
-  const overviewActive = nano?.enrollment.active;
-  const overviewRetention = nano?.enrollment.retentionPct;
-  const adherenceValues = (nano?.schedule ?? [])
-    .map((row) => row.windowAdherencePct)
-    .filter((value): value is number => value !== null && Number.isFinite(value));
-  const overviewAdherence = adherenceValues.length
-    ? adherenceValues.reduce((sum, value) => sum + value, 0) / adherenceValues.length
-    : totals.passRate;
-  const overviewUpcoming = (nano?.schedule ?? []).reduce((sum, row) => sum + (row.upcoming14d ?? 0), 0);
-  const overviewOverdue = (nano?.schedule ?? []).reduce((sum, row) => sum + (row.overdue ?? 0), 0);
-  const overviewFunnel = nano?.enrollment.funnel.length
-    ? nano.enrollment.funnel
-    : (redcapPayload?.redcap_trackers.queue_funnel ?? []);
-  const overviewGroups = nano?.enrollment.byGroup.length
-    ? nano.enrollment.byGroup
-    : study
-      ? [
-          { group: "VPT", enrolled: study.groups.VPT.count, target: study.groups.VPT.target },
-          { group: "ASIB", enrolled: study.groups.ASIB.count, target: study.groups.ASIB.target },
-          { group: "TD", enrolled: study.groups.TD.count, target: study.groups.TD.target },
-        ]
-      : [];
-  const overviewSites = nano?.enrollment.bySite.length
-    ? nano.enrollment.bySite
-    : Object.entries(
-        participants.reduce<Record<string, number>>((sites, participant) => {
-          const site = participant.site.trim() || "Site pending";
-          sites[site] = (sites[site] ?? 0) + 1;
-          return sites;
-        }, {}),
-      ).map(([label, count]) => ({ label, count }));
-  const redcapIndicator = nano ? nanoRedcapIndicator(nano) : null;
-  const overviewAsOf = nano?.meta.asOf
-    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(nano.meta.asOf) ? `${nano.meta.asOf}T00:00:00Z` : nano.meta.asOf)
-        .toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
-    : new Date().toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  const nano = selectNanoMetrics(dashboardMetrics.data);
+  const sourceState = getDashboardSourceState(dashboardMetrics.data);
+  const redcapSummary = selectRedcapSummary(dashboardMetrics.data);
+  const portfolioStudies = dashboardMetrics.data?.studies ?? [];
+  const observedNanoEvents = (nano?.events ?? []).filter(
+    (event): event is typeof event & { records: number } => !event.suppressed && event.records !== null,
+  );
+  const overviewAsOf = sourceState.generatedAt
+    ? formatDashboardTimestamp(sourceState.generatedAt)
+    : "Not verified";
 
   const kpis: Array<{
     id: string;
@@ -138,79 +85,90 @@ export function Overview() {
     badge?: string;
     accent: MetricAccent;
     decimals?: number;
-  }> = [
-    {
+  }> = [];
+
+  if (nano?.enrollment !== null && nano?.enrollment !== undefined) {
+    kpis.push({
       id: "enroll",
       insightId: "kpi-enroll",
-      label: "Active Enrollees",
-      value: study?.enrolled ?? 231,
-      unit: `/ ${study?.target ?? 260}`,
-      sub: "NANO Study · cohort building (VPT · ASIB · TD)",
-      delta: "+4 this wk",
-      deltaKind: "up",
-      spark: [180, 188, 195, 201, 209, 214, 220, 224, 227, 231],
-      badge: "4 new",
+      label: "NANO Enrollment",
+      value: nano.enrollment,
+      unit: nano.target !== null ? `/ ${nano.target}` : "participants",
+      sub: "Survey-authority enrollment · aggregate REDCap",
+      delta: sourceState.isLive ? "Verified current" : sourceState.label,
+      deltaKind: "flat",
+      spark: [nano.enrollment],
+      badge: sourceState.isLive ? "Live" : undefined,
       accent: "sage",
-    },
-    {
+    });
+  }
+
+  if (runs.length) {
+    kpis.push({
       id: "evals",
       insightId: "kpi-evals",
       label: "Evaluations Pending",
-      value: evalsPending || 12,
+      value: evalsPending,
       unit: "families",
       sub: (
         <>
-          awaiting <Gloss term="HDA">HDA</Gloss> phase labels &amp; ADOS-2 CSS feedback
+          Pipeline snapshot · awaiting <Gloss term="HDA">HDA</Gloss> phase labels
         </>
       ),
-      delta: "↓ 3 fewer this wk",
+      delta: "Snapshot count",
       deltaKind: "flat",
-      spark: [18, 17, 16, 16, 15, 14, 13, 12, 12],
-      badge: "3 booked",
+      spark: [evalsPending],
       accent: "sand",
-    },
-    {
+    });
+  }
+
+  if (stages.length) {
+    kpis.push({
       id: "epochs",
       insightId: "kpi-epochs",
-      label: <span><Gloss term="Epoch">Epochs</Gloss> Processed · 24 h</span>,
-      value: totals.done || 1824,
+      label: <span><Gloss term="Epoch">Epochs</Gloss> Processed</span>,
+      value: totals.done,
       unit: "windows",
       sub: (
         <>
-          <Gloss term="Actiheart">Actiheart-5</Gloss> ECG · 5-s segments through CWT-derived RSA pipeline
+          Pipeline snapshot · <Gloss term="Actiheart">Actiheart-5</Gloss> ECG windows
         </>
       ),
-      delta: "+312 vs yesterday",
-      deltaKind: "up",
-      spark: [820, 940, 1080, 1200, 1310, 1450, 1560, 1680, 1740, 1824],
+      delta: "Snapshot count",
+      deltaKind: "flat",
+      spark: [totals.done],
       accent: "ocean",
-    },
-    {
+    });
+  }
+
+  if (redcapSummary.completionRate !== null) {
+    kpis.push({
       id: "redcap",
       insightId: "kpi-redcap",
       label: <Gloss term="RedCap">REDCap Health</Gloss>,
-      value: redcapCompletion ?? (Math.max(0, 100 - totals.fail / Math.max(totals.done, 1) * 100) || 99.8),
+      value: redcapSummary.completionRate,
       unit: "%",
-      sub: redcapFreshness ? `payload age ${redcapFreshness.age_hours.toFixed(1)} h · ${redcapPayload?.redcap_meta.anomaly_count ?? 0} flags` : "sync rate · last 24 h · 0 PHI leaks",
-      delta: rmssdDelta !== "0" ? `Δ RMSSD ${rmssdDelta} ms` : "stable",
-      deltaKind: rmssdDelta !== "0" ? "up" : "flat",
-      spark: [99.4, 99.5, 99.7, 99.6, 99.8, 99.8, 99.9, 99.8],
+      sub: `${sourceState.label} · aggregate form completion`,
+      delta: redcapSummary.reviewCount !== null ? `${redcapSummary.reviewCount} need review` : "Review count unavailable",
+      deltaKind: redcapSummary.reviewCount ? "down" : "flat",
+      spark: [redcapSummary.completionRate],
+      badge: sourceState.isLive ? `${redcapSummary.projectsOk}/${redcapSummary.projectsTotal}` : undefined,
       accent: "mint",
       decimals: 1,
-    },
-  ];
+    });
+  }
 
-  if (publicationsEnabled) {
+  if (publicationsEnabled && pubSyncStatus) {
     kpis.push({
       id: "publications",
       insightId: "kpi-publications",
       label: "Publications",
-      value: pubSyncStatus?.total ?? 0,
+      value: pubSyncStatus.total,
       unit: "indexed",
-      sub: `Last sync: ${pubSyncStatus?.last_sync ?? "never"}`,
-      delta: pubSyncStatus?.new_this_week ? `+${pubSyncStatus.new_this_week} this week` : "up to date",
-      deltaKind: "up",
-      spark: [0, 1, 1, 2, 2, pubSyncStatus?.total ?? 2],
+      sub: `Publication snapshot · ${pubSyncStatus.last_sync ?? "date unavailable"}`,
+      delta: pubSyncStatus.new_this_week ? `+${pubSyncStatus.new_this_week} in snapshot` : "Snapshot count",
+      deltaKind: "flat",
+      spark: [pubSyncStatus.total],
       accent: "sage",
     });
   }
@@ -220,140 +178,126 @@ export function Overview() {
       <header className={styles.routeHeader}>
         <div>
           <div className={styles.eyebrow}>
-            NANO Study
+            Five-study REDCap portfolio
           </div>
           <h1>Overview</h1>
+          <p>NANO enrollment is sourced only from its configured survey authority.</p>
         </div>
-        <div className={styles.headerStatus} aria-label="Study status">
-          <span className={styles.activePill}>Actively enrolling</span>
-          <span className={styles.datePill}>As of {overviewAsOf}</span>
-        </div>
+        <DataProvenance source={sourceState} />
       </header>
 
       <section className={styles.summaryGrid} aria-label="NANO overview metrics" data-tour="operator-kpis">
         <OverviewSummaryCard
           label="Enrollment"
-          value={overviewEnrolled.toLocaleString()}
-          unit={overviewTarget ? `/ ${overviewTarget.toLocaleString()}` : "participants"}
-          progress={overviewTarget ? overviewEnrolled / overviewTarget * 100 : 0}
-          note={overviewTarget ? `${(overviewEnrolled / overviewTarget * 100).toFixed(1)}% of target` : "Awaiting target"}
+          value={formatMetric(nano?.enrollment)}
+          unit={nano?.target !== null && nano?.target !== undefined ? `/ ${nano.target.toLocaleString()}` : "participants"}
+          progress={nano?.enrollment !== null && nano?.enrollment !== undefined && nano.target
+            ? nano.enrollment / nano.target * 100
+            : 0}
+          note={nano?.target && nano.enrollment !== null
+            ? `${(nano.enrollment / nano.target * 100).toFixed(1)}% of target · survey authority`
+            : "Survey enrollment unavailable"}
           insight="kpi-enroll"
         />
         <OverviewSummaryCard
-          label="Retention"
-          value={overviewRetention === null || overviewRetention === undefined ? "—" : overviewRetention.toFixed(1)}
-          unit="%"
-          progress={overviewRetention ?? 0}
-          note={overviewActive === null || overviewActive === undefined ? "Awaiting active count" : `${overviewActive} active of ${overviewEnrolled}`}
-          insight="kpi-retention"
+          label="Event records"
+          value={formatMetric(nano?.eventRecords)}
+          unit="records"
+          progress={nano?.eventRecords !== null && nano?.eventRecords !== undefined && dashboardMetrics.data?.portfolio.eventRecords
+            ? nano.eventRecords / dashboardMetrics.data.portfolio.eventRecords * 100
+            : 0}
+          note="Observed NANO REDCap events"
+          insight="kpi-events"
         />
         <OverviewSummaryCard
-          label="Window adherence"
-          value={Number.isFinite(overviewAdherence) ? overviewAdherence.toFixed(1) : "—"}
+          label="Form completion"
+          value={nano?.forms.completionRate === null || nano?.forms.completionRate === undefined
+            ? "—"
+            : nano.forms.completionRate.toFixed(1)}
           unit="%"
-          progress={overviewAdherence}
-          note="Across timepoints with visits"
-          insight="kpi-adherence"
+          progress={nano?.forms.completionRate ?? 0}
+          note={nano?.forms.total !== null && nano?.forms.total !== undefined
+            ? `${formatMetric(nano.forms.complete)} verified of ${formatMetric(nano.forms.total)}`
+            : "Verified form states unavailable"}
+          insight="kpi-completion"
         />
         <OverviewSummaryCard
-          label="Next 14 days"
-          value={(overviewUpcoming || evalsPending).toLocaleString()}
-          unit="visits"
-          progress={Math.min(100, (overviewUpcoming || evalsPending) * 8)}
-          note="Scheduled windows"
-          insight="kpi-upcoming"
+          label="Reporting projects"
+          value={formatMetric(nano?.projectsOk)}
+          unit={nano?.projectsTotal !== null && nano?.projectsTotal !== undefined ? `/ ${nano.projectsTotal}` : "projects"}
+          progress={nano?.projectsOk !== null && nano?.projectsOk !== undefined && nano.projectsTotal
+            ? nano.projectsOk / nano.projectsTotal * 100
+            : 0}
+          note="NANO source projects"
+          insight="kpi-projects"
         />
         <article className={`${styles.summaryCard} ${styles.redcapCard} surface-card`} data-insight="kpi-redcap">
           <span className={styles.metricLabel}>REDCap sync</span>
           <div className={styles.healthValue}>
-            <span aria-hidden />
-            {redcapIndicator?.label ?? (redcapFreshness ? "Healthy" : "Awaiting data")}
+            {sourceState.isLive ? <span aria-hidden /> : null}
+            {sourceState.label}
           </div>
           <p>
-            {nano?.redcap.instrumentsDefined ?? redcapEvents.length} instruments
-            {nano?.redcap.doubleEntryDiscrepancies !== null && nano?.redcap.doubleEntryDiscrepancies !== undefined
-              ? <> · <strong>{nano.redcap.doubleEntryDiscrepancies} discrepancies</strong></>
-              : null}
+            {redcapSummary.projectsOk}/{redcapSummary.projectsTotal || "—"} projects · as of {overviewAsOf}
           </p>
         </article>
       </section>
 
-      {(overviewFunnel.length || overviewGroups.length) ? (
-        <section className={styles.operationsGrid} aria-label="Enrollment operations">
+      <div className={styles.detailHeading}>
+        <span>Five-study portfolio</span>
+        <p>Authoritative enrollment, event, and form totals from each configured study.</p>
+      </div>
+
+      {portfolioStudies.length ? (
+        <section className={styles.summaryGrid} aria-label="Five-study portfolio metrics">
+          {portfolioStudies.map((study) => (
+            <OverviewSummaryCard
+              key={study.key}
+              label={study.label}
+              value={formatMetric(study.enrollment)}
+              unit={study.target !== null ? `/ ${study.target.toLocaleString()}` : "enrolled"}
+              progress={study.target && study.enrollment !== null ? study.enrollment / study.target * 100 : study.forms.completionRate ?? 0}
+              note={`${formatMetric(study.eventRecords)} event records · ${study.forms.completionRate !== null ? `${study.forms.completionRate.toFixed(1)}% forms` : "forms unavailable"}`}
+              insight={`portfolio-${study.key}`}
+            />
+          ))}
+        </section>
+      ) : (
+        <DataProvenance label="Portfolio unavailable" detail="No verified study summaries are available." />
+      )}
+
+      {observedNanoEvents.length ? (
+        <section className={styles.operationsGrid} aria-label="Observed NANO events">
           <article className={`${styles.operationsCard} surface-card`}>
             <div className={styles.panelHeading}>
-              <h2>Recruitment funnel</h2>
-              <p>Referral through active follow-up</p>
+              <h2>Observed NANO events</h2>
+              <p>Suppressed and unavailable small-cell counts are omitted.</p>
             </div>
             <div className={styles.funnelList}>
-              {overviewFunnel.map((stage, index, rows) => {
-                const max = Math.max(...rows.map((row) => row.count ?? 0), 1);
-                const width = Math.max(3, ((stage.count ?? 0) / max) * 100);
+              {observedNanoEvents.map((event, index, rows) => {
+                const max = Math.max(...rows.map((row) => row.records), 1);
+                const width = Math.max(3, event.records / max * 100);
                 return (
-                  <div className={styles.funnelRow} key={stage.stage}>
-                    <span>{stage.stage}</span>
+                  <div className={styles.funnelRow} key={event.event}>
+                    <span>{formatEventName(event.event)}</span>
                     <div aria-hidden><i style={{ width: `${width}%` }} data-tone={index < 2 ? "science" : "blue"} /></div>
-                    <strong>{stage.count?.toLocaleString() ?? "—"}</strong>
+                    <strong>{event.records.toLocaleString()}</strong>
                   </div>
                 );
               })}
             </div>
           </article>
-
-          <article className={`${styles.operationsCard} surface-card`}>
-            <div className={styles.panelHeading}>
-              <h2>Groups against target</h2>
-              <p>ASIB, preterm, and term-born controls</p>
-            </div>
-            <div className={styles.groupList}>
-              {overviewGroups.map((group) => {
-                const pct = group.target ? Math.min(100, (group.enrolled ?? 0) / group.target * 100) : 0;
-                return (
-                  <div key={group.group}>
-                    <div><strong>{group.group}</strong><span>{group.enrolled ?? "—"} / {group.target ?? "—"}</span></div>
-                    <div aria-hidden><i style={{ width: `${pct}%` }} /></div>
-                  </div>
-                );
-              })}
-            </div>
-            {overviewSites.length ? (
-              <div className={styles.siteSplit}>
-                {overviewSites.map((site) => (
-                  <div key={site.label}><strong>{site.count ?? "—"}</strong><span>{site.label}</span></div>
-                ))}
-              </div>
-            ) : null}
-          </article>
-        </section>
-      ) : null}
-
-      {nano?.schedule.some((row) => (row.overdue ?? 0) > 0) ? (
-        <section className={`${styles.attentionCard} surface-card`} aria-label="Needs attention">
-          <div className={styles.attentionHead}>
-            <div className={styles.panelHeading}>
-              <h2>Needs attention</h2>
-              <p>Overdue visits by timepoint</p>
-            </div>
-            <span>{overviewOverdue} overdue total</span>
-          </div>
-          <div className={styles.overdueGrid}>
-            {nano.schedule.filter((row) => (row.overdue ?? 0) > 0).map((row, index) => (
-              <div key={row.id}><span>{row.id}</span><strong data-leading={index === 0 ? "true" : undefined}>{row.overdue}</strong></div>
-            ))}
-          </div>
         </section>
       ) : null}
 
       <div className={styles.detailHeading}>
-        <span>Live research operations</span>
-        <p>Full pipeline controls and scientific detail remain available below.</p>
+        <span>Research operations snapshots</span>
+        <p>Pipeline, QA, participant, model, and publication panels below are separate snapshots, not live REDCap totals.</p>
       </div>
 
-      <StudyHero />
+      <DataProvenance kind="snapshot" detail="Operational details below keep their existing source and are never labeled live." />
 
-      <LabOperationsPanel />
-
-      <section
+      {kpis.length ? <section
         className={`grid gap-3.5 ${
           kpis.length > 4
             ? "grid-cols-[repeat(auto-fit,minmax(200px,1fr))]"
@@ -379,9 +323,9 @@ export function Overview() {
             syncTick={syncTick}
           />
         ))}
-      </section>
+      </section> : null}
 
-      <section aria-label="Live pipeline DAG" data-tour="operator-pipeline">
+      {stages.length ? <section aria-label="Pipeline snapshot DAG" data-tour="operator-pipeline">
         <AnimatedDAG
           stages={stages}
           selected={selected}
@@ -389,7 +333,7 @@ export function Overview() {
           syncing={syncing}
           syncTick={syncTick}
         />
-      </section>
+      </section> : null}
 
       <ClusterOpsPanel />
 
@@ -399,14 +343,20 @@ export function Overview() {
         <ReadingsGeoMap readings={liveReadings} loading={readingsLibrary.isLoading} />
       </section>
 
-      <section className="grid grid-cols-[1fr_1.1fr] gap-3.5">
-        <AgenticQAPanel syncTick={syncTick} />
-        <ParticipantFlow rows={participants.slice(0, 7)} />
-      </section>
-
-      <OverviewProgressRings study={study} />
+      <OverviewProgressRings study={nano} />
     </div>
   );
+}
+
+function formatMetric(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : value.toLocaleString();
+}
+
+function formatEventName(value: string): string {
+  return value
+    .replace(/_arm_\d+$/i, "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function OverviewSummaryCard({
@@ -479,11 +429,12 @@ function DynamicsDiscovery() {
   );
 }
 
-function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
+function OverviewProgressRings({ study }: { study: DashboardStudyMetrics | null }) {
   const enabled = useFeatureFlag("SWIMMER_PLOT");
+  const redcapEnabled = useFeatureFlag("REDCAP_COMPLETENESS");
   const { data: swimmer } = useCohortSwimmer();
   const { data: ecg } = useEcgQualitySummary();
-  const { data: redcap } = useRedcapCompleteness();
+  const { data: redcap } = useRedcapCompleteness(redcapEnabled);
   const visitCompletion = swimmer?.data.length
     ? swimmer.data.reduce((sum, row) => sum + row.completionPct, 0) / swimmer.data.length
     : 0;
@@ -494,10 +445,18 @@ function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
     : 0;
 
   const rings = [
-    { label: "Enrollment", value: study ? (study.enrolled / study.target) * 100 : 0, sub: `${study?.enrolled ?? 0} / ${study?.target ?? 0}`, color: "var(--usc-garnet)" },
-    { label: "Visit forms", value: visitCompletion, sub: "expected visits", color: "var(--blue)" },
-    { label: "ECG QC", value: ecgPass, sub: "pass rate", color: "var(--green)" },
-    { label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--amber-warn)" },
+    ...(study?.enrollment !== null && study?.enrollment !== undefined && study.target
+      ? [{ label: "Enrollment", value: study.enrollment / study.target * 100, sub: `${study.enrollment} / ${study.target}`, color: "var(--usc-garnet)" }]
+      : []),
+    ...(swimmer?.data.length
+      ? [{ label: "Visit forms", value: visitCompletion, sub: "expected visits", color: "var(--blue)" }]
+      : []),
+    ...(ecg?.data.length
+      ? [{ label: "ECG QC", value: ecgPass, sub: "pass rate", color: "var(--green)" }]
+      : []),
+    ...(redcapRequired.length
+      ? [{ label: "NDA REDCap", value: redcapComplete, sub: "required forms", color: "var(--amber-warn)" }]
+      : []),
   ];
 
   if (!enabled) return null;
@@ -508,10 +467,13 @@ function OverviewProgressRings({ study }: { study: StudySummary | undefined }) {
         <div className="mb-4">
           <SectionLabel>Research progress rings</SectionLabel>
           <div className="font-serif text-[18px] font-semibold text-[color:var(--warm-fg1)] mt-1">
-            Enrollment, visit completion, ECG QC, and NDA readiness
+            Authoritative enrollment and available research snapshots
+          </div>
+          <div className="mt-3">
+            <DataProvenance kind="snapshot" detail="Enrollment comes from the central REDCap contract; any additional rings are operational snapshots." compact />
           </div>
         </div>
-        <div className="grid grid-cols-4 max-[1100px]:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
           {rings.map((ring) => (
             <div key={ring.label} className="rounded-[var(--r-card)] border border-[color:var(--warm-border)] bg-[color:var(--bg-subtle)] p-4 flex items-center gap-3 min-w-0">
               <ProgressRing value={ring.value} color={ring.color} label={ring.label} />

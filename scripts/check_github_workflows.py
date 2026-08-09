@@ -32,6 +32,17 @@ REQUIRED_ACTION_MAJORS = {
     "download-artifact": "v8",
 }
 
+REDCAP_PORTFOLIO_TOKENS = (
+    "REDCAP_ABC_SURVEYS_TOKEN",
+    "REDCAP_IPSA_SURVEYS_TOKEN",
+    "REDCAP_ACTION_TOKEN",
+    "REDCAP_IPSA_LAB_TOKEN",
+    "REDCAP_ABC_LAB_TOKEN",
+    "REDCAP_NICO_TOKEN",
+    "REDCAP_NANO_SURVEYS_TOKEN",
+    "REDCAP_NANO_LAB_TOKEN",
+)
+
 
 def load_workflow(path: Path) -> dict[str, Any]:
     try:
@@ -69,6 +80,46 @@ def check_required_files(errors: list[str]) -> None:
     ci_text = (WORKFLOW_DIR / "ci.yml").read_text(encoding="utf-8")
     if "docker://rhysd/actionlint:1.7.7" not in ci_text:
         errors.append("ci.yml: pinned actionlint release is required")
+    dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    for pattern in (".env*", "*.bak"):
+        if pattern not in dockerignore:
+            errors.append(f".dockerignore: secret boundary missing {pattern!r}")
+    env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+    for token_name in REDCAP_PORTFOLIO_TOKENS:
+        if f"{token_name}=" not in env_example:
+            errors.append(f".env.example: missing placeholder {token_name}")
+    if "dashboard/data/dashboard_metrics.json" not in (ROOT / ".gitignore").read_text(
+        encoding="utf-8"
+    ):
+        errors.append(".gitignore: generated dashboard metrics must stay untracked")
+
+
+def check_pages_redcap_boundary(errors: list[str]) -> None:
+    function_text = (ROOT / "functions" / "api" / "redcap.js").read_text(
+        encoding="utf-8"
+    )
+    packager_text = (ROOT / "scripts" / "build_pages_site.py").read_text(
+        encoding="utf-8"
+    )
+    for label, text in (
+        ("functions/api/redcap.js", function_text),
+        ("scripts/build_pages_site.py", packager_text),
+    ):
+        for forbidden in ("REDCAP_API_TOKEN", "REDCAP_API_URL"):
+            if forbidden in text:
+                errors.append(f"{label}: public Pages path references {forbidden}")
+    if "status: 410" not in function_text or "permanently retired" not in function_text:
+        errors.append("functions/api/redcap.js: retired proxy must return HTTP 410")
+    for snippet in (
+        "retiredRedcapResponse",
+        "dashboard_metrics.json",
+        "_validate_public_dashboard_metrics",
+        "legacy_dashboard_data.unlink()",
+    ):
+        if snippet not in packager_text:
+            errors.append(
+                f"scripts/build_pages_site.py: secure packaging missing {snippet!r}"
+            )
 
 
 def check_official_action_runtimes(
@@ -204,22 +255,44 @@ def check_deploy_pages(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(
             "deploy-pages.yml: repository_dispatch is forbidden to prevent stale-origin loops"
         )
+    concurrency = as_mapping(
+        data.get("concurrency", {}), "deploy-pages.yml concurrency"
+    )
+    if concurrency.get("group") != "pages-production-deploy":
+        errors.append("deploy-pages.yml: shared Pages deploy concurrency group missing")
+    if concurrency.get("cancel-in-progress") is not False:
+        errors.append(
+            "deploy-pages.yml: an active production deploy must not be cancelled"
+        )
     jobs = as_mapping(data.get("jobs", {}), "deploy-pages.yml jobs")
     deploy = as_mapping(jobs.get("deploy", {}), "deploy-pages.yml jobs.deploy")
-    if deploy.get("environment") != "production":
+    if deploy.get("environment") != "redcap-sync":
         errors.append(
-            "deploy-pages.yml: deploy job must target the production environment"
+            "deploy-pages.yml: deploy job must use the redcap-sync environment"
         )
+    permissions = as_mapping(
+        data.get("permissions", {}), "deploy-pages.yml permissions"
+    )
+    if permissions != {"contents": "read"}:
+        errors.append("deploy-pages.yml: only contents: read permission is allowed")
     text = (WORKFLOW_DIR / "deploy-pages.yml").read_text(encoding="utf-8")
     for snippet in (
+        "scripts/sync_redcap_portfolio.py --require-all",
+        "dashboard/data/dashboard_metrics.json",
         "scripts/build_pages_site.py",
         "scripts/check_live_surfaces.py",
         "cloudflare/wrangler-action@v4",
+        'VITE_USE_MOCKS: "false"',
+        "--require-live-metrics",
+        "--max-metrics-age-minutes 15",
         'canonical_url="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev/"',
         '--canonical-url "$canonical_url"',
     ):
         if snippet not in text:
             errors.append(f"deploy-pages.yml: missing {snippet!r}")
+    for token_name in REDCAP_PORTFOLIO_TOKENS:
+        if f"secrets.{token_name}" not in text:
+            errors.append(f"deploy-pages.yml: missing secret {token_name}")
     if "--probe-api-origin" in text:
         errors.append(
             "deploy-pages.yml: smoke check must accept intentional fallback-only builds"
@@ -228,6 +301,18 @@ def check_deploy_pages(data: dict[str, Any], errors: list[str]) -> None:
         errors.append(
             "deploy-pages.yml: smoke URL must derive from CLOUDFLARE_PAGES_PROJECT"
         )
+    for forbidden in (
+        'VITE_USE_MOCKS: "true"',
+        "REDCAP_API_TOKEN",
+        "git add ",
+        "git commit ",
+        "git push",
+        "actions/upload-artifact",
+    ):
+        if forbidden in text:
+            errors.append(
+                f"deploy-pages.yml: forbidden production wiring {forbidden!r}"
+            )
 
 
 def check_docker_publish(data: dict[str, Any], errors: list[str]) -> None:
@@ -345,24 +430,69 @@ def check_docker_publish(data: dict[str, Any], errors: list[str]) -> None:
 
 
 def check_redcap_sync(data: dict[str, Any], errors: list[str]) -> None:
+    trigger = workflow_on(data)
+    if not isinstance(trigger, dict):
+        errors.append("redcap_sync.yml: on must be a mapping")
+        return
+    schedule = trigger.get("schedule")
+    if not isinstance(schedule, list) or not any(
+        isinstance(item, dict) and item.get("cron") == "*/5 * * * *"
+        for item in schedule
+    ):
+        errors.append("redcap_sync.yml: five-minute schedule is required")
+    if "workflow_dispatch" not in trigger:
+        errors.append("redcap_sync.yml: workflow_dispatch trigger missing")
+
+    permissions = as_mapping(data.get("permissions", {}), "redcap_sync.yml permissions")
+    if permissions != {"contents": "read"}:
+        errors.append("redcap_sync.yml: only contents: read permission is allowed")
+    concurrency = as_mapping(data.get("concurrency", {}), "redcap_sync.yml concurrency")
+    if concurrency.get("group") != "pages-production-deploy":
+        errors.append("redcap_sync.yml: shared Pages deploy concurrency group missing")
+    if concurrency.get("cancel-in-progress") is not False:
+        errors.append(
+            "redcap_sync.yml: an active production deploy must not be cancelled"
+        )
+
+    jobs = as_mapping(data.get("jobs", {}), "redcap_sync.yml jobs")
+    job = as_mapping(
+        jobs.get("sync-and-deploy", {}), "redcap_sync.yml jobs.sync-and-deploy"
+    )
+    if job.get("environment") != "redcap-sync":
+        errors.append("redcap_sync.yml: sync job must use the redcap-sync environment")
+
     text = (WORKFLOW_DIR / "redcap_sync.yml").read_text(encoding="utf-8")
     for snippet in (
-        "REDCAP_CONFIGURED:",
-        "r-lib/actions/setup-r@v2",
-        "if: env.REDCAP_CONFIGURED == 'true'",
-        "if: env.REDCAP_CONFIGURED != 'true'",
-        "if: env.REDCAP_CONFIGURED == 'true' && env.PAGES_DEPLOY_HOOK_URL != ''",
+        "scripts/sync_redcap_portfolio.py --require-all",
+        "dashboard/data/dashboard_metrics.json",
+        'VITE_USE_MOCKS: "false"',
+        "cloudflare/wrangler-action@v4",
+        "--require-live-metrics",
+        "--max-metrics-age-minutes 15",
     ):
-        if snippet in text:
-            continue
-        errors.append(
-            f"redcap_sync.yml: credential-aware skip guard missing {snippet!r}"
-        )
+        if snippet not in text:
+            errors.append(f"redcap_sync.yml: secure live sync missing {snippet!r}")
+    for token_name in REDCAP_PORTFOLIO_TOKENS:
+        if f"secrets.{token_name}" not in text:
+            errors.append(f"redcap_sync.yml: missing secret {token_name}")
+    for forbidden in (
+        'VITE_USE_MOCKS: "true"',
+        "REDCAP_API_TOKEN",
+        "PAGES_DEPLOY_HOOK_URL",
+        "git add ",
+        "git commit ",
+        "git push",
+        "actions/upload-artifact",
+        "contents: write",
+    ):
+        if forbidden in text:
+            errors.append(f"redcap_sync.yml: forbidden production wiring {forbidden!r}")
 
 
 def main() -> int:
     errors: list[str] = []
     check_required_files(errors)
+    check_pages_redcap_boundary(errors)
 
     workflows: dict[str, dict[str, Any]] = {}
     for path in sorted(WORKFLOW_DIR.glob("*.yml")):
