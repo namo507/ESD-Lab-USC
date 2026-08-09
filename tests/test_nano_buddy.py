@@ -392,7 +392,8 @@ def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
     (docs_dir / "ecg_processing_protocol.md").write_text(
-        "# ECG Processing SOP\n\nUse a 3-lead configuration, record a five-minute baseline, and review aggregate QC flags.\n",
+        "# ECG Processing SOP\n\nUse a 3-lead configuration, record a "
+        "five-minute baseline, and review aggregate QC flags.\n",
         encoding="utf-8",
     )
     buddy.assistant._provider = _PlanningProvider()
@@ -428,7 +429,8 @@ def test_buddy_explains_pipeline_stage_cards_without_provider(tmp_path):
     }
 
     result = buddy.answer(
-        "Explain how to read the six NANO pipeline stages, including in-flight, done, fail, and when an operator should open run history."
+        "Explain how to read the six NANO pipeline stages, including in-flight, "
+        "done, fail, and when an operator should open run history."
     )
 
     assert result["refused"] is False
