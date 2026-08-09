@@ -12,11 +12,15 @@ and repair workflows do not drift.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
+import re
 import sys
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
+from urllib.request import Request, urlopen
 
 # Ensure the scripts directory is on sys.path for sibling imports, so this
 # module works regardless of the current working directory or invocation style.
@@ -28,6 +32,11 @@ from check_site_health import check  # noqa: E402
 
 DEFAULT_CANONICAL_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_RUNTIME_URL = "https://runtime-share.esd-lab-namo.pages.dev/"
+METRICS_PATH = "/dashboard/data/dashboard_metrics.json"
+RETIRED_REDCAP_PATH = "/api/redcap"
+METRICS_SCHEMA = "dashboard.metrics.v1"
+METRICS_VERSION_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+EXPECTED_PROJECTS = 8
 DEFAULT_CANONICAL_ROUTES = (
     "/",
     "/overview",
@@ -44,6 +53,143 @@ DEFAULT_CANONICAL_ROUTES = (
 def join_route(base_url: str, route: str) -> str:
     normalized_route = route if route.startswith("/") else f"/{route}"
     return urljoin(base_url.rstrip("/") + "/", normalized_route)
+
+
+def _fetch(request: Request, timeout: int) -> tuple[int, bytes]:
+    try:
+        with urlopen(request, timeout=timeout) as response:  # noqa: S310
+            return response.status, response.read()
+    except HTTPError as exc:
+        return exc.code, exc.read()
+
+
+def validate_live_metrics(
+    payload: object,
+    *,
+    max_age_minutes: float,
+    now: dt.datetime | None = None,
+) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise ValueError("dashboard metrics must be a JSON object")
+    if payload.get("schema") != METRICS_SCHEMA:
+        raise ValueError(f"dashboard metrics schema must be {METRICS_SCHEMA}")
+    if payload.get("aggregate_only") is not True:
+        raise ValueError("dashboard metrics are not aggregate-only")
+    if not METRICS_VERSION_RE.fullmatch(str(payload.get("data_version", ""))):
+        raise ValueError("dashboard metrics data_version is invalid")
+
+    source = payload.get("source")
+    if not isinstance(source, dict):
+        raise ValueError("dashboard metrics source is missing")
+    if (
+        source.get("kind") != "live"
+        or source.get("transport") != "api"
+        or source.get("system") != "REDCap"
+    ):
+        raise ValueError("dashboard metrics are not from the live REDCap API")
+    if source.get("cadence") != "every_5_minutes":
+        raise ValueError("dashboard metrics cadence is not every five minutes")
+    if source.get("projects_total") != EXPECTED_PROJECTS:
+        raise ValueError("dashboard metrics do not cover all eight projects")
+    if source.get("projects_ok") != EXPECTED_PROJECTS:
+        raise ValueError("dashboard metrics do not report 8/8 project health")
+    sla = source.get("sla")
+    if not isinstance(sla, dict) or sla.get("max_age_minutes") != 15:
+        raise ValueError("dashboard metrics freshness SLA must be 15 minutes")
+
+    projects = payload.get("projects")
+    if not isinstance(projects, list) or len(projects) != EXPECTED_PROJECTS:
+        raise ValueError("dashboard metrics must contain exactly eight projects")
+    if any(
+        not isinstance(project, dict) or project.get("status") != "ok"
+        for project in projects
+    ):
+        raise ValueError("dashboard metrics contain an unhealthy project")
+
+    generated_at = str(payload.get("generated_at", ""))
+    try:
+        generated = dt.datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("dashboard metrics generated_at is invalid") from exc
+    if generated.tzinfo is None:
+        raise ValueError("dashboard metrics generated_at must include a timezone")
+    current = now or dt.datetime.now(dt.timezone.utc)
+    age_minutes = (current - generated.astimezone(dt.timezone.utc)).total_seconds() / 60
+    if age_minutes < -5:
+        raise ValueError("dashboard metrics timestamp is unexpectedly in the future")
+    if age_minutes > max_age_minutes:
+        raise ValueError(
+            f"dashboard metrics are stale ({age_minutes:.1f}m > {max_age_minutes:.1f}m)"
+        )
+    return {
+        "schema": METRICS_SCHEMA,
+        "projects_total": EXPECTED_PROJECTS,
+        "projects_ok": EXPECTED_PROJECTS,
+        "age_minutes": round(max(0.0, age_minutes), 2),
+    }
+
+
+def probe_dashboard_metrics(
+    base_url: str, *, timeout: int, max_age_minutes: float
+) -> dict[str, object]:
+    url = join_route(base_url, METRICS_PATH)
+    print(f"[surface] live-metrics -> {url}")
+    try:
+        status, raw = _fetch(
+            Request(url, headers={"Accept": "application/json"}), timeout
+        )
+        if status != 200:
+            raise ValueError(f"dashboard metrics returned HTTP {status}")
+        details = validate_live_metrics(
+            json.loads(raw.decode("utf-8")), max_age_minutes=max_age_minutes
+        )
+    except (
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+        URLError,
+        OSError,
+        ValueError,
+    ) as exc:
+        print(f"[FAIL] live dashboard metrics: {exc}")
+        return {"name": "live-metrics", "url": url, "ok": False, "error": str(exc)}
+    print(
+        "[OK] live dashboard metrics: "
+        f"{details['projects_ok']}/{details['projects_total']} projects, "
+        f"age={details['age_minutes']}m"
+    )
+    return {"name": "live-metrics", "url": url, "ok": True, **details}
+
+
+def probe_retired_redcap(base_url: str, *, timeout: int) -> dict[str, object]:
+    url = join_route(base_url, RETIRED_REDCAP_PATH)
+    print(f"[surface] retired-redcap-proxy -> {url}")
+    request = Request(
+        url,
+        data=b'{"content":"project"}',
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+    )
+    try:
+        status, _raw = _fetch(request, timeout)
+    except (URLError, OSError) as exc:
+        print(f"[FAIL] retired REDCap proxy probe: {exc}")
+        return {
+            "name": "retired-redcap-proxy",
+            "url": url,
+            "ok": False,
+            "error": str(exc),
+        }
+    ok = status == 410
+    if not ok:
+        print(f"[FAIL] public REDCap proxy expected HTTP 410, got {status}")
+    else:
+        print("[OK] public REDCap proxy is permanently retired (HTTP 410)")
+    return {
+        "name": "retired-redcap-proxy",
+        "url": url,
+        "ok": ok,
+        "status": status,
+    }
 
 
 def probe(
@@ -126,6 +272,26 @@ def build_parser() -> argparse.ArgumentParser:
             "By default the public Pages fallback worker is enough for surface health."
         ),
     )
+    metrics_group = parser.add_mutually_exclusive_group()
+    metrics_group.add_argument(
+        "--require-live-metrics",
+        dest="require_live_metrics",
+        action="store_true",
+        help="Require a fresh aggregate-only 8/8 REDCap portfolio snapshot.",
+    )
+    metrics_group.add_argument(
+        "--skip-live-metrics",
+        dest="require_live_metrics",
+        action="store_false",
+        help="Skip REDCap portfolio and retired-proxy checks for local-only probes.",
+    )
+    parser.set_defaults(require_live_metrics=True)
+    parser.add_argument(
+        "--max-metrics-age-minutes",
+        type=float,
+        default=float(os.environ.get("REDCAP_METRICS_MAX_AGE_MINUTES", "15")),
+        help="Maximum accepted age for the live REDCap aggregate snapshot.",
+    )
     parser.add_argument("--json", action="store_true", help="Print JSON summary.")
     return parser
 
@@ -151,6 +317,16 @@ def main(argv: list[str] | None = None) -> int:
                 probe_api_origin=args.probe_api_origin,
             )
         )
+
+    if args.require_live_metrics:
+        results.append(
+            probe_dashboard_metrics(
+                args.canonical_url,
+                timeout=args.timeout,
+                max_age_minutes=args.max_metrics_age_minutes,
+            )
+        )
+        results.append(probe_retired_redcap(args.canonical_url, timeout=args.timeout))
 
     if not args.skip_runtime and args.runtime_url:
         results.append(

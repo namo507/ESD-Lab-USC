@@ -1,8 +1,6 @@
 .git
 .github
-.env
-.env.local
-.env.*.local
+.env*
 .dev.vars
 config/redcap_config_local.yml
 credentials/
@@ -40,6 +38,7 @@ tmp/
 *.tar.gz
 *.pptx
 *.log
+*.bak
 **/*.js.map
 dashboard/data/*.sqlite3
 dashboard/data/*.sqlite3-*

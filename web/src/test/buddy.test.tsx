@@ -16,7 +16,7 @@ describe("Buddy", () => {
     fireEvent.mouseOver(screen.getByRole("button", { name: "Enrollment KPI" }));
 
     expect(await screen.findByText("Enrollment")).toBeInTheDocument();
-    expect(screen.getByText(/231 of 260 infants are enrolled/i)).toBeInTheDocument();
+    expect(screen.getByText(/current aggregate NANO enrollment/i)).toBeInTheDocument();
   });
 
   it("uses dynamic hover copy supplied by overview elements", async () => {

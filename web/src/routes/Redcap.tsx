@@ -17,25 +17,31 @@ import { exportCsvFile } from "@/lib/exportCsv";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitRecord } from "@/api/schemas";
 import type { RedcapPayload as RedcapDashboardPayload } from "@/api/redcapSchemas";
-import { callREDCap } from "@/api/redcapClient";
+import {
+  DASHBOARD_METRICS_QUERY_KEY,
+  getDashboardSourceState,
+  selectRedcapSummary,
+  useDashboardMetrics,
+} from "@/api/dashboardMetrics";
+import { DataProvenance } from "@/components/data/DataProvenance";
 import { SwimLane } from "@/components/timeline/SwimLane";
 import type { TimelineEvent } from "@/components/timeline/EventMark";
-import { ANOMALY_CODES, PROJECT_TITLE } from "@/constants/redcapConfig";
+import { ANOMALY_CODES } from "@/constants/redcapConfig";
 import { formPolicyLabel, questionnaireKind, questionnaireLabel, riskKind } from "@/lib/participantOperations";
 import styles from "./Redcap.module.css";
 
 const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Last-hour fail triage",   prompt: "Triage every REDCap sync that failed in the last hour. Group by form, surface the auth or schema cause, and recommend a fix order." },
   { lane: "redcap", label: "PHI column audit",        prompt: "Re-audit the PHI gate on every form in the active project. Flag any field where the strip rule is unset or stale." },
-  { lane: "redcap", label: "Missing DOB · open",      prompt: "List every open Intake record missing DOB or MRN. Group by site and surface the assigned coordinator." },
+  { lane: "redcap", label: "Missing fields · aggregate", prompt: "Summarize aggregate missing DOB and MRN counts by form and site. Do not list records, identifiers, names, or assigned coordinators." },
   { lane: "redcap", label: "Dual AIH/EH policy",      prompt: "Explain the dual-enrollment AIH and EH form policy. When do we use one shared master form, and when do duplicate study-specific forms need a linking ID?" },
   { lane: "redcap", label: "Packet cross-check",      prompt: "Before scheduling a dual-enrolled participant, what enrollment-type, packet, questionnaire, and REDCap checks should staff complete?" },
   { lane: "qa",     label: "Sync vs QA mismatch",     prompt: "Cross-check tonight's REDCap visit_completion flags against QA epoch decisions. Flag any visit where REDCap says complete but QA yield is below 75%." },
   { lane: "qa",     label: "Bayley-4 missingness",    prompt: "Build a missingness heatmap for Bayley-4 across active visits and rank the worst-offending fields." },
   { lane: "model",  label: "Feature freshness",       prompt: "Which classifier features depend on REDCap fields that have not synced in 48 h? Rank by SHAP importance." },
   { lane: "model",  label: "Cohort drift on sync gap", prompt: "Quantify how a 24 h REDCap sync gap shifts the VPT vs TD cohort feature distributions." },
-  { lane: "redcap", label: "Carry-forward triage",    prompt: "List every participant with an active carry-forward risk flag. Group by timepoint and surface the specific condition that triggered each flag." },
-  { lane: "redcap", label: "CSBS gap analysis",       prompt: "Show which participants have incomplete CSBS at 6m or 9m while their next visit has already started. What's the coordinator action for each?" },
+  { lane: "redcap", label: "Carry-forward summary",   prompt: "Summarize aggregate carry-forward risk counts by timepoint and anomaly class. Do not expose record-level details or identifiers." },
+  { lane: "redcap", label: "CSBS coverage summary",   prompt: "Summarize aggregate incomplete CSBS counts at 6m and 9m and provide the approved coordinator workflow without listing participants." },
   { lane: "redcap", label: "Coverage report",         prompt: "Generate a data coverage report across all four CSBS timepoints. Break down complete, skipped, incomplete, and not-started counts by visit month." },
   { lane: "redcap", label: "Freshness check",         prompt: "When was REDCap last synced, how many records are in the payload, and how many carry-forward anomalies are active?" },
   { lane: "redcap", label: "EPDS review queue",       prompt: "How many mothers are EPDS screen-positive, how many are high-concern, and which aggregate timing or respondent burden signals should coordinators review next?" },
@@ -150,6 +156,10 @@ function formatSyncTime(value: string | null): string {
   });
 }
 
+function formatCount(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : value.toLocaleString();
+}
+
 function asNumber(value: unknown, fallback = 0): number {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -185,13 +195,12 @@ const FIELD_MAP: FieldRow[] = [
 ];
 
 export function Redcap() {
+  const dashboardMetrics = useDashboardMetrics();
+  const sourceState = getDashboardSourceState(dashboardMetrics.data);
+  const liveSummary = selectRedcapSummary(dashboardMetrics.data);
   const eventsQuery = useRedcapEvents();
   const events = eventsQuery.data ?? [];
-  const okN = events.filter((e) => e.status === "ok").length;
-  const warnN = events.filter((e) => e.status === "warn").length;
-  const failN = events.filter((e) => e.status === "fail").length;
   const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
-  const liveProxyEnabled = useFeatureFlag("REDCAP_LIVE_PROXY");
   const visitHealth = useRedcapVisitHealth(visitHealthEnabled);
   const redcapPayload = useRedcapData(visitHealthEnabled);
   const visitRecords = useMemo(() => visitHealth.data?.data ?? [], [visitHealth.data]);
@@ -205,8 +214,6 @@ export function Redcap() {
   const fastPathTone = resolveTheme(theme);
   const [activeTab, setActiveTab] = useState<RedcapTab>("ops");
   const [alertDismissed, setAlertDismissed] = useState(false);
-  const [liveFreshness, setLiveFreshness] = useState<string | null>(null);
-  const [liveError, setLiveError] = useState<string | null>(null);
 
   const tabOptions = useMemo(
     () =>
@@ -227,10 +234,10 @@ export function Redcap() {
   }, [activeTab, visitHealthEnabled]);
 
   useEffect(() => {
-    if (visitHealth.data?.meta.generatedAt) {
-      setLastSyncAt(visitHealth.data.meta.generatedAt);
+    if (dashboardMetrics.data?.generatedAt) {
+      setLastSyncAt(dashboardMetrics.data.generatedAt);
     }
-  }, [setLastSyncAt, visitHealth.data?.meta.generatedAt]);
+  }, [dashboardMetrics.data?.generatedAt, setLastSyncAt]);
 
   function fastPath(prompt: string) {
     setChatSeed(prompt);
@@ -242,24 +249,14 @@ export function Redcap() {
     void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-visit-health"] });
     void queryClient.invalidateQueries({ queryKey: ["redcap", "dashboard-data"] });
     void queryClient.invalidateQueries({ queryKey: ["v2", "redcap-missing-data"] });
-    setLastSyncAt(new Date().toISOString());
-  }
-
-  async function refreshLiveProject() {
-    setLiveError(null);
-    try {
-      const project = await callREDCap<Array<{ project_title?: string }>>({ content: "project" });
-      const title = project[0]?.project_title ?? PROJECT_TITLE;
-      setLiveFreshness(`${title} · checked ${formatSyncTime(new Date().toISOString())}`);
-    } catch (error) {
-      setLiveError(error instanceof Error ? error.message : "REDCap proxy unavailable.");
-    }
+    void queryClient.invalidateQueries({ queryKey: DASHBOARD_METRICS_QUERY_KEY });
+    void dashboardMetrics.refetch();
   }
 
   function syncNow() {
+    void dashboardMetrics.refetch();
     void eventsQuery.refetch();
     if (visitHealthEnabled) refreshVisitHealth();
-    if (liveProxyEnabled) void refreshLiveProject();
     void logAudit({ action: "run.trigger", scope: "/redcap/sync" });
   }
 
@@ -286,20 +283,14 @@ export function Redcap() {
             <Gloss term="RedCap">REDCap</Gloss> · forms &amp; metadata
           </h1>
           <p className={styles.lede}>
-            Bidirectional sync with the NANO REDCap project. Pulls visit metadata, pushes processed flags. PHI columns are stripped before any export.
+            Aggregate status across five studies and eight REDCap projects. NANO enrollment comes only from its survey authority; no PHI or tokens enter this public contract.
           </p>
         </div>
         <div className={styles.actions}>
-          {liveProxyEnabled && <Button variant="secondary" icon="refresh-cw" onClick={() => void refreshLiveProject()}>Refresh live</Button>}
-          <Button icon="refresh-cw" onClick={syncNow}>Sync now</Button>
+          <Button icon="refresh-cw" onClick={syncNow}>Refresh status</Button>
         </div>
       </header>
-      {(liveFreshness || liveError) && (
-        <div className={`${styles.liveFreshness} t-mono`}>
-          {liveFreshness}
-          {liveError && <span>{liveError}</span>}
-        </div>
-      )}
+      <DataProvenance source={sourceState} />
 
       <section className={styles.fastRow} aria-label="REDCap fast-paths">
         <div className={styles.fastRowInner}>
@@ -327,18 +318,29 @@ export function Redcap() {
       )}
 
       <section className={styles.kpis}>
-        <KPI label="Forms tracked" value="14" sub="versioned · v1–v4" insightId="redcap-forms" />
-        <KPI label="Records · 24 h" value="25" sub="pulled and pushed" delta={`+${okN}`} deltaKind="up" insightId="redcap-records" />
-        <KPI label="Warnings" value={warnN} sub="missing fields · review" delta="needs eye" deltaKind="flat" insightId="redcap-warnings" />
         <KPI
-          label="Failures"
-          value={failN}
-          sub="auto-retry queued"
-          delta={failN ? "needs auth" : "clear"}
-          deltaKind={failN ? "down" : "up"}
-          insightId="redcap-failures"
+          label="Projects healthy"
+          value={`${liveSummary.projectsOk}/${liveSummary.projectsTotal || "—"}`}
+          sub="configured REDCap sources"
+          insightId="redcap-projects"
+        />
+        <KPI label="Instruments" value={formatCount(liveSummary.instrumentsTotal)} sub="across reporting projects" insightId="redcap-forms" />
+        <KPI label="Event records" value={formatCount(liveSummary.eventRecords)} sub="aggregate portfolio" insightId="redcap-records" />
+        <KPI
+          label="Form completion"
+          value={liveSummary.completionRate === null ? "—" : `${liveSummary.completionRate.toFixed(1)}%`}
+          sub={liveSummary.reviewCount === null ? "review count unavailable" : `${liveSummary.reviewCount} need review`}
+          delta={sourceState.isLive ? "verified current" : sourceState.label}
+          deltaKind="flat"
+          insightId="redcap-completion"
         />
       </section>
+
+      <DataProvenance
+        kind="snapshot"
+        label="Operational snapshot"
+        detail="Detailed sync events, visit health, completeness matrices, and next-wave panels below use their existing snapshot feeds."
+      />
 
       {visitHealthEnabled && activeTab === "ops" && redcapPayload.data && (
         <CoordinatorOpsMonitor payload={redcapPayload.data} records={visitRecords} />
@@ -376,7 +378,8 @@ function RedcapSyncPanel({ events }: { events: Array<{ ts: string; form: string;
     <div className={styles.split}>
       <Card pad={0}>
         <div className={styles.listHead}>
-          <SectionLabel>Sync events · last 1 h</SectionLabel>
+          <SectionLabel>Sync events · snapshot</SectionLabel>
+          <Badge kind="neutral" size="sm">Snapshot</Badge>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -414,7 +417,7 @@ function RedcapSyncPanel({ events }: { events: Array<{ ts: string; form: string;
             spin={48}
             className={styles.fieldOrbit}
           />
-          <SectionLabel>Field map · medical_history_v1</SectionLabel>
+          <SectionLabel>Reference field map · medical_history_v1</SectionLabel>
           <div className={`${styles.fieldMap} t-mono`}>
             {FIELD_MAP.map((f) => (
               <div key={f.k} className={styles.fieldRow}>
@@ -427,7 +430,7 @@ function RedcapSyncPanel({ events }: { events: Array<{ ts: string; form: string;
             ))}
           </div>
           <div className={styles.privacyNote}>
-            PHI fields never leave the secure REDCap proxy — only hashed/derived columns are written to{" "}
+            PHI fields never enter the public dashboard — only approved de-identified derivatives are written to{" "}
             <code className="t-mono">processed/deidentified/</code>.
           </div>
         </div>
@@ -500,7 +503,7 @@ function CoordinatorOpsMonitor({
       <Card pad={0}>
         <div className={styles.listHead}>
           <SectionLabel>Coordinator Ops Monitor</SectionLabel>
-          <Badge kind="neutral" size="sm">what-if local</Badge>
+          <Badge kind="neutral" size="sm">Snapshot · what-if local</Badge>
         </div>
         <div className={styles.whatIfBar} data-insight="redcap-whatif-controls">
           <label>
@@ -667,6 +670,7 @@ function NextWavePanel({
         <div className={styles.listHead} data-insight="redcap-nextwave">
           <SectionLabel>Next-Wave REDCap Intelligence</SectionLabel>
           <div className={styles.alertMain}>
+            <Badge kind="neutral" size="sm">Snapshot</Badge>
             <Badge kind={predictive.nl_query_enabled ? "ok" : "neutral"} size="sm">
               NL table query {predictive.nl_query_enabled ? "ready" : "off"}
             </Badge>
@@ -986,26 +990,27 @@ function VisitAnomalyBanner({
   onRefresh: () => void;
 }) {
   const hasRisk = anomalies.length > 0;
-  const message = isLoading
+  const message = error
+    ? "Visit-health snapshot unavailable"
+    : isLoading
     ? "Checking REDCap visit-health records..."
     : hasRisk
       ? `${anomalies.length} carry-forward risk ${anomalies.length === 1 ? "record" : "records"} need coordinator review`
       : "All records clean — no carry-forward risks detected";
   return (
     <div
-      className={`${styles.deadlineAlert} ${hasRisk ? styles.anomalyWarn : styles.anomalyClean}`}
+      className={`${styles.deadlineAlert} ${hasRisk || error ? styles.anomalyWarn : styles.anomalyClean}`}
       data-insight="redcap-anomaly-banner"
     >
       <div className={styles.alertBody}>
         <div className={styles.alertMain}>
-          <Badge kind={hasRisk ? "fail" : "ok"} size="sm">
-            {hasRisk ? "Carry-Forward Risk" : "Clean"}
+          <Badge kind={error ? "warn" : hasRisk ? "fail" : "neutral"} size="sm">
+            {error ? "Unavailable" : hasRisk ? "Carry-Forward Risk" : "Snapshot clean"}
           </Badge>
           <span>{message}</span>
         </div>
         <div className={styles.alertActions}>
-          <span className="t-mono">Last synced: {formatSyncTime(lastSyncAt)}</span>
-          {error && <Badge kind="warn" size="sm">offline fallback</Badge>}
+          <span className="t-mono">Portfolio artifact: {formatSyncTime(lastSyncAt)}</span>
           <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onRefresh}>Refresh</Button>
           <button type="button" className={styles.alertClose} onClick={onDismiss} aria-label="Dismiss carry-forward alert">x</button>
         </div>
@@ -1050,7 +1055,7 @@ function VisitHealthTab({
       <Card pad={0}>
         <div className={styles.listHead} data-insight="redcap-visit-health">
           <SectionLabel>Visit Health Monitor · CSBS carry-forward guard</SectionLabel>
-          {error && <Badge kind="warn" size="sm">Backend fallback active</Badge>}
+          <Badge kind={error ? "warn" : "neutral"} size="sm">{error ? "Snapshot unavailable" : "Snapshot"}</Badge>
         </div>
         <VisitCompletionChart summary={summary} isLoading={isLoading} />
       </Card>
@@ -1058,13 +1063,13 @@ function VisitHealthTab({
       <Card pad={0}>
         <div className={styles.listHead} data-insight="redcap-visit-grid">
           <SectionLabel>Participant visit status grid</SectionLabel>
-          <Badge kind={summary.totals.incomplete ? "warn" : "ok"} size="sm">
-            {records.filter((record) => record.hasCarryForwardRisk).length} risk rows
+          <Badge kind={summary.totals.incomplete ? "warn" : "neutral"} size="sm">
+            Snapshot · {records.filter((record) => record.hasCarryForwardRisk).length} risk rows
           </Badge>
         </div>
         <VisitStatusGrid records={sortedRecords} isLoading={isLoading} onSelect={setSelected} />
         <div className={styles.hipaaReminder}>
-          IRB #Pro00115234 · Visit-health review uses REDCap proxy data and de-identified record IDs only. Open source records from the secure study network.
+          IRB #Pro00115234 · This visit-health panel is a de-identified operational snapshot. Open source records only from the secure study network.
         </div>
       </Card>
 
@@ -1266,7 +1271,9 @@ function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; sum
       <Card pad={0}>
         <div className={styles.listHead} data-insight="redcap-missing-data">
           <SectionLabel>Missing data code tracker · CSBS SKIP coverage</SectionLabel>
-          {missingData.data?.error && <Badge kind="warn" size="sm">fallback active</Badge>}
+          <Badge kind={missingData.data?.error ? "warn" : "neutral"} size="sm">
+            {missingData.data?.error ? "Snapshot unavailable" : "Snapshot"}
+          </Badge>
         </div>
         <div className={styles.matrixKpis}>
           <KPI label="6m skipped" value={summary.skippedByVisit.sixMonth} sub="intentional SKIP" insightId="redcap-missing-data" />
@@ -1316,7 +1323,7 @@ function CoveragePanel({ records, summary }: { records: RedcapVisitRecord[]; sum
 
 function RedcapCompletenessScorecard() {
   const enabled = useFeatureFlag("REDCAP_COMPLETENESS");
-  const { data } = useRedcapCompleteness();
+  const { data } = useRedcapCompleteness(enabled);
   const [selected, setSelected] = useState<RedcapCompletenessRow | null>(null);
   if (!enabled) return null;
 
@@ -1353,14 +1360,17 @@ function RedcapCompletenessScorecard() {
       )}
       <div className={styles.listHead}>
         <SectionLabel>Completeness scorecard · NDA-required forms</SectionLabel>
-        <Button
-          size="sm"
-          variant="secondary"
-          icon="download"
-          onClick={() => exportCsvFile(required as unknown as Array<Record<string, unknown>>, "redcap-completeness.csv")}
-        >
-          Export CSV
-        </Button>
+        <div className={styles.alertMain}>
+          <Badge kind="neutral" size="sm">Snapshot</Badge>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="download"
+            onClick={() => exportCsvFile(required as unknown as Array<Record<string, unknown>>, "redcap-completeness.csv")}
+          >
+            Export CSV
+          </Button>
+        </div>
       </div>
       <div className={styles.matrixKpis}>
         <KPI label="Average complete" value={`${avgCompleteness.toFixed(1)}%`} sub="NDA forms" insightId="redcap-completeness-matrix" />

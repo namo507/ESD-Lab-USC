@@ -1,17 +1,18 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge, Icon } from "@/components/primitives";
+import type { DashboardSourceState, DashboardStudyMetrics } from "@/api/dashboardMetrics";
+import { DataProvenance } from "@/components/data/DataProvenance";
 import { StudySelector } from "./StudySelector";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
-import type { StudySummary } from "@/api/schemas";
 import { isFeatureFlagEnabled } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAG_RELEASE_DATES, type FeatureFlag } from "@/config/featureFlags";
 import { isDiscoveryPath, toDiscoveryRoute } from "@/lib/discoveryRoutes";
 import styles from "./Sidebar.module.css";
 
 interface SidebarProps {
-  study: StudySummary;
+  study: DashboardStudyMetrics | null;
+  sourceState: DashboardSourceState;
   qaPending: number;
-  enrolled: number;
   executiveMode?: boolean;
 }
 
@@ -167,7 +168,7 @@ const CORE_NAV_ITEMS: NavItem[] = [
 
 const CORE_ROUTE_KEYS = new Set(CORE_NAV_ITEMS.map((item) => `${item.to}|${item.label}`));
 
-export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: SidebarProps) {
+export function Sidebar({ study, sourceState, qaPending, executiveMode = false }: SidebarProps) {
   const location = useLocation();
   const groups = executiveMode
     ? EXECUTIVE_NAV_GROUPS
@@ -190,7 +191,7 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
       it.label === "Window QA" && qaPending > 0
         ? qaPending
         : it.label === "NANO Study (VPT)"
-          ? enrolled
+          ? study?.enrollment ?? undefined
           : undefined;
 
     return (
@@ -239,18 +240,23 @@ export function Sidebar({ study, qaPending, enrolled, executiveMode = false }: S
         <div className={styles.studyBlock}>
           <div className={`${styles.studyCard} surface-card`}>
             <span className={styles.eyebrow}>Active study</span>
-            <div className={styles.studyName}><span className={styles.liveDot} aria-hidden />NANO</div>
-            <div className={styles.studyMeta}>Actively enrolling · {study.enrolled} / {study.target}</div>
-            <div
-              className={styles.progress}
-              role="progressbar"
-              aria-label={`${study.enrolled} of ${study.target} enrolled`}
-              aria-valuemin={0}
-              aria-valuemax={study.target}
-              aria-valuenow={study.enrolled}
-            >
-              <span style={{ width: `${Math.min(100, (study.enrolled / Math.max(1, study.target)) * 100)}%` }} />
+            <div className={styles.studyName}>NANO</div>
+            <div className={styles.studyMeta}>
+              Survey enrollment · {study?.enrollment?.toLocaleString() ?? "—"} / {study?.target?.toLocaleString() ?? "—"}
             </div>
+            <DataProvenance source={sourceState} detail="" compact />
+            {study?.enrollment !== null && study?.enrollment !== undefined && study.target ? (
+              <div
+                className={styles.progress}
+                role="progressbar"
+                aria-label={`${study.enrollment} of ${study.target} enrolled`}
+                aria-valuemin={0}
+                aria-valuemax={study.target}
+                aria-valuenow={study.enrollment}
+              >
+                <span style={{ width: `${Math.min(100, (study.enrollment / study.target) * 100)}%` }} />
+              </div>
+            ) : null}
           </div>
           <div className={styles.studyScope}><StudySelector /></div>
         </div>

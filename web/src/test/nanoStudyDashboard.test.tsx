@@ -97,9 +97,21 @@ const queryState = {
   refetch: vi.fn(),
 };
 
+const metricsQueryState = {
+  data: undefined,
+  isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+};
+
 vi.mock("@/api/nanoDashboardData", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/api/nanoDashboardData")>();
   return { ...original, useNanoDashboardData: () => queryState };
+});
+
+vi.mock("@/api/dashboardMetrics", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/api/dashboardMetrics")>();
+  return { ...original, useDashboardMetrics: () => metricsQueryState };
 });
 
 import { NanoStudyDashboard } from "@/routes/NanoStudyDashboard";
@@ -180,7 +192,7 @@ describe("NanoStudyDashboard", () => {
   it("keeps the visible surface aggregate-only", () => {
     renderDashboard();
 
-    expect(screen.getByText(/live aggregate nano metrics/i)).toBeInTheDocument();
+    expect(screen.getByText(/enrollment and redcap health use the live aggregate portfolio/i)).toBeInTheDocument();
     expect(screen.queryByText(/NANO-\d{3,}/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /participant/i })).not.toBeInTheDocument();
   });
@@ -190,7 +202,7 @@ describe("NanoStudyDashboard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /ask a follow-up/i }));
     expect(useUi.getState().chatOpen).toBe(true);
-    expect(useUi.getState().chatSeed).toMatch(/live aggregate nano attention/i);
+    expect(useUi.getState().chatSeed).toMatch(/distinguishing live redcap enrollment/i);
   });
 
   it("supports the timeline controls and mobile navigation toggle", () => {

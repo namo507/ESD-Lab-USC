@@ -10,10 +10,10 @@ export interface InsightData {
 
 export const INSIGHTS: Record<string, InsightData> = {
   ...HELP_INSIGHTS,
-  "kpi-enroll": { term: "Enrollment", body: "231 of 260 infants are enrolled across VPT, ASIB, and TD cohorts. The dashboard highlights active recruitment progress and weekly movement toward target." },
+  "kpi-enroll": { term: "Enrollment", body: "This tile reads the current aggregate NANO enrollment from the configured survey-authority REDCap project and compares it with the study target. It never exposes participant rows or identifiers." },
   "kpi-evals": { term: "Evaluations", body: "This tile summarizes study visits that still need HDA labeling, adjudication, or downstream scoring before the analysis pipeline is fully caught up." },
   "kpi-epochs": { term: "Epochs", body: "Each epoch is a 5-second ECG window. The pipeline counts them after preprocessing and QA because they are the unit that drives both HRV features and HDA labels." },
-  "kpi-redcap": { term: "REDCap Health", body: "REDCap sync health reflects how cleanly visit metadata is moving through the proxy into the dashboard without leaking PHI." },
+  "kpi-redcap": { term: "REDCap Health", body: "REDCap health reports freshness and project coverage from the server-generated, aggregate-only portfolio snapshot. Browser access to raw REDCap records is permanently disabled." },
   "kpi-publications": { term: "Publications", body: "The publications tile counts locally indexed PubMed, ORCID, Crossref, and manual records in the dashboard database, with the last sync timestamp kept separate from participant data." },
   "data-explorer-table": { term: "Data Explorer", body: "This SQL-style surface switches between de-identified participant, run, pipeline-stage, and REDCap-event tables. Column filters and CSV export operate on the visible filtered rows only." },
   "publications-card": { term: "Publication card", body: "Publication cards combine normalized metadata, deterministic research tags, citation counts, APA copy, and DOI/PubMed links without touching NANO participant identifiers." },
@@ -24,7 +24,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "landing-overview": { term: "NANO Study", body: "This landing route is now aligned to the operator shell: a warm clinical palette, the same data language, and the same hover-aware Buddy guidance across every major section." },
   "landing-study": { term: "Study design", body: "NANO follows very preterm, autism-sibling, and term-born infants longitudinally so physiology, attention, and later outcomes can be interpreted together rather than as isolated visits." },
   "landing-waveform": { term: "Live ECG", body: "The hero ribbon echoes the same operational story as the dashboard: Actiheart ECG is the physiological backbone that feeds HRV, HDA, and downstream modeling." },
-  "landing-metrics": { term: "Lab pulse", body: "These headline tiles mirror the operator KPIs so public visitors see the same enrollment, throughput, and model-context story as the internal dashboard." },
+  "landing-metrics": { term: "Lab pulse", body: "Enrollment and REDCap health come from the current aggregate portfolio feed. Pipeline and model panels are labeled separately when they use operational or pilot snapshots." },
   "landing-rmssd": { term: "RMSSD", body: "RMSSD is a vagal-tone summary derived from accepted ECG windows. On the landing page it anchors the clinical narrative before users drill into results." },
   "landing-runs": { term: "Queued runs", body: "Queued runs reflect pipeline work waiting on compute or review. It is the quickest signal that fresh study data is moving through the system right now." },
   "landing-assistant-context": { term: "Assistant context", body: "These HDA-labeled windows and study summaries are the same grounding context the in-page assistant uses when it explains cohorts, signals, and model behavior." },

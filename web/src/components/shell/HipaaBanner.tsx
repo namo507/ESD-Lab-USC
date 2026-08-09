@@ -22,8 +22,8 @@ export function HipaaBanner({ onDismiss, idleMinutes }: HipaaBannerProps) {
       <span className={styles.message}>
         <Gloss term="PHI">PHI</Gloss> processing zone ·{" "}
         <Gloss term="HIPAA">HIPAA</Gloss>-compliant audit logging is active. All exports are stripped of
-        identifiers via <Gloss term="RedCap">REDCap</Gloss> proxy; assistant prompts are PHI-scrubbed
-        before the secure backend proxy request.
+        identifiers; public <Gloss term="RedCap">REDCap</Gloss> metrics are server-aggregated and
+        small-cell suppressed. Raw browser access is disabled, and assistant prompts are PHI-scrubbed.
       </span>
       <span className={styles.meta}>
         IRB Pro00115234 · session · {idleMinutes} m

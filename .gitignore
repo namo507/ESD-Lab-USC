@@ -174,6 +174,7 @@ dashboard/data/*.sqlite3
 dashboard/data/*.sqlite3-*
 dashboard/data/readings_pipeline.lock
 dashboard/data/readings_pipeline_events.jsonl
+dashboard/data/dashboard_metrics.json
 
 # ─── Vite / Vitest stale timestamp files ────────────────────
 web/*.timestamp-*.mjs

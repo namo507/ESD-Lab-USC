@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Download, MessageCircle, Sparkles } from "lucide-react";
-import { useParticipants, useRuns, useStages, useStudySummary } from "@/api/hooks";
+import { useParticipants, useRuns, useStages } from "@/api/hooks";
+import {
+  getDashboardSourceState,
+  selectNanoMetrics,
+  useDashboardMetrics,
+} from "@/api/dashboardMetrics";
+import { DataProvenance } from "@/components/data/DataProvenance";
 import { Buddy } from "@/components/shell/Buddy";
 import { ChatDrawer } from "@/components/shell/ChatDrawer";
 import { ThemeToggle } from "@/components/shell/ThemeToggle";
@@ -45,7 +51,7 @@ const AIM_CARDS = [
   },
 ] as const;
 
-const PIPELINE_FALLBACK = [
+const PIPELINE_SNAPSHOT = [
   { label: "Ingested", count: 1400, note: "+42 · 7d" },
   { label: "ECG preproc", count: 1355, note: "+38 · 7d" },
   { label: "Temp preproc", count: 1355, note: "+35 · 7d" },
@@ -53,18 +59,6 @@ const PIPELINE_FALLBACK = [
   { label: "Feature matrix", count: 1246, note: "+29 · 7d" },
   { label: "Imputation", count: 1246, note: "MICE m=20" },
   { label: "Model-ready", count: 140, note: "+8 · 7d" },
-] as const;
-
-const SCHEDULE = [
-  { label: "NICU", share: 1 },
-  { label: "1m", share: 0.929 },
-  { label: "2m", share: 0.905 },
-  { label: "3m", share: 0.886 },
-  { label: "6m", share: 0.733 },
-  { label: "9m", share: 0.6 },
-  { label: "12m", share: 0.543 },
-  { label: "24m", share: 0.076 },
-  { label: "36m", share: 0 },
 ] as const;
 
 const MODELS = [
@@ -78,6 +72,17 @@ const MODELS = [
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(value)));
+}
+
+function formatOptionalNumber(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : formatNumber(value);
+}
+
+function formatEventLabel(value: string): string {
+  return value
+    .replace(/_arm_\d+$/i, "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatRunDate(value?: string): string {
@@ -100,7 +105,7 @@ export function Landing() {
   const inDiscovery = isDiscoveryPath(location.pathname);
   const route = (to: string) => (inDiscovery ? toDiscoveryRoute(to) : to);
 
-  const { data: study } = useStudySummary();
+  const dashboardMetrics = useDashboardMetrics();
   const { data: stages = [] } = useStages();
   const { data: runs = [] } = useRuns(6);
   const { data: participants = [] } = useParticipants();
@@ -110,12 +115,14 @@ export function Landing() {
   const [navVisible, setNavVisible] = useState(false);
   const [activeSection, setActiveSection] = useState<LandingSection>("overview");
 
-  const enrollment = study?.enrolled ?? 210;
-  const target = study?.target ?? 260;
+  const nano = selectNanoMetrics(dashboardMetrics.data);
+  const sourceState = getDashboardSourceState(dashboardMetrics.data);
+  const enrollment = nano?.enrollment ?? null;
+  const target = nano?.target ?? null;
 
   const pipeline = useMemo(
     () =>
-      PIPELINE_FALLBACK.map((fallback, index) => {
+      PIPELINE_SNAPSHOT.map((fallback, index) => {
         const stage = stages[index];
         return {
           id: stage?.id ?? `stage-${index + 1}`,
@@ -146,14 +153,17 @@ export function Landing() {
     };
   }, [participants, stages]);
 
-  const schedule = useMemo(
-    () =>
-      SCHEDULE.map((visit) => ({
-        ...visit,
-        count: visit.label === "36m" ? 0 : Math.round(enrollment * visit.share),
-      })),
-    [enrollment],
-  );
+  const schedule = useMemo(() => {
+    const observed = (nano?.events ?? []).filter(
+      (event): event is typeof event & { records: number } => !event.suppressed && event.records !== null,
+    );
+    const maximum = Math.max(...observed.map((event) => event.records), 1);
+    return observed.map((event) => ({
+      label: formatEventLabel(event.event),
+      count: event.records,
+      share: event.records / maximum,
+    }));
+  }, [nano?.events]);
 
   useEffect(() => {
     const revealTargets = Array.from(document.querySelectorAll<HTMLElement>("[data-landing-reveal]"));
@@ -294,8 +304,8 @@ export function Landing() {
             </div>
             <div className={styles.heroIntro} data-landing-reveal>
               <p>
-                The ESD Lab follows {formatNumber(target)} very preterm and term-born infants from the NICU to age three,
-                reading attention and autonomic regulation directly from the heart.
+                The ESD Lab follows {target !== null ? `up to ${formatNumber(target)} ` : ""}very preterm and term-born
+                infants from the NICU to age three, reading attention and autonomic regulation directly from the heart.
               </p>
               <div className={styles.heroActions}>
                 <button type="button" className={styles.primaryButton} onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">
@@ -305,23 +315,33 @@ export function Landing() {
                   Read the study
                 </button>
               </div>
+              <div className={styles.heroActions}>
+                <DataProvenance source={sourceState} />
+              </div>
             </div>
             <div className={styles.heroMetrics} data-landing-reveal data-tour="attention-pulse" data-insight="landing-metrics">
               <article data-insight="kpi-enroll">
-                <strong>{formatNumber(enrollment)}</strong>
-                <span>enrolled of {formatNumber(target)}</span>
+                <strong>{formatOptionalNumber(enrollment)}</strong>
+                <span>{target !== null ? `enrolled of ${formatNumber(target)}` : "survey enrollment"}</span>
               </article>
               <article>
-                <strong>92.9<span>%</span></strong>
-                <span>retention</span>
+                <strong>{formatOptionalNumber(nano?.eventRecords)}</strong>
+                <span>observed event records</span>
               </article>
               <article>
-                <strong>36<span>mo</span></strong>
-                <span>follow-up window</span>
+                <strong>
+                  {nano?.forms.completionRate === null || nano?.forms.completionRate === undefined
+                    ? "—"
+                    : nano.forms.completionRate.toFixed(1)}
+                  {nano?.forms.completionRate !== null && nano?.forms.completionRate !== undefined ? <span>%</span> : null}
+                </strong>
+                <span>verified form completion</span>
               </article>
               <article>
-                <strong>2</strong>
-                <span>NICU sites</span>
+                <strong>{formatOptionalNumber(nano?.projectsOk)}</strong>
+                <span>
+                  reporting projects{nano?.projectsTotal !== null && nano?.projectsTotal !== undefined ? ` of ${nano.projectsTotal}` : ""}
+                </span>
               </article>
             </div>
           </div>
@@ -359,10 +379,10 @@ export function Landing() {
           <div className={styles.container}>
             <header className={`${styles.sectionHeading} ${styles.pipelineHeading}`} data-landing-reveal>
               <div>
-                <span>Pipeline</span>
+                <span>Pipeline snapshot</span>
                 <h2>From chest to claim.</h2>
               </div>
-              <p>Every session moves through the same seven stages. Nothing reaches a model without passing QA.</p>
+              <p>Repository operations snapshot. These counts are not part of the live REDCap metrics contract.</p>
             </header>
             <div className={styles.pipelineGrid} data-landing-reveal>
               {pipeline.map((stage, index) => (
@@ -382,6 +402,7 @@ export function Landing() {
               ))}
             </div>
             <div className={styles.pipelineMeta} data-landing-reveal>
+              <span>Pipeline snapshot</span>
               <span>{qa.passRate.toFixed(1)}% QA pass rate</span>
               <span>{formatNumber(qa.passed)} QA-passed sessions</span>
               <span>{formatNumber(qa.open)} open QC actions</span>
@@ -399,33 +420,39 @@ export function Landing() {
               <span>Schedule</span>
               <h2>Every infant, every visit.</h2>
               <p>
-                NICU admission, then eight visits to 36 months corrected age. Each bar is the share of the enrolled cohort
-                seen so far.
+                Observed aggregate record counts by NANO REDCap event. Privacy-suppressed and unavailable counts are omitted.
               </p>
             </header>
-            <div className={styles.scheduleChart} data-landing-reveal role="img" aria-label="NANO visit completion across the 36 month study schedule">
-              {schedule.map((visit, index) => (
-                <div key={visit.label} className={styles.scheduleColumn}>
-                  <strong>{formatNumber(visit.count)}</strong>
-                  <span
-                    className={styles.scheduleBar}
-                    style={{
-                      height: visit.share > 0 ? `${Math.max(visit.share * 100, 3)}%` : "2px",
-                      opacity: 0.95 - index * 0.075,
-                    }}
-                    aria-hidden
-                  />
-                  <small>{visit.label}</small>
-                </div>
-              ))}
-            </div>
+            {schedule.length ? (
+              <div className={styles.scheduleChart} data-landing-reveal role="img" aria-label="Observed NANO REDCap records by event">
+                {schedule.map((visit, index) => (
+                  <div key={visit.label} className={styles.scheduleColumn}>
+                    <strong>{formatNumber(visit.count)}</strong>
+                    <span
+                      className={styles.scheduleBar}
+                      style={{
+                        height: visit.share > 0 ? `${Math.max(visit.share * 100, 3)}%` : "2px",
+                        opacity: Math.max(0.45, 0.95 - index * 0.055),
+                      }}
+                      aria-hidden
+                    />
+                    <small>{visit.label}</small>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <DataProvenance
+                label="Schedule unavailable"
+                detail="No unsuppressed NANO event counts are available in the current aggregate contract."
+              />
+            )}
           </div>
         </section>
 
         <section id="model" className={`${styles.section} ${styles.modelSection}`} data-insight="landing-model-card">
           <div className={`${styles.container} ${styles.modelLayout}`}>
             <div className={styles.modelFeature} data-landing-reveal>
-              <span>Preliminary</span>
+              <span>Pilot model</span>
               <strong>0.899</strong>
               <h2>1D-CNN + LSTM validation AUROC</h2>
               <p>Pilot result across six candidate models on held-out data. Not a clinical claim.</p>
@@ -464,7 +491,7 @@ export function Landing() {
             <div><strong>Data</strong><span>Aggregate only. No PHI leaves<br />the secure mount.</span></div>
           </div>
           <div className={styles.footerActions} data-tour="assistant-surface" data-insight="landing-assistant">
-            <span>Latest pipeline run: {formatRunDate(runs[0]?.triggered)}</span>
+            <span>Latest pipeline snapshot: {formatRunDate(runs[0]?.triggered)}</span>
             <button type="button" onClick={() => openAssistant("Walk me through the NANO Study.")}>
               <MessageCircle size={15} aria-hidden /> Ask ESD Lab Buddy
             </button>

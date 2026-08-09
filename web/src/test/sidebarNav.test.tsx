@@ -3,22 +3,44 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { Sidebar } from "@/components/shell/Sidebar";
-import type { StudySummary } from "@/api/schemas";
+import type { DashboardSourceState, DashboardStudyMetrics } from "@/api/dashboardMetrics";
 
-const STUDY: StudySummary = {
-  enrolled: 231,
+const STUDY: DashboardStudyMetrics = {
+  key: "nano",
+  label: "NANO",
+  status: "ok",
+  projectsTotal: 2,
+  projectsOk: 2,
+  enrollment: 221,
   target: 260,
-  groups: {
-    VPT: { count: 184, target: 200 },
-    ASIB: { count: 26, target: 30 },
-    TD: { count: 21, target: 30 },
+  eventRecords: null,
+  events: [],
+  forms: {
+    instrumentsTotal: null,
+    incomplete: null,
+    unverified: null,
+    complete: null,
+    unknown: null,
+    total: null,
+    completionRate: null,
   },
+};
+
+const SOURCE: DashboardSourceState = {
+  status: "live",
+  label: "Live REDCap",
+  detail: "Updated now · 8/8 projects healthy",
+  isLive: true,
+  generatedAt: "2026-08-07T12:00:00Z",
+  ageSeconds: 30,
+  projectsOk: 8,
+  projectsTotal: 8,
 };
 
 function renderSidebar(initialEntry = "/overview") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      <Sidebar study={STUDY} qaPending={3} enrolled={231} />
+      <Sidebar study={STUDY} sourceState={SOURCE} qaPending={3} />
     </MemoryRouter>,
   );
 }
