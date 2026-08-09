@@ -2,6 +2,8 @@
 .github
 .env*
 .dev.vars
+.design-qa/
+.tools/
 config/redcap_config_local.yml
 credentials/
 .cloudflared/
@@ -14,6 +16,8 @@ cloudflared/
 .pytest_cache
 .venv
 .venv-*/
+**/.venv/
+**/.venv-*/
 .Rlibs/
 **/__pycache__
 **/*.pyc
