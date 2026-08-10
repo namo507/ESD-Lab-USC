@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Single canonical `.env` loader (`src/utils/env_loader.py`) used by the REDCap
+  sync, dashboard server, assistant, and operator scripts, with a
+  dependency-free parser for containers without `python-dotenv` and a rule that
+  existing environment values always win over the file.
+- `make env-doctor` / `make env-verify` (`scripts/env_doctor.py`): masked report
+  of which keys are set, blank, undocumented, or sitting in stray `.env.*` side
+  files that nothing loads.
+- ESD Buddy provider failover chain: Gemini (`gemini-3.5-flash`) as the fast
+  primary, NVIDIA Nemotron hosted next, then a local Docker Model Runner tier
+  that needs no credential or network. Unconfigured tiers are skipped and the
+  first healthy tier answers.
+- `make assistant-chain` (`scripts/assistant_chain.py`) to print the resolved
+  failover order, and `make model-pull` (`scripts/setup_local_model.py`) to pull,
+  verify, and write the ESD grounding profile for the local tier.
+- Assistant status now publishes which provider tier is answering and how much
+  failover headroom remains, surfaced in the ESD Buddy drawer.
 - Additive NANO Study dashboard at `/nano/dashboard` with ESD-branded motion,
   aggregate enrollment and visit operations, HDA/RSA research metrics, pipeline
   quality, assessments, equipment and compliance status, REDCap health, and
@@ -50,6 +66,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: data flow, REDCap setup, ECG protocol, HIPAA checklist, onboarding guide
 - GitHub Actions CI: pytest + black + flake8 on develop/main
 - PR template and issue templates
+
+### Changed
+- The Buddy hover highlight is a soft tint that eases in, replacing a hard
+  border and yellow ring that appeared and vanished with no transition. The
+  bubble stays mounted so entry and exit animate, and moving between hotspots
+  crossfades rather than swapping text under the reader.
+- Assistant status reports the tier that will actually answer instead of always
+  naming the configured primary.
+
+### Fixed
+- `scripts/sync_redcap_portfolio.py` never read `.env`, so a plain invocation
+  ran without any of the eight REDCap project tokens.
+- Band-power integration in `src/preprocessing/hrv_features.py` binds
+  `np.trapezoid` when available, so it keeps working under NumPy 2.x where
+  `np.trapz` was removed.
 
 ---
 
