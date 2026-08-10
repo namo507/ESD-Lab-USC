@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 import { RotateCcw, Send, Sparkles, Square, X } from "lucide-react";
 import {
+  assistantFallbackLabel,
   assistantStatusLabel,
   fetchLiveAssistantStatus,
   isAssistantUsable,
@@ -496,6 +497,7 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
           ? "Buddy limited mode"
           : "Buddy unavailable"
       : assistantStatusLabel(status);
+  const providerChainLabel = assistantFallbackLabel(status);
   const redcapFreshness = status?.freshness?.redcap;
   const redcapFreshnessLabel = redcapFreshness?.generated_at
     ? `REDCap ${new Date(redcapFreshness.generated_at).toLocaleDateString()} · ${redcapFreshness.anomaly_count ?? 0} flags${typeof redcapFreshness.age_hours === "number" ? ` · ${redcapFreshness.age_hours.toFixed(1)}h old` : ""}`
@@ -524,11 +526,21 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
             <div
               className={styles.statusPill}
               data-insight="assistant-model-clinical"
-              data-insight-body="ESD Buddy uses the hosted NVIDIA assistant through the dashboard backend. Prompts are scrubbed before the proxy request, and limited fallback answers remain available when the live provider is degraded."
+              data-insight-body="ESD Buddy answers through a backend-routed provider chain. Prompts are scrubbed before the proxy request, the next tier takes over automatically when one provider fails, and limited fallback answers remain available when every tier is degraded."
             >
               <span className={`${styles.statusDot} ${styles[statusTone]}`} aria-hidden />
               <span>{statusLabel}</span>
             </div>
+            {providerChainLabel && (
+              <div
+                className={styles.statusPill}
+                data-insight="assistant-model-fallback"
+                data-insight-body={`Answering through ${providerChainLabel}. If this provider fails, the backend moves to the next tier without interrupting the conversation.`}
+              >
+                <span className={`${styles.statusDot} ${styles.ready}`} aria-hidden />
+                <span>{providerChainLabel}</span>
+              </div>
+            )}
             {redcapFreshnessLabel && (
               <div className={styles.statusPill}>
                 <span className={`${styles.statusDot} ${styles.ready}`} aria-hidden />

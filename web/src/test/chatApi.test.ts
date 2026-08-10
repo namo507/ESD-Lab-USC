@@ -9,6 +9,7 @@ vi.mock("@/lib/audit", () => ({
 }));
 
 import {
+  assistantFallbackLabel,
   assistantStatusLabel,
   fetchAssistantStatus,
   fetchLiveAssistantStatus,
@@ -136,7 +137,7 @@ describe("chatApi", () => {
       freshness: undefined,
       message: null,
     });
-    expect(assistantStatusLabel(status)).toBe("NVIDIA assistant ready");
+    expect(assistantStatusLabel(status)).toBe("ESD Buddy ready");
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       "/api/assistant/status",
       "/api/chat/status",
@@ -261,5 +262,98 @@ describe("chatApi", () => {
     controller.abort();
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("assistant provider failover", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reports the active tier and remaining backups", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "ready",
+          state: "ready",
+          ready: true,
+          model: "gemini-3.5-flash",
+          providers: {
+            enabled: true,
+            tiers: 3,
+            ready_tiers: 2,
+            active_tier: 0,
+            active_tier_label: "gemini:gemini-3.5-flash",
+            chain: [
+              { order: 0, label: "gemini:gemini-3.5-flash", ready: true },
+              { order: 1, label: "nvidia:nvidia/nemotron-3-super-120b-a12b", ready: false },
+              { order: 2, label: "local:ai/nemotron-3-nano", ready: true },
+            ],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const status = await fetchAssistantStatus();
+
+    expect(status.providers?.enabled).toBe(true);
+    expect(status.providers?.chain).toHaveLength(3);
+    expect(assistantFallbackLabel(status)).toBe("gemini:gemini-3.5-flash · 2 backup tiers");
+  });
+
+  it("drops tier labels that would leak an endpoint or credential", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "ready",
+          state: "ready",
+          ready: true,
+          providers: {
+            enabled: true,
+            tiers: 2,
+            active_tier: 0,
+            active_tier_label: "gemini:gemini-3.5-flash",
+            chain: [
+              { order: 0, label: "gemini:gemini-3.5-flash", ready: true },
+              { order: 1, label: "https://integrate.api.nvidia.com/v1 nvapi-secret", ready: true },
+            ],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const status = await fetchAssistantStatus();
+
+    expect(status.providers?.chain.map((tier) => tier.label)).toEqual([
+      "gemini:gemini-3.5-flash",
+    ]);
+    expect(JSON.stringify(status)).not.toContain("nvapi-");
+  });
+
+  it("returns no failover label when a single tier is configured", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "ready",
+          state: "ready",
+          ready: true,
+          providers: {
+            enabled: false,
+            tiers: 1,
+            active_tier: 0,
+            active_tier_label: "nvidia:nvidia/nemotron-3-super-120b-a12b",
+            chain: [],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    global.fetch = fetchMock as typeof global.fetch;
+
+    expect(assistantFallbackLabel(await fetchAssistantStatus())).toBeNull();
   });
 });

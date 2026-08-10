@@ -24,12 +24,32 @@ export type AssistantState =
   | "fallback"
   | "error";
 
+export interface AssistantProviderTier {
+  /** Position in the failover order; 0 answers first. */
+  order: number;
+  /** Operator-facing "provider:model" label. Never a credential or endpoint. */
+  label: string;
+  ready: boolean;
+}
+
+export interface AssistantFallbackState {
+  /** True when more than one provider tier is configured. */
+  enabled: boolean;
+  tiers: number;
+  readyTiers: number;
+  activeTier: number;
+  activeTierLabel: string | null;
+  chain: AssistantProviderTier[];
+}
+
 export interface AssistantStatus {
   status: AssistantState;
   error: string | null;
   model: string | null;
   message?: string | null;
   fallback?: boolean;
+  /** Which provider is answering, and how much backup is left behind it. */
+  providers?: AssistantFallbackState;
   freshness?: {
     readings?: {
       last_indexed_at?: string | null;
@@ -66,6 +86,7 @@ interface AssistantStatusPayload {
   fallback?: unknown;
   dependencies?: unknown;
   freshness?: unknown;
+  providers?: unknown;
 }
 
 interface LegacyChatPayload {
@@ -164,6 +185,40 @@ function normalizeAssistantState(payload: AssistantStatusPayload, model: string 
   }
 }
 
+function finiteInt(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.trunc(value) : fallback;
+}
+
+/**
+ * Read the provider failover state.
+ *
+ * Only order, label, and readiness are kept. Endpoints and any credential-shaped
+ * field are dropped here rather than filtered later, so no provider detail can
+ * reach a rendered surface by accident.
+ */
+function normalizeProviders(value: unknown): AssistantFallbackState | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const source = value as Record<string, unknown>;
+  const rawChain = Array.isArray(source.chain) ? source.chain : [];
+
+  const chain: AssistantProviderTier[] = rawChain.flatMap((entry, index) => {
+    if (!entry || typeof entry !== "object") return [];
+    const tier = entry as Record<string, unknown>;
+    const label = stringValue(tier.label);
+    if (!label || PROVIDER_INTERNAL_DETAIL.test(label)) return [];
+    return [{ order: finiteInt(tier.order, index), label, ready: tier.ready === true }];
+  });
+
+  return {
+    enabled: source.enabled === true && chain.length > 1,
+    tiers: finiteInt(source.tiers, chain.length),
+    readyTiers: finiteInt(source.ready_tiers ?? source.readyTiers, 0),
+    activeTier: finiteInt(source.active_tier ?? source.activeTier, 0),
+    activeTierLabel: stringValue(source.active_tier_label ?? source.activeTierLabel),
+    chain,
+  };
+}
+
 function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
   const model = stringValue(payload.model) ?? stringValue(payload.model_id);
   const status = normalizeAssistantState(payload, model);
@@ -175,11 +230,22 @@ function normalizeStatus(payload: AssistantStatusPayload): AssistantStatus {
     model,
     message,
     fallback: status === "fallback",
+    providers: normalizeProviders(payload.providers),
     freshness:
       payload.freshness && typeof payload.freshness === "object"
         ? (payload.freshness as AssistantStatus["freshness"])
         : undefined,
   };
+}
+
+/** Short description of remaining failover headroom, safe to render anywhere. */
+export function assistantFallbackLabel(status: AssistantStatus | null | undefined): string | null {
+  const providers = status?.providers;
+  if (!providers?.enabled) return null;
+  const active = providers.activeTierLabel ?? "primary provider";
+  const backups = Math.max(0, providers.tiers - providers.activeTier - 1);
+  if (backups === 0) return `${active} · no backup tier left`;
+  return `${active} · ${backups} backup tier${backups === 1 ? "" : "s"}`;
 }
 
 /** Ready, degraded, and fallback modes can all answer through the same API. */
@@ -191,7 +257,7 @@ export function isAssistantUsable(status: AssistantStatus | null | undefined): b
 export function assistantStatusLabel(status: AssistantStatus | null | undefined): string {
   switch (status?.status) {
     case "ready":
-      return "NVIDIA assistant ready";
+      return "ESD Buddy ready";
     case "setup-required":
       return "Assistant setup required";
     case "degraded":

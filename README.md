@@ -252,9 +252,46 @@ The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
 depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
 hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
 Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
-is attached, the canonical site can run the NVIDIA-backed assistant at the
-Pages edge from the project-level `DASHBOARD_ASSISTANT_API_KEY` secret. The
-current direct quick-tunnel URL continues to expose the full local runtime.
+is attached, the canonical site can run the backend-routed assistant at the
+Pages edge from the project-level provider key secrets. The current direct
+quick-tunnel URL continues to expose the full local runtime.
+
+## Configuration and credentials
+
+`.env` at the repository root is the single place credentials live. Every entry
+point loads it through `src/utils/env_loader.py`, so there is one file and one
+parsing behaviour. Keep no side files: `.env.local`, `.env.*.bak`, and similar
+are never loaded, and `make env-doctor` reports them so they can be folded in
+and deleted.
+
+```bash
+cp .env.example .env      # then fill in the values
+chmod 600 .env
+make env-doctor           # masked report: set, blank, stray, undocumented
+make env-verify           # fail unless 8 REDCap tokens + 1 assistant tier exist
+```
+
+## ESD Buddy provider chain
+
+The assistant tries providers in order and moves to the next when one is
+unconfigured or failing, so a single outage cannot take ESD Buddy offline. Every
+tier speaks the OpenAI chat-completions protocol through the dashboard backend;
+the browser never receives a provider credential.
+
+| Tier | Backend | Needs | Role |
+| --- | --- | --- | --- |
+| 1 | Gemini (`gemini-3.5-flash`) | `DASHBOARD_ASSISTANT_GEMINI_API_KEY` | Fast primary; grounded answers in ~1s |
+| 2 | NVIDIA Nemotron hosted | `DASHBOARD_ASSISTANT_API_KEY` | Stronger, slower |
+| 3 | Docker Model Runner (`ai/nemotron-3-nano`) | `DASHBOARD_ASSISTANT_LOCAL_ENABLED=true` | Local backup; no credential, no network |
+
+```bash
+make assistant-chain      # show the resolved order (no tokens generated)
+make model-pull           # pull + verify the local tier, write its ESD profile
+```
+
+Set `DASHBOARD_ASSISTANT_FALLBACK_CHAIN` to pin an order, for example
+`gemini,nvidia,local`. Leave it blank to use the primary provider first followed
+by the remaining configured tiers.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or

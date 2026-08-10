@@ -1,11 +1,33 @@
 """Resilient OpenAI-compatible providers for the dashboard assistant.
 
-The dashboard defaults to NVIDIA's hosted build API.  A self-hosted NVIDIA
-NIM endpoint uses the same protocol, but is accepted only after the explicit
-``DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED`` opt-in has been set.  Importing this
-module never imports the OpenAI SDK or contacts the provider, which keeps the
-dashboard process healthy when assistant dependencies or credentials are not
-available.
+Every supported backend speaks the OpenAI chat-completions protocol, so one
+client implementation serves all of them:
+
+``gemini``
+    Google's OpenAI-compatible endpoint. Fast and concise, and the default
+    first tier when a key is configured.
+``nvidia``
+    NVIDIA's hosted build API running Nemotron.
+``nvidia-nim``
+    A self-hosted NVIDIA NIM, accepted only after the explicit
+    ``DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED`` opt-in.
+``local``
+    An OpenAI-compatible runtime on the operator's machine, such as Docker
+    Model Runner. Needs no credential and keeps the assistant answering when
+    every hosted tier is unreachable.
+
+Providers differ only in the vendor-specific request knobs used to suppress a
+visible reasoning trace, which :meth:`ProviderConfig.request_extras` resolves
+per family. Sending NVIDIA's ``chat_template_kwargs`` to Gemini is rejected with
+HTTP 400, so this separation is load-bearing rather than cosmetic.
+
+:class:`FallbackProvider` chains configured tiers in order and moves to the next
+one when a tier is unconfigured or failing, which is what keeps the assistant
+answering through a single provider outage.
+
+Importing this module never imports the OpenAI SDK or contacts a provider, so
+the dashboard process stays healthy when assistant dependencies or credentials
+are absent.
 """
 
 from __future__ import annotations
@@ -16,12 +38,24 @@ import re
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Protocol
+from typing import Any, Callable, Iterator, Protocol, Sequence
 
 NVIDIA_HOSTED_API_BASE = "https://integrate.api.nvidia.com/v1"
 NVIDIA_NEMOTRON_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 NVIDIA_HOSTED_RUNTIME = "nvidia-build-api"
 NVIDIA_SELF_HOSTED_RUNTIME = "nvidia-nim"
+
+# Google's OpenAI-compatible surface. ``reasoning_effort`` is the supported way
+# to ask for a direct answer instead of a reasoning trace.
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/openai"
+GEMINI_DEFAULT_MODEL = "gemini-3.5-flash"
+GEMINI_RUNTIME = "gemini-openai-compat"
+
+# Docker Model Runner exposes an OpenAI-compatible endpoint on the host. The
+# published default port is stable across Docker Desktop releases.
+LOCAL_API_BASE = "http://localhost:12434/engines/v1"
+LOCAL_DEFAULT_MODEL = "ai/nemotron-3-nano"
+LOCAL_RUNTIME = "docker-model-runner"
 
 PROVIDER_ALIASES = {
     "": "nvidia",
@@ -34,6 +68,28 @@ PROVIDER_ALIASES = {
     "nvidia-nim": "nvidia-nim",
     "self-hosted": "nvidia-nim",
     "self-hosted-nim": "nvidia-nim",
+    "gemini": "gemini",
+    "google": "gemini",
+    "google-gemini": "gemini",
+    "gemini-openai": "gemini",
+    "gemini-openai-compat": "gemini",
+    "local": "local",
+    "docker": "local",
+    "docker-model-runner": "local",
+    "model-runner": "local",
+    "ollama": "local",
+    "llama-server": "local",
+}
+
+# Providers that authenticate with a bearer token supplied by the operator.
+CREDENTIALED_PROVIDERS = frozenset({"nvidia", "gemini"})
+
+# Request-shaping family per normalized provider name.
+PROVIDER_FAMILIES = {
+    "nvidia": "nvidia",
+    "nvidia-nim": "nvidia",
+    "gemini": "gemini",
+    "local": "openai",
 }
 
 _REASONING_TAG_PATTERN = re.compile(
@@ -156,6 +212,8 @@ class ProviderConfig:
     circuit_recovery_seconds: float = 60.0
     self_hosted_enabled: bool = False
     self_hosted_base_url: str = "http://nemotron-nim:8000/v1"
+    # Operator-facing tier name, used in status payloads and chain diagnostics.
+    label: str = ""
 
     @property
     def normalized_provider(self) -> str:
@@ -163,8 +221,18 @@ class ProviderConfig:
         return PROVIDER_ALIASES.get(value, value)
 
     @property
+    def family(self) -> str:
+        """Return the request-shaping family for this provider."""
+        return PROVIDER_FAMILIES.get(self.normalized_provider, "openai")
+
+    @property
     def uses_self_hosted_nim(self) -> bool:
         return self.normalized_provider == "nvidia-nim"
+
+    @property
+    def requires_api_key(self) -> bool:
+        """Return True when this provider cannot authenticate without a key."""
+        return self.normalized_provider in CREDENTIALED_PROVIDERS
 
     @property
     def effective_api_base(self) -> str:
@@ -177,6 +245,33 @@ class ProviderConfig:
         if self.uses_self_hosted_nim:
             return NVIDIA_SELF_HOSTED_RUNTIME
         return self.runtime or NVIDIA_HOSTED_RUNTIME
+
+    @property
+    def effective_label(self) -> str:
+        return self.label.strip() or f"{self.normalized_provider}:{self.model}"
+
+    def request_extras(self) -> dict[str, Any]:
+        """Return vendor knobs that keep the reasoning trace out of the answer.
+
+        Each vendor rejects the others' fields, so this is resolved per family
+        rather than sent as a merged superset.
+        """
+        if self.family == "nvidia":
+            return {
+                "extra_body": {
+                    "chat_template_kwargs": {
+                        "enable_thinking": bool(self.enable_thinking)
+                    },
+                    "reasoning_budget": max(0, int(self.reasoning_budget)),
+                }
+            }
+        if self.family == "gemini":
+            # Gemini bills thinking tokens against max_tokens, so leaving this
+            # on can return a length-truncated answer with no visible content.
+            return {} if self.enable_thinking else {"reasoning_effort": "none"}
+        # A generic OpenAI-compatible runtime is given no vendor extras at all;
+        # unknown fields are a 400 on most servers.
+        return {}
 
 
 class ProviderError(RuntimeError):
@@ -450,7 +545,7 @@ class NVIDIAOpenAIProvider:
             return ProviderError(
                 "Assistant is disabled by configuration.", state="disabled"
             )
-        if self.config.normalized_provider not in {"nvidia", "nvidia-nim"}:
+        if self.config.normalized_provider not in PROVIDER_FAMILIES:
             return ProviderError(
                 "The configured assistant provider is not supported.",
                 state="degraded",
@@ -469,13 +564,14 @@ class NVIDIAOpenAIProvider:
                 "The assistant model identifier is not configured.", state="degraded"
             )
         if (
-            not self.config.uses_self_hosted_nim
+            self.config.requires_api_key
             and not (self.config.api_key or "").strip()
             and self._client is None
             and self._client_factory is None
         ):
             return ProviderError(
-                "NVIDIA assistant credentials are missing.",
+                f"Assistant credentials are missing for the "
+                f"{self.config.normalized_provider} provider.",
                 state="credentials-missing",
             )
         return None
@@ -524,7 +620,10 @@ class NVIDIAOpenAIProvider:
             state = "ready"
             ready = True
             can_attempt = True
-            message = "NVIDIA assistant provider is configured and ready."
+            message = (
+                f"Assistant provider {self.config.effective_label} "
+                "is configured and ready."
+            )
 
         return {
             "enabled": self.config.enabled,
@@ -574,8 +673,10 @@ class NVIDIAOpenAIProvider:
                 ) from exc
 
             key = (self.config.api_key or "").strip()
-            if self.config.uses_self_hosted_nim and not key:
-                key = "self-hosted-nim"
+            if not key and not self.config.requires_api_key:
+                # Local and self-hosted runtimes ignore the value, but the
+                # OpenAI client refuses to construct without one.
+                key = f"unused-{self.config.normalized_provider}"
             self._client = OpenAI(
                 base_url=self.config.effective_api_base,
                 api_key=key,
@@ -619,12 +720,7 @@ class NVIDIAOpenAIProvider:
             "top_p": top_p,
             "max_tokens": max(1, int(max_tokens)),
             "stream": stream,
-            "extra_body": {
-                "chat_template_kwargs": {
-                    "enable_thinking": bool(self.config.enable_thinking)
-                },
-                "reasoning_budget": max(0, int(self.config.reasoning_budget)),
-            },
+            **self.config.request_extras(),
         }
         if response_format is not None:
             kwargs["response_format"] = response_format
@@ -674,14 +770,14 @@ class NVIDIAOpenAIProvider:
 
         if numeric_status == 429 or "ratelimit" in name or "rate limit" in text:
             return ProviderError(
-                "The NVIDIA assistant is rate-limited. Please try again shortly.",
+                "The assistant provider is rate-limited. Please try again shortly.",
                 state="rate-limited",
                 http_status=429,
                 retryable=True,
             )
         if numeric_status in {408, 504} or "timeout" in name or "timed out" in text:
             return ProviderError(
-                "The NVIDIA assistant request timed out. Please try again.",
+                "The assistant provider request timed out. Please try again.",
                 state="timeout",
                 http_status=504,
                 retryable=True,
@@ -693,20 +789,20 @@ class NVIDIAOpenAIProvider:
             or "unreachable" in text
         ):
             return ProviderError(
-                "The NVIDIA assistant provider is currently unreachable.",
+                "The assistant provider is currently unreachable.",
                 state="provider-unreachable",
                 http_status=503,
                 retryable=True,
             )
         if numeric_status in {409, 425}:
             return ProviderError(
-                "The NVIDIA assistant could not complete the request yet.",
+                "The assistant provider could not complete the request yet.",
                 state="degraded",
                 http_status=503,
                 retryable=True,
             )
         return ProviderError(
-            "The NVIDIA assistant could not complete this request.",
+            "The assistant provider could not complete this request.",
             state="degraded",
             http_status=503,
             retryable=False,
@@ -792,7 +888,10 @@ class NVIDIAOpenAIProvider:
                     return {
                         "ok": True,
                         "state": "ready",
-                        "message": "NVIDIA assistant provider probe succeeded.",
+                        "message": (
+                            f"Assistant provider {self.config.effective_label} "
+                            "probe succeeded."
+                        ),
                         "provider": self.config.normalized_provider,
                         "runtime": self.config.effective_runtime,
                         "model_id": self.config.model,
@@ -911,6 +1010,208 @@ class NVIDIAOpenAIProvider:
             self._release_slot()
 
 
+# A generic name for the same class, since it serves every provider family.
+OpenAICompatibleProvider = NVIDIAOpenAIProvider
+
+
+class FallbackProvider:
+    """Try each configured provider tier in order until one answers.
+
+    A tier is skipped when it is unconfigured (no credential, unsupported
+    provider) and abandoned when it raises. Ordering is the operator's stated
+    preference, so the first healthy tier always wins and the chain only
+    degrades downward under real failure.
+
+    Streaming has one hard rule: once a tier has yielded visible text, its
+    failure propagates instead of falling through. Restarting on a later tier
+    would replay a partial answer and show the reader duplicated text.
+    """
+
+    def __init__(self, tiers: Sequence[AssistantProvider]) -> None:
+        if not tiers:
+            raise ValueError("FallbackProvider requires at least one tier")
+        self._tiers = tuple(tiers)
+        self._lock = threading.Lock()
+        self._active_index = 0
+        self._last_error: str | None = None
+
+    @property
+    def tiers(self) -> tuple[AssistantProvider, ...]:
+        return self._tiers
+
+    def _tier_label(self, provider: AssistantProvider) -> str:
+        config = getattr(provider, "config", None)
+        if config is not None:
+            return str(getattr(config, "effective_label", "") or "provider")
+        return "provider"
+
+    def _set_active(self, index: int) -> None:
+        with self._lock:
+            self._active_index = index
+
+    def _selectable(self) -> list[tuple[int, AssistantProvider]]:
+        """Return tiers worth attempting, healthiest-first within the order."""
+        candidates: list[tuple[int, AssistantProvider]] = []
+        for index, provider in enumerate(self._tiers):
+            status = provider.status()
+            if status.get("ready") or status.get("can_attempt"):
+                candidates.append((index, provider))
+        return candidates
+
+    def active(self) -> AssistantProvider:
+        with self._lock:
+            index = min(self._active_index, len(self._tiers) - 1)
+        return self._tiers[index]
+
+    def status(self) -> dict[str, Any]:
+        """Report the chain's best tier, with every tier's state attached."""
+        tier_states: list[dict[str, Any]] = []
+        chosen: dict[str, Any] | None = None
+        chosen_index = 0
+
+        for index, provider in enumerate(self._tiers):
+            status = dict(provider.status())
+            label = self._tier_label(provider)
+            tier_states.append(
+                {
+                    "order": index,
+                    "label": label,
+                    "provider": status.get("provider"),
+                    "runtime": status.get("runtime"),
+                    "model_id": status.get("model_id"),
+                    "state": status.get("state"),
+                    "ready": bool(status.get("ready")),
+                    "can_attempt": bool(status.get("can_attempt")),
+                    "message": status.get("message"),
+                }
+            )
+            if chosen is None and status.get("ready"):
+                chosen, chosen_index = status, index
+
+        if chosen is None:
+            for index, provider in enumerate(self._tiers):
+                status = dict(provider.status())
+                if status.get("can_attempt"):
+                    chosen, chosen_index = status, index
+                    break
+
+        if chosen is None:
+            chosen = dict(self._tiers[0].status())
+            chosen_index = 0
+
+        self._set_active(chosen_index)
+        merged = dict(chosen)
+        merged["fallback_chain"] = tier_states
+        merged["fallback_tiers"] = len(self._tiers)
+        merged["active_tier"] = chosen_index
+        merged["active_tier_label"] = tier_states[chosen_index]["label"]
+        merged["fallback_ready_tiers"] = sum(
+            1 for tier in tier_states if tier["ready"]
+        )
+        if self._last_error and not merged.get("last_error"):
+            merged["last_error"] = self._last_error
+        return merged
+
+    def probe(self) -> dict[str, Any]:
+        last_error: ProviderError | None = None
+        attempted: list[str] = []
+
+        for index, provider in self._selectable():
+            label = self._tier_label(provider)
+            attempted.append(label)
+            try:
+                result = dict(provider.probe())
+            except ProviderError as exc:
+                last_error = exc
+                self._last_error = str(exc)
+                continue
+            self._set_active(index)
+            result["active_tier"] = index
+            result["active_tier_label"] = label
+            result["attempted_tiers"] = attempted
+            return result
+
+        if last_error is not None:
+            raise last_error
+        raise ProviderError(
+            "No assistant provider tier is configured for a probe.",
+            state="credentials-missing",
+        )
+
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float,
+        response_format: dict[str, Any] | None = None,
+    ) -> str:
+        last_error: ProviderError | None = None
+
+        for index, provider in self._selectable():
+            try:
+                answer = provider.complete(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    response_format=response_format,
+                )
+            except ProviderError as exc:
+                last_error = exc
+                self._last_error = f"{self._tier_label(provider)}: {exc}"
+                continue
+            self._set_active(index)
+            self._last_error = None
+            return answer
+
+        raise last_error or ProviderError(
+            "No assistant provider tier is currently available.",
+            state="degraded",
+        )
+
+    def stream(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float,
+        cancel_event: threading.Event | None = None,
+    ) -> Iterator[str]:
+        last_error: ProviderError | None = None
+
+        for index, provider in self._selectable():
+            emitted = False
+            try:
+                for chunk in provider.stream(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    cancel_event=cancel_event,
+                ):
+                    emitted = True
+                    yield chunk
+            except ProviderError as exc:
+                last_error = exc
+                self._last_error = f"{self._tier_label(provider)}: {exc}"
+                if emitted:
+                    # Half an answer is already on screen; a retry elsewhere
+                    # would duplicate it.
+                    raise
+                continue
+            self._set_active(index)
+            self._last_error = None
+            return
+
+        raise last_error or ProviderError(
+            "No assistant provider tier is currently available.",
+            state="degraded",
+        )
+
+
 def build_provider(
     config: ProviderConfig,
     *,
@@ -931,15 +1232,60 @@ def build_provider(
     )
 
 
+def build_provider_chain(
+    configs: Sequence[ProviderConfig],
+    *,
+    client: Any | None = None,
+    client_factory: Callable[..., Any] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+    random_value: Callable[[], float] = random.random,
+    clock: Callable[[], float] = time.monotonic,
+) -> AssistantProvider:
+    """Build a single provider, or a failover chain when several are given.
+
+    A one-entry chain returns the bare provider so existing single-provider
+    behaviour and diagnostics are completely unchanged.
+    """
+    if not configs:
+        raise ValueError("build_provider_chain requires at least one configuration")
+
+    providers = [
+        build_provider(
+            config,
+            client=client,
+            client_factory=client_factory,
+            sleep=sleep,
+            random_value=random_value,
+            clock=clock,
+        )
+        for config in configs
+    ]
+    if len(providers) == 1:
+        return providers[0]
+    return FallbackProvider(providers)
+
+
 __all__ = [
     "AssistantProvider",
+    "CREDENTIALED_PROVIDERS",
+    "GEMINI_API_BASE",
+    "GEMINI_DEFAULT_MODEL",
+    "GEMINI_RUNTIME",
+    "LOCAL_API_BASE",
+    "LOCAL_DEFAULT_MODEL",
+    "LOCAL_RUNTIME",
     "NVIDIA_HOSTED_API_BASE",
     "NVIDIA_HOSTED_RUNTIME",
     "NVIDIA_NEMOTRON_MODEL",
     "NVIDIAOpenAIProvider",
+    "OpenAICompatibleProvider",
+    "PROVIDER_ALIASES",
+    "PROVIDER_FAMILIES",
+    "FallbackProvider",
     "ProviderConfig",
     "ProviderError",
     "build_provider",
+    "build_provider_chain",
     "completion_content",
     "sanitize_response_content",
     "stream_content",

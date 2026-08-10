@@ -17,6 +17,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from dashboard.assistant.provider import (
+    GEMINI_API_BASE,
+    GEMINI_DEFAULT_MODEL,
+    GEMINI_RUNTIME,
+    LOCAL_API_BASE,
+    LOCAL_DEFAULT_MODEL,
+    LOCAL_RUNTIME,
     NVIDIA_HOSTED_API_BASE,
     NVIDIA_HOSTED_RUNTIME,
     NVIDIA_NEMOTRON_MODEL,
@@ -24,6 +30,7 @@ from dashboard.assistant.provider import (
     ProviderConfig,
     ProviderError,
     build_provider,
+    build_provider_chain,
     completion_content,
 )
 
@@ -741,6 +748,15 @@ class AssistantConfig:
     circuit_recovery_seconds: float = 60.0
     self_hosted_enabled: bool = False
     self_hosted_base_url: str = "http://nemotron-nim:8000/v1"
+    # Ordered failover tiers. The first entry is the primary; each later entry
+    # is tried only when every earlier one is unconfigured or failing.
+    fallback_chain: tuple[str, ...] = ()
+    gemini_api_key: str | None = field(default=None, repr=False)
+    gemini_api_base: str = GEMINI_API_BASE
+    gemini_model: str = GEMINI_DEFAULT_MODEL
+    local_enabled: bool = False
+    local_api_base: str = LOCAL_API_BASE
+    local_model: str = LOCAL_DEFAULT_MODEL
     context_char_budget: int = 12000
     # Deprecated local-runtime knobs remain constructor-compatible only.
     min_available_memory_gib: float = 0.0
@@ -851,6 +867,30 @@ class AssistantConfig:
                 _env_first("DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL")
                 or "http://nemotron-nim:8000/v1"
             ),
+            fallback_chain=_parse_chain(
+                os.getenv("DASHBOARD_ASSISTANT_FALLBACK_CHAIN")
+            ),
+            gemini_api_key=_env_first(
+                "DASHBOARD_ASSISTANT_GEMINI_API_KEY",
+                "GEMINI_API_KEY",
+                "GOOGLE_API_KEY",
+            ),
+            gemini_api_base=(
+                _env_first("DASHBOARD_ASSISTANT_GEMINI_API_BASE") or GEMINI_API_BASE
+            ),
+            gemini_model=(
+                _env_first("DASHBOARD_ASSISTANT_GEMINI_MODEL")
+                or GEMINI_DEFAULT_MODEL
+            ),
+            local_enabled=_parse_bool(
+                os.getenv("DASHBOARD_ASSISTANT_LOCAL_ENABLED"), default=False
+            ),
+            local_api_base=(
+                _env_first("DASHBOARD_ASSISTANT_LOCAL_API_BASE") or LOCAL_API_BASE
+            ),
+            local_model=(
+                _env_first("DASHBOARD_ASSISTANT_LOCAL_MODEL") or LOCAL_DEFAULT_MODEL
+            ),
             context_char_budget=_parse_int(
                 os.getenv("DASHBOARD_ASSISTANT_CONTEXT_BUDGET"),
                 default=12000,
@@ -889,6 +929,156 @@ class AssistantConfig:
             ),
         )
 
+    # ── Provider failover ────────────────────────────────────────────────
+    # Tier order when the operator has not pinned one explicitly: the fastest
+    # credentialed cloud tier, then the strongest, then a local runtime that
+    # needs no credential and no network.
+    DEFAULT_FALLBACK_CHAIN = ("gemini", "nvidia", "local")
+
+    def _tier_config(self, tier: str) -> ProviderConfig | None:
+        """Build one named tier, or None when it is not usable as configured.
+
+        When a tier is also the explicitly selected primary provider, the
+        generic ``DASHBOARD_ASSISTANT_*`` values take precedence over the
+        tier-specific ones, so pointing ``DASHBOARD_ASSISTANT_PROVIDER`` at a
+        backend and setting only the generic key still works.
+        """
+        name = tier.strip().lower()
+        primary = ProviderConfig(provider=self.provider).normalized_provider
+
+        if name in {"gemini", "google"}:
+            key = (self.gemini_api_key or "").strip()
+            base = self.gemini_api_base
+            model = self.gemini_model
+            if primary == "gemini":
+                key = key or (self.api_key or "").strip()
+                if self.api_base and self.api_base != NVIDIA_HOSTED_API_BASE:
+                    base = self.api_base
+                if self.model_id and self.model_id != DEFAULT_MODEL_ID:
+                    model = self.model_id
+            if not key:
+                return None
+            return self._with_shared_limits(
+                provider="gemini",
+                runtime=GEMINI_RUNTIME,
+                api_base=base,
+                api_key=key,
+                model=model,
+                label=f"gemini:{model}",
+            )
+
+        if name in {"local", "docker", "docker-model-runner"}:
+            base = self.local_api_base
+            model = self.local_model
+            if primary == "local":
+                if self.api_base and self.api_base != NVIDIA_HOSTED_API_BASE:
+                    base = self.api_base
+                if self.model_id and self.model_id != DEFAULT_MODEL_ID:
+                    model = self.model_id
+            elif not self.local_enabled:
+                return None
+            return self._with_shared_limits(
+                provider="local",
+                runtime=LOCAL_RUNTIME,
+                api_base=base,
+                api_key=None,
+                model=model,
+                label=f"local:{model}",
+            )
+
+        if name in {"nim", "nvidia-nim", "self-hosted", "self-hosted-nim"}:
+            if not self.self_hosted_enabled:
+                return None
+            return self._with_shared_limits(
+                provider="nvidia-nim",
+                runtime="nvidia-nim",
+                api_base=self.self_hosted_base_url,
+                api_key=self.api_key,
+                model=self.model_id,
+                label=f"nvidia-nim:{self.model_id}",
+                self_hosted=True,
+            )
+
+        if name in {"nvidia", "nvidia-hosted", "nvidia-build-api"}:
+            if not (self.api_key or "").strip():
+                return None
+            return self._with_shared_limits(
+                provider="nvidia",
+                runtime=NVIDIA_HOSTED_RUNTIME,
+                api_base=self.api_base or NVIDIA_HOSTED_API_BASE,
+                api_key=self.api_key,
+                model=self.model_id,
+                label=f"nvidia:{self.model_id}",
+            )
+
+        return None
+
+    def _with_shared_limits(
+        self,
+        *,
+        provider: str,
+        runtime: str,
+        api_base: str,
+        api_key: str | None,
+        model: str,
+        label: str,
+        self_hosted: bool = False,
+    ) -> ProviderConfig:
+        """Apply the shared timeout, retry, and concurrency policy to a tier."""
+        return ProviderConfig(
+            enabled=self.enabled,
+            provider=provider,
+            runtime=runtime,
+            api_base=api_base,
+            api_key=api_key,
+            model=model,
+            label=label,
+            enable_thinking=self.enable_thinking,
+            reasoning_budget=max(0, self.reasoning_budget),
+            request_timeout_seconds=max(0.1, self.request_timeout_seconds),
+            max_retries=max(0, self.max_retries),
+            retry_base_seconds=max(0.0, self.retry_base_seconds),
+            retry_max_seconds=max(0.0, self.retry_max_seconds),
+            retry_jitter=max(0.0, self.retry_jitter),
+            queue_timeout_seconds=max(0.0, self.generation_queue_timeout_seconds),
+            max_concurrency=max(1, self.max_concurrency),
+            circuit_failure_threshold=max(1, self.circuit_failure_threshold),
+            circuit_recovery_seconds=max(0.0, self.circuit_recovery_seconds),
+            self_hosted_enabled=self_hosted or self.self_hosted_enabled,
+            self_hosted_base_url=self.self_hosted_base_url,
+        )
+
+    def resolved_chain(self) -> tuple[str, ...]:
+        """Return the tier order this configuration will actually attempt."""
+        if self.fallback_chain:
+            return self.fallback_chain
+        primary = ProviderConfig(provider=self.provider).normalized_provider
+        rest = [tier for tier in self.DEFAULT_FALLBACK_CHAIN if tier != primary]
+        return (primary, *rest)
+
+    def provider_configs(self) -> list[ProviderConfig]:
+        """Build the ordered failover chain.
+
+        Unusable tiers -- a cloud provider with no key, a local runtime that was
+        not opted into -- are dropped rather than left in the chain to fail on
+        every request. The primary is always kept so a fully unconfigured
+        assistant still reports its intended provider instead of vanishing.
+        """
+        configs: list[ProviderConfig] = []
+        seen: set[tuple[str, str]] = set()
+
+        for tier in self.resolved_chain():
+            config = self._tier_config(tier)
+            if config is None:
+                continue
+            identity = (config.normalized_provider, config.model)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            configs.append(config)
+
+        return configs or [self.provider_config()]
+
     def provider_config(self) -> ProviderConfig:
         provider = "nvidia-nim" if self.self_hosted_enabled else self.provider
         runtime = "nvidia-nim" if self.self_hosted_enabled else self.runtime
@@ -899,6 +1089,7 @@ class AssistantConfig:
             api_base=self.api_base,
             api_key=self.api_key,
             model=self.model_id,
+            label=f"{provider}:{self.model_id}",
             enable_thinking=self.enable_thinking,
             reasoning_budget=max(0, self.reasoning_budget),
             request_timeout_seconds=max(0.1, self.request_timeout_seconds),
@@ -937,8 +1128,8 @@ class DashboardChatAssistant:
 
         self._maybe_load_dotenv()
         self.config = config or AssistantConfig.from_env()
-        self._provider = provider or build_provider(
-            self.config.provider_config(),
+        self._provider = provider or build_provider_chain(
+            self.config.provider_configs(),
             client=client,
             client_factory=client_factory,
         )
@@ -957,9 +1148,14 @@ class DashboardChatAssistant:
             "provider": provider_status.get("provider") or self.config.provider,
             "runtime": provider_status.get("runtime") or self.config.runtime,
             "api_base": provider_status.get("api_base") or self.config.api_base,
-            "model_id": self.config.model_id,
+            # Report the tier that will actually answer. With a failover chain
+            # the active provider is often not the configured primary, and
+            # showing the primary's model would name a backend that is not
+            # serving this request.
+            "model_id": provider_status.get("model_id") or self.config.model_id,
             "model_tier": self.config.model_tier,
-            "model_label": self.config.model_label,
+            "model_label": provider_status.get("active_tier_label")
+            or self.config.model_label,
             "model_license": self.config.model_license,
             "model_dir": (
                 str(self.config.model_dir)
@@ -996,6 +1192,29 @@ class DashboardChatAssistant:
             },
             "freshness": self._assistant_freshness_status(),
         }
+
+        # Surface failover state so the dashboard can show which tier answered
+        # and how much backup is left. Never includes credentials or endpoints
+        # beyond the already-public api_base.
+        chain = provider_status.get("fallback_chain")
+        if isinstance(chain, list):
+            status["fallback"] = {
+                "enabled": True,
+                "tiers": provider_status.get("fallback_tiers", len(chain)),
+                "ready_tiers": provider_status.get("fallback_ready_tiers", 0),
+                "active_tier": provider_status.get("active_tier", 0),
+                "active_tier_label": provider_status.get("active_tier_label"),
+                "chain": chain,
+            }
+        else:
+            status["fallback"] = {
+                "enabled": False,
+                "tiers": 1,
+                "ready_tiers": 1 if status["ready"] else 0,
+                "active_tier": 0,
+                "active_tier_label": f"{status['provider']}:{status['model_id']}",
+                "chain": [],
+            }
         return status
 
     def _prepare_request(
@@ -3058,16 +3277,18 @@ class DashboardChatAssistant:
         return {"available": not missing, "missing": missing}
 
     def _maybe_load_dotenv(self) -> None:
+        """Load the one repository ``.env`` unless the runtime opts out.
+
+        Containers set ``DASHBOARD_ASSISTANT_LOAD_DOTENV=false`` so the process
+        receives only the explicit application allowlist from Compose.
+        """
         if not _parse_bool(os.getenv("DASHBOARD_ASSISTANT_LOAD_DOTENV"), default=True):
             return
         try:
-            from dotenv import load_dotenv
+            from src.utils.env_loader import load_project_env
         except Exception:
             return
-
-        env_path = PROJECT_ROOT / ".env"
-        if env_path.exists():
-            load_dotenv(env_path, override=False)
+        load_project_env()
 
     def _effective_context_char_budget(self) -> int:
         available_prompt_tokens = max(
@@ -4149,17 +4370,33 @@ class DashboardChatAssistant:
         return None
 
     def _format_local_model_policy_response(self) -> str:
-        """Compatibility name for the current NVIDIA provider policy answer."""
-        model_label = self.config.model_label or self.config.model_file
-        model_id = self.config.model_id or self.config.model_file
-        runtime = self.config.runtime or NVIDIA_HOSTED_RUNTIME
+        """Describe the configured provider chain without generating text.
+
+        This answer must work with no credentials at all, so it reads from
+        configuration rather than contacting any provider.
+        """
+        tiers = self.config.provider_configs()
+        order = "\n".join(
+            f"  {index + 1}. {tier.effective_label} via {tier.effective_runtime}"
+            for index, tier in enumerate(tiers)
+        )
+        backup = (
+            "a lower tier takes over automatically"
+            if len(tiers) > 1
+            else "no backup tier is configured"
+        )
 
         return (
-            "NVIDIA assistant provider policy:\n\n"
-            f"- Configured model: {model_label} ({model_id}) via {runtime}.\n"
-            "- Default runtime: NVIDIA's hosted OpenAI-compatible endpoint; an API key is required and external rate limits still apply.\n"
-            "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
-            "- Self-hosting: NVIDIA NIM is optional and disabled by default because this model requires dedicated high-end GPU infrastructure."
+            "Assistant provider policy:\n\n"
+            f"- Failover order (first healthy tier answers):\n{order}\n"
+            f"- On failure: {backup}. A tier with no credential is skipped rather "
+            "than retried on every request.\n"
+            "- All tiers speak the OpenAI chat-completions protocol through the "
+            "dashboard backend; the browser never receives provider credentials.\n"
+            "- Resilience: bounded concurrency, queue timeout, retry/backoff with "
+            "jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
+            "- Self-hosting: NVIDIA NIM is optional and disabled by default because "
+            "that model requires dedicated high-end GPU infrastructure."
         )
 
     def _format_nano_study_explainer_response(
@@ -4323,6 +4560,22 @@ def _parse_float(value: str | None, *, default: float) -> float:
         return float(value) if value is not None else default
     except (TypeError, ValueError):
         return default
+
+
+def _parse_chain(value: str | None) -> tuple[str, ...]:
+    """Parse a comma or space separated provider failover order.
+
+    An empty setting returns an empty tuple, which leaves the default tier
+    order in place rather than disabling failover.
+    """
+    if not value:
+        return ()
+    parts = [part.strip().lower() for part in value.replace(" ", ",").split(",")]
+    ordered: list[str] = []
+    for part in parts:
+        if part and part not in ordered:
+            ordered.append(part)
+    return tuple(ordered)
 
 
 def _tokenize(text: str) -> list[str]:

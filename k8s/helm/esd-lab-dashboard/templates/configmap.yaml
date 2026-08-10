@@ -36,6 +36,12 @@ data:
   ASSISTANT_CLUSTER_CONTEXT_ENABLED: {{ .Values.pipeline.assistantClusterContextEnabled | quote }}
   DASHBOARD_ASSISTANT_ENABLED: {{ .Values.assistant.enabled | quote }}
   DASHBOARD_ASSISTANT_PROVIDER: {{ .Values.assistant.provider | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_CHAIN: {{ .Values.assistant.fallbackChain | quote }}
+  DASHBOARD_ASSISTANT_GEMINI_API_BASE: {{ .Values.assistant.geminiApiBase | quote }}
+  DASHBOARD_ASSISTANT_GEMINI_MODEL: {{ .Values.assistant.geminiModel | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_ENABLED: {{ .Values.assistant.localEnabled | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_API_BASE: {{ .Values.assistant.localApiBase | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_MODEL: {{ .Values.assistant.localModel | quote }}
   DASHBOARD_ASSISTANT_RUNTIME: {{ .Values.assistant.runtime | quote }}
   DASHBOARD_ASSISTANT_API_BASE: {{ .Values.assistant.apiBase | quote }}
   DASHBOARD_ASSISTANT_MODEL: {{ .Values.assistant.model | quote }}

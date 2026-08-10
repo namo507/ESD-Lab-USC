@@ -4668,6 +4668,29 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             "model_license": payload.get("model_license"),
             "runtime": payload.get("runtime"),
         }
+
+        # Publish which provider tier is answering and how much failover is left.
+        # Endpoints and credentials are deliberately excluded; only the
+        # operator-facing "provider:model" label and readiness cross the boundary.
+        fallback = payload.get("fallback")
+        if isinstance(fallback, dict):
+            status_payload["providers"] = {
+                "enabled": bool(fallback.get("enabled")),
+                "tiers": fallback.get("tiers"),
+                "ready_tiers": fallback.get("ready_tiers"),
+                "active_tier": fallback.get("active_tier"),
+                "active_tier_label": fallback.get("active_tier_label"),
+                "chain": [
+                    {
+                        "order": tier.get("order"),
+                        "label": tier.get("label"),
+                        "ready": bool(tier.get("ready")),
+                    }
+                    for tier in (fallback.get("chain") or [])
+                    if isinstance(tier, dict)
+                ],
+            }
+
         if config.assistant_cluster_context_enabled:
             status_payload["freshness"] = assistant_freshness_payload(
                 config,

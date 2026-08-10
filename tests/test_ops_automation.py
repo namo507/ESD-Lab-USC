@@ -676,7 +676,7 @@ def test_share_compose_defaults_cloudflared_to_http2():
         assert errors == []
 
 
-def test_compose_uses_nvidia_contract_and_scoped_autoheal():
+def test_compose_uses_provider_chain_contract_and_scoped_autoheal():
     root = Path(__file__).resolve().parents[1]
     for compose_file in [
         root / "docker-compose.yml",
@@ -687,9 +687,23 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         services = payload["services"]
         environment = services["dashboard"]["environment"]
 
-        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-nvidia}")
+        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-gemini}")
         assert "nemotron-3-super-120b-a12b" in environment["DASHBOARD_ASSISTANT_MODEL"]
         assert "${" in environment["DASHBOARD_ASSISTANT_API_KEY"]
+
+        # Every failover tier must be configurable from the environment, or a
+        # container loses the backup it is supposed to fall through to.
+        assert "${" in environment["DASHBOARD_ASSISTANT_GEMINI_API_KEY"]
+        assert "gemini" in environment["DASHBOARD_ASSISTANT_GEMINI_MODEL"]
+        assert "DASHBOARD_ASSISTANT_FALLBACK_CHAIN" in environment
+        assert environment["DASHBOARD_ASSISTANT_LOCAL_ENABLED"].endswith("-false}")
+        # localhost inside a container is the container, not the host runtime.
+        assert "host.docker.internal" in (
+            environment["DASHBOARD_ASSISTANT_LOCAL_API_BASE"]
+        )
+        assert "host.docker.internal:host-gateway" in (
+            services["dashboard"]["extra_hosts"]
+        )
         assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
             "${DASHBOARD_ASSISTANT_ENABLED:-true}"
         )
@@ -775,7 +789,7 @@ def test_share_script_normalizes_legacy_tunnel_token_for_compose_secret():
     assert 'export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"' in script
 
 
-def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
+def test_helm_provider_keys_are_secret_backed_and_reliability_is_configured():
     root = Path(__file__).resolve().parents[1]
     chart = root / "k8s" / "helm" / "esd-lab-dashboard"
     values = yaml.safe_load((chart / "values.yaml").read_text(encoding="utf-8"))
@@ -784,19 +798,32 @@ def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
         encoding="utf-8"
     )
 
-    assert values["assistant"]["provider"] == "nvidia"
+    assert values["assistant"]["provider"] == "gemini"
     assert values["assistant"]["apiKeySecretKey"] == "dashboardAssistantApiKey"
+    assert (
+        values["assistant"]["geminiApiKeySecretKey"] == "dashboardAssistantGeminiApiKey"
+    )
+    # A cluster has no Docker Model Runner on its host, so the local tier must
+    # stay off unless an in-cluster endpoint is deliberately configured.
+    assert values["assistant"]["localEnabled"] is False
+
     for key in (
         "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",
         "DASHBOARD_ASSISTANT_RETRY_JITTER",
         "DASHBOARD_ASSISTANT_MAX_CONCURRENCY",
         "DASHBOARD_ASSISTANT_CIRCUIT_FAILURE_THRESHOLD",
         "DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS",
+        "DASHBOARD_ASSISTANT_FALLBACK_CHAIN",
+        "DASHBOARD_ASSISTANT_GEMINI_MODEL",
+        "DASHBOARD_ASSISTANT_LOCAL_ENABLED",
     ):
         assert key in configmap
-    assert "- name: DASHBOARD_ASSISTANT_API_KEY" in deployment
+
+    # Every credential reaches the pod from a Secret, never the ConfigMap.
+    for key in ("DASHBOARD_ASSISTANT_API_KEY", "DASHBOARD_ASSISTANT_GEMINI_API_KEY"):
+        assert f"- name: {key}" in deployment
+        assert f"{key}:" not in configmap
     assert "secretKeyRef:" in deployment
-    assert "DASHBOARD_ASSISTANT_API_KEY:" not in configmap
 
 
 def test_repair_compose_services_targets_requested_services(monkeypatch, tmp_path):

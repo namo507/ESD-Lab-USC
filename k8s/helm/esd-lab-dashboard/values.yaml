@@ -41,7 +41,20 @@ dashboard:
 
 assistant:
   enabled: true
-  provider: nvidia
+  # Primary provider. Remaining tiers are tried in order when this one is
+  # unconfigured or failing, so one provider outage cannot take ESD Buddy down.
+  provider: gemini
+  # Blank keeps the default order (primary first, then remaining tiers).
+  # Set to pin one, e.g. "gemini,nvidia".
+  fallbackChain: ""
+  geminiApiBase: https://generativelanguage.googleapis.com/v1beta/openai
+  geminiModel: gemini-3.5-flash
+  geminiApiKeySecretKey: dashboardAssistantGeminiApiKey
+  # A cluster has no Docker Model Runner on its host, so the local tier stays
+  # off unless an OpenAI-compatible in-cluster service is pointed at here.
+  localEnabled: false
+  localApiBase: http://model-runner.default.svc.cluster.local:12434/engines/v1
+  localModel: ai/nemotron-3-nano
   runtime: nvidia-build-api
   apiBase: https://integrate.api.nvidia.com/v1
   apiKeySecretKey: dashboardAssistantApiKey

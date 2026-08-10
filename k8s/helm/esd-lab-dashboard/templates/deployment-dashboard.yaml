@@ -85,6 +85,12 @@ spec:
                   name: {{ .Values.secret.name }}
                   key: {{ .Values.assistant.apiKeySecretKey }}
                   optional: true
+            - name: DASHBOARD_ASSISTANT_GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.assistant.geminiApiKeySecretKey }}
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

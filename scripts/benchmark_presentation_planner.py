@@ -36,13 +36,12 @@ BENCHMARK_CONCEPTS: list[tuple[str, str, bool]] = [
 
 
 def _load_dotenv() -> None:
+    """Load the one repository ``.env`` through the shared loader."""
     try:
-        from dotenv import load_dotenv
+        from src.utils.env_loader import load_project_env
     except Exception:
         return
-    path = PROJECT_ROOT / ".env"
-    if path.exists():
-        load_dotenv(path, override=False)
+    load_project_env()
 
 
 def _valid_plan(plan: dict[str, Any]) -> tuple[bool, str]:
