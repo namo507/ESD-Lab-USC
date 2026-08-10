@@ -11,6 +11,7 @@ BLACK := $(VENV)/bin/black
 FLAKE8 := $(VENV)/bin/flake8
 ISORT := $(VENV)/bin/isort
 DASHBOARD_LOCAL_URL ?= http://localhost:8080
+ASSISTANT_LOCAL_MODEL ?= ai/qwen3.5:4b-q4_K_M
 HELM ?= $(shell if command -v helm >/dev/null 2>&1; then printf 'helm'; else printf 'docker run --rm -v "$(CURDIR):/repo" -w /repo alpine/helm:3.15.4'; fi)
 COMPOSE := docker compose -f docker/compose.dev.yml
 ROOT_COMPOSE := docker compose -f docker-compose.yml
@@ -18,7 +19,7 @@ MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 SHARE_PROFILE ?= share
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe assistant-model-check assistant-model-pull assistant-eval pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -159,18 +160,28 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-assistant-status: venv-ready  ## Show NVIDIA provider configuration and non-billable readiness state
+assistant-status: venv-ready  ## Show the ordered local/hosted provider chain without generating text
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config
 
 assistant-prepare: venv-ready  ## Validate provider config and rebuild repository grounding indexes
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --reindex
 
-assistant-bootstrap: venv-ready  ## Install hosted-provider dependencies and require configured credentials
+assistant-bootstrap: venv-ready  ## Install OpenAI-compatible client dependencies and validate the chain
 	$(VENV)/bin/pip install -r dashboard/requirements.txt
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --require-ready
 
-assistant-probe: venv-ready  ## Probe the configured NVIDIA OpenAI-compatible endpoint without generating text
+assistant-probe: venv-ready  ## Probe the local endpoint, then hosted fallback if needed, without generation
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --probe-provider --require-ready
+
+assistant-model-check:  ## Verify Docker Model Runner and the selected local model artifact
+	docker model status
+	docker model inspect $(ASSISTANT_LOCAL_MODEL)
+
+assistant-model-pull:  ## Pull the compact local model artifact through Docker Model Runner
+	docker model pull $(ASSISTANT_LOCAL_MODEL)
+
+assistant-eval: venv-ready  ## Gate provider failover, grounding, concise answers, and Buddy behavior
+	$(VENV)/bin/python -m pytest tests/test_assistant_provider.py tests/test_assistant_model_catalog.py tests/test_dashboard_assistant.py tests/test_nano_buddy.py -q
 
 dashboard-share:  ## Start a public share tunnel and print the shareable URL
 	@if command -v docker >/dev/null 2>&1; then \

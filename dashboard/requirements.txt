@@ -1,6 +1,6 @@
 # NANO dashboard runtime dependencies.
-# Hosted NVIDIA inference uses the OpenAI-compatible client; no local model
-# weights or compiler-specific llama.cpp wheels are required.
+# Docker Model Runner and hosted NVIDIA share this OpenAI-compatible client.
+# Model weights remain external OCI artifacts; no llama.cpp wheel is installed.
 
 numpy>=1.26.0
 pandas>=2.1.0

@@ -263,7 +263,7 @@ def test_assistant_short_circuits_next_wave_feature_context(tmp_path):
     assert "hda_composition" in response
 
 
-def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
+def test_assistant_answers_provider_chain_policy_before_leaderboard(tmp_path):
     data_dir = tmp_path / "dashboard-data"
     data_dir.mkdir()
     (data_dir / "dashboard_data.json").write_text(
@@ -279,12 +279,7 @@ def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
     (data_dir / "readings_data.json").write_text(json.dumps({"summary": {}}))
 
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(
-            model_id="nvidia/nemotron-3-super-120b-a12b",
-            model_tier="hosted",
-            model_label="NVIDIA Nemotron 3 Super 120B A12B",
-            runtime="nvidia-build-api",
-        ),
+        config=AssistantConfig(),
         data_dir=data_dir,
     )
 
@@ -296,9 +291,10 @@ def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
     response = assistant._maybe_short_circuit_response(question, context)
 
     assert response is not None
-    assert "NVIDIA assistant provider policy:" in response
-    assert "NVIDIA Nemotron 3 Super 120B A12B" in response
-    assert "nvidia-build-api" in response
+    assert "ESD Buddy provider policy:" in response
+    assert "Qwen 3.5 4B Q4_K_M" in response
+    assert "nvidia/nemotron-3-super-120b-a12b" in response
+    assert "repository RAG" in response
     assert "external rate limits still apply" in response
     assert "model leaderboard" not in response.lower()
 
@@ -446,7 +442,16 @@ def test_stream_serializes_concurrent_model_generations(tmp_path, monkeypatch):
 
 def test_status_reports_missing_provider_credentials(tmp_path):
     assistant = DashboardChatAssistant(
-        config=AssistantConfig(model_dir=tmp_path / "missing-model"),
+        config=AssistantConfig(
+            provider="nvidia",
+            runtime="nvidia-build-api",
+            api_base="https://integrate.api.nvidia.com/v1",
+            api_key=None,
+            model_id="nvidia/nemotron-3-super-120b-a12b",
+            local_enabled=False,
+            fallback_enabled=False,
+            model_dir=tmp_path / "missing-model",
+        ),
         data_dir=tmp_path,
     )
 
@@ -469,8 +474,9 @@ def test_status_ready_with_injected_provider_client(tmp_path):
 
     assert status["ready"] is True
     assert status["state"] == "ready"
-    assert status["provider"] == "nvidia"
-    assert status["runtime"] == "nvidia-build-api"
+    assert status["provider"] == "docker-model-runner"
+    assert status["runtime"] == "docker-model-runner"
+    assert status["model_id"] == "ai/qwen3.5:4b-q4_K_M"
     assert status["model_path"] is None
 
 

@@ -21,20 +21,35 @@ and optional Pages packaging trigger metadata.
 Secrets are never hardcoded. To enable the optional Pages redeploy hook, create
 or render a Secret named by `secret.name` with key `pagesDeployHookUrl`.
 
-The default assistant runtime is NVIDIA's hosted OpenAI-compatible endpoint and
-does not download model weights into the pod. Inject the API key through the
-existing Secret (key `dashboardAssistantApiKey` by default):
+The default pod runtime is NVIDIA's hosted OpenAI-compatible endpoint and does
+not download model weights. The chart never deploys a privileged model runner,
+GPU sidecar, or model artifact. Inject the API key and project-scoped REDCap
+tokens through the existing Secret:
 
 ```bash
 kubectl -n esd-lab create secret generic esd-lab-dashboard-secrets \
-  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY"
+  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY" \
+  --from-literal=redcapAbcSurveysToken="$REDCAP_ABC_SURVEYS_TOKEN" \
+  --from-literal=redcapIpsaSurveysToken="$REDCAP_IPSA_SURVEYS_TOKEN" \
+  --from-literal=redcapActionToken="$REDCAP_ACTION_TOKEN" \
+  --from-literal=redcapIpsaLabToken="$REDCAP_IPSA_LAB_TOKEN" \
+  --from-literal=redcapAbcLabToken="$REDCAP_ABC_LAB_TOKEN" \
+  --from-literal=redcapNicoToken="$REDCAP_NICO_TOKEN" \
+  --from-literal=redcapNanoSurveysToken="$REDCAP_NANO_SURVEYS_TOKEN" \
+  --from-literal=redcapNanoLabToken="$REDCAP_NANO_LAB_TOKEN"
 ```
 
-The dashboard starts and passes readiness checks when that key is missing or the
-provider is unavailable; only the assistant reports a degraded state. A future
-self-hosted NIM endpoint can be selected with `assistant.selfHostedEnabled` and
-`assistant.selfHostedBaseUrl`, but it is disabled by default and requires
-dedicated GPU infrastructure outside this chart.
+The dashboard starts and passes readiness checks when a provider is unavailable;
+only the assistant reports degradation. To use an operator-managed local or
+in-cluster OpenAI-compatible endpoint as primary, set
+`assistant.local.enabled=true` and `assistant.local.apiBase`. HTTPS is required
+by default. Set `assistant.local.requireHttps=false` only for a private endpoint
+that is constrained by network policy. An optional gateway credential is read
+from `dashboardAssistantLocalApiKey`; hosted Nemotron remains the fallback.
+
+ESD-specific behavior is repository RAG over aggregate/non-PHI context, not
+model fine-tuning. Run `make assistant-eval` before changing provider or
+grounding policy.
 
 Validation:
 

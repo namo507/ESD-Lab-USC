@@ -71,6 +71,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "redcap-records": { term: "Records", body: "This count reflects records pulled from or pushed back to REDCap in the last 24 hours through the secure study integration." },
   "redcap-warnings": { term: "Warnings", body: "Warnings indicate records that need human review, usually because a field is missing or a value failed validation but the sync could still continue." },
   "redcap-failures": { term: "Failures", body: "Failures are sync jobs that could not complete, often because authentication expired or a required form payload was malformed." },
+  "redcap-project-grid": { term: "Eight-project snapshot", body: "This grid shows aggregate health for the five-study, eight-project REDCap portfolio. Privacy-suppressed counts remain hidden, and reloading retrieves the latest published snapshot without claiming to start a REDCap sync." },
   "redcap-completeness-matrix": { term: "Completeness matrix", body: "The REDCap matrix scores de-identified NANO IDs against NDA-required instruments, then opens a source-detail drawer without exposing PHI." },
   "redcap-workflow-states": { term: "Workflow states", body: "Completeness now tracks Complete, Due, Missing, Did Not Qualify, and Other so enrollment outcomes and form routing decisions are not hidden in blank cells." },
   "redcap-visit-health": { term: "Visit Health Monitor", body: "The Visit Health Monitor cross-checks CSBS caregiver completion across 6m, 9m, 12m, and 24m REDCap events and emits R1-R5 carry-forward anomaly codes from the canonical REDCap contract." },
@@ -206,6 +207,10 @@ function insightTarget(target: EventTarget | null): Element | null {
   return target instanceof Element ? target.closest("[data-insight]") : null;
 }
 
+function buddySurfaceTarget(target: EventTarget | null): Element | null {
+  return target instanceof Element ? target.closest("[data-buddy-surface]") : null;
+}
+
 function resolveInsightFromElement(target: Element): InsightData | null {
   const term = target.getAttribute("data-insight-term")?.trim() ?? "";
   const body = target.getAttribute("data-insight-body")?.trim() ?? "";
@@ -277,6 +282,21 @@ function BuddySvg({ talking, lookX, lookY }: BuddySvgProps) {
   );
 }
 
+function insightsMatch(left: InsightData | null, right: InsightData | null): boolean {
+  return left?.term === right?.term && left?.body === right?.body;
+}
+
+/**
+ * Motion timings. Show is debounced so sweeping the pointer across a dense
+ * grid of hotspots settles on the hotspot the user actually stopped on instead
+ * of flashing every hotspot in the path. Hide is debounced separately so
+ * travelling between two adjacent hotspots reads as one continuous bubble.
+ */
+const SHOW_DELAY_MS = 80;
+const HIDE_DELAY_MS = 120;
+const SWAP_MS = 110;
+const EXIT_MS = 260;
+
 export interface BuddyProps {
   /**
    * Placement context. "shell" (default) offsets past the operator sidebar;
@@ -287,53 +307,129 @@ export interface BuddyProps {
 }
 
 export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
+  // `insight` is the intent (what the pointer is on); `rendered` is what is
+  // painted. They diverge briefly during a crossfade so text never hard-cuts.
   const [insight, setInsight] = useState<InsightData | null>(null);
+  const [rendered, setRendered] = useState<InsightData | null>(null);
+  const [swapping, setSwapping] = useState(false);
   const [look, setLook] = useState({ x: 48, y: 48 });
   const path = typeof window !== "undefined" ? window.location.pathname : "/";
   const tourTrack = path === "/" || path === "/docs" || path === "/how-to" ? "public" : "operator";
 
   const buddyRef = useRef<HTMLDivElement>(null);
-  const hideTimerRef = useRef<number | null>(null);
   const lookFrameRef = useRef<number | null>(null);
   const pendingLookRef = useRef({ x: 48, y: 48 });
 
   useEffect(() => {
-    const clearHideTimer = () => {
-      if (hideTimerRef.current != null) {
-        window.clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
+    let showTimer: number | null = null;
+    let hideTimer: number | null = null;
+    let activeTarget: Element | null = null;
+    let pendingTarget: Element | null = null;
+    let hoverTarget: Element | null = null;
+    let focusTarget: Element | null = null;
+    let surfaceHovered = false;
+    let surfaceFocused = false;
+
+    const clearTimer = (id: number | null) => {
+      if (id != null) window.clearTimeout(id);
     };
 
-    const showInsight = (target: Element | null) => {
+    const showInsight = (target: Element | null, immediate: boolean) => {
       if (!(target instanceof Element)) return;
-      clearHideTimer();
-      setInsight(resolveInsightFromElement(target));
-      target.classList.add("insight-active");
+      clearTimer(hideTimer);
+      hideTimer = null;
+      if (activeTarget === target || pendingTarget === target) return;
+      clearTimer(showTimer);
+      pendingTarget = target;
+      const commit = () => {
+        showTimer = null;
+        pendingTarget = null;
+        activeTarget = target;
+        const next = resolveInsightFromElement(target);
+        setInsight((current) => (insightsMatch(current, next) ? current : next));
+      };
+      // Keyboard focus is a deliberate act, so it skips the hover debounce.
+      if (immediate) commit();
+      else showTimer = window.setTimeout(commit, SHOW_DELAY_MS);
     };
 
-    const hideInsight = (target: Element | null, relatedTarget: EventTarget | null) => {
-      if (!(target instanceof Element)) return;
-      if (target === insightTarget(relatedTarget)) return;
-      target.classList.remove("insight-active");
-      clearHideTimer();
-      hideTimerRef.current = window.setTimeout(() => setInsight(null), 500);
+    const hideInsight = () => {
+      clearTimer(showTimer);
+      showTimer = null;
+      pendingTarget = null;
+      clearTimer(hideTimer);
+      hideTimer = window.setTimeout(() => {
+        hideTimer = null;
+        activeTarget = null;
+        setInsight(null);
+      }, HIDE_DELAY_MS);
+    };
+
+    const showPreferredTarget = (immediate: boolean) => {
+      const preferredTarget = focusTarget ?? hoverTarget;
+      if (preferredTarget) showInsight(preferredTarget, immediate);
+      else if (surfaceHovered || surfaceFocused) {
+        clearTimer(hideTimer);
+        hideTimer = null;
+      } else hideInsight();
     };
 
     const onOver = (event: MouseEvent) => {
-      showInsight(insightTarget(event.target));
+      const target = insightTarget(event.target);
+      if (!target) {
+        if (buddySurfaceTarget(event.target)) {
+          surfaceHovered = true;
+          showPreferredTarget(false);
+        }
+        return;
+      }
+      hoverTarget = target;
+      showPreferredTarget(false);
     };
 
     const onOut = (event: MouseEvent) => {
-      hideInsight(insightTarget(event.target), event.relatedTarget);
+      const target = insightTarget(event.target);
+      if (!target) {
+        if (buddySurfaceTarget(event.target)) {
+          surfaceHovered = Boolean(buddySurfaceTarget(event.relatedTarget));
+          showPreferredTarget(false);
+        }
+        return;
+      }
+      const relatedTarget = insightTarget(event.relatedTarget);
+      if (target === relatedTarget) return;
+      if (hoverTarget === target) hoverTarget = relatedTarget;
+      surfaceHovered = Boolean(buddySurfaceTarget(event.relatedTarget));
+      showPreferredTarget(false);
     };
 
     const onFocusIn = (event: FocusEvent) => {
-      showInsight(insightTarget(event.target));
+      const target = insightTarget(event.target);
+      if (!target) {
+        if (buddySurfaceTarget(event.target)) {
+          surfaceFocused = true;
+          showPreferredTarget(true);
+        }
+        return;
+      }
+      focusTarget = target;
+      showInsight(target, true);
     };
 
     const onFocusOut = (event: FocusEvent) => {
-      hideInsight(insightTarget(event.target), event.relatedTarget);
+      const target = insightTarget(event.target);
+      if (!target) {
+        if (buddySurfaceTarget(event.target)) {
+          surfaceFocused = Boolean(buddySurfaceTarget(event.relatedTarget));
+          showPreferredTarget(Boolean(insightTarget(event.relatedTarget)));
+        }
+        return;
+      }
+      const relatedTarget = insightTarget(event.relatedTarget);
+      if (target === relatedTarget) return;
+      if (focusTarget === target) focusTarget = relatedTarget;
+      surfaceFocused = Boolean(buddySurfaceTarget(event.relatedTarget));
+      showPreferredTarget(Boolean(relatedTarget));
     };
 
     document.addEventListener("mouseover", onOver, { passive: true });
@@ -342,7 +438,8 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
     document.addEventListener("focusout", onFocusOut);
 
     return () => {
-      clearHideTimer();
+      clearTimer(showTimer);
+      clearTimer(hideTimer);
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
       document.removeEventListener("focusin", onFocusIn);
@@ -350,7 +447,41 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
     };
   }, []);
 
+  // Drive the painted copy from the intent: fade in when the bubble is empty,
+  // crossfade when replacing live copy, and hold the outgoing copy through the
+  // container's exit so text never disappears before the bubble does.
   useEffect(() => {
+    if (insight === null) {
+      if (rendered === null) return;
+      const timer = window.setTimeout(() => {
+        setRendered(null);
+        setSwapping(false);
+      }, EXIT_MS);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (rendered === null) {
+      setRendered(insight);
+      setSwapping(false);
+      return;
+    }
+
+    if (insightsMatch(rendered, insight)) {
+      if (swapping) setSwapping(false);
+      return;
+    }
+
+    setSwapping(true);
+    const timer = window.setTimeout(() => {
+      setRendered(insight);
+      setSwapping(false);
+    }, SWAP_MS);
+    return () => window.clearTimeout(timer);
+  }, [insight, rendered, swapping]);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
     const onMove = (event: MouseEvent) => {
       const buddy = buddyRef.current;
       if (!buddy) return;
@@ -376,22 +507,46 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
     };
   }, []);
 
+  const open = insight !== null;
+
   return (
-    <div className={`${styles.stage} ${anchor === "page" ? styles.page : ""} ${insight ? styles.active : ""}`} aria-live="polite">
-      <div className={`${styles.buddy} ${insight ? styles.talking : ""}`} ref={buddyRef}>
-        <BuddySvg talking={Boolean(insight)} lookX={look.x} lookY={look.y} />
+    <div
+      className={[
+        styles.stage,
+        anchor === "page" ? styles.page : "",
+        open ? styles.active : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className={`${styles.buddy} ${open ? styles.talking : ""}`} ref={buddyRef}>
+        <BuddySvg talking={open} lookX={look.x} lookY={look.y} />
       </div>
 
-      <div className={`${styles.bubble} ${insight ? styles.show : ""}`}>
-        {insight && (
-          <>
-            <span className={styles.termTag}>{insight.term}</span>
-            <div className={styles.bodyText}>{insight.body}</div>
-            <button type="button" className={styles.tourButton} onClick={() => startNanoTour(tourTrack)}>
-              Walk me through it
-            </button>
-          </>
-        )}
+      <div
+        className={`${styles.bubble} ${open ? styles.show : ""}`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-hidden={!open}
+        data-buddy-surface
+      >
+        <div className={`${styles.content} ${swapping ? styles.swapping : ""}`}>
+          {rendered && (
+            <>
+              <span className={styles.termTag}>{rendered.term}</span>
+              <div className={styles.bodyText}>{rendered.body}</div>
+              <button
+                type="button"
+                className={styles.tourButton}
+                tabIndex={open ? 0 : -1}
+                onClick={() => startNanoTour(tourTrack)}
+              >
+                Walk me through it
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

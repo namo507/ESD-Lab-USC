@@ -252,9 +252,11 @@ The Pages frontend is live at `https://esd-lab-namo.pages.dev/` and no longer
 depends on `esd-lab-namo.sc.edu`. A stable named backend tunnel still needs a
 hostname under a DNS zone controlled in this Cloudflare account; `pages.dev` is
 Cloudflare-owned and cannot be used as the tunnel DNS zone. Until such a domain
-is attached, the canonical site can run the NVIDIA-backed assistant at the
-Pages edge from the project-level `DASHBOARD_ASSISTANT_API_KEY` secret. The
-current direct quick-tunnel URL continues to expose the full local runtime.
+is attached, the canonical site can run the hosted NVIDIA fallback at the Pages
+edge from the project-level `DASHBOARD_ASSISTANT_API_KEY` secret. The full local
+runtime uses Docker Model Runner with `ai/qwen3.5:4b-q4_K_M`, then hosted
+Nemotron, then deterministic repository grounding. The current direct
+quick-tunnel URL continues to expose that backend runtime.
 
 By default, `make dashboard-share` uses a Cloudflare quick tunnel, so the
 printed public URL is temporary and the hostname is random. Do not document or

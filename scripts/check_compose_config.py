@@ -26,6 +26,14 @@ DEFAULT_FILES = [
 REQUIRED_DASHBOARD_ENVIRONMENT = {
     "DASHBOARD_ASSISTANT_ENABLED",
     "DASHBOARD_ASSISTANT_PROVIDER",
+    "DASHBOARD_ASSISTANT_LOCAL_ENABLED",
+    "DASHBOARD_ASSISTANT_LOCAL_REQUEST_TIMEOUT_SECONDS",
+    "DASHBOARD_ASSISTANT_LOCAL_MAX_RETRIES",
+    "DASHBOARD_ASSISTANT_FALLBACK_ENABLED",
+    "DASHBOARD_ASSISTANT_FALLBACK_PROVIDER",
+    "DASHBOARD_ASSISTANT_FALLBACK_API_BASE",
+    "DASHBOARD_ASSISTANT_FALLBACK_API_KEY",
+    "DASHBOARD_ASSISTANT_FALLBACK_MODEL",
     "DASHBOARD_ASSISTANT_API_KEY",
     "DASHBOARD_ASSISTANT_LOAD_DOTENV",
     "DASHBOARD_AUDIT_RATE_LIMIT_REQUESTS",
@@ -43,7 +51,20 @@ REQUIRED_DASHBOARD_ENVIRONMENT = {
     "NANO_ID_SALT",
     "PARTICIPANT_ID_SALT",
     "NANO_DATA_ROOT",
+    "REDCAP_ABC_SURVEYS_TOKEN",
+    "REDCAP_IPSA_SURVEYS_TOKEN",
+    "REDCAP_ACTION_TOKEN",
+    "REDCAP_IPSA_LAB_TOKEN",
+    "REDCAP_ABC_LAB_TOKEN",
+    "REDCAP_NICO_TOKEN",
+    "REDCAP_NANO_SURVEYS_TOKEN",
+    "REDCAP_NANO_LAB_TOKEN",
 }
+
+LOCAL_MODEL_KEY = "esd-buddy"
+LOCAL_MODEL_ARTIFACT = (
+    "${DASHBOARD_ASSISTANT_LOCAL_MODEL_ARTIFACT:-ai/qwen3.5:4b-q4_K_M}"
+)
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
@@ -193,6 +214,36 @@ def validate_compose(path: Path) -> list[str]:
         "${NANO_ID_SALT:-${PARTICIPANT_ID_SALT:-}}"
     ):
         errors.append(f"{path}: NANO_ID_SALT must preserve the participant-salt alias")
+
+    if dashboard_environment.get("DASHBOARD_ASSISTANT_PROVIDER") != (
+        "${DASHBOARD_ASSISTANT_PROVIDER:-docker-model-runner}"
+    ):
+        errors.append(f"{path}: Docker Model Runner must be the default provider")
+    service_models = dashboard.get("models") or {}
+    model_binding = (
+        service_models.get(LOCAL_MODEL_KEY)
+        if isinstance(service_models, dict)
+        else None
+    )
+    if not isinstance(model_binding, dict):
+        errors.append(f"{path}: dashboard must bind the {LOCAL_MODEL_KEY} model")
+    else:
+        if model_binding.get("endpoint_var") != "DASHBOARD_ASSISTANT_LOCAL_API_BASE":
+            errors.append(f"{path}: local model endpoint injection is misconfigured")
+        if model_binding.get("model_var") != "DASHBOARD_ASSISTANT_LOCAL_MODEL":
+            errors.append(f"{path}: local model identifier injection is misconfigured")
+
+    models = data.get("models") or {}
+    local_model = models.get(LOCAL_MODEL_KEY) if isinstance(models, dict) else None
+    if not isinstance(local_model, dict):
+        errors.append(f"{path}: missing top-level {LOCAL_MODEL_KEY} model")
+    else:
+        if local_model.get("model") != LOCAL_MODEL_ARTIFACT:
+            errors.append(
+                f"{path}: {LOCAL_MODEL_KEY} must default to ai/qwen3.5:4b-q4_K_M"
+            )
+        if local_model.get("context_size") != 8192:
+            errors.append(f"{path}: {LOCAL_MODEL_KEY} context_size must be 8192")
 
     ports = dashboard.get("ports") or []
     if not ports or not all(_port_is_loopback_only(port) for port in ports):

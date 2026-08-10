@@ -12,8 +12,10 @@ const STUDY: DashboardStudyMetrics = {
   projectsTotal: 2,
   projectsOk: 2,
   enrollment: 221,
+  enrollmentSuppressed: false,
   target: 260,
   eventRecords: null,
+  eventRecordsSuppressed: true,
   events: [],
   forms: {
     instrumentsTotal: null,
@@ -23,6 +25,7 @@ const STUDY: DashboardStudyMetrics = {
     unknown: null,
     total: null,
     completionRate: null,
+    countsSuppressed: true,
   },
 };
 

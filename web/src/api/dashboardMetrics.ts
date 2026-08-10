@@ -4,6 +4,30 @@ import { z } from "zod";
 export const DASHBOARD_METRICS_URL = "/dashboard/data/dashboard_metrics.json";
 export const DASHBOARD_METRICS_QUERY_KEY = ["dashboard", "metrics", "v1"] as const;
 export const EXPECTED_REDCAP_PROJECTS = 8;
+export const EXPECTED_REDCAP_STUDIES = 5;
+export const DASHBOARD_SMALL_CELL_THRESHOLD = 5;
+
+export const REDCAP_STUDY_IDENTITIES = {
+  abc: { projects: 2 },
+  ipsa: { projects: 2 },
+  action: { projects: 1 },
+  nico: { projects: 1 },
+  nano: { projects: 2 },
+} as const;
+
+export const REDCAP_PROJECT_IDENTITIES = {
+  abc_surveys: { projectId: 1140, study: "abc", role: "surveys", enrollmentAuthority: true },
+  ipsa_surveys: { projectId: 1289, study: "ipsa", role: "surveys", enrollmentAuthority: true },
+  action: { projectId: 1556, study: "action", role: "combined", enrollmentAuthority: true },
+  ipsa_lab: { projectId: 2084, study: "ipsa", role: "assessments", enrollmentAuthority: false },
+  abc_lab: { projectId: 2263, study: "abc", role: "assessments", enrollmentAuthority: false },
+  nico: { projectId: 3836, study: "nico", role: "combined", enrollmentAuthority: true },
+  nano_surveys: { projectId: 4218, study: "nano", role: "surveys", enrollmentAuthority: true },
+  nano_lab: { projectId: 5484, study: "nano", role: "assessments", enrollmentAuthority: false },
+} as const;
+
+export type DashboardStudyKey = keyof typeof REDCAP_STUDY_IDENTITIES;
+export type DashboardProjectKey = keyof typeof REDCAP_PROJECT_IDENTITIES;
 
 export type DashboardSourceKind = "live" | "partial" | "unavailable";
 export type DashboardSourceStatus = "live" | "partial" | "stale" | "unavailable";
@@ -16,6 +40,7 @@ export interface DashboardFormsMetrics {
   unknown: number | null;
   total: number | null;
   completionRate: number | null;
+  countsSuppressed: boolean;
 }
 
 export interface DashboardEventMetric {
@@ -25,27 +50,32 @@ export interface DashboardEventMetric {
 }
 
 export interface DashboardStudyMetrics {
-  key: string;
+  key: DashboardStudyKey;
   label: string;
   status: string | null;
   projectsTotal: number | null;
   projectsOk: number | null;
   enrollment: number | null;
+  enrollmentSuppressed: boolean;
   target: number | null;
   eventRecords: number | null;
+  eventRecordsSuppressed: boolean;
   events: DashboardEventMetric[];
   forms: DashboardFormsMetrics;
 }
 
 export interface DashboardProjectMetrics {
-  key: string;
-  study: string | null;
-  role: string | null;
-  title: string | null;
+  key: DashboardProjectKey;
+  study: DashboardStudyKey;
+  role: string;
+  projectId: number;
+  title: string;
   status: string | null;
   enrollmentAuthority: boolean;
   records: number | null;
+  recordsSuppressed: boolean;
   eventRecords: number | null;
+  eventRecordsSuppressed: boolean;
   events: DashboardEventMetric[];
   forms: DashboardFormsMetrics;
   errorCode: string | null;
@@ -56,7 +86,9 @@ export interface DashboardPortfolioMetrics {
   studiesTotal: number | null;
   studiesReporting: number | null;
   studyEnrollments: number | null;
+  studyEnrollmentsSuppressed: boolean;
   eventRecords: number | null;
+  eventRecordsSuppressed: boolean;
   forms: DashboardFormsMetrics;
 }
 
@@ -101,62 +133,343 @@ export interface DashboardRedcapSummary {
   reviewCount: number | null;
 }
 
-type JsonRecord = Record<string, unknown>;
+const STUDY_KEYS = Object.keys(REDCAP_STUDY_IDENTITIES) as [DashboardStudyKey, ...DashboardStudyKey[]];
+const PROJECT_KEYS = Object.keys(REDCAP_PROJECT_IDENTITIES) as [DashboardProjectKey, ...DashboardProjectKey[]];
+const CountSchema = z.number().int().nonnegative();
+const NullableCountSchema = CountSchema.nullable();
+const StudyKeySchema = z.enum(STUDY_KEYS);
+const ProjectKeySchema = z.enum(PROJECT_KEYS);
+
+function addContractIssue(
+  ctx: z.RefinementCtx,
+  path: Array<string | number>,
+  message: string,
+) {
+  ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
+}
+
+function validateSuppressedCount(
+  count: number | null,
+  suppressed: boolean,
+  ctx: z.RefinementCtx,
+  countPath: Array<string | number>,
+  flagPath: Array<string | number>,
+) {
+  if (suppressed && count !== null) {
+    addContractIssue(ctx, countPath, "suppressed aggregate counts must be null");
+  }
+  if (!suppressed && count !== null && count > 0 && count < DASHBOARD_SMALL_CELL_THRESHOLD) {
+    addContractIssue(ctx, flagPath, "small aggregate counts must be privacy-suppressed");
+  }
+}
+
+const EventSchema = z
+  .object({
+    event: z.string().trim().min(1),
+    records: NullableCountSchema,
+    suppressed: z.boolean(),
+  })
+  .strict()
+  .superRefine((event, ctx) => {
+    validateSuppressedCount(event.records, event.suppressed, ctx, ["records"], ["suppressed"]);
+    if (!event.suppressed && event.records === null) {
+      addContractIssue(ctx, ["records"], "an unsuppressed event must include its aggregate count");
+    }
+  });
+
+interface RawFormsContract {
+  incomplete: number | null;
+  unverified: number | null;
+  complete: number | null;
+  unknown: number | null;
+  total: number | null;
+  completion_rate: number | null;
+  counts_suppressed: boolean;
+}
+
+const FormsShape = {
+  incomplete: NullableCountSchema,
+  unverified: NullableCountSchema,
+  complete: NullableCountSchema,
+  unknown: NullableCountSchema,
+  total: NullableCountSchema,
+  completion_rate: z.number().finite().min(0).max(100).nullable(),
+  counts_suppressed: z.boolean(),
+};
+
+function validateFormsContract(forms: RawFormsContract, ctx: z.RefinementCtx) {
+  const countKeys = ["incomplete", "unverified", "complete", "unknown", "total"] as const;
+  if (forms.counts_suppressed) {
+    for (const key of countKeys) {
+      if (forms[key] !== null) addContractIssue(ctx, [key], "suppressed form counts must be null");
+    }
+    if (forms.completion_rate !== null) {
+      addContractIssue(ctx, ["completion_rate"], "suppressed form counts must not expose a rate");
+    }
+    return;
+  }
+
+  const present = countKeys.filter((key) => forms[key] !== null);
+  if (present.length === 0) return;
+  if (present.length !== countKeys.length) {
+    addContractIssue(ctx, ["total"], "available form buckets must be published together");
+    return;
+  }
+
+  const subtotal = (forms.incomplete ?? 0)
+    + (forms.unverified ?? 0)
+    + (forms.complete ?? 0)
+    + (forms.unknown ?? 0);
+  if (subtotal !== forms.total) {
+    addContractIssue(ctx, ["total"], "form total must equal its aggregate buckets");
+  }
+  for (const key of ["incomplete", "unverified", "complete", "unknown"] as const) {
+    const count = forms[key] ?? 0;
+    if (count > 0 && count < DASHBOARD_SMALL_CELL_THRESHOLD) {
+      addContractIssue(ctx, [key], "small form buckets must be privacy-suppressed");
+    }
+  }
+}
+
+const FormsSchema = z.object(FormsShape).strict().superRefine(validateFormsContract);
+const ProjectFormsSchema = z
+  .object({ instruments_total: NullableCountSchema, ...FormsShape })
+  .strict()
+  .superRefine(validateFormsContract);
 
 const SourceSchema = z
   .object({
-    kind: z.string().min(1),
-    system: z.string().min(1),
+    kind: z.enum(["live", "api", "partial", "unavailable"]),
+    transport: z.literal("api").optional(),
+    system: z.literal("REDCap"),
     refresh_cadence_seconds: z.number().finite().positive().optional(),
     sla_seconds: z.number().finite().positive().optional(),
-    cadence: z.string().optional(),
+    cadence: z.string().trim().min(1).optional(),
     sla: z
-      .object({ max_age_minutes: z.number().finite().positive().optional() })
-      .passthrough()
+      .object({ max_age_minutes: z.number().finite().positive() })
+      .strict()
       .optional(),
-    projects_total: z.number().int().nonnegative(),
-    projects_ok: z.number().int().nonnegative(),
+    projects_total: z.literal(EXPECTED_REDCAP_PROJECTS),
+    projects_ok: CountSchema.max(EXPECTED_REDCAP_PROJECTS),
   })
-  .passthrough();
+  .strict();
+
+const PortfolioSchema = z
+  .object({
+    status: z.string().trim().min(1),
+    studies_total: z.literal(EXPECTED_REDCAP_STUDIES),
+    studies_reporting: CountSchema.max(EXPECTED_REDCAP_STUDIES),
+    study_enrollments: NullableCountSchema,
+    study_enrollments_suppressed: z.boolean(),
+    event_records: NullableCountSchema,
+    event_records_suppressed: z.boolean(),
+    forms: FormsSchema,
+  })
+  .strict();
+
+const StudySchema = z
+  .object({
+    key: StudyKeySchema,
+    label: z.string().trim().min(1),
+    status: z.string().trim().min(1),
+    projects_total: CountSchema,
+    projects_ok: CountSchema,
+    target: NullableCountSchema,
+    enrollment: NullableCountSchema,
+    enrollment_suppressed: z.boolean(),
+    event_records: NullableCountSchema,
+    event_records_suppressed: z.boolean(),
+    events: z.array(EventSchema),
+    forms: FormsSchema,
+  })
+  .strict();
+
+const ProjectSchema = z
+  .object({
+    key: ProjectKeySchema,
+    study: StudyKeySchema,
+    role: z.string().trim().min(1),
+    project_id: CountSchema,
+    title: z.string().trim().min(1),
+    status: z.string().trim().min(1),
+    enrollment_authority: z.boolean(),
+    records: NullableCountSchema,
+    records_suppressed: z.boolean(),
+    event_records: NullableCountSchema,
+    event_records_suppressed: z.boolean(),
+    events: z.array(EventSchema),
+    forms: ProjectFormsSchema,
+    error: z.object({ code: z.string().trim().min(1) }).strict().nullable(),
+  })
+  .strict();
 
 const DashboardMetricsSchema = z
   .object({
     schema: z.literal("dashboard.metrics.v1"),
-    data_version: z.string().min(1),
-    generated_at: z.string().min(1),
-    aggregate_only: z.boolean(),
+    data_version: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    generated_at: z.string().trim().min(1).refine((value) => {
+      return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+    }, "generated_at must be an ISO-8601 timestamp with a timezone"),
+    aggregate_only: z.literal(true),
     source: SourceSchema,
-    portfolio: z.record(z.unknown()),
-    studies: z.array(z.record(z.unknown())),
-    projects: z.array(z.record(z.unknown())),
+    portfolio: PortfolioSchema,
+    studies: z.array(StudySchema).length(EXPECTED_REDCAP_STUDIES),
+    projects: z.array(ProjectSchema).length(EXPECTED_REDCAP_PROJECTS),
   })
-  .passthrough();
+  .strict()
+  .superRefine((payload, ctx) => {
+    const studyKeys = new Set(payload.studies.map((study) => study.key));
+    if (studyKeys.size !== EXPECTED_REDCAP_STUDIES) {
+      addContractIssue(ctx, ["studies"], "the aggregate artifact must contain each canonical study exactly once");
+    }
+    const projectKeys = new Set(payload.projects.map((project) => project.key));
+    if (projectKeys.size !== EXPECTED_REDCAP_PROJECTS) {
+      addContractIssue(ctx, ["projects"], "the aggregate artifact must contain each canonical project exactly once");
+    }
 
-function record(value: unknown): JsonRecord {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? value as JsonRecord
-    : {};
-}
+    const projectsByStudy = new Map<DashboardStudyKey, z.infer<typeof ProjectSchema>[]>();
+    for (const key of STUDY_KEYS) projectsByStudy.set(key, []);
 
-function finiteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
-}
+    payload.projects.forEach((project, index) => {
+      const identity = REDCAP_PROJECT_IDENTITIES[project.key];
+      if (
+        project.project_id !== identity.projectId
+        || project.study !== identity.study
+        || project.role !== identity.role
+        || project.enrollment_authority !== identity.enrollmentAuthority
+      ) {
+        addContractIssue(ctx, ["projects", index], `project ${project.key} does not match its canonical identity`);
+      }
+      projectsByStudy.get(project.study)?.push(project);
+      validateSuppressedCount(
+        project.records,
+        project.records_suppressed,
+        ctx,
+        ["projects", index, "records"],
+        ["projects", index, "records_suppressed"],
+      );
+      validateSuppressedCount(
+        project.event_records,
+        project.event_records_suppressed,
+        ctx,
+        ["projects", index, "event_records"],
+        ["projects", index, "event_records_suppressed"],
+      );
+      if (project.status === "ok" && !project.records_suppressed && project.records === null) {
+        addContractIssue(ctx, ["projects", index, "records"], "a healthy project must include its aggregate record count");
+      }
+      if (project.status === "ok" && !project.event_records_suppressed && project.event_records === null) {
+        addContractIssue(ctx, ["projects", index, "event_records"], "a healthy project must include its aggregate event total");
+      }
+      if (project.events.some((event) => event.suppressed) && !project.event_records_suppressed) {
+        addContractIssue(ctx, ["projects", index, "event_records_suppressed"], "project totals must preserve event suppression");
+      }
+      if (project.records_suppressed) {
+        if (!project.forms.counts_suppressed) {
+          addContractIssue(ctx, ["projects", index, "forms", "counts_suppressed"], "project forms must preserve participant-count suppression");
+        }
+        if (
+          !project.event_records_suppressed
+          || project.events.some((event) => !event.suppressed)
+        ) {
+          addContractIssue(ctx, ["projects", index, "event_records_suppressed"], "project events must preserve participant-count suppression");
+        }
+      }
+    });
 
-function numberAt(value: JsonRecord, ...keys: string[]): number | null {
-  for (const key of keys) {
-    const candidate = finiteNumber(value[key]);
-    if (candidate !== null) return candidate;
-  }
-  return null;
-}
+    payload.studies.forEach((study, index) => {
+      const expectedProjects = REDCAP_STUDY_IDENTITIES[study.key].projects;
+      const members = projectsByStudy.get(study.key) ?? [];
+      const healthyMembers = members.filter((project) => project.status === "ok").length;
+      if (study.projects_total !== expectedProjects || members.length !== expectedProjects) {
+        addContractIssue(ctx, ["studies", index, "projects_total"], `study ${study.key} must contain ${expectedProjects} canonical projects`);
+      }
+      if (study.projects_ok !== healthyMembers) {
+        addContractIssue(ctx, ["studies", index, "projects_ok"], "study health must match its project statuses");
+      }
+      validateSuppressedCount(
+        study.enrollment,
+        study.enrollment_suppressed,
+        ctx,
+        ["studies", index, "enrollment"],
+        ["studies", index, "enrollment_suppressed"],
+      );
+      validateSuppressedCount(
+        study.event_records,
+        study.event_records_suppressed,
+        ctx,
+        ["studies", index, "event_records"],
+        ["studies", index, "event_records_suppressed"],
+      );
+      if (study.events.some((event) => event.suppressed) && !study.event_records_suppressed) {
+        addContractIssue(ctx, ["studies", index, "event_records_suppressed"], "study totals must preserve event suppression");
+      }
 
-function stringAt(value: JsonRecord, ...keys: string[]): string | null {
-  for (const key of keys) {
-    const candidate = value[key];
-    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
-  }
-  return null;
-}
+      const authority = members.find((project) => project.enrollment_authority);
+      if (!authority) {
+        addContractIssue(ctx, ["studies", index], `study ${study.key} is missing its enrollment authority`);
+      } else {
+        if (study.enrollment_suppressed !== authority.records_suppressed) {
+          addContractIssue(ctx, ["studies", index, "enrollment_suppressed"], "study suppression must match its enrollment authority");
+        }
+        if (!study.enrollment_suppressed && study.enrollment !== authority.records) {
+          addContractIssue(ctx, ["studies", index, "enrollment"], "study enrollment must match its enrollment authority");
+        }
+        if (authority.event_records_suppressed && !study.event_records_suppressed) {
+          addContractIssue(ctx, ["studies", index, "event_records_suppressed"], "study totals must preserve authority event suppression");
+        }
+      }
+      if (members.some((project) => project.forms.counts_suppressed) && !study.forms.counts_suppressed) {
+        addContractIssue(ctx, ["studies", index, "forms", "counts_suppressed"], "study totals must preserve project form suppression");
+      }
+    });
+
+    const healthyProjects = payload.projects.filter((project) => project.status === "ok").length;
+    if (payload.source.projects_ok !== healthyProjects) {
+      addContractIssue(ctx, ["source", "projects_ok"], "source health must match project statuses");
+    }
+
+    const authorities = payload.projects.filter((project) => project.enrollment_authority);
+    const reportingStudies = authorities.filter((project) => project.status === "ok").length;
+    if (payload.portfolio.studies_reporting !== reportingStudies) {
+      addContractIssue(ctx, ["portfolio", "studies_reporting"], "reporting study count must match healthy enrollment authorities");
+    }
+
+    validateSuppressedCount(
+      payload.portfolio.study_enrollments,
+      payload.portfolio.study_enrollments_suppressed,
+      ctx,
+      ["portfolio", "study_enrollments"],
+      ["portfolio", "study_enrollments_suppressed"],
+    );
+    validateSuppressedCount(
+      payload.portfolio.event_records,
+      payload.portfolio.event_records_suppressed,
+      ctx,
+      ["portfolio", "event_records"],
+      ["portfolio", "event_records_suppressed"],
+    );
+
+    const anyEnrollmentSuppressed = payload.studies.some((study) => study.enrollment_suppressed);
+    if (payload.portfolio.study_enrollments_suppressed !== anyEnrollmentSuppressed) {
+      addContractIssue(ctx, ["portfolio", "study_enrollments_suppressed"], "portfolio enrollment suppression must match its studies");
+    }
+    const enrollments = payload.studies.map((study) => study.enrollment);
+    if (!anyEnrollmentSuppressed && enrollments.every((value): value is number => value !== null)) {
+      const expectedTotal = enrollments.reduce((total, value) => total + value, 0);
+      if (payload.portfolio.study_enrollments !== expectedTotal) {
+        addContractIssue(ctx, ["portfolio", "study_enrollments"], "portfolio enrollment must equal the five authority counts");
+      }
+    } else if (!anyEnrollmentSuppressed && payload.portfolio.study_enrollments !== null) {
+      addContractIssue(ctx, ["portfolio", "study_enrollments"], "portfolio enrollment must be unavailable when a study count is unavailable");
+    }
+    if (payload.projects.some((project) => project.forms.counts_suppressed) && !payload.portfolio.forms.counts_suppressed) {
+      addContractIssue(ctx, ["portfolio", "forms", "counts_suppressed"], "portfolio totals must preserve project form suppression");
+    }
+    if (authorities.some((project) => project.event_records_suppressed) && !payload.portfolio.event_records_suppressed) {
+      addContractIssue(ctx, ["portfolio", "event_records_suppressed"], "portfolio totals must preserve authority event suppression");
+    }
+  });
 
 function parseCadenceSeconds(source: z.infer<typeof SourceSchema>): number {
   if (source.refresh_cadence_seconds) return source.refresh_cadence_seconds;
@@ -177,87 +490,71 @@ function normalizeSourceKind(value: string): DashboardSourceKind {
   return "unavailable";
 }
 
-function parseForms(value: unknown): DashboardFormsMetrics {
-  const source = record(value);
-  const rawCompletionRate = numberAt(source, "completion_rate", "completeness_pct");
+function parseForms(
+  value: z.infer<typeof FormsSchema> | z.infer<typeof ProjectFormsSchema>,
+): DashboardFormsMetrics {
+  const rawCompletionRate = value.completion_rate;
   return {
-    instrumentsTotal: numberAt(source, "instruments_total", "instruments", "forms_tracked"),
-    incomplete: numberAt(source, "incomplete"),
-    unverified: numberAt(source, "unverified"),
-    complete: numberAt(source, "complete"),
-    unknown: numberAt(source, "unknown"),
-    total: numberAt(source, "total"),
+    instrumentsTotal: "instruments_total" in value ? value.instruments_total : null,
+    incomplete: value.incomplete,
+    unverified: value.unverified,
+    complete: value.complete,
+    unknown: value.unknown,
+    total: value.total,
     completionRate: rawCompletionRate !== null && rawCompletionRate <= 1
       ? rawCompletionRate * 100
       : rawCompletionRate,
+    countsSuppressed: value.counts_suppressed,
   };
 }
 
-function parseEvents(value: unknown): DashboardEventMetric[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry) => {
-    const source = record(entry);
-    const event = stringAt(source, "event", "label", "name");
-    if (!event) return [];
-    const suppressed = source.suppressed === true;
-    return [{
-      event,
-      records: suppressed ? null : numberAt(source, "records", "count", "completed"),
-      suppressed,
-    }];
-  });
+function parseEvents(value: Array<z.infer<typeof EventSchema>>): DashboardEventMetric[] {
+  return value.map((entry) => ({
+    event: entry.event,
+    records: entry.records,
+    suppressed: entry.suppressed,
+  }));
 }
 
-function parseStudy(value: JsonRecord): DashboardStudyMetrics | null {
-  const key = stringAt(value, "key", "study", "study_key", "id")?.toLowerCase();
-  if (!key) return null;
-  const enrollmentValue = finiteNumber(value.enrollment);
-  const enrollment = enrollmentValue ?? numberAt(record(value.enrollment), "enrolled", "total");
+function parseStudy(value: z.infer<typeof StudySchema>): DashboardStudyMetrics {
   return {
-    key,
-    label: stringAt(value, "label", "name", "title") ?? key.toUpperCase(),
-    status: stringAt(value, "status"),
-    projectsTotal: numberAt(value, "projects_total"),
-    projectsOk: numberAt(value, "projects_ok"),
-    enrollment,
-    target: numberAt(value, "target", "enrollment_target"),
-    eventRecords: numberAt(value, "event_records"),
+    key: value.key,
+    label: value.label,
+    status: value.status,
+    projectsTotal: value.projects_total,
+    projectsOk: value.projects_ok,
+    enrollment: value.enrollment,
+    enrollmentSuppressed: value.enrollment_suppressed,
+    target: value.target,
+    eventRecords: value.event_records,
+    eventRecordsSuppressed: value.event_records_suppressed,
     events: parseEvents(value.events),
     forms: parseForms(value.forms),
   };
 }
 
-function parseProject(value: JsonRecord): DashboardProjectMetrics | null {
-  const key = stringAt(value, "key", "alias");
-  if (!key) return null;
-  const error = record(value.error);
+function parseProject(value: z.infer<typeof ProjectSchema>): DashboardProjectMetrics {
   return {
-    key,
-    study: stringAt(value, "study", "study_key")?.toLowerCase() ?? null,
-    role: stringAt(value, "role"),
-    title: stringAt(value, "title", "label"),
-    status: stringAt(value, "status"),
-    enrollmentAuthority: value.enrollment_authority === true,
-    records: numberAt(value, "records", "record_count"),
-    eventRecords: numberAt(value, "event_records"),
+    key: value.key,
+    study: value.study,
+    role: value.role,
+    projectId: value.project_id,
+    title: value.title,
+    status: value.status,
+    enrollmentAuthority: value.enrollment_authority,
+    records: value.records,
+    recordsSuppressed: value.records_suppressed,
+    eventRecords: value.event_records,
+    eventRecordsSuppressed: value.event_records_suppressed,
     events: parseEvents(value.events),
     forms: parseForms(value.forms),
-    errorCode: stringAt(error, "code"),
+    errorCode: value.error?.code ?? null,
   };
 }
 
 /** Validate and normalize the public, aggregate-only REDCap metrics artifact. */
 export function parseDashboardMetrics(input: unknown): DashboardMetrics {
   const parsed = DashboardMetricsSchema.parse(input);
-  const studies = parsed.studies.flatMap((study) => {
-    const normalized = parseStudy(study);
-    return normalized ? [normalized] : [];
-  });
-  const projects = parsed.projects.flatMap((project) => {
-    const normalized = parseProject(project);
-    return normalized ? [normalized] : [];
-  });
-  const portfolio = parsed.portfolio;
 
   return {
     schema: parsed.schema,
@@ -274,15 +571,17 @@ export function parseDashboardMetrics(input: unknown): DashboardMetrics {
       projectsOk: parsed.source.projects_ok,
     },
     portfolio: {
-      status: stringAt(portfolio, "status"),
-      studiesTotal: numberAt(portfolio, "studies_total"),
-      studiesReporting: numberAt(portfolio, "studies_reporting"),
-      studyEnrollments: numberAt(portfolio, "study_enrollments", "enrollment"),
-      eventRecords: numberAt(portfolio, "event_records"),
-      forms: parseForms(portfolio.forms),
+      status: parsed.portfolio.status,
+      studiesTotal: parsed.portfolio.studies_total,
+      studiesReporting: parsed.portfolio.studies_reporting,
+      studyEnrollments: parsed.portfolio.study_enrollments,
+      studyEnrollmentsSuppressed: parsed.portfolio.study_enrollments_suppressed,
+      eventRecords: parsed.portfolio.event_records,
+      eventRecordsSuppressed: parsed.portfolio.event_records_suppressed,
+      forms: parseForms(parsed.portfolio.forms),
     },
-    studies,
-    projects,
+    studies: parsed.studies.map(parseStudy),
+    projects: parsed.projects.map(parseProject),
   };
 }
 

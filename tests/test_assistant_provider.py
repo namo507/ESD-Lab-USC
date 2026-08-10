@@ -1,4 +1,4 @@
-"""Focused reliability tests for the NVIDIA assistant provider seam."""
+"""Focused reliability tests for the ordered assistant provider seam."""
 
 from __future__ import annotations
 
@@ -14,9 +14,13 @@ from dashboard.assistant.local_chat_assistant import (
     DashboardChatAssistant,
 )
 from dashboard.assistant.provider import (
+    DOCKER_MODEL_RUNNER_API_BASE,
+    DOCKER_MODEL_RUNNER_MODEL,
+    DOCKER_MODEL_RUNNER_RUNTIME,
     NVIDIA_HOSTED_API_BASE,
     NVIDIA_NEMOTRON_MODEL,
     NVIDIAOpenAIProvider,
+    ProviderChain,
     ProviderConfig,
     ProviderError,
     sanitize_response_content,
@@ -28,6 +32,19 @@ ENV_NAMES = (
     "DASHBOARD_ASSISTANT_RUNTIME",
     "DASHBOARD_ASSISTANT_API_BASE",
     "DASHBOARD_ASSISTANT_API_KEY",
+    "DASHBOARD_ASSISTANT_LOCAL_ENABLED",
+    "DASHBOARD_ASSISTANT_LOCAL_RUNTIME",
+    "DASHBOARD_ASSISTANT_LOCAL_API_BASE",
+    "DASHBOARD_ASSISTANT_LOCAL_API_KEY",
+    "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+    "DASHBOARD_ASSISTANT_LOCAL_REQUEST_TIMEOUT_SECONDS",
+    "DASHBOARD_ASSISTANT_LOCAL_MAX_RETRIES",
+    "DASHBOARD_ASSISTANT_FALLBACK_ENABLED",
+    "DASHBOARD_ASSISTANT_FALLBACK_PROVIDER",
+    "DASHBOARD_ASSISTANT_FALLBACK_RUNTIME",
+    "DASHBOARD_ASSISTANT_FALLBACK_API_BASE",
+    "DASHBOARD_ASSISTANT_FALLBACK_API_KEY",
+    "DASHBOARD_ASSISTANT_FALLBACK_MODEL",
     "DASHBOARD_ASSISTANT_MODEL",
     "DASHBOARD_ASSISTANT_MODEL_ID",
     "DASHBOARD_ASSISTANT_ENABLE_THINKING",
@@ -68,25 +85,30 @@ def _client(create, *, models_list=None):
     )
 
 
-def test_config_defaults_to_nvidia_hosted_contract(monkeypatch):
+def test_config_defaults_to_local_qwen_with_hosted_nvidia_fallback(monkeypatch):
     _clear_assistant_env(monkeypatch)
 
     config = AssistantConfig.from_env()
 
-    assert config.provider == "nvidia"
-    assert config.runtime == "nvidia-build-api"
-    assert config.api_base == NVIDIA_HOSTED_API_BASE
-    assert config.model_id == NVIDIA_NEMOTRON_MODEL
+    assert config.provider == "docker-model-runner"
+    assert config.runtime == DOCKER_MODEL_RUNNER_RUNTIME
+    assert config.api_base == DOCKER_MODEL_RUNNER_API_BASE
+    assert config.model_id == DOCKER_MODEL_RUNNER_MODEL
+    assert config.local_enabled is True
+    assert config.fallback_enabled is True
+    assert config.fallback_provider == "nvidia"
+    assert config.fallback_api_base == NVIDIA_HOSTED_API_BASE
+    assert config.fallback_model_id == NVIDIA_NEMOTRON_MODEL
     assert config.enable_thinking is False
     assert config.reasoning_budget == 0
-    assert config.max_new_tokens == 16384
+    assert config.max_new_tokens == 256
     assert config.temperature == 0.2
     assert config.top_p == 0.95
     assert config.stream_enabled is True
     assert config.model_dir is None and config.model_file is None
 
 
-def test_config_canonical_values_override_openai_aliases(monkeypatch):
+def test_hosted_fallback_canonical_values_override_openai_aliases(monkeypatch):
     _clear_assistant_env(monkeypatch)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://alias.example/v1")
     monkeypatch.setenv("OPENAI_API_KEY", "alias-key")
@@ -97,20 +119,25 @@ def test_config_canonical_values_override_openai_aliases(monkeypatch):
 
     config = AssistantConfig.from_env()
 
-    assert config.api_base == "https://canonical.example/v1"
-    assert config.api_key == "canonical-key"
-    assert config.model_id == "nvidia/canonical-model"
+    assert config.api_base == DOCKER_MODEL_RUNNER_API_BASE
+    assert config.model_id == DOCKER_MODEL_RUNNER_MODEL
+    assert config.fallback_api_base == "https://canonical.example/v1"
+    assert config.fallback_api_key == "canonical-key"
+    assert config.fallback_model_id == "nvidia/canonical-model"
 
 
-def test_openai_aliases_are_used_when_canonical_values_are_absent(monkeypatch):
+def test_openai_aliases_feed_hosted_fallback_when_canonical_values_are_absent(
+    monkeypatch,
+):
     _clear_assistant_env(monkeypatch)
     monkeypatch.setenv("OPENAI_BASE_URL", "https://alias.example/v1")
     monkeypatch.setenv("OPENAI_API_KEY", "alias-key")
 
     config = AssistantConfig.from_env()
 
-    assert config.api_base == "https://alias.example/v1"
-    assert config.api_key == "alias-key"
+    assert config.api_base == DOCKER_MODEL_RUNNER_API_BASE
+    assert config.fallback_api_base == "https://alias.example/v1"
+    assert config.fallback_api_key == "alias-key"
 
 
 def test_self_hosted_flag_takes_precedence_over_hosted_provider(monkeypatch):
@@ -152,9 +179,9 @@ def test_legacy_local_runtime_env_aliases_are_ignored(monkeypatch):
 
     config = AssistantConfig.from_env()
 
-    assert config.max_new_tokens == 16384
+    assert config.max_new_tokens == 256
     assert config.temperature == 0.2
-    assert config.context_window == 32768
+    assert config.context_window == 8192
 
 
 def test_input_limits_are_configurable_and_reported(monkeypatch, tmp_path):
@@ -266,7 +293,11 @@ def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
 
     provider = NVIDIAOpenAIProvider(
         ProviderConfig(
+            provider="nvidia",
+            runtime="nvidia-build-api",
+            api_base=NVIDIA_HOSTED_API_BASE,
             api_key="test-key",
+            model=NVIDIA_NEMOTRON_MODEL,
             max_retries=2,
             retry_base_seconds=0.5,
             retry_jitter=0.2,
@@ -292,6 +323,160 @@ def test_retry_uses_exponential_backoff_jitter_and_nvidia_request_shape():
         "chat_template_kwargs": {"enable_thinking": False},
         "reasoning_budget": 0,
     }
+
+
+def test_provider_chain_fails_from_local_to_hosted_and_reports_attempts():
+    local_requests = []
+    hosted_requests = []
+
+    def local_create(**kwargs):
+        local_requests.append(kwargs)
+        raise ConnectionError("private local socket details")
+
+    def hosted_create(**kwargs):
+        hosted_requests.append(kwargs)
+        return {"choices": [{"message": {"content": "Hosted grounded answer."}}]}
+
+    chain = ProviderChain(
+        [
+            NVIDIAOpenAIProvider(
+                ProviderConfig(max_retries=0), client=_client(local_create)
+            ),
+            NVIDIAOpenAIProvider(
+                ProviderConfig(
+                    provider="nvidia",
+                    runtime="nvidia-build-api",
+                    api_base=NVIDIA_HOSTED_API_BASE,
+                    api_key="test-key",
+                    model=NVIDIA_NEMOTRON_MODEL,
+                    max_retries=0,
+                ),
+                client=_client(hosted_create),
+            ),
+        ]
+    )
+
+    answer = chain.complete(
+        [{"role": "user", "content": "status"}],
+        max_tokens=96,
+        temperature=0.2,
+        top_p=0.95,
+    )
+
+    assert answer == "Hosted grounded answer."
+    assert local_requests[0]["model"] == DOCKER_MODEL_RUNNER_MODEL
+    assert "extra_body" not in local_requests[0]
+    assert hosted_requests[0]["model"] == NVIDIA_NEMOTRON_MODEL
+    assert "extra_body" in hosted_requests[0]
+    status = chain.status()
+    assert status["active_provider"] == "nvidia"
+    assert [item["provider"] for item in status["provider_chain"]] == [
+        "docker-model-runner",
+        "nvidia",
+    ]
+    assert status["last_attempts"] == [
+        {
+            "provider": "docker-model-runner",
+            "outcome": "failed",
+            "state": "provider-unreachable",
+        },
+        {"provider": "nvidia", "outcome": "success", "state": "ready"},
+    ]
+    assert "private local socket details" not in json.dumps(status)
+
+
+def test_stream_failover_occurs_before_any_visible_local_content():
+    hosted_calls = 0
+
+    def local_chunks():
+        yield {"choices": [{"delta": {"content": "<think>private plan"}}]}
+        raise ConnectionError("local stream failed")
+
+    def hosted_create(**kwargs):
+        nonlocal hosted_calls
+        hosted_calls += 1
+        return iter(
+            [
+                {"choices": [{"delta": {"content": "Hosted"}}]},
+                {"choices": [{"delta": {"content": " answer."}}]},
+            ]
+        )
+
+    chain = ProviderChain(
+        [
+            NVIDIAOpenAIProvider(
+                ProviderConfig(max_retries=0),
+                client=_client(lambda **kwargs: local_chunks()),
+            ),
+            NVIDIAOpenAIProvider(
+                ProviderConfig(
+                    provider="nvidia",
+                    api_base=NVIDIA_HOSTED_API_BASE,
+                    api_key="test-key",
+                    model=NVIDIA_NEMOTRON_MODEL,
+                    max_retries=0,
+                ),
+                client=_client(hosted_create),
+            ),
+        ]
+    )
+
+    output = "".join(
+        chain.stream(
+            [{"role": "user", "content": "q"}],
+            max_tokens=32,
+            temperature=0.2,
+            top_p=0.95,
+        )
+    )
+
+    assert output == "Hosted answer."
+    assert "private" not in output
+    assert hosted_calls == 1
+    assert chain.status()["failover_strategy"] == "before-first-visible-token"
+
+
+def test_stream_never_splices_fallback_after_visible_primary_content():
+    hosted_calls = 0
+
+    def local_chunks():
+        yield {"choices": [{"delta": {"content": "Partial local"}}]}
+        raise ConnectionError("failed after output")
+
+    def hosted_create(**kwargs):
+        nonlocal hosted_calls
+        hosted_calls += 1
+        return iter([{"choices": [{"delta": {"content": "must not appear"}}]}])
+
+    chain = ProviderChain(
+        [
+            NVIDIAOpenAIProvider(
+                ProviderConfig(max_retries=0),
+                client=_client(lambda **kwargs: local_chunks()),
+            ),
+            NVIDIAOpenAIProvider(
+                ProviderConfig(
+                    provider="nvidia",
+                    api_base=NVIDIA_HOSTED_API_BASE,
+                    api_key="test-key",
+                    model=NVIDIA_NEMOTRON_MODEL,
+                    max_retries=0,
+                ),
+                client=_client(hosted_create),
+            ),
+        ]
+    )
+    output = chain.stream(
+        [{"role": "user", "content": "q"}],
+        max_tokens=32,
+        temperature=0.2,
+        top_p=0.95,
+    )
+
+    assert next(output) == "Partial local"
+    with pytest.raises(ProviderError, match="unreachable"):
+        next(output)
+    assert hosted_calls == 0
 
 
 def test_response_sanitizer_removes_reasoning_tags_and_planning_preambles():
@@ -330,7 +515,14 @@ def test_stream_strips_reasoning_markers_split_across_chunks():
         ]
     )
     provider = NVIDIAOpenAIProvider(
-        ProviderConfig(api_key="test-key", max_retries=0),
+        ProviderConfig(
+            provider="nvidia",
+            runtime="nvidia-build-api",
+            api_base=NVIDIA_HOSTED_API_BASE,
+            api_key="test-key",
+            model=NVIDIA_NEMOTRON_MODEL,
+            max_retries=0,
+        ),
         client=_client(lambda **kwargs: chunks),
     )
 
@@ -565,7 +757,14 @@ def test_probe_uses_models_list_without_generation():
         raise AssertionError("probe must not generate")
 
     provider = NVIDIAOpenAIProvider(
-        ProviderConfig(api_key="test-key", max_retries=0),
+        ProviderConfig(
+            provider="nvidia",
+            runtime="nvidia-build-api",
+            api_base=NVIDIA_HOSTED_API_BASE,
+            api_key="test-key",
+            model=NVIDIA_NEMOTRON_MODEL,
+            max_retries=0,
+        ),
         client=_client(
             create,
             models_list=lambda: SimpleNamespace(
@@ -620,6 +819,51 @@ def test_assistant_generation_preserves_grounding_and_citations(tmp_path, monkey
     assert result["status"]["state"] == "ready"
 
 
+def test_assistant_uses_deterministic_grounding_after_entire_chain_fails(
+    tmp_path, monkeypatch
+):
+    def unavailable(**kwargs):
+        raise ConnectionError("raw endpoint details")
+
+    chain = ProviderChain(
+        [
+            NVIDIAOpenAIProvider(
+                ProviderConfig(max_retries=0), client=_client(unavailable)
+            ),
+            NVIDIAOpenAIProvider(
+                ProviderConfig(
+                    provider="nvidia",
+                    api_base=NVIDIA_HOSTED_API_BASE,
+                    api_key="test-key",
+                    model=NVIDIA_NEMOTRON_MODEL,
+                    max_retries=0,
+                ),
+                client=_client(unavailable),
+            ),
+        ]
+    )
+    assistant = DashboardChatAssistant(
+        config=AssistantConfig(), data_dir=tmp_path, provider=chain
+    )
+    context = {
+        "context": "- Enrollment total: 211 of 260\n- Open REDCap queries: 78",
+        "citations": ["enrollment.overall", "redcap_audit.summary.open_queries"],
+        "grounded": True,
+        "reading_matches": [],
+    }
+    monkeypatch.setattr(assistant, "build_context", lambda _question: context)
+    monkeypatch.setattr(assistant, "_maybe_short_circuit_response", lambda *_: None)
+
+    result = assistant.answer("Summarize current study operations")
+
+    assert "temporarily unavailable" in result["reply"]
+    assert "Enrollment total: 211 of 260" in result["reply"]
+    assert result["citations"] == context["citations"]
+    assert result["status"]["state"] == "provider-unreachable"
+    assert len(result["status"]["last_attempts"]) == 2
+    assert "raw endpoint details" not in json.dumps(result)
+
+
 def test_assistant_probe_returns_sanitized_failure_payload():
     class Unauthorized(RuntimeError):
         status_code = 401
@@ -648,6 +892,9 @@ def test_deterministic_provider_policy_answer_works_without_credentials(tmp_path
 
     result = assistant.answer("Which NVIDIA assistant model and provider are active?")
 
-    assert "NVIDIA assistant provider policy" in result["reply"]
+    assert "ESD Buddy provider policy" in result["reply"]
+    assert DOCKER_MODEL_RUNNER_MODEL in result["reply"]
+    assert NVIDIA_NEMOTRON_MODEL in result["reply"]
+    assert "not fine-tuned" in result["reply"]
     assert isinstance(result["citations"], list)
-    assert result["status"]["state"] == "credentials-missing"
+    assert result["status"]["state"] == "ready"

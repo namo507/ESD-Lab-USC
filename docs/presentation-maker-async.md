@@ -1,6 +1,6 @@
 # Presentation Maker: async generation and provider tuning
 
-Presentation Maker uses the same grounded NVIDIA provider as chat, but keeps
+Presentation Maker uses the same grounded local-first provider chain as chat, but keeps
 long-running deck planning behind an asynchronous job API so Cloudflare and
 browser requests do not stay open for the full generation.
 
@@ -34,13 +34,14 @@ plan arrives.
 
 Mock mode simulates the job lifecycle. Live-assistant mode bypasses presentation
 mocks so requests reach the Python runtime or the Pages `/api` worker proxy.
-Neither frontend mode receives the NVIDIA key.
+Neither frontend mode receives a provider key or model endpoint.
 
 ## Provider and plan normalization
 
-Planning uses the configured NVIDIA hosted endpoint by default. Optional
-self-hosted NIM uses the same OpenAI-compatible provider only when explicitly
-enabled.
+Planning uses Docker Model Runner/Qwen first and hosted NVIDIA Nemotron only if
+the local call fails before output. Optional self-hosted NIM uses the same
+OpenAI-compatible adapter only when explicitly enabled. JSON-plan repair may
+make a second completion, but each completion follows the same ordered chain.
 
 `DASHBOARD_PRESENTATION_JSON_MODE=true` requests a structured JSON response when
 the configured endpoint supports it. The planner still extracts and repairs

@@ -1,9 +1,8 @@
-"""Assistant provider catalog and legacy selection compatibility helpers.
+"""Assistant model/provider catalog and legacy compatibility helpers.
 
-The dashboard no longer selects or downloads local weight files.  The public
-function names in this module are retained so deployment/preparation tooling
-can transition without import failures; every selection resolves to an
-OpenAI-compatible NVIDIA provider configuration instead of a filesystem model.
+Docker Model Runner owns the local OCI artifact and serves it over an
+OpenAI-compatible endpoint; the repository never stores model weights.  Hosted
+Nemotron remains the second provider in the documented runtime chain.
 """
 
 from __future__ import annotations
@@ -15,6 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from dashboard.assistant.provider import (
+    DOCKER_MODEL_RUNNER_API_BASE,
+    DOCKER_MODEL_RUNNER_MODEL,
+    DOCKER_MODEL_RUNNER_RUNTIME,
     NVIDIA_HOSTED_API_BASE,
     NVIDIA_HOSTED_RUNTIME,
     NVIDIA_NEMOTRON_MODEL,
@@ -24,13 +26,35 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
 # Kept as a compatibility constant; no runtime path reads from this directory.
 LOCAL_MODEL_ROOT = PROJECT_ROOT / "models" / "local_llms"
-DEFAULT_TIER = "hosted"
-CATALOG_VERSION = 4
+DEFAULT_TIER = "local-primary"
+CATALOG_VERSION = 5
 DEFAULT_THREAD_COUNT = 0
 
 MODEL_CATALOG: tuple[dict[str, Any], ...] = (
     {
-        "tier": "hosted",
+        "tier": "local-primary",
+        "label": "Qwen 3.5 4B Q4_K_M",
+        "provider": "docker-model-runner",
+        "runtime": DOCKER_MODEL_RUNNER_RUNTIME,
+        "api_base": DOCKER_MODEL_RUNNER_API_BASE,
+        "repo_id": DOCKER_MODEL_RUNNER_MODEL,
+        "model_id": DOCKER_MODEL_RUNNER_MODEL,
+        "filename": None,
+        "model_dir": None,
+        "context_length": 8192,
+        "max_tokens": 256,
+        "temperature": 0.2,
+        "top_p": 0.95,
+        "license": "See Docker model artifact metadata",
+        "priority": 100,
+        "source": "docker-model-runner",
+        "reason": (
+            "Compact local primary selected for low-latency private inference; "
+            "Compose injects its endpoint and model identifier."
+        ),
+    },
+    {
+        "tier": "hosted-fallback",
         "label": "NVIDIA Nemotron 3 Super 120B A12B",
         "provider": "nvidia",
         "runtime": NVIDIA_HOSTED_RUNTIME,
@@ -40,15 +64,15 @@ MODEL_CATALOG: tuple[dict[str, Any], ...] = (
         "filename": None,
         "model_dir": None,
         "context_length": 32768,
-        "max_tokens": 16384,
-        "temperature": 1.0,
+        "max_tokens": 256,
+        "temperature": 0.2,
         "top_p": 0.95,
         "license": "NVIDIA API terms",
-        "priority": 100,
+        "priority": 50,
         "source": "nvidia-build-api",
         "reason": (
-            "Default hosted runtime for Nemotron 3 Super; no local weights or "
-            "high-end GPU host are assumed."
+            "Hosted quality fallback used only when the local provider fails "
+            "before any visible response text."
         ),
     },
 )
@@ -58,6 +82,11 @@ TIER_ALIASES = {
     "auto": DEFAULT_TIER,
     "default": DEFAULT_TIER,
     "hosted": DEFAULT_TIER,
+    "hosted-fallback": DEFAULT_TIER,
+    "local-primary": DEFAULT_TIER,
+    "docker": DEFAULT_TIER,
+    "dmr": DEFAULT_TIER,
+    "docker-model-runner": DEFAULT_TIER,
     "nvidia": DEFAULT_TIER,
     "nvidia-build-api": DEFAULT_TIER,
     # Historical tiers now resolve to the single supported provider runtime.
@@ -134,9 +163,10 @@ def select_catalog_model(
 
 def build_llm_config(selected: dict[str, Any] | None = None) -> dict[str, Any]:
     entry = _public_model_entry(selected or MODEL_CATALOG[0])
+    fallback = _public_model_entry(MODEL_CATALOG[1])
     return {
         "schema_version": CATALOG_VERSION,
-        "policy": "nvidia-hosted-default",
+        "policy": "local-first-hosted-fallback",
         "selected_tier": DEFAULT_TIER,
         **entry,
         "self_hosted": {
@@ -144,8 +174,17 @@ def build_llm_config(selected: dict[str, Any] | None = None) -> dict[str, Any]:
             "runtime": "nvidia-nim",
             "api_base": "http://nemotron-nim:8000/v1",
         },
-        "fallbacks": [],
-        "catalog": [copy.deepcopy(entry)],
+        "fallbacks": [fallback],
+        "failover": {
+            "trigger": "provider failure before first visible streamed token",
+            "final_fallback": "deterministic repository-grounded answer",
+        },
+        "adaptation": {
+            "strategy": "retrieval-augmented-generation",
+            "fine_tuned": False,
+            "evaluation_gate": "make assistant-eval",
+        },
+        "catalog": [copy.deepcopy(entry), copy.deepcopy(fallback)],
     }
 
 
@@ -174,7 +213,11 @@ def configured_models(
     selected = select_runtime_model_config(
         config, requested_tier=requested_tier, project_root=PROJECT_ROOT
     )
-    return [selected] if selected else []
+    configured = [selected] if selected else []
+    for fallback in config.get("fallbacks", []) if isinstance(config, dict) else []:
+        if isinstance(fallback, dict):
+            configured.append(copy.deepcopy(fallback))
+    return configured
 
 
 def find_existing_model_path(
@@ -190,11 +233,21 @@ def select_runtime_model_config(
     requested_tier: str | None = None,
     project_root: Path = PROJECT_ROOT,
 ) -> dict[str, Any]:
-    """Normalize old or new config into the hosted provider entry."""
+    """Normalize old or new config into an allowlisted provider entry."""
     selected = copy.deepcopy(MODEL_CATALOG[0])
     if isinstance(config, dict):
         provider = str(config.get("provider") or "").strip().lower()
         if provider in {"nvidia", "nvidia-nim", "nim"}:
+            selected = copy.deepcopy(MODEL_CATALOG[1])
+        if provider in {
+            "docker",
+            "dmr",
+            "docker-model-runner",
+            "local",
+            "nvidia",
+            "nvidia-nim",
+            "nim",
+        }:
             for source_key, target_key in (
                 ("provider", "provider"),
                 ("runtime", "runtime"),
@@ -210,8 +263,8 @@ def select_runtime_model_config(
                 value = config.get(source_key)
                 if value not in {None, ""}:
                     selected[target_key] = copy.deepcopy(value)
-            selected["repo_id"] = selected.get("model_id") or NVIDIA_NEMOTRON_MODEL
-    selected["tier"] = DEFAULT_TIER
+            selected["repo_id"] = selected.get("model_id") or selected.get("repo_id")
+    selected["tier"] = str(selected.get("tier") or DEFAULT_TIER)
     selected["filename"] = None
     selected["model_dir"] = None
     selected.pop("resolved_path", None)

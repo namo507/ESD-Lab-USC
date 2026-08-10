@@ -1,11 +1,10 @@
 """Resilient OpenAI-compatible providers for the dashboard assistant.
 
-The dashboard defaults to NVIDIA's hosted build API.  A self-hosted NVIDIA
-NIM endpoint uses the same protocol, but is accepted only after the explicit
-``DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED`` opt-in has been set.  Importing this
-module never imports the OpenAI SDK or contacts the provider, which keeps the
-dashboard process healthy when assistant dependencies or credentials are not
-available.
+The default chain uses Docker Model Runner locally, then NVIDIA's hosted API.
+Every endpoint stays behind the same narrow protocol and an independent circuit
+breaker.  Importing this module never imports the OpenAI SDK or contacts a
+provider, which keeps the dashboard process healthy when model services or
+credentials are unavailable.
 """
 
 from __future__ import annotations
@@ -22,14 +21,23 @@ NVIDIA_HOSTED_API_BASE = "https://integrate.api.nvidia.com/v1"
 NVIDIA_NEMOTRON_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 NVIDIA_HOSTED_RUNTIME = "nvidia-build-api"
 NVIDIA_SELF_HOSTED_RUNTIME = "nvidia-nim"
+DOCKER_MODEL_RUNNER_API_BASE = "http://127.0.0.1:12434/engines/v1"
+DOCKER_MODEL_RUNNER_MODEL = "ai/qwen3.5:4b-q4_K_M"
+DOCKER_MODEL_RUNNER_RUNTIME = "docker-model-runner"
 
 PROVIDER_ALIASES = {
-    "": "nvidia",
+    "": "docker-model-runner",
+    "docker": "docker-model-runner",
+    "dmr": "docker-model-runner",
+    "docker-model": "docker-model-runner",
+    "docker-model-runner": "docker-model-runner",
+    "local": "docker-model-runner",
+    "local-openai": "docker-model-runner",
     "nvidia": "nvidia",
     "nvidia-hosted": "nvidia",
     "nvidia-build": "nvidia",
     "nvidia-build-api": "nvidia",
-    "openai-compatible": "nvidia",
+    "openai-compatible": "docker-model-runner",
     "nim": "nvidia-nim",
     "nvidia-nim": "nvidia-nim",
     "self-hosted": "nvidia-nim",
@@ -137,11 +145,11 @@ class ProviderConfig:
     """Provider-only configuration, separated from dashboard grounding knobs."""
 
     enabled: bool = True
-    provider: str = "nvidia"
-    runtime: str = NVIDIA_HOSTED_RUNTIME
-    api_base: str = NVIDIA_HOSTED_API_BASE
+    provider: str = "docker-model-runner"
+    runtime: str = DOCKER_MODEL_RUNNER_RUNTIME
+    api_base: str = DOCKER_MODEL_RUNNER_API_BASE
     api_key: str | None = None
-    model: str = NVIDIA_NEMOTRON_MODEL
+    model: str = DOCKER_MODEL_RUNNER_MODEL
     # Dashboard chat needs short final answers, not a visible reasoning trace.
     enable_thinking: bool = False
     reasoning_budget: int = 0
@@ -159,8 +167,16 @@ class ProviderConfig:
 
     @property
     def normalized_provider(self) -> str:
-        value = (self.provider or "nvidia").strip().lower()
+        value = (self.provider or "docker-model-runner").strip().lower()
         return PROVIDER_ALIASES.get(value, value)
+
+    @property
+    def is_docker_model_runner(self) -> bool:
+        return self.normalized_provider == "docker-model-runner"
+
+    @property
+    def is_nvidia(self) -> bool:
+        return self.normalized_provider in {"nvidia", "nvidia-nim"}
 
     @property
     def uses_self_hosted_nim(self) -> bool:
@@ -176,7 +192,17 @@ class ProviderConfig:
     def effective_runtime(self) -> str:
         if self.uses_self_hosted_nim:
             return NVIDIA_SELF_HOSTED_RUNTIME
+        if self.is_docker_model_runner:
+            return self.runtime or DOCKER_MODEL_RUNNER_RUNTIME
         return self.runtime or NVIDIA_HOSTED_RUNTIME
+
+    @property
+    def display_name(self) -> str:
+        if self.is_docker_model_runner:
+            return "Docker Model Runner"
+        if self.uses_self_hosted_nim:
+            return "self-hosted NVIDIA NIM"
+        return "hosted NVIDIA"
 
 
 class ProviderError(RuntimeError):
@@ -415,8 +441,8 @@ def stream_content(chunk: Any) -> str:
     return _content_text(_read_attr(delta, "content", ""))
 
 
-class NVIDIAOpenAIProvider:
-    """NVIDIA hosted/NIM provider with bounded, retry-safe generation."""
+class OpenAICompatibleProvider:
+    """One allowlisted OpenAI-compatible endpoint with bounded retries."""
 
     def __init__(
         self,
@@ -450,7 +476,11 @@ class NVIDIAOpenAIProvider:
             return ProviderError(
                 "Assistant is disabled by configuration.", state="disabled"
             )
-        if self.config.normalized_provider not in {"nvidia", "nvidia-nim"}:
+        if self.config.normalized_provider not in {
+            "docker-model-runner",
+            "nvidia",
+            "nvidia-nim",
+        }:
             return ProviderError(
                 "The configured assistant provider is not supported.",
                 state="degraded",
@@ -469,13 +499,13 @@ class NVIDIAOpenAIProvider:
                 "The assistant model identifier is not configured.", state="degraded"
             )
         if (
-            not self.config.uses_self_hosted_nim
+            self.config.normalized_provider == "nvidia"
             and not (self.config.api_key or "").strip()
             and self._client is None
             and self._client_factory is None
         ):
             return ProviderError(
-                "NVIDIA assistant credentials are missing.",
+                "Hosted assistant credentials are missing.",
                 state="credentials-missing",
             )
         return None
@@ -524,7 +554,7 @@ class NVIDIAOpenAIProvider:
             state = "ready"
             ready = True
             can_attempt = True
-            message = "NVIDIA assistant provider is configured and ready."
+            message = f"{self.config.display_name} is configured and ready."
 
         return {
             "enabled": self.config.enabled,
@@ -574,8 +604,8 @@ class NVIDIAOpenAIProvider:
                 ) from exc
 
             key = (self.config.api_key or "").strip()
-            if self.config.uses_self_hosted_nim and not key:
-                key = "self-hosted-nim"
+            if not key and self.config.normalized_provider != "nvidia":
+                key = self.config.normalized_provider
             self._client = OpenAI(
                 base_url=self.config.effective_api_base,
                 api_key=key,
@@ -619,13 +649,16 @@ class NVIDIAOpenAIProvider:
             "top_p": top_p,
             "max_tokens": max(1, int(max_tokens)),
             "stream": stream,
-            "extra_body": {
+        }
+        # NVIDIA accepts provider-specific thinking controls.  Docker Model
+        # Runner intentionally receives only the portable OpenAI request shape.
+        if self.config.is_nvidia:
+            kwargs["extra_body"] = {
                 "chat_template_kwargs": {
                     "enable_thinking": bool(self.config.enable_thinking)
                 },
                 "reasoning_budget": max(0, int(self.config.reasoning_budget)),
-            },
-        }
+            }
         if response_format is not None:
             kwargs["response_format"] = response_format
         return kwargs
@@ -674,14 +707,14 @@ class NVIDIAOpenAIProvider:
 
         if numeric_status == 429 or "ratelimit" in name or "rate limit" in text:
             return ProviderError(
-                "The NVIDIA assistant is rate-limited. Please try again shortly.",
+                "The assistant provider is rate-limited. Please try again shortly.",
                 state="rate-limited",
                 http_status=429,
                 retryable=True,
             )
         if numeric_status in {408, 504} or "timeout" in name or "timed out" in text:
             return ProviderError(
-                "The NVIDIA assistant request timed out. Please try again.",
+                "The assistant provider request timed out. Please try again.",
                 state="timeout",
                 http_status=504,
                 retryable=True,
@@ -693,20 +726,20 @@ class NVIDIAOpenAIProvider:
             or "unreachable" in text
         ):
             return ProviderError(
-                "The NVIDIA assistant provider is currently unreachable.",
+                "The assistant provider is currently unreachable.",
                 state="provider-unreachable",
                 http_status=503,
                 retryable=True,
             )
         if numeric_status in {409, 425}:
             return ProviderError(
-                "The NVIDIA assistant could not complete the request yet.",
+                "The assistant provider could not complete the request yet.",
                 state="degraded",
                 http_status=503,
                 retryable=True,
             )
         return ProviderError(
-            "The NVIDIA assistant could not complete this request.",
+            "The assistant provider could not complete this request.",
             state="degraded",
             http_status=503,
             retryable=False,
@@ -792,7 +825,7 @@ class NVIDIAOpenAIProvider:
                     return {
                         "ok": True,
                         "state": "ready",
-                        "message": "NVIDIA assistant provider probe succeeded.",
+                        "message": f"{self.config.display_name} probe succeeded.",
                         "provider": self.config.normalized_provider,
                         "runtime": self.config.effective_runtime,
                         "model_id": self.config.model,
@@ -911,6 +944,300 @@ class NVIDIAOpenAIProvider:
             self._release_slot()
 
 
+class ProviderChain:
+    """Ordered failover across independently protected provider endpoints.
+
+    Streaming commits to a provider only after its first visible chunk is
+    available.  A failure before that boundary moves to the next provider; a
+    failure after it is surfaced instead of splicing two answers together.
+    """
+
+    def __init__(self, providers: list[AssistantProvider]) -> None:
+        if not providers:
+            raise ValueError("provider chain must contain at least one provider")
+        self.providers = tuple(providers)
+        self._state_lock = threading.Lock()
+        self._active_index = 0
+        self._last_attempts: list[dict[str, Any]] = []
+
+    def _set_result(self, *, active_index: int, attempts: list[dict[str, Any]]) -> None:
+        with self._state_lock:
+            self._active_index = active_index
+            self._last_attempts = [dict(item) for item in attempts]
+
+    @staticmethod
+    def _safe_chain_entry(index: int, status: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "order": index + 1,
+            "provider": status.get("provider"),
+            "runtime": status.get("runtime"),
+            "api_base": status.get("api_base"),
+            "model_id": status.get("model_id"),
+            "state": status.get("state", "degraded"),
+            "ready": bool(status.get("ready")),
+            "can_attempt": bool(status.get("can_attempt", status.get("ready", False))),
+            "circuit_breaker": status.get("circuit_breaker"),
+            "self_hosted": bool(status.get("self_hosted", False)),
+        }
+
+    def status(self) -> dict[str, Any]:
+        raw_statuses = [provider.status() for provider in self.providers]
+        chain = [
+            self._safe_chain_entry(index, item)
+            for index, item in enumerate(raw_statuses)
+        ]
+        with self._state_lock:
+            active_index = min(self._active_index, len(chain) - 1)
+            attempts = [dict(item) for item in self._last_attempts]
+
+        if not chain[active_index]["can_attempt"]:
+            active_index = next(
+                (index for index, item in enumerate(chain) if item["can_attempt"]),
+                active_index,
+            )
+        active = raw_statuses[active_index]
+        ready = any(item["ready"] for item in chain)
+        can_attempt = any(item["can_attempt"] for item in chain)
+        state = "ready" if ready else str(active.get("state") or "degraded")
+        fallback_available = any(
+            item["can_attempt"] for item in chain[active_index + 1 :]
+        )
+        position = "primary" if active_index == 0 else f"fallback {active_index}"
+        message = (
+            "Assistant provider chain is ready; "
+            f"{active.get('provider') or 'provider'} is the active {position}."
+            if ready
+            else str(
+                active.get("message")
+                or "No assistant provider is currently ready; deterministic grounding remains available."
+            )
+        )
+        dependencies_available = any(
+            bool((item.get("dependencies") or {}).get("available"))
+            for item in raw_statuses
+        )
+        missing_dependencies = sorted(
+            {
+                str(name)
+                for item in raw_statuses
+                for name in (item.get("dependencies") or {}).get("missing", [])
+            }
+        )
+
+        return {
+            **active,
+            "enabled": any(bool(item.get("enabled", True)) for item in raw_statuses),
+            "state": state,
+            "ready": ready,
+            "can_attempt": can_attempt,
+            "healthy": ready,
+            "message": message,
+            "active_provider_index": active_index,
+            "active_provider": chain[active_index]["provider"],
+            "provider_chain": chain,
+            "provider_chain_length": len(chain),
+            "fallback_available": fallback_available,
+            "failover_strategy": "before-first-visible-token",
+            "last_attempts": attempts,
+            "dependencies": {
+                "available": dependencies_available,
+                "missing": [] if dependencies_available else missing_dependencies,
+            },
+            "active_requests": sum(
+                int(item.get("active_requests") or 0) for item in raw_statuses
+            ),
+            "last_error": None if ready else active.get("last_error"),
+            "failure_state": None if ready else active.get("failure_state"),
+        }
+
+    def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float,
+        response_format: dict[str, Any] | None = None,
+    ) -> str:
+        attempts: list[dict[str, Any]] = []
+        last_error: ProviderError | None = None
+        for index, provider in enumerate(self.providers):
+            status = provider.status()
+            provider_name = str(status.get("provider") or f"provider-{index + 1}")
+            if not status.get("can_attempt", status.get("ready")):
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "skipped",
+                        "state": status.get("state", "degraded"),
+                    }
+                )
+                continue
+            try:
+                content = provider.complete(
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    response_format=response_format,
+                )
+            except ProviderError as exc:
+                last_error = exc
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "failed",
+                        "state": exc.state,
+                    }
+                )
+                continue
+            if content:
+                attempts.append(
+                    {"provider": provider_name, "outcome": "success", "state": "ready"}
+                )
+                self._set_result(active_index=index, attempts=attempts)
+                return content
+            last_error = ProviderError(
+                "The assistant provider returned no visible answer.", state="degraded"
+            )
+            attempts.append(
+                {"provider": provider_name, "outcome": "empty", "state": "degraded"}
+            )
+
+        self._set_result(active_index=0, attempts=attempts)
+        raise last_error or ProviderError(
+            "No assistant provider is currently available.", state="degraded"
+        )
+
+    def stream(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        max_tokens: int,
+        temperature: float,
+        top_p: float,
+        cancel_event: threading.Event | None = None,
+    ) -> Iterator[str]:
+        attempts: list[dict[str, Any]] = []
+        last_error: ProviderError | None = None
+        for index, provider in enumerate(self.providers):
+            status = provider.status()
+            provider_name = str(status.get("provider") or f"provider-{index + 1}")
+            if not status.get("can_attempt", status.get("ready")):
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "skipped",
+                        "state": status.get("state", "degraded"),
+                    }
+                )
+                continue
+
+            stream = provider.stream(
+                messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                cancel_event=cancel_event,
+            )
+            iterator = iter(stream)
+            try:
+                first_visible = next((chunk for chunk in iterator if chunk), None)
+            except ProviderError as exc:
+                last_error = exc
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "failed-before-output",
+                        "state": exc.state,
+                    }
+                )
+                close = getattr(iterator, "close", None)
+                if callable(close):
+                    close()
+                continue
+
+            if first_visible is None:
+                last_error = ProviderError(
+                    "The assistant provider returned no visible answer.",
+                    state="degraded",
+                )
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "empty",
+                        "state": "degraded",
+                    }
+                )
+                continue
+
+            attempts.append(
+                {"provider": provider_name, "outcome": "success", "state": "ready"}
+            )
+            self._set_result(active_index=index, attempts=attempts)
+            try:
+                yield first_visible
+                for chunk in iterator:
+                    if chunk:
+                        yield chunk
+            finally:
+                close = getattr(iterator, "close", None)
+                if callable(close):
+                    close()
+            return
+
+        self._set_result(active_index=0, attempts=attempts)
+        raise last_error or ProviderError(
+            "No assistant provider is currently available.", state="degraded"
+        )
+
+    def probe(self) -> dict[str, Any]:
+        attempts: list[dict[str, Any]] = []
+        last_error: ProviderError | None = None
+        for index, provider in enumerate(self.providers):
+            status = provider.status()
+            provider_name = str(status.get("provider") or f"provider-{index + 1}")
+            if not status.get("can_attempt", status.get("ready")):
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "skipped",
+                        "state": status.get("state", "degraded"),
+                    }
+                )
+                continue
+            try:
+                result = provider.probe()
+            except ProviderError as exc:
+                last_error = exc
+                attempts.append(
+                    {
+                        "provider": provider_name,
+                        "outcome": "failed",
+                        "state": exc.state,
+                    }
+                )
+                continue
+            attempts.append(
+                {"provider": provider_name, "outcome": "success", "state": "ready"}
+            )
+            self._set_result(active_index=index, attempts=attempts)
+            return {
+                **result,
+                "attempts": attempts,
+                "provider_chain": self.status()["provider_chain"],
+            }
+
+        self._set_result(active_index=0, attempts=attempts)
+        raise last_error or ProviderError(
+            "No assistant provider is currently available.", state="degraded"
+        )
+
+
+# Import compatibility for existing tests and downstream integrations.
+NVIDIAOpenAIProvider = OpenAICompatibleProvider
+
+
 def build_provider(
     config: ProviderConfig,
     *,
@@ -919,9 +1246,9 @@ def build_provider(
     sleep: Callable[[float], None] = time.sleep,
     random_value: Callable[[], float] = random.random,
     clock: Callable[[], float] = time.monotonic,
-) -> NVIDIAOpenAIProvider:
+) -> OpenAICompatibleProvider:
     """Build the configured provider without performing network I/O."""
-    return NVIDIAOpenAIProvider(
+    return OpenAICompatibleProvider(
         config,
         client=client,
         client_factory=client_factory,
@@ -931,15 +1258,47 @@ def build_provider(
     )
 
 
+def build_provider_chain(
+    configs: list[ProviderConfig] | tuple[ProviderConfig, ...],
+    *,
+    primary_client: Any | None = None,
+    primary_client_factory: Callable[..., Any] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+    random_value: Callable[[], float] = random.random,
+    clock: Callable[[], float] = time.monotonic,
+) -> AssistantProvider:
+    """Build one provider or an ordered failover chain without network I/O."""
+    providers = [
+        build_provider(
+            config,
+            client=primary_client if index == 0 else None,
+            client_factory=primary_client_factory if index == 0 else None,
+            sleep=sleep,
+            random_value=random_value,
+            clock=clock,
+        )
+        for index, config in enumerate(configs)
+    ]
+    if len(providers) == 1:
+        return providers[0]
+    return ProviderChain(providers)
+
+
 __all__ = [
     "AssistantProvider",
+    "DOCKER_MODEL_RUNNER_API_BASE",
+    "DOCKER_MODEL_RUNNER_MODEL",
+    "DOCKER_MODEL_RUNNER_RUNTIME",
     "NVIDIA_HOSTED_API_BASE",
     "NVIDIA_HOSTED_RUNTIME",
     "NVIDIA_NEMOTRON_MODEL",
     "NVIDIAOpenAIProvider",
+    "OpenAICompatibleProvider",
     "ProviderConfig",
+    "ProviderChain",
     "ProviderError",
     "build_provider",
+    "build_provider_chain",
     "completion_content",
     "sanitize_response_content",
     "stream_content",

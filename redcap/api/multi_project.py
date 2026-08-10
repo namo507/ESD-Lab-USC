@@ -10,6 +10,7 @@ exceptions or output payloads.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import logging
 import os
@@ -20,6 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, MutableMapping, Sequence
+from urllib.parse import urlsplit
 
 import requests
 import yaml  # type: ignore[import-untyped]
@@ -162,6 +164,41 @@ class ProjectResult:
     form_counts: Counter[str] | None = None
 
 
+def _api_url_error(api_url: str) -> str | None:
+    """Return a stable, secret-free validation error for a REDCap API URL."""
+
+    try:
+        parsed = urlsplit(api_url)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return "invalid_api_url"
+
+    if (
+        parsed.scheme not in {"https", "http"}
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+    ):
+        return "invalid_api_url"
+
+    # Accessing ``parsed.port`` above validates malformed or out-of-range ports.
+    del port
+    if parsed.scheme == "https":
+        return None
+
+    normalized_hostname = hostname.rstrip(".").casefold()
+    if normalized_hostname == "localhost":
+        return None
+    try:
+        if ipaddress.ip_address(normalized_hostname).is_loopback:
+            return None
+    except ValueError:
+        pass
+    return "insecure_api_url"
+
+
 def _required_mapping(value: Any, name: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise PortfolioConfigError(f"invalid_{name}")
@@ -302,6 +339,9 @@ class RedcapApiClient:
         backoff_seconds: float = 0.5,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        url_error = _api_url_error(api_url)
+        if url_error:
+            raise RedcapRequestError(url_error)
         self._api_url = api_url
         self._token = token
         self._session = session or requests.Session()
@@ -325,6 +365,7 @@ class RedcapApiClient:
                     self._api_url,
                     data=data,
                     timeout=self._timeout_seconds,
+                    allow_redirects=False,
                 )
             except requests.RequestException:
                 last_code = "network_error"
@@ -334,6 +375,8 @@ class RedcapApiClient:
                 raise RedcapRequestError(last_code) from None
 
             status_code = int(getattr(response, "status_code", 0))
+            if 300 <= status_code < 400:
+                raise RedcapRequestError("redirect_rejected")
             if status_code == 429 or status_code >= 500:
                 last_code = "rate_limited" if status_code == 429 else "server_error"
                 if attempt + 1 < self._retries:
@@ -501,6 +544,18 @@ def _suppressed_count(value: int, threshold: int) -> int | None:
     return value if value >= threshold else None
 
 
+def _public_participant_count(
+    value: int | None, threshold: int
+) -> tuple[int | None, bool]:
+    """Publish zero or a sufficiently large count, but suppress small cells."""
+
+    if value is None:
+        return None, False
+    count = int(value)
+    suppressed = 0 < count < threshold
+    return (None if suppressed else count), suppressed
+
+
 def _public_event_total(
     event_counts: Counter[str] | None, threshold: int
 ) -> tuple[int | None, bool]:
@@ -581,6 +636,9 @@ def _public_project(result: ProjectResult, threshold: int) -> dict[str, Any]:
     event_total, event_total_suppressed = _public_event_total(
         result.event_counts, threshold
     )
+    records, records_suppressed = _public_participant_count(
+        result.record_count, threshold
+    )
     return {
         "key": result.spec.key,
         "study": result.spec.study,
@@ -589,7 +647,8 @@ def _public_project(result: ProjectResult, threshold: int) -> dict[str, Any]:
         "title": result.spec.expected_title,
         "status": result.status,
         "enrollment_authority": result.spec.enrollment_authority,
-        "records": result.record_count,
+        "records": records,
+        "records_suppressed": records_suppressed,
         "event_records": event_total,
         "event_records_suppressed": event_total_suppressed,
         "events": _public_events(result.event_counts, threshold),
@@ -598,6 +657,7 @@ def _public_project(result: ProjectResult, threshold: int) -> dict[str, Any]:
             threshold=threshold,
             instruments_total=result.instruments_total,
             include_instruments=True,
+            force_suppression=records_suppressed,
         ),
         "error": {"code": result.error_code} if result.error_code else None,
     }
@@ -622,16 +682,28 @@ def _aggregate_studies(
         else:
             form_counts = None
         child_form_counts_suppressed = any(
-            result.form_counts is not None
-            and any(
-                0 < int(result.form_counts.get(bucket, 0)) < config.small_cell_threshold
-                for bucket in ("incomplete", "unverified", "complete", "unknown")
+            (
+                result.record_count is not None
+                and 0 < int(result.record_count) < config.small_cell_threshold
+            )
+            or (
+                result.form_counts is not None
+                and any(
+                    0
+                    < int(result.form_counts.get(bucket, 0))
+                    < config.small_cell_threshold
+                    for bucket in ("incomplete", "unverified", "complete", "unknown")
+                )
             )
             for result in successful
         )
 
         authority_ok = authority.status == "ok"
         authority_events = authority.event_counts if authority_ok else None
+        enrollment, enrollment_suppressed = _public_participant_count(
+            authority.record_count if authority_ok else None,
+            config.small_cell_threshold,
+        )
         event_total, event_total_suppressed = _public_event_total(
             authority_events, config.small_cell_threshold
         )
@@ -643,7 +715,8 @@ def _aggregate_studies(
                 "projects_total": len(members),
                 "projects_ok": len(successful),
                 "target": study_spec.target,
-                "enrollment": authority.record_count if authority_ok else None,
+                "enrollment": enrollment,
+                "enrollment_suppressed": enrollment_suppressed,
                 "event_records": event_total,
                 "event_records_suppressed": event_total_suppressed,
                 "events": _public_events(authority_events, config.small_cell_threshold),
@@ -695,11 +768,23 @@ def build_portfolio_payload(
 
     projects_ok = sum(result.status == "ok" for result in results)
     studies = _aggregate_studies(config, results)
-    studies_reporting = sum(study["enrollment"] is not None for study in studies)
+    authority_results = [
+        result for result in results if result.spec.enrollment_authority
+    ]
+    successful_authorities = [
+        result for result in authority_results if result.status == "ok"
+    ]
+    studies_reporting = len(successful_authorities)
     all_authorities_ok = studies_reporting == len(config.studies)
+    authority_enrollments = [
+        int(result.record_count or 0) for result in successful_authorities
+    ]
+    study_enrollments_suppressed = any(
+        0 < count < config.small_cell_threshold for count in authority_enrollments
+    )
     study_enrollments = (
-        sum(int(study["enrollment"]) for study in studies)
-        if all_authorities_ok
+        sum(authority_enrollments)
+        if all_authorities_ok and not study_enrollments_suppressed
         else None
     )
     authority_event_counts: list[Counter[str]] | None = None
@@ -753,22 +838,29 @@ def build_portfolio_payload(
             "studies_total": len(config.studies),
             "studies_reporting": studies_reporting,
             "study_enrollments": study_enrollments,
+            "study_enrollments_suppressed": study_enrollments_suppressed,
             "event_records": portfolio_event_records,
             "event_records_suppressed": portfolio_event_records_suppressed,
             "forms": _forms_payload(
                 portfolio_form_counts,
                 threshold=config.small_cell_threshold,
                 force_suppression=any(
-                    result.form_counts is not None
-                    and any(
-                        0
-                        < int(result.form_counts.get(bucket, 0))
-                        < config.small_cell_threshold
-                        for bucket in (
-                            "incomplete",
-                            "unverified",
-                            "complete",
-                            "unknown",
+                    (
+                        result.record_count is not None
+                        and 0 < int(result.record_count) < config.small_cell_threshold
+                    )
+                    or (
+                        result.form_counts is not None
+                        and any(
+                            0
+                            < int(result.form_counts.get(bucket, 0))
+                            < config.small_cell_threshold
+                            for bucket in (
+                                "incomplete",
+                                "unverified",
+                                "complete",
+                                "unknown",
+                            )
                         )
                     )
                     for result in successful
@@ -798,8 +890,9 @@ def sync_portfolio(
     api_url = str(environment.get(config.api_url_env, "")).strip()
     if not api_url:
         raise PortfolioSyncError("missing_api_url")
-    if not api_url.startswith(("https://", "http://")):
-        raise PortfolioSyncError("invalid_api_url")
+    url_error = _api_url_error(api_url)
+    if url_error:
+        raise PortfolioSyncError(url_error)
 
     results: list[ProjectResult] = []
     for spec in config.projects:

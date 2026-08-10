@@ -10,16 +10,36 @@
   left: var(--buddy-left, calc(var(--shell-sidebar-width, 236px) + 24px));
   bottom: var(--buddy-bottom, 88px);
   z-index: 92;
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
   pointer-events: none;
   font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
+  /*
+   * The stage stays mounted so entering and leaving are real transitions.
+   * `display: none` would drop the element out of the box tree and cancel
+   * them, which is what made Buddy pop in and out. `visibility` keeps the
+   * hidden stage out of the a11y tree and immune to pointer events, and its
+   * delayed transition holds the stage visible for the length of the fade.
+   */
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s linear 300ms;
 }
 
 .active {
-  display: flex;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 300ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s linear 0s;
 }
 
 .page {
@@ -123,7 +143,7 @@
   isolation: isolate;
   margin-left: 14px;
   padding: 14px 16px 15px;
-  pointer-events: auto;
+  pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--buddy-blue) 18%, var(--buddy-line));
   border-radius: 18px 18px 18px 5px;
   background: color-mix(in srgb, var(--buddy-surface) 92%, transparent);
@@ -143,7 +163,26 @@
 
 .show {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0) scale(1);
+}
+
+/*
+ * Copy crossfades in place when the pointer moves between two hotspots while
+ * the bubble is already open, so switching insights reads as one continuous
+ * surface instead of a hard text cut plus an instant reflow.
+ */
+.content {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 130ms ease,
+    transform 130ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.swapping {
+  opacity: 0;
+  transform: translateY(-3px);
 }
 
 .bubble::after {
@@ -229,20 +268,6 @@
   50% { opacity: 0.9; transform: scale(1); }
 }
 
-:global([data-insight]) {
-  position: relative;
-}
-
-:global([data-insight].insight-active)::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border: 1.5px solid color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 55%, transparent);
-  border-radius: inherit;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--esd-yellow, #f4da26) 18%, transparent);
-  pointer-events: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .buddy,
   .talking .eye,
@@ -250,6 +275,41 @@
   .heartPulse {
     animation: none;
   }
+
+  /*
+   * Keep the fades (they are what stops the flashing) but drop every motion
+   * component, so reduced-motion users still get a calm, non-choppy hand-off.
+   */
+  .stage,
+  .active,
+  .bubble,
+  .show,
+  .content,
+  .swapping,
+  .eye {
+    transform: none;
+  }
+
+  .stage {
+    transition:
+      opacity 160ms linear,
+      visibility 0s linear 160ms;
+  }
+
+  .active {
+    transition:
+      opacity 160ms linear,
+      visibility 0s linear 0s;
+  }
+
+  .bubble {
+    transition: opacity 160ms linear;
+  }
+
+  .content {
+    transition: opacity 100ms linear;
+  }
+
 }
 
 @media (max-width: 767px) {

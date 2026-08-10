@@ -14,6 +14,7 @@ from redcap.api.multi_project import (
     PortfolioSyncError,
     RedcapApiClient,
     RedcapRequestError,
+    _api_url_error,
     load_portfolio_config,
     sync_portfolio,
     write_json_atomic,
@@ -39,6 +40,8 @@ class PortfolioSession:
         self.token_to_project = dict(token_to_project)
         self.calls: list[dict[str, Any]] = []
         self.title_override: dict[str, str] = {}
+        self.record_count_override: dict[str, int] = {}
+        self.complete_only = False
 
     @staticmethod
     def primary_key(project_key: str) -> str:
@@ -49,10 +52,21 @@ class PortfolioSession:
         return "demo_id"
 
     def post(
-        self, url: str, *, data: Mapping[str, Any], timeout: float
+        self,
+        url: str,
+        *,
+        data: Mapping[str, Any],
+        timeout: float,
+        allow_redirects: bool = True,
     ) -> FakeResponse:
-        call = {"url": url, "data": dict(data), "timeout": timeout}
+        call = {
+            "url": url,
+            "data": dict(data),
+            "timeout": timeout,
+            "allow_redirects": allow_redirects,
+        }
         self.calls.append(call)
+        assert allow_redirects is False
         project_key = self.token_to_project[str(data["token"])]
         expected = REQUIRED_PROJECTS[project_key]
         content = data["content"]
@@ -91,19 +105,20 @@ class PortfolioSession:
             data[key] for key in sorted(data) if key.startswith("records[")
         ]
         if not selected_records:
+            record_count = self.record_count_override.get(project_key, 6)
             rows = [
                 {
                     primary_key: f"PRIVATE-{project_key}-{index}",
                     "redcap_event_name": "baseline_arm_1",
                 }
-                for index in range(1, 7)
+                for index in range(1, record_count + 1)
             ]
             rows.extend(
                 {
                     primary_key: f"PRIVATE-{project_key}-{index}",
                     "redcap_event_name": "followup_arm_1",
                 }
-                for index in range(1, 5)
+                for index in range(1, min(record_count, 4) + 1)
             )
             return FakeResponse(rows)
 
@@ -113,7 +128,9 @@ class PortfolioSession:
                     primary_key: record,
                     "redcap_event_name": "baseline_arm_1",
                     "demographics_complete": "2",
-                    "visit_complete": "1" if index % 2 else "0",
+                    "visit_complete": (
+                        "2" if self.complete_only else "1" if index % 2 else "0"
+                    ),
                 }
                 for index, record in enumerate(selected_records, start=1)
             ]
@@ -189,6 +206,7 @@ def test_sync_emits_aggregate_only_portfolio_contract(
     }
     assert payload["portfolio"]["status"] == "ok"
     assert payload["portfolio"]["study_enrollments"] == 30
+    assert payload["portfolio"]["study_enrollments_suppressed"] is False
     assert payload["portfolio"]["study_enrollments"] != sum(
         project["records"] for project in payload["projects"]
     )
@@ -196,6 +214,7 @@ def test_sync_emits_aggregate_only_portfolio_contract(
     nano = next(study for study in payload["studies"] if study["key"] == "nano")
     assert nano["target"] == 260
     assert nano["enrollment"] == 6
+    assert nano["enrollment_suppressed"] is False
     assert nano["event_records"] is None
     assert nano["event_records_suppressed"] is True
     assert nano["events"] == [
@@ -226,6 +245,8 @@ def test_sync_emits_aggregate_only_portfolio_contract(
     )
     assert nano_project["event_records"] is None
     assert nano_project["event_records_suppressed"] is True
+    assert nano_project["records"] == 6
+    assert nano_project["records_suppressed"] is False
     assert nano_project["forms"]["counts_suppressed"] is True
     assert nano_project["forms"]["total"] is None
 
@@ -262,6 +283,56 @@ def test_record_exports_use_only_primary_key_and_completion_fields(
         }
         assert "non_public_value" not in exported_fields
         assert call["timeout"] == 30.0
+        assert call["allow_redirects"] is False
+
+
+def test_participant_counts_are_suppressed_without_inferable_parent_totals(
+    portfolio_config, fake_environment, fake_session
+):
+    # One authority and one non-authority project contain small cells. The
+    # authority count propagates to its study, so the portfolio total must also
+    # be withheld to prevent recovery by subtracting the other study counts.
+    fake_session.record_count_override.update(
+        {"abc_surveys": 4, "ipsa_lab": 3, "action": 0, "nico": 5}
+    )
+    fake_session.complete_only = True
+
+    payload = sync_portfolio(
+        portfolio_config,
+        environ=fake_environment,
+        session=fake_session,
+        require_all=True,
+        sleep=lambda _: None,
+    )
+
+    projects = {project["key"]: project for project in payload["projects"]}
+    studies = {study["key"]: study for study in payload["studies"]}
+
+    assert projects["abc_surveys"]["records"] is None
+    assert projects["abc_surveys"]["records_suppressed"] is True
+    assert projects["abc_surveys"]["forms"]["counts_suppressed"] is True
+    assert studies["abc"]["enrollment"] is None
+    assert studies["abc"]["enrollment_suppressed"] is True
+    assert studies["abc"]["forms"]["counts_suppressed"] is True
+    assert payload["portfolio"]["studies_reporting"] == 5
+    assert payload["portfolio"]["study_enrollments"] is None
+    assert payload["portfolio"]["study_enrollments_suppressed"] is True
+
+    # A non-authority project is independently protected, while its study's
+    # authority enrollment remains publishable.
+    assert projects["ipsa_lab"]["records"] is None
+    assert projects["ipsa_lab"]["records_suppressed"] is True
+    assert studies["ipsa"]["enrollment"] == 6
+    assert studies["ipsa"]["enrollment_suppressed"] is False
+    assert studies["ipsa"]["forms"]["counts_suppressed"] is True
+    assert payload["portfolio"]["forms"]["counts_suppressed"] is True
+
+    # Zero and the exact threshold boundary are not small cells.
+    assert projects["action"]["records"] == 0
+    assert projects["action"]["records_suppressed"] is False
+    assert projects["nico"]["records"] == portfolio_config.small_cell_threshold
+    assert projects["nico"]["records_suppressed"] is False
+    assert projects["nico"]["forms"]["counts_suppressed"] is False
 
 
 def test_data_version_is_deterministic_except_generated_at(
@@ -334,6 +405,7 @@ def test_partial_sync_reports_only_a_secret_safe_error_code(
     assert failed["status"] == "error"
     assert failed["error"] == {"code": "project_title_mismatch"}
     assert failed["records"] is None
+    assert failed["records_suppressed"] is False
     assert payload["source"]["projects_ok"] == 7
     assert payload["portfolio"]["study_enrollments"] is None
     assert "unexpected private title" not in json.dumps(payload)
@@ -344,8 +416,16 @@ def test_client_retries_transient_http_without_exposing_token():
         def __init__(self) -> None:
             self.calls = 0
 
-        def post(self, url: str, *, data: Mapping[str, Any], timeout: float):
+        def post(
+            self,
+            url: str,
+            *,
+            data: Mapping[str, Any],
+            timeout: float,
+            allow_redirects: bool = True,
+        ):
             self.calls += 1
+            assert allow_redirects is False
             if self.calls < 3:
                 return FakeResponse({}, status_code=503)
             return FakeResponse({"project_id": 1, "project_title": "Example"})
@@ -374,6 +454,79 @@ def test_client_retries_transient_http_without_exposing_token():
         failing.project_info()
     assert str(exc_info.value) == "server_error"
     assert "token" not in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    ("api_url", "expected"),
+    [
+        ("https://redcap.research.sc.edu/api/", None),
+        ("http://localhost:8080/api/", None),
+        ("http://localhost.:8080/api/", None),
+        ("http://127.0.0.1:8080/api/", None),
+        ("http://127.42.0.8:8080/api/", None),
+        ("http://[::1]:8080/api/", None),
+        ("http://redcap.research.sc.edu/api/", "insecure_api_url"),
+        ("http://localhost.example/api/", "insecure_api_url"),
+        ("http://10.0.0.8/api/", "insecure_api_url"),
+        ("ftp://redcap.research.sc.edu/api/", "invalid_api_url"),
+        ("https://user:secret@redcap.invalid/api/", "invalid_api_url"),
+        ("https://redcap.invalid/api/#frag", "invalid_api_url"),
+        ("https://redcap.invalid:99999/api/", "invalid_api_url"),
+        ("not-a-url", "invalid_api_url"),
+        ("", "invalid_api_url"),
+    ],
+)
+def test_api_url_validation_rejects_unsafe_endpoints(api_url, expected):
+    assert _api_url_error(api_url) == expected
+
+
+def test_client_construction_rejects_an_unsafe_api_url():
+    with pytest.raises(RedcapRequestError) as exc_info:
+        RedcapApiClient("http://redcap.research.sc.edu/api/", "secret-token")
+    assert str(exc_info.value) == "insecure_api_url"
+    assert "secret-token" not in str(exc_info.value)
+
+
+def test_sync_rejects_nonloopback_http_before_reading_project_tokens(
+    portfolio_config,
+):
+    environment = {portfolio_config.api_url_env: "http://redcap.invalid/api/"}
+
+    with pytest.raises(PortfolioSyncError, match="^insecure_api_url$"):
+        sync_portfolio(portfolio_config, environ=environment)
+
+
+def test_client_rejects_redirects_instead_of_following_them():
+    class RedirectSession:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def post(
+            self,
+            url: str,
+            *,
+            data: Mapping[str, Any],
+            timeout: float,
+            allow_redirects: bool = True,
+        ):
+            self.calls += 1
+            assert allow_redirects is False
+            return FakeResponse({}, status_code=302)
+
+    session = RedirectSession()
+    client = RedcapApiClient(
+        "https://redcap.invalid/api/",
+        "do-not-leak-this-token",
+        session=session,
+        retries=2,
+        backoff_seconds=0,
+        sleep=lambda _: None,
+    )
+    with pytest.raises(RedcapRequestError) as exc_info:
+        client.project_info()
+    assert session.calls == 1
+    assert str(exc_info.value) == "redirect_rejected"
+    assert "do-not-leak-this-token" not in str(exc_info.value)
 
 
 def test_atomic_writer_replaces_artifact_without_temp_files(tmp_path):

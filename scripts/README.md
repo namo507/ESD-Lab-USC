@@ -30,7 +30,7 @@ Use these when packaging or publishing the website surfaces:
 Use these when regenerating dashboard-facing data artifacts:
 
 - `build_lab_readings_index.py` derives `web/lab-readings.json` from the dashboard readings payload.
-- `prepare_dashboard_assistant.py` validates NVIDIA provider configuration, reports readiness, and refreshes grounding context.
+- `prepare_dashboard_assistant.py` validates the ordered local/hosted provider chain, reports sanitized readiness, and refreshes grounding context.
 - `generate_data_quality_report.py` writes HTML data-quality reports.
 - `export_deidentified_dataset.py` produces de-identified analysis exports.
 - `redcap_daily_sync.py` runs the REDCap sync and downstream QC workflow.

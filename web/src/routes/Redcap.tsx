@@ -19,6 +19,9 @@ import type { CsbsVisitStatus, RedcapCompletenessRow, RedcapVisitRecord } from "
 import type { RedcapPayload as RedcapDashboardPayload } from "@/api/redcapSchemas";
 import {
   DASHBOARD_METRICS_QUERY_KEY,
+  type DashboardMetrics,
+  type DashboardProjectMetrics,
+  type DashboardSourceState,
   getDashboardSourceState,
   selectRedcapSummary,
   useDashboardMetrics,
@@ -253,11 +256,10 @@ export function Redcap() {
     void dashboardMetrics.refetch();
   }
 
-  function syncNow() {
-    void dashboardMetrics.refetch();
+  function reloadSnapshot() {
+    if (!visitHealthEnabled) void dashboardMetrics.refetch();
     void eventsQuery.refetch();
     if (visitHealthEnabled) refreshVisitHealth();
-    void logAudit({ action: "run.trigger", scope: "/redcap/sync" });
   }
 
   const visitHealthError =
@@ -287,7 +289,9 @@ export function Redcap() {
           </p>
         </div>
         <div className={styles.actions}>
-          <Button icon="refresh-cw" onClick={syncNow}>Refresh status</Button>
+          <Button icon="refresh-cw" onClick={reloadSnapshot} disabled={dashboardMetrics.isFetching}>
+            {dashboardMetrics.isFetching ? "Reloading snapshot…" : "Reload snapshot"}
+          </Button>
         </div>
       </header>
       <DataProvenance source={sourceState} />
@@ -336,6 +340,15 @@ export function Redcap() {
         />
       </section>
 
+      <RedcapProjectStatusGrid
+        metrics={dashboardMetrics.data}
+        sourceState={sourceState}
+        isLoading={dashboardMetrics.isLoading}
+        isFetching={dashboardMetrics.isFetching}
+        isError={dashboardMetrics.isError}
+        onReload={reloadSnapshot}
+      />
+
       <DataProvenance
         kind="snapshot"
         label="Operational snapshot"
@@ -370,6 +383,132 @@ export function Redcap() {
         <NextWavePanel payload={redcapPayload.data} onAsk={fastPath} />
       )}
     </div>
+  );
+}
+
+interface RedcapProjectStatusGridProps {
+  metrics: DashboardMetrics | undefined;
+  sourceState: DashboardSourceState;
+  isLoading: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  onReload: () => void;
+}
+
+function projectStatusBadge(project: DashboardProjectMetrics): { kind: BadgeKind; label: string } {
+  if (project.status === "ok") return { kind: "ok", label: "Healthy" };
+  if (project.status === "degraded" || project.status === "partial") return { kind: "warn", label: "Degraded" };
+  return { kind: "fail", label: "Unavailable" };
+}
+
+function sourceStatusBadge(source: DashboardSourceState): BadgeKind {
+  if (source.status === "live") return "ok";
+  if (source.status === "stale" || source.status === "partial") return "warn";
+  return "fail";
+}
+
+function aggregateMetric(value: number | null, suppressed: boolean) {
+  if (suppressed) {
+    return <span className={styles.suppressedValue} aria-label="Suppressed for privacy">Suppressed</span>;
+  }
+  return value === null ? <span className={styles.unavailableValue}>Unavailable</span> : value.toLocaleString();
+}
+
+export function RedcapProjectStatusGrid({
+  metrics,
+  sourceState,
+  isLoading,
+  isFetching,
+  isError,
+  onReload,
+}: RedcapProjectStatusGridProps) {
+  const initialLoading = isLoading && !metrics;
+  const unavailable = isError && !metrics;
+
+  return (
+    <Card pad={0} className={sourceState.status === "stale" ? styles.projectSnapshotStale : undefined}>
+      <section aria-labelledby="redcap-project-snapshot-title" data-insight="redcap-project-grid">
+        <div className={styles.projectSnapshotHead}>
+          <div>
+            <h2 id="redcap-project-snapshot-title" className={styles.projectSnapshotTitle}>Eight-project status</h2>
+            <p>The validated contract contains server-generated aggregates only; project tokens and participant rows are rejected.</p>
+          </div>
+          <div className={styles.projectSnapshotBadges}>
+            <Badge kind="neutral" size="sm">Aggregate only</Badge>
+            {initialLoading
+              ? <Badge kind="pending" size="sm">Loading snapshot</Badge>
+              : <Badge kind={sourceStatusBadge(sourceState)} size="sm">{sourceState.label}</Badge>}
+            {isFetching && metrics && <span className={styles.reloadingText}>Reloading snapshot…</span>}
+          </div>
+        </div>
+
+        {initialLoading && (
+          <div className={styles.projectSnapshotState} role="status" aria-live="polite">
+            <div className={styles.projectSkeletonGrid} aria-hidden="true">
+              {Array.from({ length: 8 }, (_, index) => <span key={index} />)}
+            </div>
+            <strong>Loading aggregate project snapshot…</strong>
+          </div>
+        )}
+
+        {unavailable && (
+          <div className={styles.projectSnapshotState} role="alert">
+            <strong>Project snapshot unavailable</strong>
+            <p>The last aggregate artifact could not be loaded or did not pass its privacy contract.</p>
+            <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onReload}>Reload snapshot</Button>
+          </div>
+        )}
+
+        {metrics && (
+          <>
+            {(sourceState.status === "stale" || isError) && (
+              <div className={styles.projectSnapshotNotice} role="status">
+                <strong>{isError ? "Reload failed; showing the prior snapshot." : "This snapshot is stale."}</strong>{" "}
+                {isError
+                  ? "The existing aggregate values remain visible, but they were not refreshed."
+                  : "Reload the snapshot before using it for current operational decisions."}
+              </div>
+            )}
+            <ul className={styles.projectStatusGrid} aria-label="REDCap aggregate project status">
+              {metrics.projects.map((project) => {
+                const status = projectStatusBadge(project);
+                return (
+                  <li key={project.key} className={styles.projectStatusCard}>
+                    <div className={styles.projectStatusTop}>
+                      <div>
+                        <strong>{project.title}</strong>
+                        <span className="t-mono">{project.key} · #{project.projectId}</span>
+                      </div>
+                      <Badge kind={status.kind} size="sm">{status.label}</Badge>
+                    </div>
+                    <div className={styles.projectIdentityRow}>
+                      <span>{project.study.toUpperCase()}</span>
+                      <span>{project.role}</span>
+                      {project.enrollmentAuthority && <span>enrollment authority</span>}
+                    </div>
+                    <dl className={styles.projectMetrics}>
+                      <div><dt>Records</dt><dd>{aggregateMetric(project.records, project.recordsSuppressed)}</dd></div>
+                      <div><dt>Event records</dt><dd>{aggregateMetric(project.eventRecords, project.eventRecordsSuppressed)}</dd></div>
+                      <div>
+                        <dt>Form completion</dt>
+                        <dd>
+                          {project.forms.countsSuppressed
+                            ? <span className={styles.suppressedValue} aria-label="Suppressed for privacy">Suppressed</span>
+                            : project.forms.completionRate === null
+                              ? <span className={styles.unavailableValue}>Unavailable</span>
+                              : `${project.forms.completionRate.toFixed(1)}%`}
+                        </dd>
+                      </div>
+                    </dl>
+                    {project.errorCode && <p className={styles.projectError}>Status code: {project.errorCode}</p>}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </section>
+    </Card>
   );
 }
 

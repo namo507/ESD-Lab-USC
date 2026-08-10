@@ -8,8 +8,14 @@ services:
     environment:
       # Put the real key in the untracked .env file, never in this override.
       DASHBOARD_ASSISTANT_API_KEY: ${DASHBOARD_ASSISTANT_API_KEY:-}
-      DASHBOARD_ASSISTANT_PROVIDER: nvidia
-      DASHBOARD_ASSISTANT_RUNTIME: nvidia-build-api
+      DASHBOARD_ASSISTANT_PROVIDER: docker-model-runner
+      DASHBOARD_ASSISTANT_RUNTIME: docker-model-runner
+      DASHBOARD_ASSISTANT_LOCAL_ENABLED: "true"
+      DASHBOARD_ASSISTANT_FALLBACK_ENABLED: "true"
+    models:
+      esd-buddy:
+        endpoint_var: DASHBOARD_ASSISTANT_LOCAL_API_BASE
+        model_var: DASHBOARD_ASSISTANT_LOCAL_MODEL
     mem_limit: 2g
 
   dashboard-share:
@@ -17,3 +23,8 @@ services:
 
   dashboard-share-named:
     profiles: ["share"]
+
+models:
+  esd-buddy:
+    model: ${DASHBOARD_ASSISTANT_LOCAL_MODEL_ARTIFACT:-ai/qwen3.5:4b-q4_K_M}
+    context_size: 8192

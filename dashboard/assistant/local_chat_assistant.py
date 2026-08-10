@@ -1,8 +1,8 @@
-"""Grounded ESD Lab dashboard assistant backed by NVIDIA Nemotron.
+"""Grounded ESD Lab dashboard assistant with ordered provider failover.
 
-Grounding and deterministic dashboard answers remain local to this module.  A
-small, lazy provider seam handles hosted NVIDIA generation so provider failures
-never prevent the rest of the dashboard from starting or serving data.
+Grounding and deterministic dashboard answers remain local to this module.
+Docker Model Runner is the normal local generator, hosted NVIDIA is the backup,
+and provider failures never prevent the dashboard from serving data.
 """
 
 from __future__ import annotations
@@ -17,26 +17,29 @@ from pathlib import Path
 from typing import Any, Callable
 
 from dashboard.assistant.provider import (
+    DOCKER_MODEL_RUNNER_API_BASE,
+    DOCKER_MODEL_RUNNER_MODEL,
+    DOCKER_MODEL_RUNNER_RUNTIME,
     NVIDIA_HOSTED_API_BASE,
     NVIDIA_HOSTED_RUNTIME,
     NVIDIA_NEMOTRON_MODEL,
     AssistantProvider,
     ProviderConfig,
     ProviderError,
-    build_provider,
+    build_provider_chain,
     completion_content,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = PROJECT_ROOT / "dashboard" / "data"
 DEFAULT_LLM_CONFIG_PATH = PROJECT_ROOT / "config" / "llm_model.json"
-DEFAULT_MODEL_ID = NVIDIA_NEMOTRON_MODEL
+DEFAULT_MODEL_ID = DOCKER_MODEL_RUNNER_MODEL
 # Nullable legacy fields remain in status responses for older dashboard clients.
 DEFAULT_MODEL_DIR: Path | None = None
 DEFAULT_MODEL_FILE: str | None = None
-DEFAULT_CONTEXT_WINDOW = 32768
+DEFAULT_CONTEXT_WINDOW = 8192
 DEFAULT_BATCH_SIZE = 0
-DEFAULT_MAX_NEW_TOKENS = 16384
+DEFAULT_MAX_NEW_TOKENS = 256
 DEFAULT_THREAD_COUNT = 0
 DEFAULT_MAX_MESSAGE_CHARS = 6000
 DEFAULT_MAX_HISTORY_CHARS = 8000
@@ -713,28 +716,37 @@ class AssistantUnavailable(RuntimeError):
 @dataclass
 class AssistantConfig:
     enabled: bool = True
-    provider: str = "nvidia"
-    runtime: str = NVIDIA_HOSTED_RUNTIME
-    api_base: str = NVIDIA_HOSTED_API_BASE
+    provider: str = "docker-model-runner"
+    runtime: str = DOCKER_MODEL_RUNNER_RUNTIME
+    api_base: str = DOCKER_MODEL_RUNNER_API_BASE
     api_key: str | None = field(default=None, repr=False)
     model_id: str = DEFAULT_MODEL_ID
     model_dir: Path | None = DEFAULT_MODEL_DIR
     model_file: str | None = DEFAULT_MODEL_FILE
-    model_tier: str = "hosted"
-    model_label: str = "NVIDIA Nemotron 3 Super 120B A12B"
-    model_license: str = "NVIDIA API terms"
+    model_tier: str = "local-primary"
+    model_label: str = "Qwen 3.5 4B Q4_K_M"
+    model_license: str = "See Docker model artifact metadata"
     auto_download: bool = False
-    device_preference: str = "provider-managed"
+    device_preference: str = "docker-model-runner"
+    local_enabled: bool = True
+    local_request_timeout_seconds: float = 20.0
+    local_max_retries: int = 0
+    fallback_enabled: bool = True
+    fallback_provider: str = "nvidia"
+    fallback_runtime: str = NVIDIA_HOSTED_RUNTIME
+    fallback_api_base: str = NVIDIA_HOSTED_API_BASE
+    fallback_api_key: str | None = field(default=None, repr=False)
+    fallback_model_id: str = NVIDIA_NEMOTRON_MODEL
     enable_thinking: bool = False
     reasoning_budget: int = 0
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
     temperature: float = 0.2
     top_p: float = 0.95
     stream_enabled: bool = True
-    request_timeout_seconds: float = 180.0
-    max_retries: int = 6
-    retry_base_seconds: float = 2.0
-    retry_max_seconds: float = 30.0
+    request_timeout_seconds: float = 45.0
+    max_retries: int = 2
+    retry_base_seconds: float = 0.5
+    retry_max_seconds: float = 4.0
     retry_jitter: float = 0.25
     max_concurrency: int = 2
     circuit_failure_threshold: int = 3
@@ -750,7 +762,7 @@ class AssistantConfig:
     context_window: int = DEFAULT_CONTEXT_WINDOW
     batch_size: int = DEFAULT_BATCH_SIZE
     thread_count: int = DEFAULT_THREAD_COUNT
-    generation_queue_timeout_seconds: float = 180.0
+    generation_queue_timeout_seconds: float = 30.0
     # Presentation-planner specific knobs (tunable without touching chat).
     presentation_max_new_tokens: int = PRESENTATION_MAX_NEW_TOKENS
     presentation_context_char_cap: int = PRESENTATION_CONTEXT_CHAR_CAP
@@ -758,7 +770,7 @@ class AssistantConfig:
 
     @classmethod
     def from_env(cls) -> "AssistantConfig":
-        provider = _env_first("DASHBOARD_ASSISTANT_PROVIDER") or "nvidia"
+        provider = _env_first("DASHBOARD_ASSISTANT_PROVIDER") or "docker-model-runner"
         normalized_provider = provider.strip().lower()
         provider_requests_self_hosted = normalized_provider in {
             "nim",
@@ -769,36 +781,123 @@ class AssistantConfig:
         self_hosted_enabled = _parse_bool(
             os.getenv("DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED"), default=False
         )
+        local_requested = normalized_provider in {
+            "docker",
+            "dmr",
+            "docker-model",
+            "docker-model-runner",
+            "local",
+            "local-openai",
+            "openai-compatible",
+        }
+        local_enabled = _parse_bool(
+            os.getenv("DASHBOARD_ASSISTANT_LOCAL_ENABLED"),
+            default=local_requested,
+        )
         use_self_hosted = provider_requests_self_hosted or self_hosted_enabled
-        effective_provider = "nvidia-nim" if use_self_hosted else provider
-        return cls(
-            enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
-            provider=effective_provider,
-            runtime=(
+        if use_self_hosted:
+            effective_provider = "nvidia-nim"
+            local_enabled = False
+        elif local_enabled:
+            effective_provider = "docker-model-runner"
+        else:
+            effective_provider = "nvidia" if local_requested else provider
+        primary_is_local = effective_provider == "docker-model-runner"
+
+        hosted_api_base = (
+            _env_first(
+                "DASHBOARD_ASSISTANT_FALLBACK_API_BASE",
+                "DASHBOARD_ASSISTANT_API_BASE",
+                "OPENAI_BASE_URL",
+            )
+            or NVIDIA_HOSTED_API_BASE
+        )
+        hosted_api_key = _env_first(
+            "DASHBOARD_ASSISTANT_FALLBACK_API_KEY",
+            "DASHBOARD_ASSISTANT_API_KEY",
+            "OPENAI_API_KEY",
+        )
+        hosted_model = (
+            _env_first(
+                "DASHBOARD_ASSISTANT_FALLBACK_MODEL",
+                "DASHBOARD_ASSISTANT_MODEL",
+                "DASHBOARD_ASSISTANT_MODEL_ID",
+            )
+            or NVIDIA_NEMOTRON_MODEL
+        )
+
+        if primary_is_local:
+            primary_runtime = (
+                _env_first("DASHBOARD_ASSISTANT_LOCAL_RUNTIME")
+                or DOCKER_MODEL_RUNNER_RUNTIME
+            )
+            primary_api_base = (
+                _env_first("DASHBOARD_ASSISTANT_LOCAL_API_BASE")
+                or DOCKER_MODEL_RUNNER_API_BASE
+            )
+            primary_api_key = _env_first("DASHBOARD_ASSISTANT_LOCAL_API_KEY")
+            primary_model = (
+                _env_first("DASHBOARD_ASSISTANT_LOCAL_MODEL")
+                or DOCKER_MODEL_RUNNER_MODEL
+            )
+            model_tier = "local-primary"
+            model_label = "Qwen 3.5 4B Q4_K_M"
+            model_license = "See Docker model artifact metadata"
+            device_preference = "docker-model-runner"
+        else:
+            primary_runtime = (
                 "nvidia-nim"
                 if use_self_hosted
                 else (
                     _env_first("DASHBOARD_ASSISTANT_RUNTIME") or NVIDIA_HOSTED_RUNTIME
                 )
-            ),
-            api_base=(
-                _env_first("DASHBOARD_ASSISTANT_API_BASE", "OPENAI_BASE_URL")
-                or NVIDIA_HOSTED_API_BASE
-            ),
-            api_key=_env_first("DASHBOARD_ASSISTANT_API_KEY", "OPENAI_API_KEY"),
-            model_id=(
-                _env_first("DASHBOARD_ASSISTANT_MODEL", "DASHBOARD_ASSISTANT_MODEL_ID")
-                or DEFAULT_MODEL_ID
-            ),
+            )
+            primary_api_base = hosted_api_base
+            primary_api_key = hosted_api_key
+            primary_model = hosted_model
+            model_tier = "self-hosted" if use_self_hosted else "hosted"
+            model_label = "NVIDIA Nemotron 3 Super 120B A12B"
+            model_license = "NVIDIA API terms"
+            device_preference = (
+                "self-hosted-gpu" if use_self_hosted else "provider-managed"
+            )
+
+        return cls(
+            enabled=_parse_bool(os.getenv("DASHBOARD_ASSISTANT_ENABLED"), default=True),
+            provider=effective_provider,
+            runtime=primary_runtime,
+            api_base=primary_api_base,
+            api_key=primary_api_key,
+            model_id=primary_model,
             model_dir=None,
             model_file=None,
-            model_tier="self-hosted" if use_self_hosted else "hosted",
-            model_label="NVIDIA Nemotron 3 Super 120B A12B",
-            model_license="NVIDIA API terms",
+            model_tier=model_tier,
+            model_label=model_label,
+            model_license=model_license,
             auto_download=False,
-            device_preference=(
-                "self-hosted-gpu" if use_self_hosted else "provider-managed"
+            device_preference=device_preference,
+            local_enabled=local_enabled,
+            local_request_timeout_seconds=_parse_float(
+                os.getenv("DASHBOARD_ASSISTANT_LOCAL_REQUEST_TIMEOUT_SECONDS"),
+                default=20.0,
             ),
+            local_max_retries=_parse_int(
+                os.getenv("DASHBOARD_ASSISTANT_LOCAL_MAX_RETRIES"), default=0
+            ),
+            fallback_enabled=_parse_bool(
+                os.getenv("DASHBOARD_ASSISTANT_FALLBACK_ENABLED"),
+                default=primary_is_local,
+            ),
+            fallback_provider=(
+                _env_first("DASHBOARD_ASSISTANT_FALLBACK_PROVIDER") or "nvidia"
+            ),
+            fallback_runtime=(
+                _env_first("DASHBOARD_ASSISTANT_FALLBACK_RUNTIME")
+                or NVIDIA_HOSTED_RUNTIME
+            ),
+            fallback_api_base=hosted_api_base,
+            fallback_api_key=hosted_api_key,
+            fallback_model_id=hosted_model,
             enable_thinking=_parse_bool(
                 os.getenv("DASHBOARD_ASSISTANT_ENABLE_THINKING"), default=False
             ),
@@ -822,16 +921,16 @@ class AssistantConfig:
             ),
             request_timeout_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS"),
-                default=180.0,
+                default=45.0,
             ),
             max_retries=_parse_int(
-                os.getenv("DASHBOARD_ASSISTANT_MAX_RETRIES"), default=6
+                os.getenv("DASHBOARD_ASSISTANT_MAX_RETRIES"), default=2
             ),
             retry_base_seconds=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS"), default=2.0
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_BASE_SECONDS"), default=0.5
             ),
             retry_max_seconds=_parse_float(
-                os.getenv("DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS"), default=30.0
+                os.getenv("DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS"), default=4.0
             ),
             retry_jitter=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_RETRY_JITTER"), default=0.25
@@ -846,7 +945,7 @@ class AssistantConfig:
                 os.getenv("DASHBOARD_ASSISTANT_CIRCUIT_RECOVERY_SECONDS"),
                 default=60.0,
             ),
-            self_hosted_enabled=self_hosted_enabled,
+            self_hosted_enabled=use_self_hosted,
             self_hosted_base_url=(
                 _env_first("DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL")
                 or "http://nemotron-nim:8000/v1"
@@ -873,7 +972,7 @@ class AssistantConfig:
             ),
             generation_queue_timeout_seconds=_parse_float(
                 os.getenv("DASHBOARD_ASSISTANT_QUEUE_TIMEOUT_SECONDS"),
-                default=180.0,
+                default=30.0,
             ),
             presentation_max_new_tokens=_parse_int(
                 os.getenv("DASHBOARD_PRESENTATION_MAX_TOKENS"),
@@ -892,6 +991,7 @@ class AssistantConfig:
     def provider_config(self) -> ProviderConfig:
         provider = "nvidia-nim" if self.self_hosted_enabled else self.provider
         runtime = "nvidia-nim" if self.self_hosted_enabled else self.runtime
+        primary_is_local = provider == "docker-model-runner"
         return ProviderConfig(
             enabled=self.enabled,
             provider=provider,
@@ -901,8 +1001,17 @@ class AssistantConfig:
             model=self.model_id,
             enable_thinking=self.enable_thinking,
             reasoning_budget=max(0, self.reasoning_budget),
-            request_timeout_seconds=max(0.1, self.request_timeout_seconds),
-            max_retries=max(0, self.max_retries),
+            request_timeout_seconds=max(
+                0.1,
+                (
+                    self.local_request_timeout_seconds
+                    if primary_is_local
+                    else self.request_timeout_seconds
+                ),
+            ),
+            max_retries=max(
+                0, self.local_max_retries if primary_is_local else self.max_retries
+            ),
             retry_base_seconds=max(0.0, self.retry_base_seconds),
             retry_max_seconds=max(0.0, self.retry_max_seconds),
             retry_jitter=max(0.0, self.retry_jitter),
@@ -913,6 +1022,42 @@ class AssistantConfig:
             self_hosted_enabled=self.self_hosted_enabled,
             self_hosted_base_url=self.self_hosted_base_url,
         )
+
+    def provider_configs(self) -> tuple[ProviderConfig, ...]:
+        """Return the primary and optional hosted fallback in attempt order."""
+        configs = [self.provider_config()]
+        if self.fallback_enabled:
+            fallback = ProviderConfig(
+                enabled=self.enabled,
+                provider=self.fallback_provider,
+                runtime=self.fallback_runtime,
+                api_base=self.fallback_api_base,
+                api_key=self.fallback_api_key,
+                model=self.fallback_model_id,
+                enable_thinking=self.enable_thinking,
+                reasoning_budget=max(0, self.reasoning_budget),
+                request_timeout_seconds=max(0.1, self.request_timeout_seconds),
+                max_retries=max(0, self.max_retries),
+                retry_base_seconds=max(0.0, self.retry_base_seconds),
+                retry_max_seconds=max(0.0, self.retry_max_seconds),
+                retry_jitter=max(0.0, self.retry_jitter),
+                queue_timeout_seconds=max(0.0, self.generation_queue_timeout_seconds),
+                max_concurrency=max(1, self.max_concurrency),
+                circuit_failure_threshold=max(1, self.circuit_failure_threshold),
+                circuit_recovery_seconds=max(0.0, self.circuit_recovery_seconds),
+            )
+            primary = configs[0]
+            if (
+                fallback.normalized_provider,
+                fallback.effective_api_base,
+                fallback.model,
+            ) != (
+                primary.normalized_provider,
+                primary.effective_api_base,
+                primary.model,
+            ):
+                configs.append(fallback)
+        return tuple(configs)
 
 
 class DashboardChatAssistant:
@@ -932,15 +1077,16 @@ class DashboardChatAssistant:
         # ``_generator`` is retained as a deprecated fake-client injection hook.
         # Production generation always flows through ``_provider``.
         self._generator = None
+        self._generator_bound = False
         self._last_error: str | None = None
         self._json_cache: dict[Path, tuple[int, Any]] = {}
 
         self._maybe_load_dotenv()
         self.config = config or AssistantConfig.from_env()
-        self._provider = provider or build_provider(
-            self.config.provider_config(),
-            client=client,
-            client_factory=client_factory,
+        self._provider = provider or build_provider_chain(
+            self.config.provider_configs(),
+            primary_client=client,
+            primary_client_factory=client_factory,
         )
 
     def get_status(self) -> dict[str, Any]:
@@ -957,7 +1103,7 @@ class DashboardChatAssistant:
             "provider": provider_status.get("provider") or self.config.provider,
             "runtime": provider_status.get("runtime") or self.config.runtime,
             "api_base": provider_status.get("api_base") or self.config.api_base,
-            "model_id": self.config.model_id,
+            "model_id": provider_status.get("model_id") or self.config.model_id,
             "model_tier": self.config.model_tier,
             "model_label": self.config.model_label,
             "model_license": self.config.model_license,
@@ -977,6 +1123,10 @@ class DashboardChatAssistant:
             "generator_loaded": bool(
                 self._generator is not None
                 or getattr(self._provider, "_client", None) is not None
+                or any(
+                    getattr(item, "_client", None) is not None
+                    for item in getattr(self._provider, "providers", ())
+                )
             ),
             "provider_loaded": self._provider is not None,
             "inference_busy": bool(provider_status.get("active_requests", 0)),
@@ -987,6 +1137,34 @@ class DashboardChatAssistant:
             "max_retries": provider_status.get("max_retries"),
             "circuit_breaker": provider_status.get("circuit_breaker"),
             "self_hosted": provider_status.get("self_hosted", False),
+            "active_provider": provider_status.get("active_provider")
+            or provider_status.get("provider")
+            or self.config.provider,
+            "active_provider_index": provider_status.get("active_provider_index", 0),
+            "provider_chain": provider_status.get("provider_chain")
+            or [
+                {
+                    "order": 1,
+                    "provider": provider_status.get("provider"),
+                    "runtime": provider_status.get("runtime"),
+                    "api_base": provider_status.get("api_base"),
+                    "model_id": provider_status.get("model_id"),
+                    "state": provider_status.get("state"),
+                    "ready": bool(provider_status.get("ready")),
+                    "can_attempt": bool(provider_status.get("can_attempt")),
+                }
+            ],
+            "provider_chain_length": provider_status.get("provider_chain_length", 1),
+            "fallback_available": provider_status.get("fallback_available", False),
+            "failover_strategy": provider_status.get(
+                "failover_strategy", "single-provider"
+            ),
+            "last_attempts": provider_status.get("last_attempts", []),
+            "grounding": {
+                "strategy": "repository-rag",
+                "fine_tuned": False,
+                "evaluation_gate": "make assistant-eval",
+            },
             "failure_state": provider_status.get("failure_state"),
             "last_error": provider_status.get("last_error") or self._last_error,
             "input_limits": {
@@ -1118,8 +1296,9 @@ class DashboardChatAssistant:
                 temperature=self.config.temperature,
                 top_p=self.config.top_p,
             )
-        except ProviderError as exc:
-            self._raise_provider_unavailable(exc)
+        except (ProviderError, AssistantUnavailable) as exc:
+            self._last_error = str(exc)
+            reply = self._deterministic_grounded_fallback(message, context)
 
         if not reply:
             reply = EMPTY_GROUNDED_REPLY
@@ -1194,6 +1373,7 @@ class DashboardChatAssistant:
             yield quick_reply
             return
 
+        emitted = False
         try:
             provider = self._ensure_provider()
             if not self.config.stream_enabled:
@@ -1208,7 +1388,6 @@ class DashboardChatAssistant:
                 else:
                     yield EMPTY_GROUNDED_REPLY
                 return
-            emitted = False
             for content in provider.stream(
                 messages=messages,
                 max_tokens=self._response_token_limit(message),
@@ -1225,8 +1404,13 @@ class DashboardChatAssistant:
             # Closing this generator propagates into the provider, which closes the
             # remote stream without recording a model-health failure.
             raise
-        except ProviderError as exc:
-            self._raise_provider_unavailable(exc)
+        except (ProviderError, AssistantUnavailable) as exc:
+            self._last_error = str(exc)
+            if emitted:
+                if isinstance(exc, ProviderError):
+                    self._raise_provider_unavailable(exc)
+                raise
+            yield self._deterministic_grounded_fallback(message, context)
 
     def plan_presentation(
         self,
@@ -1586,20 +1770,49 @@ class DashboardChatAssistant:
             "facts": self._build_fact_map(payload, readings),
         }
 
+    def _deterministic_grounded_fallback(
+        self, question: str, context: dict[str, Any]
+    ) -> str:
+        """Return a bounded repository-only answer when every model path fails."""
+        quick_reply = self._maybe_short_circuit_response(question, context)
+        if quick_reply is not None:
+            return quick_reply
+
+        reading_matches = context.get("reading_matches") or []
+        if reading_matches:
+            return self._format_reading_metadata_response(reading_matches)
+        if not context.get("grounded"):
+            return EMPTY_GROUNDED_REPLY
+
+        facts: list[str] = []
+        for raw_line in str(context.get("context") or "").splitlines():
+            line = raw_line.strip().removeprefix("-").strip()
+            if not line or line in facts:
+                continue
+            facts.append(line[:240])
+            if len(facts) >= 3:
+                break
+        if not facts:
+            return EMPTY_GROUNDED_REPLY
+        bullets = "\n".join(f"- {fact}" for fact in facts)
+        return (
+            "The model providers are temporarily unavailable. Current grounded "
+            f"dashboard data shows:\n\n{bullets}"
+        )
+
     def _ensure_provider(self) -> AssistantProvider:
         """Return the configured provider without contacting it."""
         # Historical tests and downstream scripts sometimes assign a fake client
         # to ``_generator``.  Preserve that injection seam by placing the fake
         # behind the provider adapter instead of calling it directly.
-        if (
-            self._generator is not None
-            and getattr(self._provider, "_client", None) is None
-        ):
+        if self._generator is not None and not self._generator_bound:
             with self._lock:
-                if getattr(self._provider, "_client", None) is None:
-                    self._provider = build_provider(
-                        self.config.provider_config(), client=self._generator
+                if not self._generator_bound:
+                    self._provider = build_provider_chain(
+                        self.config.provider_configs(),
+                        primary_client=self._generator,
                     )
+                    self._generator_bound = True
 
         status = self._provider.status()
         if not status.get("can_attempt", status.get("ready")):
@@ -2878,9 +3091,7 @@ class DashboardChatAssistant:
                 if isinstance(hda_by_group, dict)
                 else []
             ),
-            "nano_pipeline": (
-                nano_pipeline if isinstance(nano_pipeline, list) else []
-            ),
+            "nano_pipeline": (nano_pipeline if isinstance(nano_pipeline, list) else []),
             "hda_month_count": (
                 max(
                     (
@@ -3115,6 +3326,8 @@ class DashboardChatAssistant:
             "api",
             "assistant",
             "configured",
+            "docker",
+            "dmr",
             "fallback",
             "gguf",
             "hosted",
@@ -3122,6 +3335,7 @@ class DashboardChatAssistant:
             "local",
             "nemotron",
             "nvidia",
+            "qwen",
             "no",
             "provider",
             "selected",
@@ -3400,10 +3614,14 @@ class DashboardChatAssistant:
                         f"{warning_text}"
                     )
 
-        inflight_requested = "inflight" in question_tokens or {
-            "in",
-            "flight",
-        } <= question_tokens
+        inflight_requested = (
+            "inflight" in question_tokens
+            or {
+                "in",
+                "flight",
+            }
+            <= question_tokens
+        )
         if question_tokens & {"pipeline", "stage", "stages"} and (
             inflight_requested
             or question_tokens
@@ -4149,17 +4367,16 @@ class DashboardChatAssistant:
         return None
 
     def _format_local_model_policy_response(self) -> str:
-        """Compatibility name for the current NVIDIA provider policy answer."""
-        model_label = self.config.model_label or self.config.model_file
-        model_id = self.config.model_id or self.config.model_file
-        runtime = self.config.runtime or NVIDIA_HOSTED_RUNTIME
+        """Compatibility name for the current ordered provider policy answer."""
+        primary_model = self.config.model_id or self.config.model_file
+        primary_runtime = self.config.runtime or DOCKER_MODEL_RUNNER_RUNTIME
 
         return (
-            "NVIDIA assistant provider policy:\n\n"
-            f"- Configured model: {model_label} ({model_id}) via {runtime}.\n"
-            "- Default runtime: NVIDIA's hosted OpenAI-compatible endpoint; an API key is required and external rate limits still apply.\n"
-            "- Resilience: bounded concurrency, queue timeout, retry/backoff with jitter, and circuit-breaker degradation keep the dashboard responsive.\n"
-            "- Self-hosting: NVIDIA NIM is optional and disabled by default because this model requires dedicated high-end GPU infrastructure."
+            "ESD Buddy provider policy:\n\n"
+            f"- Primary: {self.config.model_label} ({primary_model}) via {primary_runtime}.\n"
+            f"- Hosted fallback: {self.config.fallback_model_id} via {self.config.fallback_runtime}; it is attempted only when the local path fails before visible output, and external rate limits still apply.\n"
+            "- Final fallback: deterministic answers from the current aggregate dashboard and approved repository index.\n"
+            "- Adaptation: repository RAG supplies ESD Lab context; this model is not fine-tuned on study data and changes must pass `make assistant-eval`."
         )
 
     def _format_nano_study_explainer_response(

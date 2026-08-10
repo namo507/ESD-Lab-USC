@@ -1,11 +1,18 @@
 # NVIDIA Nemotron Integration Prompt
 
+> Historical record (superseded): this prompt describes the earlier
+> hosted-only migration and must not be used as the current deployment spec.
+> The active policy is Docker Model Runner/Qwen local primary, hosted Nemotron
+> fallback before visible output, then deterministic repository grounding. See
+> `config/llm_model.json` and `docs/dashboard_ai_assistant.md`.
+
 This file contains a single copyable implementation prompt for migrating the ESD-Lab-USC assistant stack to NVIDIA Nemotron 3 Super 120B A12B.
 
 Notes:
 - The real NVIDIA API key should live only in local `.env` or a secret manager.
 - Do not copy the real key into tracked files, docs, tests, Dockerfiles, Helm values, or Cloudflare artifacts.
-- The repository-local `.env` has already been updated with the live key and provider settings.
+- Runtime keys belong only in the ignored local `.env` or a managed secret store;
+  this document does not assert their current presence.
 
 ## Copyable Prompt
 

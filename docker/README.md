@@ -11,9 +11,10 @@ The canonical root stack is defined in `../docker-compose.yml`; see
 | `compose.prod.yml` | Production-like runtime with only generated data and readings mounted |
 | `dashboard/Dockerfile` | Dashboard runtime image |
 
-The dashboard image uses the hosted NVIDIA OpenAI-compatible client. It does
-not build llama.cpp, download GGUF weights, or mount a Hugging Face cache. The
-API key is supplied only at runtime through `.env` or an orchestrator Secret.
+The dashboard image uses one OpenAI-compatible client for Docker Model Runner
+and hosted NVIDIA fallback. It does not build llama.cpp, bake model weights, or
+mount a Hugging Face cache. Compose 2.38+ injects the local model endpoint and
+identifier; the hosted key is supplied only through `.env` or a Secret.
 
 Use the dev compose file explicitly from the repository root:
 

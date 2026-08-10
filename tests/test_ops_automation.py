@@ -69,6 +69,7 @@ def _live_dashboard_metrics(generated_at: str = "2026-08-07T12:00:00Z") -> dict:
             "studies_total": 5,
             "studies_reporting": 5,
             "study_enrollments": 50,
+            "study_enrollments_suppressed": False,
             "event_records": 50,
             "event_records_suppressed": False,
             "forms": forms(),
@@ -82,6 +83,7 @@ def _live_dashboard_metrics(generated_at: str = "2026-08-07T12:00:00Z") -> dict:
                 "projects_ok": projects,
                 "target": 260 if key == "nano" else None,
                 "enrollment": 10,
+                "enrollment_suppressed": False,
                 "event_records": 10,
                 "event_records_suppressed": False,
                 "events": [
@@ -101,6 +103,7 @@ def _live_dashboard_metrics(generated_at: str = "2026-08-07T12:00:00Z") -> dict:
                 "status": "ok",
                 "enrollment_authority": enrollment_authority,
                 "records": 10,
+                "records_suppressed": False,
                 "event_records": 10,
                 "event_records_suppressed": False,
                 "events": [
@@ -112,6 +115,11 @@ def _live_dashboard_metrics(generated_at: str = "2026-08-07T12:00:00Z") -> dict:
             for key, study, role, project_id, enrollment_authority in project_specs
         ],
     }
+    _rehash_dashboard_metrics(payload)
+    return payload
+
+
+def _rehash_dashboard_metrics(payload: dict) -> None:
     hash_input = {
         key: value
         for key, value in payload.items()
@@ -121,7 +129,27 @@ def _live_dashboard_metrics(generated_at: str = "2026-08-07T12:00:00Z") -> dict:
         hash_input, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
     payload["data_version"] = f"sha256:{hashlib.sha256(canonical).hexdigest()}"
-    return payload
+
+
+def _suppress_metrics_forms(forms: dict) -> None:
+    for key in (
+        "incomplete",
+        "unverified",
+        "complete",
+        "unknown",
+        "total",
+        "completion_rate",
+    ):
+        forms[key] = None
+    forms["counts_suppressed"] = True
+
+
+def _suppress_metrics_events(value: dict) -> None:
+    value["event_records"] = None
+    value["event_records_suppressed"] = True
+    for event in value["events"]:
+        event["records"] = None
+        event["suppressed"] = True
 
 
 def test_join_route_keeps_canonical_origin():
@@ -275,6 +303,13 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
         '<html><head></head><body><div id="root"></div>NANO</body></html>',
         encoding="utf-8",
     )
+    (build_dir / "_headers").write_text(
+        "/*\n"
+        "  X-Frame-Options: SAMEORIGIN\n\n"
+        "/dashboard/data/dashboard_metrics.json\n"
+        "  Cache-Control: public, max-age=86400\n",
+        encoding="utf-8",
+    )
     stale_data = build_dir / "dashboard" / "data"
     stale_data.mkdir(parents=True)
     (stale_data / "dashboard_data.json").write_text("{}", encoding="utf-8")
@@ -304,6 +339,7 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
 
     html = output.read_text(encoding="utf-8")
     worker = (out_dir / "_worker.js").read_text(encoding="utf-8")
+    headers = (out_dir / "_headers").read_text(encoding="utf-8")
     assert 'name="esd-api-mode" content="fallback-only"' in html
     assert 'name="esd-api-origin"' not in html
     assert "const API_ORIGIN = null;" in worker
@@ -321,6 +357,13 @@ def test_pages_packager_emits_fallback_only_worker(monkeypatch, tmp_path):
     assert "cleanBuddyProviderOutput" in worker
     assert "retiredRedcapResponse" in worker
     assert "REDCAP_API_TOKEN" not in worker
+    assert "publicMetricsResponse" in worker
+    assert headers.count("/dashboard/data/dashboard_metrics.json") == 1
+    assert "X-Frame-Options: SAMEORIGIN" in headers
+    assert "public, max-age=86400" not in headers
+    assert "Cache-Control: no-store, max-age=0, must-revalidate" in headers
+    assert "Content-Type: application/json; charset=utf-8" in headers
+    assert "X-Content-Type-Options: nosniff" in headers
     assert (out_dir / "dashboard" / "data" / "dashboard_metrics.json").is_file()
     assert not (out_dir / "dashboard" / "data" / "dashboard_data.json").exists()
 
@@ -348,6 +391,96 @@ def test_pages_packager_rejects_partial_or_participant_level_public_metrics():
     unsafe["projects"][0]["participant_id"] = "family-1"
     with pytest.raises(ValueError, match="forbidden key"):
         build_pages_site._validate_public_dashboard_metrics(unsafe)
+
+
+def test_pages_packager_enforces_participant_count_suppression_hierarchy():
+    payload = _live_dashboard_metrics()
+    authority = next(
+        project
+        for project in payload["projects"]
+        if project["study"] == "abc" and project["enrollment_authority"]
+    )
+    study = next(study for study in payload["studies"] if study["key"] == "abc")
+    authority["records"] = None
+    authority["records_suppressed"] = True
+    _suppress_metrics_events(authority)
+    _suppress_metrics_forms(authority["forms"])
+    study["enrollment"] = None
+    study["enrollment_suppressed"] = True
+    _suppress_metrics_events(study)
+    _suppress_metrics_forms(study["forms"])
+    payload["portfolio"]["study_enrollments"] = None
+    payload["portfolio"]["study_enrollments_suppressed"] = True
+    payload["portfolio"]["event_records"] = None
+    payload["portfolio"]["event_records_suppressed"] = True
+    _suppress_metrics_forms(payload["portfolio"]["forms"])
+    _rehash_dashboard_metrics(payload)
+
+    assert build_pages_site._validate_public_dashboard_metrics(payload) is payload
+
+    unsafe = json.loads(json.dumps(payload))
+    unsafe["portfolio"]["study_enrollments"] = 50
+    with pytest.raises(ValueError, match="must be null"):
+        build_pages_site._validate_public_dashboard_metrics(unsafe)
+
+    unsafe = json.loads(json.dumps(payload))
+    unsafe["projects"][0]["forms"] = _live_dashboard_metrics()["projects"][0]["forms"]
+    with pytest.raises(ValueError, match="forms reveal"):
+        build_pages_site._validate_public_dashboard_metrics(unsafe)
+
+
+@pytest.mark.parametrize("level", ["project", "study", "portfolio"])
+def test_pages_packager_rejects_unsuppressed_participant_small_cells(level):
+    payload = _live_dashboard_metrics()
+    if level == "project":
+        payload["projects"][0]["records"] = 4
+    elif level == "study":
+        payload["studies"][0]["enrollment"] = 4
+    else:
+        payload["portfolio"]["study_enrollments"] = 4
+    _rehash_dashboard_metrics(payload)
+
+    with pytest.raises(ValueError, match="unsuppressed .* small cell"):
+        build_pages_site._validate_public_dashboard_metrics(payload)
+
+
+def test_pages_packager_allows_independently_suppressed_non_authority_project():
+    payload = _live_dashboard_metrics()
+    project = next(
+        project
+        for project in payload["projects"]
+        if project["study"] == "abc" and not project["enrollment_authority"]
+    )
+    project["records"] = None
+    project["records_suppressed"] = True
+    _suppress_metrics_events(project)
+    _suppress_metrics_forms(project["forms"])
+    study = next(study for study in payload["studies"] if study["key"] == "abc")
+    _suppress_metrics_forms(study["forms"])
+    _suppress_metrics_forms(payload["portfolio"]["forms"])
+    _rehash_dashboard_metrics(payload)
+
+    assert build_pages_site._validate_public_dashboard_metrics(payload) is payload
+    assert payload["portfolio"]["study_enrollments"] == 50
+    assert payload["portfolio"]["study_enrollments_suppressed"] is False
+
+
+def test_pages_packager_rejects_tampered_project_and_authority_maps():
+    bad_authority = _live_dashboard_metrics()
+    next(
+        project for project in bad_authority["projects"] if project["key"] == "abc_lab"
+    )["enrollment_authority"] = True
+    _rehash_dashboard_metrics(bad_authority)
+    with pytest.raises(ValueError, match="authority map"):
+        build_pages_site._validate_public_dashboard_metrics(bad_authority)
+
+    bad_study_map = _live_dashboard_metrics()
+    next(
+        project for project in bad_study_map["projects"] if project["key"] == "abc_lab"
+    )["study"] = "ipsa"
+    _rehash_dashboard_metrics(bad_study_map)
+    with pytest.raises(ValueError, match="project study map"):
+        build_pages_site._validate_public_dashboard_metrics(bad_study_map)
 
 
 def test_pages_buddy_document_index_includes_tracked_ecg_protocol():
@@ -438,6 +571,21 @@ const assets = {
   },
 };
 const env = { ASSETS: assets, DASHBOARD_ASSISTANT_API_KEY: "test-only" };
+
+const metricsAsset = await worker.fetch(
+  new Request("https://example.test/dashboard/data/dashboard_metrics.json"),
+  env,
+);
+if (metricsAsset.status !== 200) throw new Error("Public metrics asset failed");
+if (metricsAsset.headers.get("cache-control") !== "no-store, max-age=0, must-revalidate") {
+  throw new Error("Public metrics asset can be cached");
+}
+if (metricsAsset.headers.get("x-content-type-options") !== "nosniff") {
+  throw new Error("Public metrics asset allows content sniffing");
+}
+if (!metricsAsset.headers.get("content-type")?.startsWith("application/json")) {
+  throw new Error("Public metrics asset has the wrong content type");
+}
 
 const retiredRedcap = await worker.fetch(new Request("https://example.test/api/redcap", {
   method: "POST",
@@ -676,7 +824,7 @@ def test_share_compose_defaults_cloudflared_to_http2():
         assert errors == []
 
 
-def test_compose_uses_nvidia_contract_and_scoped_autoheal():
+def test_compose_uses_local_model_failover_contract_and_scoped_autoheal():
     root = Path(__file__).resolve().parents[1]
     for compose_file in [
         root / "docker-compose.yml",
@@ -687,8 +835,15 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         services = payload["services"]
         environment = services["dashboard"]["environment"]
 
-        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith("-nvidia}")
-        assert "nemotron-3-super-120b-a12b" in environment["DASHBOARD_ASSISTANT_MODEL"]
+        assert environment["DASHBOARD_ASSISTANT_PROVIDER"].endswith(
+            "-docker-model-runner}"
+        )
+        assert environment["DASHBOARD_ASSISTANT_LOCAL_ENABLED"].endswith("-true}")
+        assert environment["DASHBOARD_ASSISTANT_FALLBACK_ENABLED"].endswith("-true}")
+        assert (
+            "nemotron-3-super-120b-a12b"
+            in environment["DASHBOARD_ASSISTANT_FALLBACK_MODEL"]
+        )
         assert "${" in environment["DASHBOARD_ASSISTANT_API_KEY"]
         assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
             "${DASHBOARD_ASSISTANT_ENABLED:-true}"
@@ -701,8 +856,25 @@ def test_compose_uses_nvidia_contract_and_scoped_autoheal():
         assert "READINGS_WATCH_PATH" in environment
         assert "PIPELINE_MAX_RETRIES" in environment
         assert "NANO_DATA_ROOT" in environment
+        for token_name in (
+            "REDCAP_ABC_SURVEYS_TOKEN",
+            "REDCAP_IPSA_SURVEYS_TOKEN",
+            "REDCAP_ACTION_TOKEN",
+            "REDCAP_IPSA_LAB_TOKEN",
+            "REDCAP_ABC_LAB_TOKEN",
+            "REDCAP_NICO_TOKEN",
+            "REDCAP_NANO_SURVEYS_TOKEN",
+            "REDCAP_NANO_LAB_TOKEN",
+        ):
+            assert token_name in environment
         assert "HF_HOME" not in environment
         assert services["dashboard"].get("env_file") is None
+        assert services["dashboard"]["models"]["esd-buddy"] == {
+            "endpoint_var": "DASHBOARD_ASSISTANT_LOCAL_API_BASE",
+            "model_var": "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+        }
+        assert "ai/qwen3.5:4b-q4_K_M" in payload["models"]["esd-buddy"]["model"]
+        assert payload["models"]["esd-buddy"]["context_size"] == 8192
         assert all(
             str(port).startswith("127.0.0.1:")
             for port in services["dashboard"]["ports"]
@@ -775,7 +947,7 @@ def test_share_script_normalizes_legacy_tunnel_token_for_compose_secret():
     assert 'export CLOUDFLARE_TUNNEL_TOKEN="$named_tunnel_token"' in script
 
 
-def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
+def test_helm_provider_keys_and_redcap_portfolio_are_secret_backed():
     root = Path(__file__).resolve().parents[1]
     chart = root / "k8s" / "helm" / "esd-lab-dashboard"
     values = yaml.safe_load((chart / "values.yaml").read_text(encoding="utf-8"))
@@ -783,9 +955,22 @@ def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
     deployment = (chart / "templates" / "deployment-dashboard.yaml").read_text(
         encoding="utf-8"
     )
+    helpers = (chart / "templates" / "_helpers.tpl").read_text(encoding="utf-8")
+    secret = (chart / "templates" / "secret.yaml").read_text(encoding="utf-8")
 
     assert values["assistant"]["provider"] == "nvidia"
     assert values["assistant"]["apiKeySecretKey"] == "dashboardAssistantApiKey"
+    assert values["assistant"]["local"] == {
+        "enabled": False,
+        "runtime": "docker-model-runner",
+        "apiBase": "",
+        "apiKeySecretKey": "dashboardAssistantLocalApiKey",
+        "model": "ai/qwen3.5:4b-q4_K_M",
+        "requestTimeoutSeconds": 20,
+        "maxRetries": 0,
+        "requireHttps": True,
+    }
+    assert values["assistant"]["fallback"]["provider"] == "nvidia"
     for key in (
         "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",
         "DASHBOARD_ASSISTANT_RETRY_JITTER",
@@ -795,8 +980,23 @@ def test_helm_nvidia_key_is_secret_backed_and_reliability_is_configured():
     ):
         assert key in configmap
     assert "- name: DASHBOARD_ASSISTANT_API_KEY" in deployment
+    assert "- name: DASHBOARD_ASSISTANT_FALLBACK_API_KEY" in deployment
+    assert "- name: DASHBOARD_ASSISTANT_LOCAL_API_KEY" in deployment
     assert "secretKeyRef:" in deployment
     assert "DASHBOARD_ASSISTANT_API_KEY:" not in configmap
+    for token_name, secret_key in (
+        ("REDCAP_ABC_SURVEYS_TOKEN", "redcapAbcSurveysToken"),
+        ("REDCAP_IPSA_SURVEYS_TOKEN", "redcapIpsaSurveysToken"),
+        ("REDCAP_ACTION_TOKEN", "redcapActionToken"),
+        ("REDCAP_IPSA_LAB_TOKEN", "redcapIpsaLabToken"),
+        ("REDCAP_ABC_LAB_TOKEN", "redcapAbcLabToken"),
+        ("REDCAP_NICO_TOKEN", "redcapNicoToken"),
+        ("REDCAP_NANO_SURVEYS_TOKEN", "redcapNanoSurveysToken"),
+        ("REDCAP_NANO_LAB_TOKEN", "redcapNanoLabToken"),
+    ):
+        assert f"- name: {token_name}" in helpers
+        assert f"key: {secret_key}" in helpers
+        assert f"{secret_key}:" in secret
 
 
 def test_repair_compose_services_targets_requested_services(monkeypatch, tmp_path):

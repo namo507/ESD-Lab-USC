@@ -94,12 +94,43 @@ PUBLIC_METRICS_STUDY_PROJECTS = {
     "nico": 1,
     "nano": 2,
 }
+PUBLIC_METRICS_ENROLLMENT_AUTHORITIES = {
+    "abc_surveys",
+    "ipsa_surveys",
+    "action",
+    "nico",
+    "nano_surveys",
+}
+PUBLIC_METRICS_PATH = "/dashboard/data/dashboard_metrics.json"
+PUBLIC_METRICS_HEADER_RULE = f"""{PUBLIC_METRICS_PATH}
+  Cache-Control: no-store, max-age=0, must-revalidate
+  Content-Type: application/json; charset=utf-8
+  X-Content-Type-Options: nosniff
+"""
 
 
 def _read(path: pathlib.Path) -> str:
     if not path.exists():
         sys.exit(f"[build_pages_site] missing required file: {path}")
     return path.read_text(encoding="utf-8")
+
+
+def _write_pages_headers(out_dir: pathlib.Path) -> pathlib.Path:
+    """Ensure the live aggregate artifact is never cached or content-sniffed."""
+
+    headers_path = out_dir / "_headers"
+    existing = headers_path.read_text(encoding="utf-8") if headers_path.exists() else ""
+    existing_rule = re.compile(
+        rf"(?m)^{re.escape(PUBLIC_METRICS_PATH)}[ \t]*\n(?:^[ \t]+.*(?:\n|$))*"
+    )
+    preserved = existing_rule.sub("", existing).rstrip()
+    sections = [
+        section
+        for section in (preserved, PUBLIC_METRICS_HEADER_RULE.rstrip())
+        if section
+    ]
+    headers_path.write_text("\n\n".join(sections) + "\n", encoding="utf-8")
+    return headers_path
 
 
 def _walk_json(value):
@@ -223,6 +254,32 @@ def _validate_event_total(value: dict, *, label: str) -> None:
         raise ValueError(f"public dashboard metrics {label} total is invalid")
 
 
+def _validate_participant_count(
+    value: object,
+    suppressed: object,
+    *,
+    label: str,
+) -> None:
+    """Validate a public participant count and its small-cell suppression flag."""
+
+    if not isinstance(suppressed, bool):
+        raise ValueError(
+            f"public dashboard metrics {label} suppression flag is invalid"
+        )
+    if suppressed:
+        if value is not None:
+            raise ValueError(
+                f"suppressed public dashboard metrics {label} must be null"
+            )
+        return
+    if not _is_nonnegative_int(value):
+        raise ValueError(f"public dashboard metrics {label} is invalid")
+    if 0 < int(value) < PUBLIC_METRICS_SMALL_CELL_THRESHOLD:
+        raise ValueError(
+            f"public dashboard metrics expose an unsuppressed {label} small cell"
+        )
+
+
 def _validate_public_dashboard_metrics(
     payload: object,
     *,
@@ -311,6 +368,7 @@ def _validate_public_dashboard_metrics(
         "studies_total",
         "studies_reporting",
         "study_enrollments",
+        "study_enrollments_suppressed",
         "event_records",
         "event_records_suppressed",
         "forms",
@@ -322,10 +380,11 @@ def _validate_public_dashboard_metrics(
         or portfolio.get("studies_reporting") != 5
     ):
         raise ValueError("public dashboard metrics require 5/5 healthy studies")
-    if not _is_nonnegative_int(portfolio.get("study_enrollments")):
-        raise ValueError(
-            "public dashboard metrics study_enrollments must be nonnegative"
-        )
+    _validate_participant_count(
+        portfolio.get("study_enrollments"),
+        portfolio.get("study_enrollments_suppressed"),
+        label="portfolio study enrollment",
+    )
     _validate_event_total(portfolio, label="portfolio event")
     _validate_metrics_forms(portfolio.get("forms"), include_instruments=False)
 
@@ -345,6 +404,7 @@ def _validate_public_dashboard_metrics(
             "projects_ok",
             "target",
             "enrollment",
+            "enrollment_suppressed",
             "event_records",
             "event_records_suppressed",
             "events",
@@ -358,8 +418,11 @@ def _validate_public_dashboard_metrics(
             or study["projects_ok"] != project_count
         ):
             raise ValueError("public dashboard metrics contain an unhealthy study")
-        if not _is_nonnegative_int(study.get("enrollment")):
-            raise ValueError("public dashboard metrics study enrollment is invalid")
+        _validate_participant_count(
+            study.get("enrollment"),
+            study.get("enrollment_suppressed"),
+            label="study enrollment",
+        )
         _validate_event_total(study, label="study event")
         if study["target"] is not None and not _is_nonnegative_int(study["target"]):
             raise ValueError("public dashboard metrics study target is invalid")
@@ -388,6 +451,7 @@ def _validate_public_dashboard_metrics(
             "status",
             "enrollment_authority",
             "records",
+            "records_suppressed",
             "event_records",
             "event_records_suppressed",
             "events",
@@ -405,8 +469,11 @@ def _validate_public_dashboard_metrics(
             raise ValueError("public dashboard metrics project title is invalid")
         if not isinstance(project["enrollment_authority"], bool):
             raise ValueError("public dashboard metrics enrollment authority is invalid")
-        if not _is_nonnegative_int(project.get("records")):
-            raise ValueError("public dashboard metrics project records is invalid")
+        _validate_participant_count(
+            project.get("records"),
+            project.get("records_suppressed"),
+            label="project records",
+        )
         _validate_event_total(project, label="project event")
         if project["error"] is not None:
             raise ValueError("healthy public dashboard metrics project has an error")
@@ -414,11 +481,67 @@ def _validate_public_dashboard_metrics(
         _validate_metrics_forms(project["forms"], include_instruments=True)
 
     studies_by_key = {study["key"]: study for study in studies}
+    actual_study_projects = {
+        study_key: sum(project["study"] == study_key for project in projects)
+        for study_key in PUBLIC_METRICS_STUDY_PROJECTS
+    }
+    if actual_study_projects != PUBLIC_METRICS_STUDY_PROJECTS:
+        raise ValueError("public dashboard metrics project study map is invalid")
     authority_projects = [
         project for project in projects if project["enrollment_authority"]
     ]
+    if {project["key"] for project in authority_projects} != (
+        PUBLIC_METRICS_ENROLLMENT_AUTHORITIES
+    ):
+        raise ValueError("public dashboard metrics enrollment authority map is invalid")
+    authority_by_study = {project["study"]: project for project in authority_projects}
+    for study_key, study in studies_by_key.items():
+        authority = authority_by_study.get(study_key)
+        if authority is None:
+            raise ValueError(
+                "public dashboard metrics study is missing an enrollment authority"
+            )
+        if study["enrollment_suppressed"] != authority["records_suppressed"]:
+            raise ValueError(
+                "public dashboard metrics study enrollment suppression is inconsistent"
+            )
+        if (
+            not study["enrollment_suppressed"]
+            and study["enrollment"] != authority["records"]
+        ):
+            raise ValueError(
+                "public dashboard metrics study enrollment does not match its authority"
+            )
+
+    suppressed_study_enrollment = any(
+        study["enrollment_suppressed"] for study in studies
+    )
+    if portfolio["study_enrollments_suppressed"] != suppressed_study_enrollment:
+        raise ValueError(
+            "public dashboard metrics portfolio enrollment suppression is inconsistent"
+        )
+    if not suppressed_study_enrollment and portfolio["study_enrollments"] != sum(
+        int(study["enrollment"]) for study in studies
+    ):
+        raise ValueError(
+            "public dashboard metrics portfolio enrollment total is inconsistent"
+        )
+
     for project in projects:
         study = studies_by_key[project["study"]]
+        if project["records_suppressed"] and not project["forms"]["counts_suppressed"]:
+            raise ValueError(
+                "public dashboard metrics project forms reveal a suppressed "
+                "participant count"
+            )
+        if project["records_suppressed"] and (
+            not project["event_records_suppressed"]
+            or any(not event["suppressed"] for event in project["events"])
+        ):
+            raise ValueError(
+                "public dashboard metrics project events reveal a suppressed "
+                "participant count"
+            )
         if (
             project["forms"]["counts_suppressed"]
             and not study["forms"]["counts_suppressed"]
@@ -632,6 +755,7 @@ const BUDDY_PROVIDER_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 const BUDDY_MAX_BODY_BYTES = 32 * 1024;
 const BUDDY_RATE_LIMIT = 12;
 const BUDDY_RATE_WINDOW_MS = 60 * 1000;
+const PUBLIC_METRICS_PATH = "/dashboard/data/dashboard_metrics.json";
 
 const presentationJobs = new Map();
 const buddyRequests = new Map();
@@ -657,6 +781,19 @@ function ndjsonResponse(text) {
       "content-type": "application/x-ndjson; charset=utf-8",
       "cache-control": "no-store",
     },
+  });
+}
+
+function publicMetricsResponse(response) {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store, max-age=0, must-revalidate");
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("x-content-type-options", "nosniff");
+  const bodyless = [101, 204, 205, 304].includes(response.status);
+  return new Response(bodyless ? null : response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
@@ -1579,7 +1716,9 @@ export default {
 
     const assetResponse = await env.ASSETS.fetch(request);
     if (assetResponse.status !== 404) {
-      return assetResponse;
+      return url.pathname === PUBLIC_METRICS_PATH
+        ? publicMetricsResponse(assetResponse)
+        : assetResponse;
     }
 
     const lastSegment = url.pathname.split("/").pop() || "";
@@ -1762,6 +1901,7 @@ def build(
         "/* /index.html 200\n",
         encoding="utf-8",
     )
+    headers_path = _write_pages_headers(out_dir)
 
     size_kb = out_index.stat().st_size / 1024
     print(
@@ -1772,6 +1912,10 @@ def build(
     print(
         f"[build_pages_site] wrote {redirects_path.relative_to(REPO_ROOT)} "
         "(static SPA fallback)"
+    )
+    print(
+        f"[build_pages_site] wrote {headers_path.relative_to(REPO_ROOT)} "
+        "(live metrics no-store policy)"
     )
     print(
         f"[build_pages_site] wrote {worker_path.relative_to(REPO_ROOT)} "

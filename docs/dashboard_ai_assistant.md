@@ -1,11 +1,21 @@
 # Dashboard AI assistant
 
-The dashboard assistant uses NVIDIA Nemotron 3 Super 120B A12B through an
-OpenAI-compatible server-side provider. The supported default is NVIDIA's
-hosted endpoint; the browser never receives provider credentials and never
-connects to NVIDIA directly.
+ESD Buddy uses one grounded request path with three ordered outcomes:
 
-The migration preserves the existing dashboard API:
+1. Docker Model Runner serves `ai/qwen3.5:4b-q4_K_M` locally through its
+   OpenAI-compatible endpoint.
+2. Hosted NVIDIA Nemotron (`nvidia/nemotron-3-super-120b-a12b`) is attempted
+   when the local provider fails before any visible streamed text.
+3. If neither model succeeds, the backend returns a deterministic answer from
+   approved aggregate dashboard data and repository excerpts.
+
+The browser never receives a provider key or REDCap token and never calls a
+model endpoint directly. Each model endpoint has its own queue, timeout,
+retry policy, and circuit breaker. A provider is never switched after visible
+text has been emitted, so users cannot receive an answer spliced from two
+models.
+
+The existing API remains stable:
 
 - `GET /api/chat/status`
 - `GET /api/assistant/status`
@@ -16,181 +26,174 @@ The migration preserves the existing dashboard API:
 - `POST /api/buddy`
 - the synchronous and asynchronous presentation-planning endpoints
 
-`/api/buddy` is the NANO dashboard adapter over the same assistant instance.
-It returns a compact JSON contract with `answer`, `citations`, `used_metrics`,
-and `refused`. Its grounding allowlist contains aggregate NANO metrics and
-non-PHI repository documents only. It refuses participant-level and raw-signal
-requests even when another assistant route could answer a general question.
+`/api/buddy` is the NANO adapter over the shared chain. Its allowlist contains
+aggregate NANO metrics and approved non-PHI documents. Participant-level and
+raw-signal requests are refused before model generation.
 
-Repository grounding, citation extraction, REDCap/readings freshness,
-deterministic short-circuit answers, PHI guardrails, and presentation-plan
-normalization remain part of the dashboard runtime. Only text generation is
-delegated to the provider.
+## Domain adaptation: RAG, not fine-tuning
 
-## Hosted configuration
+The repository does not fine-tune, modify, or store model weights. ESD-specific
+answers come from retrieval-augmented generation (RAG): the backend selects
+current aggregate dashboard facts and approved repository excerpts, applies PHI
+guardrails, and supplies that bounded context with the question. Deterministic
+short answers cover common operational questions without model generation.
 
-Copy `.env.example` to `.env`, then set the real key locally:
+This distinction matters operationally:
 
-```dotenv
-DASHBOARD_ASSISTANT_ENABLED=true
-DASHBOARD_ASSISTANT_PROVIDER=nvidia
-DASHBOARD_ASSISTANT_RUNTIME=nvidia-build-api
-DASHBOARD_ASSISTANT_API_BASE=https://integrate.api.nvidia.com/v1
-DASHBOARD_ASSISTANT_API_KEY=replace-locally
-DASHBOARD_ASSISTANT_MODEL=nvidia/nemotron-3-super-120b-a12b
-```
+- model updates remain reproducible OCI artifact changes;
+- REDCap data stays outside model weights;
+- removing or refreshing an indexed source changes future context immediately;
+- `make assistant-eval` is the required regression gate for provider, grounding,
+  concise-answer, and Buddy behavior changes.
 
-Do not commit `.env`, a real key, or an Authorization header. The canonical
-variables take precedence. `OPENAI_BASE_URL` and `OPENAI_API_KEY` are accepted
-as compatibility aliases when the canonical values are absent.
+Do not describe this setup as a model trained on study data. A future fine-tune
+would require a separate approved dataset, de-identification review, model
+artifact lifecycle, and evaluation protocol.
 
-Default generation and reliability settings are documented in `.env.example`:
+## Configuration
 
-- thinking disabled with a zero reasoning budget so planning text cannot consume the short chat response budget
-- 16,384 maximum provider output tokens, temperature `0.2`, and top-p `0.95`; chat responses are capped separately for concise answers
-- streaming enabled
-- bounded concurrency and queue wait
-- request timeout
-- exponential retry with jitter for retryable failures
-- circuit-breaker degradation after repeated failures
-
-External rate limits still apply. The retry and circuit-breaker controls make
-limits survivable; they do not remove provider quotas.
-
-Validate configuration without generating text:
-
-```bash
-make assistant-status
-```
-
-Rebuild repository grounding indexes:
-
-```bash
-make assistant-prepare
-```
-
-Probe the configured provider's non-generation endpoint:
-
-```bash
-make assistant-probe
-```
-
-## Optional self-hosted NIM
-
-Nemotron 3 Super 120B is not supported as a laptop, default Compose, or ordinary
-dashboard-pod workload. A self-hosted NVIDIA NIM requires dedicated high-end GPU
-infrastructure and remains disabled by default.
-
-Only operators who already run a compatible NIM should opt in:
+Copy `.env.example` to the ignored `.env`. The model runner settings are
+non-secret; the hosted key remains blank until an operator supplies it locally:
 
 ```dotenv
-DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED=true
-DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL=https://nemotron-nim.example.org/v1
+DASHBOARD_ASSISTANT_PROVIDER=docker-model-runner
+DASHBOARD_ASSISTANT_LOCAL_ENABLED=true
+DASHBOARD_ASSISTANT_LOCAL_API_BASE=http://127.0.0.1:12434/engines/v1
+DASHBOARD_ASSISTANT_LOCAL_MODEL=ai/qwen3.5:4b-q4_K_M
+DASHBOARD_ASSISTANT_FALLBACK_ENABLED=true
+DASHBOARD_ASSISTANT_FALLBACK_PROVIDER=nvidia
+DASHBOARD_ASSISTANT_FALLBACK_API_BASE=https://integrate.api.nvidia.com/v1
+DASHBOARD_ASSISTANT_FALLBACK_API_KEY=
+DASHBOARD_ASSISTANT_FALLBACK_MODEL=nvidia/nemotron-3-super-120b-a12b
 ```
 
-When opt-in is false, the self-hosted URL is ignored and the hosted API base is
-used. The same provider abstraction and status behavior apply to both modes.
+`DASHBOARD_ASSISTANT_API_BASE`, `DASHBOARD_ASSISTANT_API_KEY`,
+`DASHBOARD_ASSISTANT_MODEL`, `OPENAI_BASE_URL`, and `OPENAI_API_KEY` remain
+hosted-provider compatibility aliases. Canonical `*_FALLBACK_*` values take
+precedence. Never commit `.env`, provider keys, REDCap tokens, or Authorization
+headers.
 
-## Status model
+Concise defaults are 96 output tokens for ordinary chat and 144 for an explicit
+detail request, bounded by `DASHBOARD_ASSISTANT_MAX_NEW_TOKENS=256`. Thinking is
+disabled. The local path has a 20-second request timeout and no retry so a dead
+runner moves quickly to the hosted path; hosted retries are bounded and use
+backoff with jitter. External provider quotas and rate limits still apply.
 
-Assistant status is provider-oriented:
+## Status and failover observability
 
-| State | Meaning |
-| --- | --- |
-| `ready` | Configuration is usable and the circuit is closed. |
-| `disabled` | The assistant was explicitly disabled. |
-| `credentials-missing` | No canonical key or compatibility alias is configured. |
-| `provider-unreachable` | The provider could not be reached after bounded retry. |
-| `rate-limited` | The provider rejected the request for quota/rate reasons. |
-| `timeout` | Queue or provider request timeout elapsed. |
-| `degraded` | The circuit is open or another sanitized provider failure occurred. |
+Assistant status includes the compatibility fields `provider`, `runtime`, and
+`model_id`, plus:
 
-Older clients may still receive nullable `model_dir`, `model_file`, and
-`model_path` fields. They are compatibility fields only and no longer represent
-a runtime dependency.
+- `active_provider` and `active_provider_index`;
+- ordered `provider_chain` entries with model, endpoint, state, and circuit;
+- `last_attempts` containing sanitized success/failure outcomes;
+- `fallback_available`;
+- `failover_strategy: before-first-visible-token`;
+- `grounding.strategy: repository-rag` and `grounding.fine_tuned: false`.
 
-`/api/healthz` reports application health, not provider generation health. A
-missing key or provider outage must not fail container or pod readiness. The
-dashboard remains usable while assistant status explains the degraded state.
+No credentials or raw provider errors appear in status. Provider states remain
+`ready`, `disabled`, `credentials-missing`, `provider-unreachable`,
+`rate-limited`, `timeout`, or `degraded`.
 
-## Docker
+`/api/healthz` reports application health, not model generation health. Model
+or network failures must not restart-loop the dashboard. The deterministic
+grounded path remains available while provider status reports degradation.
 
-Compose passes non-secret provider settings to the dashboard container and
-reads `DASHBOARD_ASSISTANT_API_KEY` from the local environment. No GGUF volume,
-Hugging Face cache, or model download is required.
+## Docker Model Runner and Compose
+
+Docker Compose 2.38 or later is required for the top-level `models` feature.
+The root, development, and production Compose files all declare:
+
+```yaml
+services:
+  dashboard:
+    models:
+      esd-buddy:
+        endpoint_var: DASHBOARD_ASSISTANT_LOCAL_API_BASE
+        model_var: DASHBOARD_ASSISTANT_LOCAL_MODEL
+
+models:
+  esd-buddy:
+    model: ${DASHBOARD_ASSISTANT_LOCAL_MODEL_ARTIFACT:-ai/qwen3.5:4b-q4_K_M}
+    context_size: 8192
+```
+
+Compose injects the container-safe endpoint and selected model identifier. It
+does not bake weights into the dashboard image. Check the already-pulled model
+or pull it explicitly:
 
 ```bash
-docker compose config
+make assistant-model-check
+make assistant-model-pull
+docker compose --env-file /dev/null -f docker-compose.yml config -q
 docker compose up -d --build
 curl -fsS http://127.0.0.1:8080/api/healthz
 curl -fsS http://127.0.0.1:8080/api/assistant/status
-curl -fsS http://127.0.0.1:8080/api/buddy
 ```
 
-The first endpoint should remain healthy even when the second reports
-`credentials-missing` or another degraded provider state.
+Docker Model Runner's API is not authenticated. Keep it host-local and use the
+Compose model binding; do not publish port `12434` to the LAN or internet.
+Cloudflare tunnels expose only the dashboard HTTP service.
 
 ## Kubernetes
 
-Helm stores non-secret provider configuration in the ConfigMap and injects the
-API key through a Secret reference. Prefer an existing Secret in production.
-Dashboard startup, liveness, and readiness use `/api/healthz`; they never make
-a model-generation call. Provider outages therefore cannot cause rollout or
-restart loops.
-
-Render both supported secret modes before deployment:
+The Helm chart does **not** deploy Docker Model Runner, a privileged sidecar, a
+GPU workload, or model weights. Hosted NVIDIA remains the default pod provider.
+An operator may point the chart at an existing OpenAI-compatible endpoint:
 
 ```bash
-helm lint k8s/helm/esd-lab-dashboard
-helm template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
-  --set secret.create=true \
-  --set-string secret.nvidiaApiKey=example-only
-helm template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
-  --set secret.create=false \
-  --set secret.existingSecret=esd-lab-dashboard-secrets
+helm upgrade --install esd-lab-dashboard k8s/helm/esd-lab-dashboard \
+  --set assistant.local.enabled=true \
+  --set assistant.local.apiBase=https://model-gateway.esd-lab.example/v1
 ```
 
-Never place a real key in a values file or committed render.
+`assistant.local.requireHttps=true` is the default. Disabling that guard is an
+explicit operator decision for a private in-cluster endpoint. The endpoint must
+be protected by network policy; an optional local gateway key is read from the
+Secret key named by `assistant.local.apiKeySecretKey`.
+
+The hosted fallback key and all eight REDCap portfolio tokens are Secret
+references, never ConfigMap values. The expected Secret keys are:
+
+- `redcapAbcSurveysToken`
+- `redcapIpsaSurveysToken`
+- `redcapActionToken`
+- `redcapIpsaLabToken`
+- `redcapAbcLabToken`
+- `redcapNicoToken`
+- `redcapNanoSurveysToken`
+- `redcapNanoLabToken`
+- `dashboardAssistantApiKey`
+- optionally `dashboardAssistantLocalApiKey`
+
+Prefer an existing Secret in production. `secret.create=true` exists for local
+render validation only; never commit real values in a Helm values file.
 
 ## Cloudflare Pages
 
-Pages contains the SPA, a same-origin `/api/*` proxy, and bounded aggregate-only
-assistant fallbacks. A healthy Python backend remains the preferred provider
-path. When no healthy origin exists, the worker can use the Pages project-level
-`DASHBOARD_ASSISTANT_API_KEY` runtime secret for NVIDIA generation without
-serializing the credential into the bundle or exposing it to the browser.
-Without either provider path, deterministic aggregate metric and approved
-document answers remain available while status reports the degraded state.
+Pages serves the SPA and a same-origin `/api/*` proxy. A healthy Python backend
+is the preferred path. The worker may use its project-level hosted-provider
+secret for bounded aggregate-only generation when configured, and otherwise
+keeps deterministic aggregate/document answers available. Neither the Docker
+Model Runner endpoint nor its unauthenticated port is exposed through Pages or
+the tunnel.
 
-Use a named tunnel or another durable HTTPS backend origin for production.
-Ephemeral `trycloudflare.com` origins are runtime previews and must not become a
-long-lived canonical Pages origin.
-
-## Failure behavior and privacy
-
-- Retryable requests use bounded exponential backoff with jitter.
-- Streaming retries stop after the first emitted content token to prevent
-  duplicate output.
-- Closing the chat drawer or disconnecting a client cancels/closes the stream.
-- Provider reasoning fields, tags, and recognizable planning preambles are removed before answer content reaches the UI.
-- Raw provider errors and keys are never returned to the browser or logged.
-- The dashboard does not cache model responses by default because prompts may
-  contain sensitive research context.
-- Deterministic repository answers can still be returned when the provider is
-  degraded.
+Use a named tunnel or another durable HTTPS backend origin in production.
+Ephemeral `trycloudflare.com` origins are previews and must not become the
+canonical Pages origin.
 
 ## Verification
 
-Minimum migration checks:
-
 ```bash
-python3 -m pytest tests/test_dashboard_assistant.py tests/test_assistant_provider.py -q
-npm --prefix web test
-npm --prefix web run build
+make assistant-status
+make assistant-prepare
+make assistant-probe
+make assistant-eval
 python3 scripts/check_compose_config.py
 make k8s-helm-lint
-make pages-build
 ```
 
-Also boot once without a key and prove that core pages and `/api/healthz` work
-while `/api/assistant/status` reports `credentials-missing`.
+`assistant-status` is non-generating. `assistant-probe` calls model catalogs and
+may fall through from local to hosted without generating text. Live generation
+and hosted usage should be exercised only with approved aggregate/non-PHI test
+prompts.

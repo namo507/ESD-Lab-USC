@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and prepare the NVIDIA-backed dashboard assistant.
+"""Validate and prepare the local-first dashboard assistant.
 
 This command performs no generation by default. It validates the environment,
 reports a sanitized readiness state, and can refresh repository grounding.
@@ -103,7 +103,7 @@ def _reindex(assistant: DashboardChatAssistant, *, dry_run: bool) -> dict[str, A
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate and prepare the NVIDIA dashboard assistant."
+        description="Validate and prepare the ordered dashboard provider chain."
     )
     parser.add_argument(
         "--validate-config",
@@ -165,12 +165,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True, default=str))
     else:
-        print(f"provider: {status.get('provider', 'nvidia')}")
-        print(f"runtime: {status.get('runtime', 'nvidia-build-api')}")
+        print(f"provider: {status.get('provider', 'docker-model-runner')}")
+        print(f"runtime: {status.get('runtime', 'docker-model-runner')}")
         print(f"model: {status.get('model_id') or status.get('model') or 'unknown'}")
         print(f"state: {status.get('state', 'degraded')}")
         print(f"ready: {bool(status.get('ready'))}")
         print(f"message: {status.get('message', '')}")
+        for item in status.get("provider_chain", []):
+            print(
+                "provider_chain: "
+                f"{item.get('order')} {item.get('provider')} "
+                f"model={item.get('model_id')} state={item.get('state')}"
+            )
         if "grounding" in payload:
             print(
                 "grounding_reindexed: "

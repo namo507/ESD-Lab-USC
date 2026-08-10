@@ -61,6 +61,7 @@ spec:
                   name: {{ .Values.secret.name }}
                   key: redcapApiToken
                   optional: true
+            {{- include "esd-lab-dashboard.redcapPortfolioSecretEnv" . | nindent 12 }}
             - name: PARTICIPANT_ID_SALT
               valueFrom:
                 secretKeyRef:
@@ -84,6 +85,18 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secret.name }}
                   key: {{ .Values.assistant.apiKeySecretKey }}
+                  optional: true
+            - name: DASHBOARD_ASSISTANT_FALLBACK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.assistant.fallback.apiKeySecretKey }}
+                  optional: true
+            - name: DASHBOARD_ASSISTANT_LOCAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.assistant.local.apiKeySecretKey }}
                   optional: true
             - name: OPENAI_API_KEY
               valueFrom:

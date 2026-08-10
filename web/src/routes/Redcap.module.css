@@ -32,6 +32,175 @@
 
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
+.projectSnapshotStale {
+  border-color: color-mix(in srgb, var(--usc-gold) 62%, var(--warm-border));
+}
+.projectSnapshotHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--warm-border);
+}
+.projectSnapshotTitle {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: var(--w-semibold);
+}
+.projectSnapshotHead p {
+  max-width: 660px;
+  margin: 4px 0 0;
+  color: var(--slate-500);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.projectSnapshotBadges {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.reloadingText {
+  color: var(--slate-500);
+  font-size: 10px;
+}
+.projectSnapshotState {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 18px;
+  color: var(--slate-500);
+  text-align: center;
+}
+.projectSnapshotState strong { color: var(--ink); }
+.projectSnapshotState p {
+  max-width: 560px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.projectSkeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.projectSkeletonGrid span {
+  height: 118px;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: linear-gradient(90deg, var(--bg-hover), var(--bg-surface), var(--bg-hover));
+  background-size: 200% 100%;
+  animation: shimmer 1.15s linear infinite;
+}
+.projectSnapshotNotice {
+  border-bottom: 1px solid color-mix(in srgb, var(--usc-gold) 54%, var(--warm-border));
+  background: color-mix(in srgb, var(--usc-gold-tint) 64%, var(--bg-surface));
+  padding: 10px 18px;
+  color: var(--slate-700);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.projectSnapshotNotice strong { color: var(--ink); }
+.projectStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 14px 18px 18px;
+  list-style: none;
+}
+.projectStatusCard {
+  display: grid;
+  align-content: start;
+  gap: 11px;
+  min-width: 0;
+  border: 1px solid var(--warm-border);
+  border-radius: var(--r-2);
+  background: var(--bg-subtle);
+  padding: 12px;
+}
+.projectStatusTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.projectStatusTop > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.projectStatusTop strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+.projectStatusTop span {
+  overflow-wrap: anywhere;
+  color: var(--slate-500);
+  font-size: 9px;
+}
+.projectIdentityRow {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.projectIdentityRow span {
+  border: 1px solid var(--warm-border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  color: var(--slate-500);
+  font-size: 9px;
+  line-height: 1.3;
+}
+.projectMetrics {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.projectMetrics div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  border-top: 1px solid var(--slate-100);
+  padding-top: 6px;
+}
+.projectMetrics dt {
+  color: var(--slate-500);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.projectMetrics dd {
+  margin: 0;
+  color: var(--ink);
+  font: 700 10px/1.3 var(--font-mono);
+  text-align: right;
+}
+.suppressedValue {
+  color: var(--warm-fg3);
+  font-weight: var(--w-semibold);
+}
+.unavailableValue {
+  color: var(--slate-400);
+  font-weight: var(--w-medium);
+}
+.projectError {
+  margin: 0;
+  color: var(--red);
+  font: 9px/1.4 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
 .split { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
 
 .listHead {
@@ -878,6 +1047,7 @@
 }
 
 @media (max-width: 1100px) {
+  .projectStatusGrid, .projectSkeletonGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .scoreBars { grid-template-columns: 1fr; }
   .matrixKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .entryForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -890,6 +1060,9 @@
 }
 
 @media (max-width: 640px) {
+  .projectSnapshotHead { flex-direction: column; }
+  .projectSnapshotBadges { justify-content: flex-start; }
+  .projectStatusGrid, .projectSkeletonGrid { grid-template-columns: 1fr; }
   .matrixKpis, .kpis { grid-template-columns: 1fr; }
   .domainGrid, .epdsBands { grid-template-columns: 1fr; }
   .metricRow, .swarmRow, .diffRow, .auditRiver div { grid-template-columns: 1fr; }
@@ -899,4 +1072,8 @@
   .listHead { align-items: flex-start; flex-direction: column; }
   .whatIfBar { align-items: flex-start; flex-direction: column; }
   .whatIfBar label { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .projectSkeletonGrid span { animation: none; }
 }

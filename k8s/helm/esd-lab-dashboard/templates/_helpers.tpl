@@ -36,3 +36,54 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "esd-lab-dashboard.requiredDataClaim" -}}
 {{- required "existingClaims.data is required; set it to the RWX PVC mounted at /app/dashboard/data." .Values.existingClaims.data -}}
 {{- end -}}
+
+{{- define "esd-lab-dashboard.redcapPortfolioSecretEnv" -}}
+- name: REDCAP_ABC_SURVEYS_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapAbcSurveysToken
+      optional: true
+- name: REDCAP_IPSA_SURVEYS_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapIpsaSurveysToken
+      optional: true
+- name: REDCAP_ACTION_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapActionToken
+      optional: true
+- name: REDCAP_IPSA_LAB_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapIpsaLabToken
+      optional: true
+- name: REDCAP_ABC_LAB_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapAbcLabToken
+      optional: true
+- name: REDCAP_NICO_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapNicoToken
+      optional: true
+- name: REDCAP_NANO_SURVEYS_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapNanoSurveysToken
+      optional: true
+- name: REDCAP_NANO_LAB_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.secret.name }}
+      key: redcapNanoLabToken
+      optional: true
+{{- end -}}

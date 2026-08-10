@@ -48,22 +48,38 @@ assistant:
   model: nvidia/nemotron-3-super-120b-a12b
   enableThinking: false
   reasoningBudget: 0
-  maxNewTokens: 16384
+  maxNewTokens: 256
   temperature: 0.2
   topP: 0.95
   stream: true
-  requestTimeoutSeconds: 180
-  maxRetries: 6
-  retryBaseSeconds: 2
-  retryMaxSeconds: 30
+  requestTimeoutSeconds: 45
+  maxRetries: 2
+  retryBaseSeconds: 0.5
+  retryMaxSeconds: 4
   retryJitter: 0.25
   maxConcurrency: 2
   circuitFailureThreshold: 3
   circuitRecoverySeconds: 60
-  queueTimeoutSeconds: 180
+  queueTimeoutSeconds: 30
   contextBudget: 12000
   selfHostedEnabled: false
   selfHostedBaseUrl: http://nemotron-nim:8000/v1
+  local:
+    enabled: false
+    runtime: docker-model-runner
+    apiBase: ""
+    apiKeySecretKey: dashboardAssistantLocalApiKey
+    model: ai/qwen3.5:4b-q4_K_M
+    requestTimeoutSeconds: 20
+    maxRetries: 0
+    requireHttps: true
+  fallback:
+    enabled: true
+    provider: nvidia
+    runtime: nvidia-build-api
+    apiBase: https://integrate.api.nvidia.com/v1
+    apiKeySecretKey: dashboardAssistantApiKey
+    model: nvidia/nemotron-3-super-120b-a12b
 
 watcher:
   enabled: true
@@ -111,10 +127,19 @@ secret:
   name: esd-lab-dashboard-secrets
   redcapApiUrl: ""
   redcapApiToken: ""
+  redcapAbcSurveysToken: ""
+  redcapIpsaSurveysToken: ""
+  redcapActionToken: ""
+  redcapIpsaLabToken: ""
+  redcapAbcLabToken: ""
+  redcapNicoToken: ""
+  redcapNanoSurveysToken: ""
+  redcapNanoLabToken: ""
   participantIdSalt: ""
   dashboardOperatorToken: ""
   pagesDeployHookUrl: ""
   dashboardAssistantApiKey: ""
+  dashboardAssistantLocalApiKey: ""
 
 networkPolicy:
   enabled: true

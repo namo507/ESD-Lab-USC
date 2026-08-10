@@ -1,3 +1,9 @@
+{{- if .Values.assistant.local.enabled }}
+{{- $localApiBase := required "assistant.local.apiBase is required when assistant.local.enabled=true; provide an operator-managed OpenAI-compatible endpoint." .Values.assistant.local.apiBase }}
+{{- if and .Values.assistant.local.requireHttps (not (hasPrefix "https://" $localApiBase)) }}
+{{- fail "assistant.local.apiBase must use https:// when assistant.local.requireHttps=true" }}
+{{- end }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -58,4 +64,15 @@ data:
   DASHBOARD_ASSISTANT_CONTEXT_BUDGET: {{ .Values.assistant.contextBudget | quote }}
   DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED: {{ .Values.assistant.selfHostedEnabled | quote }}
   DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL: {{ .Values.assistant.selfHostedBaseUrl | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_ENABLED: {{ .Values.assistant.local.enabled | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_RUNTIME: {{ .Values.assistant.local.runtime | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_API_BASE: {{ .Values.assistant.local.apiBase | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_MODEL: {{ .Values.assistant.local.model | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_REQUEST_TIMEOUT_SECONDS: {{ .Values.assistant.local.requestTimeoutSeconds | quote }}
+  DASHBOARD_ASSISTANT_LOCAL_MAX_RETRIES: {{ .Values.assistant.local.maxRetries | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_ENABLED: {{ .Values.assistant.fallback.enabled | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_PROVIDER: {{ .Values.assistant.fallback.provider | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_RUNTIME: {{ .Values.assistant.fallback.runtime | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_API_BASE: {{ .Values.assistant.fallback.apiBase | quote }}
+  DASHBOARD_ASSISTANT_FALLBACK_MODEL: {{ .Values.assistant.fallback.model | quote }}
   OPENAI_BASE_URL: {{ .Values.assistant.apiBase | quote }}

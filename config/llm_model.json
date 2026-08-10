@@ -1,13 +1,36 @@
 {
-  "schema_version": 4,
-  "policy": "hosted-provider",
-  "provider": "nvidia",
-  "runtime": "nvidia-build-api",
-  "api_base_env": "DASHBOARD_ASSISTANT_API_BASE",
-  "api_key_env": "DASHBOARD_ASSISTANT_API_KEY",
-  "model_env": "DASHBOARD_ASSISTANT_MODEL",
-  "default_api_base": "https://integrate.api.nvidia.com/v1",
-  "default_model": "nvidia/nemotron-3-super-120b-a12b",
+  "schema_version": 5,
+  "policy": "local-first-hosted-fallback",
+  "provider": "docker-model-runner",
+  "runtime": "docker-model-runner",
+  "api_base_env": "DASHBOARD_ASSISTANT_LOCAL_API_BASE",
+  "model_env": "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+  "default_api_base": "http://127.0.0.1:12434/engines/v1",
+  "default_model": "ai/qwen3.5:4b-q4_K_M",
+  "context_length": 8192,
+  "max_tokens": 256,
+  "temperature": 0.2,
+  "top_p": 0.95,
+  "fallbacks": [
+    {
+      "provider": "nvidia",
+      "runtime": "nvidia-build-api",
+      "api_base_env": "DASHBOARD_ASSISTANT_FALLBACK_API_BASE",
+      "api_key_env": "DASHBOARD_ASSISTANT_FALLBACK_API_KEY",
+      "model_env": "DASHBOARD_ASSISTANT_FALLBACK_MODEL",
+      "default_api_base": "https://integrate.api.nvidia.com/v1",
+      "default_model": "nvidia/nemotron-3-super-120b-a12b"
+    }
+  ],
+  "failover": {
+    "trigger": "provider failure before first visible streamed token",
+    "final_fallback": "deterministic repository-grounded answer"
+  },
+  "adaptation": {
+    "strategy": "retrieval-augmented-generation",
+    "fine_tuned": false,
+    "evaluation_gate": "make assistant-eval"
+  },
   "self_hosted": {
     "enabled_by_default": false,
     "enabled_env": "DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED",
@@ -16,7 +39,8 @@
   },
   "notes": [
     "Runtime values are sourced from environment variables; this file contains no credentials.",
-    "The hosted NVIDIA endpoint is the supported default.",
-    "Self-hosted NIM requires dedicated GPU infrastructure and is opt-in only."
+    "Docker Compose injects the local model endpoint and identifier through its model binding.",
+    "Study-specific behavior comes from repository RAG, deterministic aggregates, and evaluation gates; no fine-tuning is claimed.",
+    "Kubernetes accepts an optional operator-managed endpoint but does not deploy a privileged model runner."
   ]
 }

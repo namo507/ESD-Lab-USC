@@ -9,7 +9,8 @@
 /api/*
   Cache-Control: no-store
 
-# Dashboard data contract must never be served stale: the nightly build
-# rewrites this file and the live dashboard must pick it up immediately.
-/dashboard/data/dashboard_data.json
+# Aggregate REDCap status must be revalidated on every request; the retired
+# dashboard_data.json artifact is no longer published by the Pages packager.
+/dashboard/data/dashboard_metrics.json
   Cache-Control: no-store, must-revalidate
+  X-Content-Type-Options: nosniff

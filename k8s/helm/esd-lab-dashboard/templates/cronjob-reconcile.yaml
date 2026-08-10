@@ -58,6 +58,7 @@ spec:
                       name: {{ .Values.secret.name }}
                       key: redcapApiToken
                       optional: true
+                {{- include "esd-lab-dashboard.redcapPortfolioSecretEnv" . | nindent 16 }}
                 - name: PARTICIPANT_ID_SALT
                   valueFrom:
                     secretKeyRef:
