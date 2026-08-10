@@ -19,6 +19,11 @@ from scipy import signal, stats
 
 from src.utils.logging_utils import get_pipeline_logger
 
+# NumPy 2.0 renamed ``trapz`` to ``trapezoid``. The project pins NumPy 1.x, but
+# binding the name once here keeps band-power integration working unchanged if
+# an environment resolves a newer NumPy.
+_trapezoid = getattr(np, "trapezoid", None) or np.trapz
+
 logger = get_pipeline_logger(__name__)
 
 
@@ -193,7 +198,7 @@ def compute_rsa_cwt(
             band = (freqs_psd >= resp_band[0]) & (freqs_psd <= resp_band[1])
             if not np.any(band):
                 return np.nan
-            power = float(np.trapz(psd[band], freqs_psd[band]))
+            power = float(_trapezoid(psd[band], freqs_psd[band]))
 
     return float(power)
 

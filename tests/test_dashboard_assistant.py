@@ -296,10 +296,10 @@ def test_assistant_answers_nvidia_provider_policy_before_leaderboard(tmp_path):
     response = assistant._maybe_short_circuit_response(question, context)
 
     assert response is not None
-    assert "NVIDIA assistant provider policy:" in response
-    assert "NVIDIA Nemotron 3 Super 120B A12B" in response
+    assert "Assistant provider policy:" in response
+    assert "Failover order" in response
     assert "nvidia-build-api" in response
-    assert "external rate limits still apply" in response
+    assert "circuit-breaker degradation" in response
     assert "model leaderboard" not in response.lower()
 
 

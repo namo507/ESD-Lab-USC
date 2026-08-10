@@ -2,7 +2,18 @@ name: esd-lab-usc
 
 x-dashboard-assistant-environment: &dashboard-assistant-environment
   DASHBOARD_ASSISTANT_ENABLED: ${DASHBOARD_ASSISTANT_ENABLED:-true}
-  DASHBOARD_ASSISTANT_PROVIDER: ${DASHBOARD_ASSISTANT_PROVIDER:-nvidia}
+  DASHBOARD_ASSISTANT_PROVIDER: ${DASHBOARD_ASSISTANT_PROVIDER:-gemini}
+  # Ordered failover tiers. Blank keeps the default order: the primary provider
+  # first, then the remaining configured tiers.
+  DASHBOARD_ASSISTANT_FALLBACK_CHAIN: ${DASHBOARD_ASSISTANT_FALLBACK_CHAIN:-}
+  DASHBOARD_ASSISTANT_GEMINI_API_KEY: ${DASHBOARD_ASSISTANT_GEMINI_API_KEY:-${GEMINI_API_KEY:-}}
+  DASHBOARD_ASSISTANT_GEMINI_API_BASE: ${DASHBOARD_ASSISTANT_GEMINI_API_BASE:-https://generativelanguage.googleapis.com/v1beta/openai}
+  DASHBOARD_ASSISTANT_GEMINI_MODEL: ${DASHBOARD_ASSISTANT_GEMINI_MODEL:-gemini-3.5-flash}
+  DASHBOARD_ASSISTANT_LOCAL_ENABLED: ${DASHBOARD_ASSISTANT_LOCAL_ENABLED:-false}
+  # From inside a container, Docker Model Runner is reached through the host
+  # gateway rather than localhost.
+  DASHBOARD_ASSISTANT_LOCAL_API_BASE: ${DASHBOARD_ASSISTANT_LOCAL_API_BASE:-http://host.docker.internal:12434/engines/v1}
+  DASHBOARD_ASSISTANT_LOCAL_MODEL: ${DASHBOARD_ASSISTANT_LOCAL_MODEL:-ai/nemotron-3-nano}
   DASHBOARD_ASSISTANT_RUNTIME: ${DASHBOARD_ASSISTANT_RUNTIME:-nvidia-build-api}
   DASHBOARD_ASSISTANT_API_BASE: ${DASHBOARD_ASSISTANT_API_BASE:-https://integrate.api.nvidia.com/v1}
   DASHBOARD_ASSISTANT_API_KEY: ${DASHBOARD_ASSISTANT_API_KEY:-${OPENAI_API_KEY:-}}
@@ -117,6 +128,10 @@ services:
       <<: *dashboard-assistant-environment
       PYTHONUNBUFFERED: "1"
       DASHBOARD_REUSE_EXISTING_SPA_BUILD: ${DASHBOARD_REUSE_EXISTING_SPA_BUILD:-true}
+    # Docker Desktop resolves host.docker.internal on its own; declaring it
+    # keeps the local model tier reachable on plain Linux Docker too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     cpus: "2.0"
     mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
     pids_limit: 512

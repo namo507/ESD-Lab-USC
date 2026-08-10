@@ -20,6 +20,7 @@ from redcap.api.multi_project import (  # noqa: E402
     sync_portfolio,
     write_json_atomic,
 )
+from src.utils.env_loader import load_project_env  # noqa: E402
 
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "redcap_projects.yml"
 DEFAULT_OUTPUT = PROJECT_ROOT / "dashboard" / "data" / "dashboard_metrics.json"
@@ -54,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    # Read the one repository .env so the eight project tokens are available
+    # from a plain `python scripts/sync_redcap_portfolio.py`. CI and Compose
+    # inject the tokens directly, and those values are never overridden.
+    load_project_env()
 
     try:
         config = load_portfolio_config(args.config)

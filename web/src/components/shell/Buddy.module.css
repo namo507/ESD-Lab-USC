@@ -10,16 +10,34 @@
   left: var(--buddy-left, calc(var(--shell-sidebar-width, 236px) + 24px));
   bottom: var(--buddy-bottom, 88px);
   z-index: 92;
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
   pointer-events: none;
   font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
+  /* Kept mounted rather than display:none so entry and exit can be animated.
+     visibility is delayed out so the fade finishes before it is removed from
+     the accessibility tree and hit testing. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition:
+    opacity 240ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s linear 240ms;
 }
 
 .active {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s, 0s, 0s;
+}
+
+/* No reason to run the float loop while Buddy is off screen. */
+.stage:not(.active) .buddy {
+  animation-play-state: paused;
 }
 
 .page {
@@ -138,12 +156,34 @@
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   transform: translateY(8px) scale(0.97);
   transform-origin: bottom left;
-  transition: opacity 200ms ease, transform 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* One easing curve for the whole bubble keeps the crossfade between two
+     insights reading as a single motion rather than three separate ones. */
+  transition:
+    opacity 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .show {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+/* The tag and body fade slightly behind the bubble so a swap between two
+   insights resolves as text settling in, not as a hard replacement. The tour
+   button is left alone; it owns its own hover transform. */
+.termTag,
+.bodyText {
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 200ms cubic-bezier(0.22, 0.61, 0.36, 1) 40ms,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1) 40ms;
+}
+
+.show .termTag,
+.show .bodyText {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .bubble::after {
@@ -233,14 +273,28 @@
   position: relative;
 }
 
+/*
+ * Hover acknowledgement for the element Buddy is describing.
+ *
+ * This used to be a hard 1.5px border plus a 4px yellow ring that appeared and
+ * vanished with no transition, so sweeping across a dense panel read as a box
+ * snapping between elements. It is now a soft tint that eases in and carries no
+ * border, so the emphasis stays on the bubble rather than on a selection box.
+ */
 :global([data-insight].insight-active)::after {
   content: "";
   position: absolute;
   inset: -4px;
-  border: 1.5px solid color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 55%, transparent);
   border-radius: inherit;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--esd-yellow, #f4da26) 18%, transparent);
   pointer-events: none;
+  background: color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 5%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 10%, transparent);
+  animation: insight-settle 220ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes insight-settle {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -248,6 +302,18 @@
   .talking .eye,
   .antenna,
   .heartPulse {
+    animation: none;
+  }
+
+  /* Keep the state change, drop the motion. */
+  .stage,
+  .bubble,
+  .termTag,
+  .bodyText {
+    transition-duration: 1ms;
+  }
+
+  :global([data-insight].insight-active)::after {
     animation: none;
   }
 }

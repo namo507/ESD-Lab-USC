@@ -75,6 +75,12 @@ check-env:  ## Verify .env is configured and secure drive is mounted
 		(echo "ERROR: Config validation failed. Check .env and config/paths.yml" && exit 1)
 	@echo "✓ Environment configured correctly."
 
+env-doctor:  ## Masked report on the single .env: what is set, blank, stray, or undocumented
+	@$(PYTHON) scripts/env_doctor.py
+
+env-verify:  ## Fail unless all eight REDCap tokens and one assistant tier are configured
+	@$(PYTHON) scripts/env_doctor.py --require-redcap --require-assistant
+
 compose-validate:  ## Validate Compose files without requiring Docker
 	$(PYTHON) scripts/check_compose_config.py
 
@@ -159,8 +165,17 @@ dashboard-smoke:  ## Verify the live dashboard container health and auto-rebuild
 	$(PYTHON) scripts/check_dashboard_runtime.py --base-url $(DASHBOARD_LOCAL_URL)
 	@echo "✓ Dashboard Docker runtime passed smoke checks."
 
-assistant-status: venv-ready  ## Show NVIDIA provider configuration and non-billable readiness state
+assistant-status: venv-ready  ## Show assistant provider configuration and non-billable readiness state
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config
+
+assistant-chain:  ## Show the resolved ESD Buddy provider failover order
+	$(PYTHON) scripts/assistant_chain.py
+
+model-pull:  ## Pull the local Docker model tier and write its ESD grounding profile
+	$(PYTHON) scripts/setup_local_model.py --write-config
+
+model-verify:  ## Verify the local Docker model tier without pulling
+	$(PYTHON) scripts/setup_local_model.py --skip-pull
 
 assistant-prepare: venv-ready  ## Validate provider config and rebuild repository grounding indexes
 	$(VENV)/bin/python scripts/prepare_dashboard_assistant.py --validate-config --reindex

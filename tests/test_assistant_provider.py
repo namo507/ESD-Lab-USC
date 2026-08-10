@@ -14,11 +14,17 @@ from dashboard.assistant.local_chat_assistant import (
     DashboardChatAssistant,
 )
 from dashboard.assistant.provider import (
+    GEMINI_API_BASE,
+    GEMINI_DEFAULT_MODEL,
+    LOCAL_API_BASE,
+    LOCAL_DEFAULT_MODEL,
     NVIDIA_HOSTED_API_BASE,
     NVIDIA_NEMOTRON_MODEL,
+    FallbackProvider,
     NVIDIAOpenAIProvider,
     ProviderConfig,
     ProviderError,
+    build_provider_chain,
     sanitize_response_content,
 )
 
@@ -47,6 +53,15 @@ ENV_NAMES = (
     "DASHBOARD_ASSISTANT_MAX_HISTORY_CHARS",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_ENABLED",
     "DASHBOARD_ASSISTANT_SELF_HOSTED_BASE_URL",
+    "DASHBOARD_ASSISTANT_FALLBACK_CHAIN",
+    "DASHBOARD_ASSISTANT_GEMINI_API_KEY",
+    "DASHBOARD_ASSISTANT_GEMINI_API_BASE",
+    "DASHBOARD_ASSISTANT_GEMINI_MODEL",
+    "DASHBOARD_ASSISTANT_LOCAL_ENABLED",
+    "DASHBOARD_ASSISTANT_LOCAL_API_BASE",
+    "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
     "OPENAI_BASE_URL",
     "OPENAI_API_KEY",
     "LLM_MAX_TOKENS",
@@ -648,6 +663,256 @@ def test_deterministic_provider_policy_answer_works_without_credentials(tmp_path
 
     result = assistant.answer("Which NVIDIA assistant model and provider are active?")
 
-    assert "NVIDIA assistant provider policy" in result["reply"]
+    assert "Assistant provider policy" in result["reply"]
     assert isinstance(result["citations"], list)
     assert result["status"]["state"] == "credentials-missing"
+
+
+# ─── Multi-provider failover ─────────────────────────────────────────────────
+
+
+def _tier(name, model, create, *, api_key="test-key", **overrides):
+    """Build one chain tier backed by a deterministic fake client."""
+    return NVIDIAOpenAIProvider(
+        ProviderConfig(
+            provider=name,
+            model=model,
+            api_key=api_key,
+            max_retries=0,
+            label=f"{name}:{model}",
+            **overrides,
+        ),
+        client=_client(create),
+        sleep=lambda _seconds: None,
+    )
+
+
+def test_gemini_tier_sends_reasoning_effort_instead_of_nvidia_extra_body():
+    """Gemini rejects NVIDIA's extra_body with HTTP 400, so it must not be sent."""
+    attempts = []
+
+    def create(**kwargs):
+        attempts.append(kwargs)
+        return {"choices": [{"message": {"content": "concise answer"}}]}
+
+    provider = _tier("gemini", GEMINI_DEFAULT_MODEL, create)
+    answer = provider.complete(
+        [{"role": "user", "content": "status"}],
+        max_tokens=256,
+        temperature=0.2,
+        top_p=0.95,
+    )
+
+    assert answer == "concise answer"
+    assert attempts[0]["reasoning_effort"] == "none"
+    assert "extra_body" not in attempts[0]
+
+
+def test_local_tier_sends_no_vendor_extras_and_needs_no_credential():
+    attempts = []
+
+    def create(**kwargs):
+        attempts.append(kwargs)
+        return {"choices": [{"message": {"content": "local answer"}}]}
+
+    provider = _tier("local", LOCAL_DEFAULT_MODEL, create, api_key=None)
+    status = provider.status()
+
+    assert status["state"] == "ready"
+    assert (
+        provider.complete(
+            [{"role": "user", "content": "status"}],
+            max_tokens=256,
+            temperature=0.2,
+            top_p=0.95,
+        )
+        == "local answer"
+    )
+    assert "extra_body" not in attempts[0]
+    assert "reasoning_effort" not in attempts[0]
+
+
+def test_chain_falls_through_to_the_next_tier_when_the_primary_fails():
+    calls = []
+
+    class Unreachable(RuntimeError):
+        status_code = 503
+
+    def primary(**kwargs):
+        calls.append("gemini")
+        raise Unreachable("upstream detail must stay internal")
+
+    def backup(**kwargs):
+        calls.append("nvidia")
+        return {"choices": [{"message": {"content": "backup answer"}}]}
+
+    chain = FallbackProvider(
+        [
+            _tier("gemini", GEMINI_DEFAULT_MODEL, primary),
+            _tier("nvidia", NVIDIA_NEMOTRON_MODEL, backup),
+        ]
+    )
+
+    answer = chain.complete(
+        [{"role": "user", "content": "status"}],
+        max_tokens=256,
+        temperature=0.2,
+        top_p=0.95,
+    )
+
+    assert answer == "backup answer"
+    assert calls == ["gemini", "nvidia"]
+    assert chain.status()["active_tier_label"] == f"nvidia:{NVIDIA_NEMOTRON_MODEL}"
+
+
+def test_chain_skips_tiers_that_have_no_credentials():
+    calls = []
+
+    def backup(**kwargs):
+        calls.append("nvidia")
+        return {"choices": [{"message": {"content": "backup answer"}}]}
+
+    unusable = NVIDIAOpenAIProvider(
+        ProviderConfig(provider="gemini", model=GEMINI_DEFAULT_MODEL, api_key=None),
+    )
+    chain = FallbackProvider([unusable, _tier("nvidia", NVIDIA_NEMOTRON_MODEL, backup)])
+
+    assert (
+        chain.complete(
+            [{"role": "user", "content": "status"}],
+            max_tokens=256,
+            temperature=0.2,
+            top_p=0.95,
+        )
+        == "backup answer"
+    )
+    assert calls == ["nvidia"]
+
+
+def test_chain_reports_every_tier_without_leaking_credentials():
+    chain = FallbackProvider(
+        [
+            _tier("gemini", GEMINI_DEFAULT_MODEL, lambda **kwargs: None),
+            _tier("local", LOCAL_DEFAULT_MODEL, lambda **kwargs: None, api_key=None),
+        ]
+    )
+
+    status = chain.status()
+
+    assert status["fallback_tiers"] == 2
+    assert status["fallback_ready_tiers"] == 2
+    assert [tier["label"] for tier in status["fallback_chain"]] == [
+        f"gemini:{GEMINI_DEFAULT_MODEL}",
+        f"local:{LOCAL_DEFAULT_MODEL}",
+    ]
+    assert "test-key" not in json.dumps(status)
+
+
+def test_chain_never_replays_a_partially_streamed_answer():
+    """Switching tiers mid-stream would duplicate text already on screen."""
+
+    class Dropped(RuntimeError):
+        status_code = 503
+
+    def flaky(**kwargs):
+        def chunks():
+            yield {"choices": [{"delta": {"content": "first half"}}]}
+            raise Dropped("connection dropped mid-answer")
+
+        return chunks()
+
+    chain = FallbackProvider(
+        [
+            _tier("gemini", GEMINI_DEFAULT_MODEL, flaky),
+            _tier(
+                "nvidia",
+                NVIDIA_NEMOTRON_MODEL,
+                lambda **kwargs: {"choices": [{"message": {"content": "second"}}]},
+            ),
+        ]
+    )
+
+    emitted = []
+    with pytest.raises(ProviderError):
+        for chunk in chain.stream(
+            [{"role": "user", "content": "status"}],
+            max_tokens=256,
+            temperature=0.2,
+            top_p=0.95,
+        ):
+            emitted.append(chunk)
+
+    assert emitted == ["first half"]
+
+
+def test_stream_falls_through_when_a_tier_fails_before_emitting():
+    class Unreachable(RuntimeError):
+        status_code = 503
+
+    def dead(**kwargs):
+        raise Unreachable("never opened")
+
+    def healthy(**kwargs):
+        return iter([{"choices": [{"delta": {"content": "grounded answer"}}]}])
+
+    chain = FallbackProvider(
+        [
+            _tier("gemini", GEMINI_DEFAULT_MODEL, dead),
+            _tier("nvidia", NVIDIA_NEMOTRON_MODEL, healthy),
+        ]
+    )
+
+    assert (
+        "".join(
+            chain.stream(
+                [{"role": "user", "content": "status"}],
+                max_tokens=256,
+                temperature=0.2,
+                top_p=0.95,
+            )
+        )
+        == "grounded answer"
+    )
+
+
+def test_single_tier_chain_returns_the_bare_provider(monkeypatch):
+    _clear_assistant_env(monkeypatch)
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_API_KEY", "nvidia-key")
+
+    config = AssistantConfig.from_env()
+    provider = build_provider_chain(config.provider_configs())
+
+    assert isinstance(provider, NVIDIAOpenAIProvider)
+    assert "fallback_chain" not in provider.status()
+
+
+def test_env_builds_gemini_first_chain_with_local_backup(monkeypatch):
+    _clear_assistant_env(monkeypatch)
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_PROVIDER", "gemini")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_GEMINI_API_KEY", "gemini-key")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_API_KEY", "nvidia-key")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_LOCAL_ENABLED", "true")
+
+    config = AssistantConfig.from_env()
+    tiers = config.provider_configs()
+
+    assert [tier.normalized_provider for tier in tiers] == [
+        "gemini",
+        "nvidia",
+        "local",
+    ]
+    assert tiers[0].api_base == GEMINI_API_BASE
+    assert tiers[0].model == GEMINI_DEFAULT_MODEL
+    assert tiers[2].api_base == LOCAL_API_BASE
+    assert tiers[2].api_key is None
+
+
+def test_explicit_chain_order_is_respected(monkeypatch):
+    _clear_assistant_env(monkeypatch)
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_FALLBACK_CHAIN", "local, gemini")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_GEMINI_API_KEY", "gemini-key")
+    monkeypatch.setenv("DASHBOARD_ASSISTANT_LOCAL_ENABLED", "true")
+
+    tiers = AssistantConfig.from_env().provider_configs()
+
+    assert [tier.normalized_provider for tier in tiers] == ["local", "gemini"]

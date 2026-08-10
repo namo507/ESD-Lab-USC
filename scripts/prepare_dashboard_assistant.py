@@ -24,13 +24,12 @@ from dashboard.assistant.local_chat_assistant import (  # noqa: E402
 
 
 def _load_dotenv() -> None:
+    """Load the one repository ``.env`` through the shared loader."""
     try:
-        from dotenv import load_dotenv
+        from src.utils.env_loader import load_project_env
     except Exception:
         return
-    env_path = PROJECT_ROOT / ".env"
-    if env_path.exists():
-        load_dotenv(env_path, override=False)
+    load_project_env()
 
 
 def _install_dependencies(*, dry_run: bool) -> None:

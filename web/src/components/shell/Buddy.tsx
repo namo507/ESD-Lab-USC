@@ -49,8 +49,8 @@ export const INSIGHTS: Record<string, InsightData> = {
   "landing-studio-inputs": { term: "Model studio", body: "These sliders are an explanatory sandbox. They help visitors see how infant-level features can move the model before they enter the denser analytics views." },
   "landing-studio-gauge": { term: "Risk gauge", body: "The gauge is illustrative rather than diagnostic. It demonstrates feature sensitivity and calibration language without pretending to be a clinical decision tool." },
   "landing-assistant": { term: "ESD Buddy", body: "Buddy stays visible across the landing so users can hover for context, then open the assistant to turn any section into a natural-language explanation." },
-  "assistant-model-clinical": { term: "NVIDIA assistant", body: "ESD Buddy uses the hosted NVIDIA assistant through the dashboard backend. The browser never receives provider credentials or calls the model endpoint directly." },
-  "assistant-model-fallback": { term: "Assistant fallback", body: "If the hosted assistant is busy or unavailable, the dashboard stays usable and clearly switches to a limited, de-identified fallback instead of exposing provider errors." },
+  "assistant-model-clinical": { term: "Assistant providers", body: "ESD Buddy answers through a backend-routed provider chain: Gemini first for speed, NVIDIA Nemotron next, then a local Docker model that needs no network. The browser never receives provider credentials or calls a model endpoint directly." },
+  "assistant-model-fallback": { term: "Assistant fallback", body: "If a provider is busy or unavailable, the backend moves to the next tier in the chain automatically. When every tier is down the dashboard stays usable and switches to a limited, de-identified fallback instead of exposing provider errors." },
   "lab-ops-priority": { term: "Nano-first operations", body: "The operations panel keeps Nano grant data and lab process mapping as the current priority while Nico remains visible as a staged secondary lane." },
   "lab-ops-workflow": { term: "Workflow rollout", body: "The four-phase plan starts with observation, then REDCap/process standardization, then pilot reporting, then Nico and future-grant integration." },
   "lab-ops-phase": { term: "Workflow phase", body: "Each phase lists the study focus, expected tasks, outputs, and owners so staff can see what is active without implying that every future feature is ready now." },
@@ -127,7 +127,7 @@ export const INSIGHTS: Record<string, InsightData> = {
   "stage-merge": { term: "Merge", body: "The final merge joins processed physiology with visit metadata and writes de-identified outputs for downstream modeling and reporting." },
   "pipeline-svg": { term: "Pipeline", body: "This animated DAG shows the six-stage flow from ingest to de-identified export. Active edges pulse when work is moving between stages." },
   "pm-overview": { term: "Presentation Maker", body: "Turns one concept into a calm, minimal slide deck using the same backend-routed assistant as ESD Buddy. The deck plan is generated server-side; the PowerPoint file is built and downloaded entirely in your browser." },
-  "pm-status": { term: "Assistant status", body: "Presentation generation uses the same backend-routed NVIDIA assistant as ESD Buddy. Ready, degraded, and limited fallback states are shown without exposing credentials, endpoints, or reasoning traces." },
+  "pm-status": { term: "Assistant status", body: "Presentation generation uses the same backend-routed provider chain as ESD Buddy. Ready, degraded, and limited fallback states are shown without exposing credentials, endpoints, or reasoning traces." },
   "pm-composer": { term: "Concept composer", body: "Describe what you want explained, then nudge a few defaults: audience level, slide count, and whether to include an analogy or a worked example. Good defaults beat many options." },
   "pm-deck": { term: "Deck preview", body: "Each card is one slide in the structured plan: a title slide, a why-this-matters slide, two to four concept slides, optional analogy or example, and a recap. Lab-grounded concepts carry citations; general ones are labeled as such." },
   "pm-actions": { term: "Export & follow-up", body: "Download builds a real 16:9 .pptx with simple shapes and dividers, readable in PowerPoint, Keynote, and Google Slides. Ask ESD Buddy seeds the assistant with this deck's summary for a follow-up." },
@@ -286,14 +286,37 @@ export interface BuddyProps {
   anchor?: "shell" | "page";
 }
 
+/**
+ * Settling delay before a hovered element becomes the active insight. Sweeping
+ * a cursor across a dense panel crosses many hotspots that were never the
+ * target; without this the bubble would restart on every one of them.
+ */
+const SETTLE_MS = 90;
+/** Time the outgoing text is faded down before the incoming text replaces it. */
+const SWAP_MS = 130;
+/** Matches the bubble's CSS exit transition so content unmounts after it. */
+const EXIT_MS = 260;
+
+function sameInsight(a: InsightData | null, b: InsightData | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.term === b.term && a.body === b.body;
+}
+
 export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
+  // `insight` is the hover target; `displayed` is what the bubble currently
+  // renders. Keeping them separate is what allows one to fade out before the
+  // other fades in, instead of the text swapping under the reader.
   const [insight, setInsight] = useState<InsightData | null>(null);
+  const [displayed, setDisplayed] = useState<InsightData | null>(null);
+  const [contentVisible, setContentVisible] = useState(false);
   const [look, setLook] = useState({ x: 48, y: 48 });
   const path = typeof window !== "undefined" ? window.location.pathname : "/";
   const tourTrack = path === "/" || path === "/docs" || path === "/how-to" ? "public" : "operator";
 
   const buddyRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<number | null>(null);
+  const showTimerRef = useRef<number | null>(null);
   const lookFrameRef = useRef<number | null>(null);
   const pendingLookRef = useRef({ x: 48, y: 48 });
 
@@ -305,17 +328,30 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
       }
     };
 
+    const clearShowTimer = () => {
+      if (showTimerRef.current != null) {
+        window.clearTimeout(showTimerRef.current);
+        showTimerRef.current = null;
+      }
+    };
+
     const showInsight = (target: Element | null) => {
       if (!(target instanceof Element)) return;
       clearHideTimer();
-      setInsight(resolveInsightFromElement(target));
+      clearShowTimer();
       target.classList.add("insight-active");
+      const next = resolveInsightFromElement(target);
+      showTimerRef.current = window.setTimeout(() => {
+        showTimerRef.current = null;
+        setInsight(next);
+      }, SETTLE_MS);
     };
 
     const hideInsight = (target: Element | null, relatedTarget: EventTarget | null) => {
       if (!(target instanceof Element)) return;
       if (target === insightTarget(relatedTarget)) return;
       target.classList.remove("insight-active");
+      clearShowTimer();
       clearHideTimer();
       hideTimerRef.current = window.setTimeout(() => setInsight(null), 500);
     };
@@ -343,12 +379,41 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
 
     return () => {
       clearHideTimer();
+      clearShowTimer();
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
+
+  // Drive the crossfade: fade the current text down, swap it, fade the next up.
+  useEffect(() => {
+    if (insight === null) {
+      if (displayed === null) return;
+      setContentVisible(false);
+      const timer = window.setTimeout(() => setDisplayed(null), EXIT_MS);
+      return () => window.clearTimeout(timer);
+    }
+
+    if (displayed === null) {
+      setDisplayed(insight);
+      setContentVisible(true);
+      return;
+    }
+
+    if (sameInsight(insight, displayed)) {
+      setContentVisible(true);
+      return;
+    }
+
+    setContentVisible(false);
+    const timer = window.setTimeout(() => {
+      setDisplayed(insight);
+      setContentVisible(true);
+    }, SWAP_MS);
+    return () => window.clearTimeout(timer);
+  }, [insight, displayed]);
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -376,17 +441,29 @@ export function Buddy({ anchor = "shell" }: BuddyProps = {}) {
     };
   }, []);
 
+  // The stage stays mounted so entering and leaving are real CSS transitions;
+  // a `display` toggle has no intermediate state to animate.
+  const present = displayed !== null;
+
   return (
-    <div className={`${styles.stage} ${anchor === "page" ? styles.page : ""} ${insight ? styles.active : ""}`} aria-live="polite">
-      <div className={`${styles.buddy} ${insight ? styles.talking : ""}`} ref={buddyRef}>
-        <BuddySvg talking={Boolean(insight)} lookX={look.x} lookY={look.y} />
+    <div
+      className={[
+        styles.stage,
+        anchor === "page" ? styles.page : "",
+        present ? styles.active : "",
+      ].filter(Boolean).join(" ")}
+      aria-live="polite"
+      aria-hidden={present ? undefined : true}
+    >
+      <div className={`${styles.buddy} ${contentVisible ? styles.talking : ""}`} ref={buddyRef}>
+        <BuddySvg talking={contentVisible} lookX={look.x} lookY={look.y} />
       </div>
 
-      <div className={`${styles.bubble} ${insight ? styles.show : ""}`}>
-        {insight && (
+      <div className={`${styles.bubble} ${contentVisible ? styles.show : ""}`}>
+        {displayed && (
           <>
-            <span className={styles.termTag}>{insight.term}</span>
-            <div className={styles.bodyText}>{insight.body}</div>
+            <span className={styles.termTag}>{displayed.term}</span>
+            <div className={styles.bodyText}>{displayed.body}</div>
             <button type="button" className={styles.tourButton} onClick={() => startNanoTour(tourTrack)}>
               Walk me through it
             </button>
