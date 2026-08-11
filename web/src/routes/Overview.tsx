@@ -19,11 +19,12 @@ import {
 import {
   formatDashboardTimestamp,
   getDashboardSourceState,
-  selectNanoMetrics,
   selectRedcapSummary,
+  selectScopeMetrics,
   useDashboardMetrics,
   type DashboardStudyMetrics,
 } from "@/api/dashboardMetrics";
+import { RedcapProjectLinks } from "@/components/redcap/RedcapProjectLinks";
 import { DataProvenance } from "@/components/data/DataProvenance";
 import { ClusterOpsPanel } from "@/components/cluster/ClusterOpsPanel";
 import { normalizeReadingLibrary } from "@/data/readingsGeo";
@@ -61,13 +62,71 @@ export function Overview() {
 
   const evalsPending = runs.filter((r) => r.status === "running" || r.status === "queued").length;
 
-  const nano = selectNanoMetrics(dashboardMetrics.data);
+  // Every figure on this page follows the sidebar scope. `scope` is the study
+  // key (or ALL); `scoped` is its metrics, or null when the payload has none.
+  const activeStudy = useUi((s) => s.activeStudy);
+  const setActiveStudy = useUi((s) => s.setActiveStudy);
+  const scope = activeStudy.toLowerCase();
+  const scoped = selectScopeMetrics(dashboardMetrics.data, scope);
+  const isPortfolio = scope === "all";
+  const scopeLabel = isPortfolio ? "All studies" : activeStudy;
+
   const sourceState = getDashboardSourceState(dashboardMetrics.data);
   const redcapSummary = selectRedcapSummary(dashboardMetrics.data);
   const portfolioStudies = dashboardMetrics.data?.studies ?? [];
-  const observedNanoEvents = (nano?.events ?? []).filter(
+  const observedEvents = (scoped?.events ?? []).filter(
     (event): event is typeof event & { records: number } => !event.suppressed && event.records !== null,
   );
+
+  // Only render a summary card when it has a real number behind it. The page
+  // previously showed five cards where three were permanently "—", which reads
+  // as broken data rather than as an absent metric.
+  const summaryCards = [
+    scoped?.enrollment != null && {
+      key: "enrollment",
+      label: "Enrollment",
+      value: formatMetric(scoped.enrollment),
+      unit: scoped.target != null ? `/ ${scoped.target.toLocaleString()}` : "enrolled",
+      progress: scoped.target ? (scoped.enrollment / scoped.target) * 100 : 0,
+      note: scoped.target
+        ? `${((scoped.enrollment / scoped.target) * 100).toFixed(1)}% of target`
+        : `${scopeLabel} · survey authority`,
+      insight: "kpi-enroll",
+    },
+    scoped?.eventRecords != null && {
+      key: "events",
+      label: "Event records",
+      value: formatMetric(scoped.eventRecords),
+      unit: "records",
+      progress: 0,
+      note: `Observed ${scopeLabel} REDCap events`,
+      insight: "kpi-events",
+    },
+    scoped?.forms.completionRate != null && {
+      key: "completion",
+      label: "Form completion",
+      value: scoped.forms.completionRate.toFixed(1),
+      unit: "%",
+      progress: scoped.forms.completionRate,
+      note:
+        scoped.forms.total != null
+          ? `${formatMetric(scoped.forms.complete)} verified of ${formatMetric(scoped.forms.total)}`
+          : "Verified form states",
+      insight: "kpi-completion",
+    },
+    scoped?.projectsOk != null && {
+      key: "projects",
+      label: "Reporting projects",
+      value: formatMetric(scoped.projectsOk),
+      unit: scoped.projectsTotal != null ? `/ ${scoped.projectsTotal}` : "projects",
+      progress: scoped.projectsTotal ? (scoped.projectsOk / scoped.projectsTotal) * 100 : 0,
+      note: `${scopeLabel} source projects`,
+      insight: "kpi-projects",
+    },
+  ].filter((card): card is Exclude<typeof card, false | undefined | null> => Boolean(card));
+
+  // One honest line replaces the removed placeholder tiles.
+  const unavailableCount = 4 - summaryCards.length;
   const overviewAsOf = sourceState.generatedAt
     ? formatDashboardTimestamp(sourceState.generatedAt)
     : "Not verified";
@@ -86,22 +145,6 @@ export function Overview() {
     accent: MetricAccent;
     decimals?: number;
   }> = [];
-
-  if (nano?.enrollment !== null && nano?.enrollment !== undefined) {
-    kpis.push({
-      id: "enroll",
-      insightId: "kpi-enroll",
-      label: "NANO Enrollment",
-      value: nano.enrollment,
-      unit: nano.target !== null ? `/ ${nano.target}` : "participants",
-      sub: "Survey-authority enrollment · aggregate REDCap",
-      delta: sourceState.isLive ? "Verified current" : sourceState.label,
-      deltaKind: "flat",
-      spark: [nano.enrollment],
-      badge: sourceState.isLive ? "Live" : undefined,
-      accent: "sage",
-    });
-  }
 
   if (runs.length) {
     kpis.push({
@@ -181,100 +224,98 @@ export function Overview() {
             Five-study REDCap portfolio
           </div>
           <h1>Overview</h1>
-          <p>NANO enrollment is sourced only from its configured survey authority.</p>
+          <p>
+            {isPortfolio
+              ? "Combined totals across every configured REDCap study."
+              : `${scopeLabel} figures, sourced from its configured REDCap projects.`}
+          </p>
         </div>
         <DataProvenance source={sourceState} />
       </header>
 
-      <section className={styles.summaryGrid} aria-label="NANO overview metrics" data-tour="operator-kpis">
-        <OverviewSummaryCard
-          label="Enrollment"
-          value={formatMetric(nano?.enrollment)}
-          unit={nano?.target !== null && nano?.target !== undefined ? `/ ${nano.target.toLocaleString()}` : "participants"}
-          progress={nano?.enrollment !== null && nano?.enrollment !== undefined && nano.target
-            ? nano.enrollment / nano.target * 100
-            : 0}
-          note={nano?.target && nano.enrollment !== null
-            ? `${(nano.enrollment / nano.target * 100).toFixed(1)}% of target · survey authority`
-            : "Survey enrollment unavailable"}
-          insight="kpi-enroll"
-        />
-        <OverviewSummaryCard
-          label="Event records"
-          value={formatMetric(nano?.eventRecords)}
-          unit="records"
-          progress={nano?.eventRecords !== null && nano?.eventRecords !== undefined && dashboardMetrics.data?.portfolio.eventRecords
-            ? nano.eventRecords / dashboardMetrics.data.portfolio.eventRecords * 100
-            : 0}
-          note="Observed NANO REDCap events"
-          insight="kpi-events"
-        />
-        <OverviewSummaryCard
-          label="Form completion"
-          value={nano?.forms.completionRate === null || nano?.forms.completionRate === undefined
-            ? "—"
-            : nano.forms.completionRate.toFixed(1)}
-          unit="%"
-          progress={nano?.forms.completionRate ?? 0}
-          note={nano?.forms.total !== null && nano?.forms.total !== undefined
-            ? `${formatMetric(nano.forms.complete)} verified of ${formatMetric(nano.forms.total)}`
-            : "Verified form states unavailable"}
-          insight="kpi-completion"
-        />
-        <OverviewSummaryCard
-          label="Reporting projects"
-          value={formatMetric(nano?.projectsOk)}
-          unit={nano?.projectsTotal !== null && nano?.projectsTotal !== undefined ? `/ ${nano.projectsTotal}` : "projects"}
-          progress={nano?.projectsOk !== null && nano?.projectsOk !== undefined && nano.projectsTotal
-            ? nano.projectsOk / nano.projectsTotal * 100
-            : 0}
-          note="NANO source projects"
-          insight="kpi-projects"
-        />
-        <article className={`${styles.summaryCard} ${styles.redcapCard} surface-card`} data-insight="kpi-redcap">
-          <span className={styles.metricLabel}>REDCap sync</span>
-          <div className={styles.healthValue}>
-            {sourceState.isLive ? <span aria-hidden /> : null}
-            {sourceState.label}
-          </div>
-          <p>
-            {redcapSummary.projectsOk}/{redcapSummary.projectsTotal || "—"} projects · as of {overviewAsOf}
-          </p>
-        </article>
-      </section>
-
-      <div className={styles.detailHeading}>
-        <span>Five-study portfolio</span>
-        <p>Authoritative enrollment, event, and form totals from each configured study.</p>
-      </div>
-
+      {/* Study picker. Selecting a card rescopes every panel below it. */}
       {portfolioStudies.length ? (
-        <section className={styles.summaryGrid} aria-label="Five-study portfolio metrics">
-          {portfolioStudies.map((study) => (
-            <OverviewSummaryCard
-              key={study.key}
-              label={study.label}
-              value={formatMetric(study.enrollment)}
-              unit={study.target !== null ? `/ ${study.target.toLocaleString()}` : "enrolled"}
-              progress={study.target && study.enrollment !== null ? study.enrollment / study.target * 100 : study.forms.completionRate ?? 0}
-              note={`${formatMetric(study.eventRecords)} event records · ${study.forms.completionRate !== null ? `${study.forms.completionRate.toFixed(1)}% forms` : "forms unavailable"}`}
-              insight={`portfolio-${study.key}`}
-            />
-          ))}
+        <section className={styles.studyPicker} aria-label="Select a study scope">
+          {portfolioStudies.map((study) => {
+            const isActive = scope === study.key.toLowerCase();
+            return (
+              <button
+                key={study.key}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveStudy(study.key.toUpperCase() as typeof activeStudy)}
+                className={styles.studyChip}
+                data-active={isActive || undefined}
+                data-insight={`portfolio-${study.key}`}
+                data-insight-term={`${study.label} study`}
+                data-insight-body={`Select to rescope this page to ${study.label}. Enrollment and form totals come from that study's configured REDCap projects only.`}
+              >
+                <span className={styles.studyChipLabel}>{study.label}</span>
+                <strong className={styles.studyChipValue}>{formatMetric(study.enrollment)}</strong>
+                <span className={styles.studyChipNote}>
+                  {study.target != null ? `of ${study.target.toLocaleString()}` : "enrolled"}
+                </span>
+              </button>
+            );
+          })}
         </section>
       ) : (
         <DataProvenance label="Portfolio unavailable" detail="No verified study summaries are available." />
       )}
 
-      {observedNanoEvents.length ? (
-        <section className={styles.operationsGrid} aria-label="Observed NANO events">
+      {summaryCards.length ? (
+        <section
+          className={styles.summaryGrid}
+          aria-label={`${scopeLabel} overview metrics`}
+          data-tour="operator-kpis"
+        >
+          {summaryCards.map((card) => (
+            <OverviewSummaryCard
+              key={card.key}
+              label={card.label}
+              value={card.value}
+              unit={card.unit}
+              progress={card.progress}
+              note={card.note}
+              insight={card.insight}
+            />
+          ))}
+          <article className={`${styles.summaryCard} ${styles.redcapCard} surface-card`} data-insight="kpi-redcap">
+            <span className={styles.metricLabel}>REDCap sync</span>
+            <div className={styles.healthValue}>
+              {sourceState.isLive ? <span aria-hidden /> : null}
+              {sourceState.label}
+            </div>
+            <p>
+              {redcapSummary.projectsOk}/{redcapSummary.projectsTotal || "—"} projects · as of {overviewAsOf}
+            </p>
+          </article>
+        </section>
+      ) : (
+        <DataProvenance
+          label={`No verified ${scopeLabel} metrics`}
+          detail="This study reported no aggregate totals in the current payload."
+        />
+      )}
+
+      {unavailableCount > 0 && summaryCards.length ? (
+        <p className={styles.suppressedNote}>
+          {unavailableCount} further {unavailableCount === 1 ? "measure is" : "measures are"} not
+          published for {scopeLabel} in the current aggregate payload.
+        </p>
+      ) : null}
+
+      <RedcapProjectLinks metrics={dashboardMetrics.data} studyKey={scope} />
+
+      {observedEvents.length ? (
+        <section className={styles.operationsGrid} aria-label={`Observed ${scopeLabel} events`}>
           <article className={`${styles.operationsCard} surface-card`}>
             <div className={styles.panelHeading}>
-              <h2>Observed NANO events</h2>
+              <h2>Observed {scopeLabel} events</h2>
               <p>Suppressed and unavailable small-cell counts are omitted.</p>
             </div>
             <div className={styles.funnelList}>
-              {observedNanoEvents.map((event, index, rows) => {
+              {observedEvents.map((event, index, rows) => {
                 const max = Math.max(...rows.map((row) => row.records), 1);
                 const width = Math.max(3, event.records / max * 100);
                 return (
@@ -343,7 +384,7 @@ export function Overview() {
         <ReadingsGeoMap readings={liveReadings} loading={readingsLibrary.isLoading} />
       </section>
 
-      <OverviewProgressRings study={nano} />
+      <OverviewProgressRings study={scoped} />
     </div>
   );
 }

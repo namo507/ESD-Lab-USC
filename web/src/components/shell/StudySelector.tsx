@@ -1,33 +1,79 @@
-import { useUi, type StudyFilter } from "@/store/ui";
+import { useMemo } from "react";
+import type { DashboardMetrics } from "@/api/dashboardMetrics";
+import { useUi, STUDY_FILTERS, type StudyFilter } from "@/store/ui";
+import styles from "./StudySelector.module.css";
 
 /**
- * Persistent NANO / NICO / BOTH study scope toggle.
+ * Portfolio study scope, rendered in the sidebar under the logo.
  *
- * Rendered in the sidebar directly under the logo. Selection lives in the
- * Zustand `uiStore` (`activeStudy`) and is persisted to localStorage, so every
- * page, chart, and data call can reactively filter to the chosen study.
+ * Options come from the live metrics payload rather than a hardcoded list, so
+ * a sixth study reaching REDCap shows up here on its own. `ALL` is always
+ * offered because the portfolio total is meaningful even when a single study
+ * is unreachable.
+ *
+ * Selection lives in `uiStore.activeStudy` and persists to localStorage, so
+ * every page, table, and chart filters to the chosen scope.
  */
-const OPTIONS: Array<{ value: StudyFilter; label: string; activeStyle: React.CSSProperties }> = [
-  { value: "NANO", label: "NANO", activeStyle: { background: "var(--color-indigo-500, #6366F1)", color: "#fff" } },
-  { value: "NICO", label: "NICO", activeStyle: { background: "var(--color-teal-500, #14B8A6)", color: "#fff" } },
-  { value: "BOTH", label: "Both", activeStyle: { background: "var(--slate-600, #475569)", color: "#fff" } },
-];
 
-export function StudySelector() {
+interface StudyOption {
+  value: StudyFilter;
+  label: string;
+  /** Enrollment for the scope, used as a compact secondary line. */
+  detail: string | null;
+  /** False when the payload has no data for this study right now. */
+  available: boolean;
+}
+
+const ALL_OPTION_LABEL = "All";
+
+export interface StudySelectorProps {
+  /**
+   * Live metrics, supplied by the shell.
+   *
+   * Passed in rather than fetched here so the sidebar stays presentational and
+   * does not oblige every consumer to provide a QueryClient. Without it the
+   * control still renders every scope, just without enrollment counts.
+   */
+  metrics?: DashboardMetrics | null;
+}
+
+export function StudySelector({ metrics }: StudySelectorProps = {}) {
   const activeStudy = useUi((s) => s.activeStudy);
   const setActiveStudy = useUi((s) => s.setActiveStudy);
 
+  const options = useMemo<StudyOption[]>(() => {
+    const reported = new Map(
+      (metrics?.studies ?? []).map((study) => [study.key.toUpperCase(), study]),
+    );
+
+    const portfolio = metrics?.portfolio.studyEnrollments ?? null;
+    const all: StudyOption = {
+      value: "ALL",
+      label: ALL_OPTION_LABEL,
+      detail: portfolio !== null ? `${portfolio.toLocaleString()} enrolled` : null,
+      available: true,
+    };
+
+    // Keep the declared order stable so the control does not reshuffle when a
+    // study drops out of the payload.
+    const studies = STUDY_FILTERS.filter((key) => key !== "ALL").map((key) => {
+      const study = reported.get(key);
+      return {
+        value: key,
+        label: study?.label ?? key,
+        detail: study?.enrollment != null ? `${study.enrollment.toLocaleString()} enrolled` : null,
+        available: Boolean(study),
+      } satisfies StudyOption;
+    });
+
+    return [all, ...studies];
+  }, [metrics]);
+
   return (
-    <div className="px-2">
-      <div className="pb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--warm-fg4)]">
-        Study
-      </div>
-      <div
-        role="radiogroup"
-        aria-label="Active study scope"
-        className="flex gap-1 p-1 rounded-lg bg-[color:var(--warm-pill)] border border-[color:var(--warm-border)]"
-      >
-        {OPTIONS.map((opt) => {
+    <div className={styles.wrap}>
+      <div className={styles.eyebrow}>Study scope</div>
+      <div role="radiogroup" aria-label="Active study scope" className={styles.group}>
+        {options.map((opt) => {
           const isActive = activeStudy === opt.value;
           return (
             <button
@@ -35,13 +81,27 @@ export function StudySelector() {
               type="button"
               role="radio"
               aria-checked={isActive}
+              // A study absent from the payload stays selectable so the route
+              // can explain why it is empty, rather than silently vanishing.
+              aria-disabled={opt.available ? undefined : true}
               onClick={() => setActiveStudy(opt.value)}
-              className={`flex-1 px-1.5 py-1 rounded-md text-[11px] font-semibold tracking-[0.02em] transition ${
-                isActive ? "shadow-sm" : "text-[color:var(--warm-fg3)] hover:bg-[color:var(--warm-card)]"
-              }`}
-              style={isActive ? opt.activeStyle : undefined}
+              className={styles.option}
+              data-active={isActive || undefined}
+              data-unavailable={opt.available ? undefined : true}
+              data-insight="study-scope"
+              data-insight-term={opt.value === "ALL" ? "Portfolio scope" : `${opt.label} scope`}
+              data-insight-body={
+                opt.value === "ALL"
+                  ? "Shows combined totals across every configured REDCap study. Individual study figures stay available by selecting that study."
+                  : `Filters every metric, table, and chart on this page to ${opt.label}. ${
+                      opt.available
+                        ? "Figures come from that study's configured REDCap projects."
+                        : "This study is not in the current aggregate payload, so panels will show an empty state."
+                    }`
+              }
             >
-              {opt.label}
+              <span className={styles.label}>{opt.label}</span>
+              {opt.detail ? <span className={styles.detail}>{opt.detail}</span> : null}
             </button>
           );
         })}

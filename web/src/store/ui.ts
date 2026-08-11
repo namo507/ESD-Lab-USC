@@ -16,10 +16,47 @@ export type Density = "comfortable" | "compact";
 export type ThemeMode = "light" | "dark" | "system";
 export type BrandSkin = "default" | "esd-2026";
 
-/** Global study scope for the NANO + NICO dual-study dashboard. */
-export type StudyFilter = "NANO" | "NICO" | "BOTH";
+/**
+ * Global study scope across the five-study REDCap portfolio.
+ *
+ * `ALL` means the whole portfolio rather than any single study. Values match
+ * the uppercased `studies[].key` in the aggregate metrics payload, so a sixth
+ * study appears in the UI without a code change here.
+ */
+export type StudyFilter = "ALL" | "ABC" | "IPSA" | "ACTION" | "NICO" | "NANO";
+
+export const STUDY_FILTERS: readonly StudyFilter[] = [
+  "ALL",
+  "ABC",
+  "IPSA",
+  "ACTION",
+  "NICO",
+  "NANO",
+] as const;
 
 const STUDY_STORAGE_KEY = "esd-active-study";
+
+/**
+ * Values written by earlier builds that no longer exist as scopes.
+ *
+ * `BOTH` was the old NANO+NICO toggle. Anyone who used the dashboard before
+ * the portfolio rollout still has it in localStorage, so it has to resolve to
+ * the nearest equivalent instead of being treated as corrupt and reset.
+ */
+const LEGACY_STUDY_ALIASES: Record<string, StudyFilter> = {
+  BOTH: "ALL",
+  ALL_STUDIES: "ALL",
+  PORTFOLIO: "ALL",
+};
+
+export function normalizeStudyFilter(value: unknown): StudyFilter | null {
+  if (typeof value !== "string") return null;
+  const upper = value.trim().toUpperCase();
+  if ((STUDY_FILTERS as readonly string[]).includes(upper)) {
+    return upper as StudyFilter;
+  }
+  return LEGACY_STUDY_ALIASES[upper] ?? null;
+}
 
 /**
  * Study scope persists in localStorage (its own key, like theme) so the choice
@@ -27,14 +64,14 @@ const STUDY_STORAGE_KEY = "esd-active-study";
  * PHI-adjacent and is safe outside sessionStorage.
  */
 export function loadInitialStudy(): StudyFilter {
-  if (typeof window === "undefined") return "BOTH";
+  if (typeof window === "undefined") return "ALL";
   try {
-    const raw = window.localStorage.getItem(STUDY_STORAGE_KEY);
-    if (raw === "NANO" || raw === "NICO" || raw === "BOTH") return raw;
+    const stored = normalizeStudyFilter(window.localStorage.getItem(STUDY_STORAGE_KEY));
+    if (stored) return stored;
   } catch {
     /* sandboxed contexts may throw; fall through */
   }
-  return "BOTH";
+  return "ALL";
 }
 
 function persistStudy(s: StudyFilter): void {

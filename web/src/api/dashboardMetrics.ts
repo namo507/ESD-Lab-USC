@@ -44,6 +44,8 @@ export interface DashboardProjectMetrics {
   title: string | null;
   status: string | null;
   enrollmentAuthority: boolean;
+  /** REDCap `pid`. Published in the payload; needed to link to project home. */
+  projectId: number | null;
   records: number | null;
   eventRecords: number | null;
   events: DashboardEventMetric[];
@@ -231,6 +233,7 @@ function parseProject(value: JsonRecord): DashboardProjectMetrics | null {
   const key = stringAt(value, "key", "alias");
   if (!key) return null;
   const error = record(value.error);
+  const projectId = numberAt(value, "project_id", "pid");
   return {
     key,
     study: stringAt(value, "study", "study_key")?.toLowerCase() ?? null,
@@ -238,6 +241,8 @@ function parseProject(value: JsonRecord): DashboardProjectMetrics | null {
     title: stringAt(value, "title", "label"),
     status: stringAt(value, "status"),
     enrollmentAuthority: value.enrollment_authority === true,
+    // Guard against a non-integer or zero pid producing a broken REDCap link.
+    projectId: projectId !== null && Number.isInteger(projectId) && projectId > 0 ? projectId : null,
     records: numberAt(value, "records", "record_count"),
     eventRecords: numberAt(value, "event_records"),
     events: parseEvents(value.events),
@@ -318,6 +323,40 @@ export function selectStudyMetrics(
 
 export function selectNanoMetrics(metrics: DashboardMetrics | null | undefined): DashboardStudyMetrics | null {
   return selectStudyMetrics(metrics, "nano");
+}
+
+/**
+ * Resolve one study, or the whole portfolio for the `ALL` scope.
+ *
+ * The portfolio case is synthesised from `metrics.portfolio` rather than by
+ * summing studies, because suppressed small cells are null and summing them
+ * would silently under-report. Returning null for an unknown study lets the
+ * caller render an explicit empty state instead of a stale figure.
+ */
+export function selectScopeMetrics(
+  metrics: DashboardMetrics | null | undefined,
+  scope: string,
+): DashboardStudyMetrics | null {
+  if (!metrics) return null;
+  const normalized = scope.trim().toLowerCase();
+
+  if (normalized !== "all") return selectStudyMetrics(metrics, normalized);
+
+  const portfolio = metrics.portfolio;
+  return {
+    key: "all",
+    label: "All studies",
+    status: portfolio.status,
+    projectsTotal: metrics.source.projectsTotal,
+    projectsOk: metrics.source.projectsOk,
+    enrollment: portfolio.studyEnrollments,
+    // The portfolio has no single enrollment target; five studies have
+    // different goals and only NANO declares one.
+    target: null,
+    eventRecords: portfolio.eventRecords,
+    events: [],
+    forms: portfolio.forms,
+  };
 }
 
 export function selectRedcapSummary(metrics: DashboardMetrics | null | undefined): DashboardRedcapSummary {

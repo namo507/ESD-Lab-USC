@@ -36,8 +36,11 @@ export function StudyHero() {
     );
   }
 
-  const showNano = activeStudy === "NANO" || activeStudy === "BOTH";
-  const showNico = activeStudy === "NICO" || activeStudy === "BOTH";
+  // This hero only covers NANO and NICO. Under the portfolio scope, or a study
+  // it does not model, show both panels rather than rendering nothing.
+  const coversActiveStudy = activeStudy === "NANO" || activeStudy === "NICO";
+  const showNano = activeStudy === "NANO" || !coversActiveStudy;
+  const showNico = activeStudy === "NICO" || !coversActiveStudy;
   const both = showNano && showNico;
 
   return (
