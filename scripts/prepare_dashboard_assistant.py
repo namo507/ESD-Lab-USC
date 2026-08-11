@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and prepare the NVIDIA-backed dashboard assistant.
+"""Validate and prepare the backend-routed dashboard assistant.
 
 This command performs no generation by default. It validates the environment,
 reports a sanitized readiness state, and can refresh repository grounding.

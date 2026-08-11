@@ -11,6 +11,7 @@ import {
   useRedcapVisitHealth,
 } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
+import { InstrumentDictionary } from "@/components/redcap/InstrumentDictionary";
 import { RedcapProjectLinks } from "@/components/redcap/RedcapProjectLinks";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
@@ -51,7 +52,7 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Weekly study memo",       prompt: "Draft this week's REDCap study memo using redcap_clinical, redcap_schedule, redcap_integrity, redcap_platform, and redcap_predictive." },
 ];
 
-type RedcapTab = "ops" | "sync" | "visit-health" | "coverage" | "next-wave";
+type RedcapTab = "ops" | "sync" | "visit-health" | "coverage" | "next-wave" | "dictionary";
 type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth";
 
 const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
@@ -230,8 +231,12 @@ export function Redcap() {
             { value: "visit-health" as const, label: "Visit Health" },
             { value: "coverage" as const, label: "Coverage" },
             { value: "next-wave" as const, label: "Next-Wave Intelligence" },
+            { value: "dictionary" as const, label: "Instruments" },
           ]
-        : [{ value: "sync" as const, label: "Sync & Completeness" }],
+        : [
+            { value: "sync" as const, label: "Sync & Completeness" },
+            { value: "dictionary" as const, label: "Instruments" },
+          ],
     [visitHealthEnabled],
   );
 
@@ -377,6 +382,8 @@ export function Redcap() {
       {visitHealthEnabled && activeTab === "next-wave" && redcapPayload.data && (
         <NextWavePanel payload={redcapPayload.data} onAsk={fastPath} />
       )}
+
+      {activeTab === "dictionary" && <InstrumentDictionary studyKey={scope} />}
     </div>
   );
 }

@@ -29,6 +29,12 @@ on:
       - "dashboard/pipelines/study_blocks.py"
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/sync_redcap_portfolio.py"
+      - "scripts/sync_redcap_dictionary.py"
+      # The sync scripts are thin wrappers; the logic that shapes what gets
+      # published lives in these modules, so they must trigger a deploy too.
+      - "redcap/api/multi_project.py"
+      - "redcap/api/dictionary.py"
+      - "src/utils/env_loader.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"
@@ -92,6 +98,8 @@ jobs:
           umask 077
           python scripts/sync_redcap_portfolio.py --require-all
           test -s dashboard/data/dashboard_metrics.json
+          python scripts/sync_redcap_dictionary.py
+          test -s dashboard/data/redcap_dictionary.json
 
       - name: Generate REDCap TypeScript constants
         run: |

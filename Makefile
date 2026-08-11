@@ -118,9 +118,14 @@ dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
 	$(PYTHON) scripts/prepare_dashboard_assistant.py --reindex || true
 	@echo "✓ Dashboard JSON refreshed."
 
+redcap-dictionary:  ## Export the structural REDCap instrument dictionary (no item text, no identifier fields)
+	$(PYTHON) scripts/sync_redcap_dictionary.py
+	@echo "✓ REDCap instrument dictionary refreshed."
+
 redcap-publish:  ## Pull REDCap, rebuild payload/context, reindex assistant, and fan out to Pages/Docker/K8s checks
 	@echo "Publishing REDCap dashboard payload across Pages, Docker, and Kubernetes surfaces..."
 	@$(MAKE) redcap-sync
+	@$(MAKE) redcap-dictionary
 	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
 	node scripts/gen_redcap_constants.mjs
 	$(PYTHON) dashboard/context_skill/extract_context.py --emit

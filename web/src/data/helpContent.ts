@@ -148,7 +148,7 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
   { term: "Dual-thermistor thermal gradients", source: "dashboard", definition: "Thermal signals named in the operator console as part of the de-identified multimodal export." },
   { term: "SQI", source: "dashboard", definition: "Signal quality index. The QA surface scores ECG epochs so marginal windows can be accepted, rejected, or reviewed." },
   { term: "REDCap", source: "dashboard", definition: "The study form and metadata system. The dashboard reads de-identified payloads through a proxy and never exposes PHI fields." },
-  { term: "NVIDIA assistant", source: "dashboard", definition: "The hosted assistant used through the dashboard backend. Browser prompts are PHI-scrubbed, and provider credentials never reach the page." },
+  { term: "Assistant providers", source: "dashboard", definition: "ESD Buddy answers through a backend-routed provider chain: Gemini first, then NVIDIA Nemotron, then a local model. Browser prompts are PHI-scrubbed, and provider credentials never reach the page." },
   { term: "ADOS-2 CSS", source: "todo", definition: "TODO: confirm with lab." },
   { term: "XGBoost", source: "dashboard", definition: "The gradient-boosted model family shown in the Model Studio and model-card surfaces." },
   { term: "Trajectory", source: "dashboard", definition: "A longitudinal trend across visits, cohorts, or features, usually shown as a cohort-level line or river." },

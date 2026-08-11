@@ -438,9 +438,9 @@ run_share_health_checks() {
   fi
 
   if assistant_status_healthy "$origin_url"; then
-    echo "  PASS NVIDIA assistant provider → ${origin_url}"
+    echo "  PASS assistant provider → ${origin_url}"
   else
-    echo "  WARN NVIDIA assistant is degraded; dashboard remains healthy"
+    echo "  WARN assistant is degraded; dashboard remains healthy"
   fi
 
   if [[ "$kind" == "quick" ]]; then
