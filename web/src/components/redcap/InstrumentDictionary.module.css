@@ -1,0 +1,350 @@
+/*
+ * Survey instrument inventory.
+ *
+ * ESD brand layer: Libre Franklin, Discovery Blue for emphasis and links, cool
+ * blue table header rows, 20px card radius, soft shadow instead of heavy
+ * borders. Numerics are right-aligned and tabular so columns line up down the
+ * page rather than drifting with digit width.
+ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-family: "Libre Franklin", var(--font-sans, system-ui, sans-serif);
+}
+
+.state {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: var(--esd-radius-card, 20px);
+  background: var(--warm-card, #fff);
+  color: var(--warm-fg3, #4a5163);
+  font-size: 13px;
+}
+
+.state code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--esd-cool-blue, #e6eefc);
+  color: var(--esd-discovery-blue, #3366ff);
+  font-size: 12px;
+}
+
+.eyebrow {
+  color: var(--warm-fg4, #6b7280);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Summary ─────────────────────────────────────────────────────────── */
+
+.summaryRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: 16px;
+  background: var(--warm-card, #fff);
+}
+
+.statLabel {
+  color: var(--warm-fg4, #6b7280);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* ── Field-type distribution ─────────────────────────────────────────── */
+
+.typeChart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: var(--esd-radius-card, 20px);
+  background: var(--warm-card, #fff);
+}
+
+.typeList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.typeRow {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  /* Fixed label and count columns keep every bar starting and ending on the
+     same two vertical lines. */
+  grid-template-columns: 96px 1fr 56px;
+}
+
+.typeName {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.typeBar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--esd-cool-blue, #e6eefc);
+  overflow: hidden;
+}
+
+.typeBar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--esd-discovery-blue, #3366ff);
+}
+
+.typeCount {
+  color: var(--warm-fg3, #4a5163);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── Per-project table ───────────────────────────────────────────────── */
+
+.project {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: var(--esd-radius-card, 20px);
+  background: var(--warm-card, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, #07112b 5%, transparent);
+}
+
+.projectHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.projectTitle {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.projectMeta {
+  margin: 3px 0 0;
+  color: var(--warm-fg4, #6b7280);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.projectLink {
+  padding: 7px 14px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: var(--esd-radius-pill, 999px);
+  background: var(--esd-cool-blue, #e6eefc);
+  color: var(--esd-discovery-blue, #3366ff);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 160ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.projectLink:hover,
+.projectLink:focus-visible {
+  background: var(--esd-discovery-blue, #3366ff);
+  color: #fff;
+}
+
+.projectLink:focus-visible {
+  outline: 2px solid var(--esd-discovery-blue, #3366ff);
+  outline-offset: 2px;
+}
+
+/* Wide tables scroll inside their own container, never the page. */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.table thead th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--esd-cool-blue, #e6eefc);
+  background: color-mix(in srgb, var(--esd-cool-blue, #e6eefc) 45%, transparent);
+  color: var(--warm-fg3, #4a5163);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.table thead th:first-child {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.table thead th:last-child {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.row td,
+.row th {
+  padding: 7px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--esd-cool-blue, #e6eefc) 55%, transparent);
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.row[data-expanded] td,
+.row[data-expanded] th {
+  border-bottom-color: transparent;
+}
+
+.row td[data-muted] {
+  color: var(--warm-fg4, #6b7280);
+}
+
+.instrumentCell {
+  text-align: left;
+}
+
+.disclose {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disclose:focus-visible {
+  outline: 2px solid var(--esd-discovery-blue, #3366ff);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.chevron {
+  color: var(--esd-discovery-blue, #3366ff);
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.chevron[data-open] {
+  transform: rotate(90deg);
+}
+
+.instrumentLabel {
+  display: block;
+  font-weight: 600;
+}
+
+.instrumentName {
+  display: block;
+  color: var(--warm-fg4, #6b7280);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+}
+
+/* ── Expanded field list ─────────────────────────────────────────────── */
+
+.detailRow td {
+  padding: 0 10px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--esd-cool-blue, #e6eefc) 55%, transparent);
+}
+
+.fieldList {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--esd-cool-blue, #e6eefc) 35%, transparent);
+  list-style: none;
+}
+
+.fieldItem {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fieldName {
+  color: var(--esd-discovery-blue, #3366ff);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+}
+
+.fieldType {
+  color: var(--warm-fg3, #4a5163);
+  font-size: 10.5px;
+}
+
+.fieldFlag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--warm-card, #fff);
+  color: var(--warm-fg4, #6b7280);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.footnote {
+  margin: 0;
+  color: var(--warm-fg4, #6b7280);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron,
+  .projectLink {
+    transition-duration: 1ms;
+  }
+}

@@ -223,6 +223,61 @@ def _validate_event_total(value: dict, *, label: str) -> None:
         raise ValueError(f"public dashboard metrics {label} total is invalid")
 
 
+def _validate_public_redcap_dictionary(payload: object) -> None:
+    """Refuse to publish a dictionary that carries item text or record data.
+
+    The exporter already withholds both, so this is a second, independent gate:
+    a regression upstream should stop the deploy rather than quietly place
+    licensed assessment wording or identifier field names on a public site.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("dictionary payload is not an object")
+    if payload.get("schema") != "redcap.dictionary.v1":
+        raise ValueError("unexpected dictionary schema")
+    for flag, expected in (
+        ("aggregate_only", True),
+        ("contains_item_text", False),
+        ("contains_record_data", False),
+    ):
+        if payload.get(flag) is not expected:
+            raise ValueError(f"dictionary {flag} must be {expected}")
+
+    banned = {
+        "field_label",
+        "select_choices_or_calculations",
+        "field_note",
+        "section_header",
+        "identifier",
+        "branching_logic",
+    }
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            leaked = banned.intersection(node)
+            if leaked:
+                raise ValueError(f"dictionary carries excluded keys: {sorted(leaked)}")
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(payload)
+
+    for project in payload.get("projects") or []:
+        if not isinstance(project, dict) or project.get("error"):
+            continue
+        published = project.get("fields_published")
+        withheld = project.get("identifier_fields_withheld")
+        total = project.get("fields_total")
+        if None in (published, withheld, total):
+            raise ValueError("dictionary project is missing field counts")
+        if published + withheld != total:
+            raise ValueError(
+                f"dictionary field counts do not reconcile for {project.get('key')}"
+            )
+
+
 def _validate_public_dashboard_metrics(
     payload: object,
     *,
@@ -1705,6 +1760,26 @@ def build(
             sys.exit(f"[build_pages_site] unsafe public dashboard metrics: {exc}")
         (dashboard_data_out / metrics_source.name).write_text(
             json.dumps(metrics_payload, indent=2, ensure_ascii=True, allow_nan=False),
+            encoding="utf-8",
+        )
+
+    # Structural REDCap dictionary. Optional: a deployment that has not run the
+    # sync simply ships without it and the UI says so. When present it is
+    # re-validated here rather than trusted, because this is the last gate
+    # before it becomes a public file.
+    dictionary_source = REPO_ROOT / "dashboard" / "data" / "redcap_dictionary.json"
+    if dictionary_source.exists():
+        try:
+            dictionary_payload = json.loads(
+                dictionary_source.read_text(encoding="utf-8")
+            )
+            _validate_public_redcap_dictionary(dictionary_payload)
+        except (json.JSONDecodeError, ValueError) as exc:
+            sys.exit(f"[build_pages_site] unsafe public REDCap dictionary: {exc}")
+        (dashboard_data_out / dictionary_source.name).write_text(
+            json.dumps(
+                dictionary_payload, indent=2, ensure_ascii=True, allow_nan=False
+            ),
             encoding="utf-8",
         )
 

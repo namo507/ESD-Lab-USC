@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Structural REDCap instrument dictionary (`make redcap-dictionary`). Exports
+  every project's survey instruments, field names, field types, form grouping,
+  and required/branching counts across all eight projects -- 278 instruments and
+  21,905 fields -- and surfaces them as an Instruments tab on `/redcap` that
+  follows the study scope and links each project to its REDCap home.
+- Two deliberate exclusions, enforced in code and asserted by tests: verbatim
+  `field_label` text is never exported, because for these projects it is the
+  item wording of licensed assessments (Bayley-4, M-CHAT, ADOS-2, EPDS, CSBS);
+  and fields REDCap flags as direct identifiers are withheld, keeping only a
+  count so totals still reconcile. `scripts/build_pages_site.py` re-validates
+  both before publishing, so a regression upstream fails the deploy.
 - Portfolio study scope: the sidebar selector now offers ABC, IPSA, ACTION,
   NICO, NANO and an All option, derived from the metrics payload rather than a
   hardcoded list, so a sixth study appears without a code change. Selection

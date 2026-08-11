@@ -59,6 +59,8 @@ jobs:
           umask 077
           python scripts/sync_redcap_portfolio.py --require-all
           test -s dashboard/data/dashboard_metrics.json
+          python scripts/sync_redcap_dictionary.py
+          test -s dashboard/data/redcap_dictionary.json
 
       - name: Generate REDCap TypeScript constants
         run: |
