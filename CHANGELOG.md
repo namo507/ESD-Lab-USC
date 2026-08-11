@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Portfolio study scope: the sidebar selector now offers ABC, IPSA, ACTION,
+  NICO, NANO and an All option, derived from the metrics payload rather than a
+  hardcoded list, so a sixth study appears without a code change. Selection
+  drives every metric on Overview and persists across routes.
+- Interactive study cards on Overview. Selecting a study rescopes the page,
+  replacing the second static grid that duplicated the summary row.
+- The REDCap route follows the study scope: project counts, instrument totals,
+  and form completion narrow to the selected study, with its project links
+  beside them.
+- The participant table filters by study for NANO and NICO. ABC, IPSA, and
+  ACTION have no rows in the de-identified feed, so those scopes show an
+  explicit notice rather than an empty table that reads as zero enrollment.
+- "Open in REDCap" project-home links per study, behind the build-time
+  `VITE_REDCAP_APP_ORIGIN`. Links carry only the project id and are hidden
+  entirely when the origin is unset, which is the public Pages default.
 - Single canonical `.env` loader (`src/utils/env_loader.py`) used by the REDCap
   sync, dashboard server, assistant, and operator scripts, with a
   dependency-free parser for containers without `python-dotenv` and a rule that
@@ -68,6 +83,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PR template and issue templates
 
 ### Changed
+- Overview shows only metrics that have a value. Three of the five summary
+  tiles were permanently "-" for NANO, which read as broken data; the count of
+  unpublished measures is now stated in one line instead.
+- The study selector's active state uses Discovery Blue. It previously used
+  indigo (#6366F1) and teal (#14B8A6), neither of which is in the ESD palette.
 - The Buddy hover highlight is a soft tint that eases in, replacing a hard
   border and yellow ring that appeared and vanished with no transition. The
   bubble stays mounted so entry and exit animate, and moving between hotspots
@@ -76,6 +96,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   naming the configured primary.
 
 ### Fixed
+- `parseProject` dropped `project_id` from the metrics payload, so the REDCap
+  project id was published by the backend but unavailable to the frontend.
+- A stored `activeStudy` of `BOTH` from the retired NANO/NICO toggle now
+  migrates to the portfolio scope instead of being treated as invalid.
 - `scripts/sync_redcap_portfolio.py` never read `.env`, so a plain invocation
   ran without any of the eight REDCap project tokens.
 - Band-power integration in `src/preprocessing/hrv_features.py` binds

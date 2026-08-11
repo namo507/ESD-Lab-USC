@@ -152,7 +152,7 @@ const operations = {
 
 describe("LabOperationsPanel", () => {
   beforeEach(() => {
-    useUi.setState({ activeStudy: "BOTH", chatOpen: false, chatSeed: null });
+    useUi.setState({ activeStudy: "ALL", chatOpen: false, chatSeed: null });
   });
 
   it("renders the Nano-first workflow status and dashboard inventory", () => {

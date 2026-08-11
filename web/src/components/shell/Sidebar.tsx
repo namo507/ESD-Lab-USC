@@ -1,6 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Badge, Icon } from "@/components/primitives";
-import type { DashboardSourceState, DashboardStudyMetrics } from "@/api/dashboardMetrics";
+import type {
+  DashboardMetrics,
+  DashboardSourceState,
+  DashboardStudyMetrics,
+} from "@/api/dashboardMetrics";
 import { DataProvenance } from "@/components/data/DataProvenance";
 import { StudySelector } from "./StudySelector";
 import { DOC_ROUTE, HOW_TO_ROUTE } from "@/data/helpContent";
@@ -14,6 +18,8 @@ interface SidebarProps {
   sourceState: DashboardSourceState;
   qaPending: number;
   executiveMode?: boolean;
+  /** Full payload, forwarded to the study selector for enrollment counts. */
+  metrics?: DashboardMetrics | null;
 }
 
 interface NavItem {
@@ -168,7 +174,7 @@ const CORE_NAV_ITEMS: NavItem[] = [
 
 const CORE_ROUTE_KEYS = new Set(CORE_NAV_ITEMS.map((item) => `${item.to}|${item.label}`));
 
-export function Sidebar({ study, sourceState, qaPending, executiveMode = false }: SidebarProps) {
+export function Sidebar({ study, sourceState, qaPending, executiveMode = false, metrics }: SidebarProps) {
   const location = useLocation();
   const groups = executiveMode
     ? EXECUTIVE_NAV_GROUPS
@@ -258,7 +264,7 @@ export function Sidebar({ study, sourceState, qaPending, executiveMode = false }
               </div>
             ) : null}
           </div>
-          <div className={styles.studyScope}><StudySelector /></div>
+          <div className={styles.studyScope}><StudySelector metrics={metrics} /></div>
         </div>
       )}
 

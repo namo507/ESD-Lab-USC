@@ -117,7 +117,7 @@ export function AppShell({ brand }: AppShellProps = {}) {
       </button>
       {sidebarOpen && <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} aria-hidden />}
       <div className={`${styles.sidebarLayer} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
-        <Sidebar study={nano} sourceState={sourceState} qaPending={qaPending} executiveMode={executiveMode} />
+        <Sidebar study={nano} sourceState={sourceState} qaPending={qaPending} executiveMode={executiveMode} metrics={dashboardMetrics.data} />
       </div>
 
       <div className={styles.content}>

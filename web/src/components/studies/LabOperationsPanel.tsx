@@ -128,7 +128,7 @@ export function LabOperationsPanelContent({ operations }: { operations: LabOpera
           />
           <StatTile
             label="Active scope"
-            value={active === "BOTH" ? "Both studies" : active}
+            value={active === "ALL" ? "All studies" : active}
             body={operations.priority.scope_guardrail}
           />
         </div>
