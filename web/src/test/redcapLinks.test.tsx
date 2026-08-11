@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { parseDashboardMetrics } from "@/api/dashboardMetrics";
+import { parseDashboardMetrics, selectRedcapSummary } from "@/api/dashboardMetrics";
 import { redcapLinksForStudy, redcapOrigin, redcapProjectUrl } from "@/api/redcapLinks";
 import { RedcapProjectLinks } from "@/components/redcap/RedcapProjectLinks";
 
@@ -147,5 +147,40 @@ describe("RedcapProjectLinks", () => {
       const params = [...new URL(href).searchParams.keys()];
       expect(params).toEqual(["pid"]);
     }
+  });
+});
+
+describe("selectRedcapSummary scoping", () => {
+  const SCOPED = metricsFixture([
+    project("nano_surveys", "nano", 4218, {
+      enrollment_authority: true,
+      forms: { instruments_total: 12 },
+    }),
+    project("nano_lab", "nano", 5484, { forms: { instruments_total: 8 } }),
+    project("nico", "nico", 3836, { forms: { instruments_total: 5 } }),
+    project("abc_lab", "abc", 2263, { status: "error", error: { code: "token" }, forms: {} }),
+  ]);
+
+  it("counts only the requested study's projects", () => {
+    const nano = selectRedcapSummary(SCOPED, "nano");
+    expect(nano.projectsTotal).toBe(2);
+    expect(nano.instrumentsTotal).toBe(20);
+  });
+
+  it("still reports the whole portfolio by default", () => {
+    expect(selectRedcapSummary(SCOPED).projectsTotal).toBe(4);
+    expect(selectRedcapSummary(SCOPED, "all").projectsTotal).toBe(4);
+  });
+
+  it("excludes a failed project from the healthy count", () => {
+    const abc = selectRedcapSummary(SCOPED, "abc");
+    expect(abc.projectsTotal).toBe(1);
+    expect(abc.projectsOk).toBe(0);
+  });
+
+  it("returns zeroes for a study with no projects rather than throwing", () => {
+    const missing = selectRedcapSummary(SCOPED, "ipsa");
+    expect(missing.projectsTotal).toBe(0);
+    expect(missing.completionRate).toBeNull();
   });
 });

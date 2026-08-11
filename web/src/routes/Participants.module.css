@@ -114,3 +114,20 @@
   color: var(--slate-500);
   font-family: var(--font-mono);
 }
+
+/*
+ * Shown when the active study scope has no participant rows in this feed.
+ * ABC, IPSA, and ACTION are real studies with real REDCap projects, but the
+ * de-identified participant table only carries NANO and NICO, so an empty
+ * table would otherwise read as "nobody enrolled".
+ */
+.scopeNotice {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--esd-cool-blue, #e6eefc);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--esd-discovery-blue, #3366ff) 4%, transparent);
+  color: var(--warm-fg3, #4a5163);
+  font-size: 12.5px;
+  line-height: 1.5;
+}

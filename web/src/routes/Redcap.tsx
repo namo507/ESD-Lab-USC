@@ -11,6 +11,7 @@ import {
   useRedcapVisitHealth,
 } from "@/api/hooks";
 import { AmbientOrbit, FastPaths, type FastPathPrompt } from "@/components/warm";
+import { RedcapProjectLinks } from "@/components/redcap/RedcapProjectLinks";
 import { resolveTheme, useUi } from "@/store/ui";
 import { logAudit } from "@/lib/audit";
 import { exportCsvFile } from "@/lib/exportCsv";
@@ -197,7 +198,12 @@ const FIELD_MAP: FieldRow[] = [
 export function Redcap() {
   const dashboardMetrics = useDashboardMetrics();
   const sourceState = getDashboardSourceState(dashboardMetrics.data);
-  const liveSummary = selectRedcapSummary(dashboardMetrics.data);
+  // REDCap health follows the sidebar scope, so the project counts and form
+  // totals describe the study the operator is actually looking at.
+  const activeStudy = useUi((s) => s.activeStudy);
+  const scope = activeStudy.toLowerCase();
+  const scopeLabel = scope === "all" ? "portfolio" : activeStudy;
+  const liveSummary = selectRedcapSummary(dashboardMetrics.data, scope);
   const eventsQuery = useRedcapEvents();
   const events = eventsQuery.data ?? [];
   const visitHealthEnabled = useFeatureFlag("REDCAP_VISIT_HEALTH");
@@ -317,6 +323,8 @@ export function Redcap() {
         </div>
       )}
 
+      <RedcapProjectLinks metrics={dashboardMetrics.data} studyKey={scope} />
+
       <section className={styles.kpis}>
         <KPI
           label="Projects healthy"
@@ -324,8 +332,8 @@ export function Redcap() {
           sub="configured REDCap sources"
           insightId="redcap-projects"
         />
-        <KPI label="Instruments" value={formatCount(liveSummary.instrumentsTotal)} sub="across reporting projects" insightId="redcap-forms" />
-        <KPI label="Event records" value={formatCount(liveSummary.eventRecords)} sub="aggregate portfolio" insightId="redcap-records" />
+        <KPI label="Instruments" value={formatCount(liveSummary.instrumentsTotal)} sub={`across ${scopeLabel} projects`} insightId="redcap-forms" />
+        <KPI label="Event records" value={formatCount(liveSummary.eventRecords)} sub={`aggregate ${scopeLabel}`} insightId="redcap-records" />
         <KPI
           label="Form completion"
           value={liveSummary.completionRate === null ? "—" : `${liveSummary.completionRate.toFixed(1)}%`}

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { Badge, Button, Card, Gloss, Icon, Segmented, Tooltip } from "@/components/primitives";
 import { useParticipants } from "@/api/hooks";
+import { useUi } from "@/store/ui";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import type { Participant, GroupCode, QaStatus, VisitId } from "@/api/schemas";
 import {
@@ -38,6 +39,17 @@ export function Participants() {
   const [qaF, setQaF] = useState<QaF>("all");
   const [visitF, setVisitF] = useState<VisitF>("all");
   const [enrollmentF, setEnrollmentF] = useState<EnrollmentF>("all");
+
+  /*
+   * The de-identified participant feed carries a study only through
+   * `operations.primary_study`, whose vocabulary is NANO / NICO / ANONICO. ABC,
+   * IPSA, and ACTION have no participant rows here at all, so those scopes get
+   * an explicit empty state rather than a filter that silently matches nothing
+   * and reads as "no participants enrolled".
+   */
+  const activeStudy = useUi((s) => s.activeStudy);
+  const scopeCoversParticipants =
+    activeStudy === "ALL" || activeStudy === "NANO" || activeStudy === "NICO";
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "updated", dir: "desc" });
   const operationsById = useMemo(() => new Map(rows.map((row, index) => [row.id, operationsFor(row, index)])), [rows]);
 
@@ -60,6 +72,18 @@ export function Participants() {
         },
       );
     }
+    if (activeStudy !== "ALL") {
+      r = scopeCoversParticipants
+        ? r.filter((p) => {
+            const ops = operationsById.get(p.id);
+            if (!ops) return false;
+            // ANONICO participants are part of the NICO study arm.
+            return ops.study_roles.some((role) =>
+              activeStudy === "NICO" ? role === "NICO" || role === "ANONICO" : role === activeStudy,
+            );
+          })
+        : [];
+    }
     if (groupF !== "all") r = r.filter((p) => p.group === groupF);
     if (studyParam === "home") r = r.filter((p) => p.site === "USC Lab");
     if (studyParam === "fiscal") r = r.filter((p) => p.group === "ASIB");
@@ -77,7 +101,7 @@ export function Participants() {
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return r;
-  }, [rows, query, groupF, studyParam, qaF, visitF, enrollmentF, sort, operationsById]);
+  }, [rows, query, groupF, studyParam, qaF, visitF, enrollmentF, sort, operationsById, activeStudy, scopeCoversParticipants]);
 
   const counts = {
     VPT: rows.filter((p) => p.group === "VPT").length,
@@ -177,6 +201,14 @@ export function Participants() {
           <span style={{ flex: 1 }} />
           <span className={`${styles.rowCount} t-mono`}>{filtered.length} rows</span>
         </div>
+
+        {!scopeCoversParticipants && (
+          <p className={styles.scopeNotice} role="status">
+            The de-identified participant table covers NANO and NICO only.{" "}
+            {activeStudy} participants are not part of this feed &mdash; open that study
+            in REDCap from the Overview page to review its records.
+          </p>
+        )}
 
         <div className={styles.legendBar} data-insight="participant-id-legend">
           {PARTICIPANT_ID_LEGEND.map((item) => (

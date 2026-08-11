@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drives every metric on Overview and persists across routes.
 - Interactive study cards on Overview. Selecting a study rescopes the page,
   replacing the second static grid that duplicated the summary row.
+- The REDCap route follows the study scope: project counts, instrument totals,
+  and form completion narrow to the selected study, with its project links
+  beside them.
+- The participant table filters by study for NANO and NICO. ABC, IPSA, and
+  ACTION have no rows in the de-identified feed, so those scopes show an
+  explicit notice rather than an empty table that reads as zero enrollment.
 - "Open in REDCap" project-home links per study, behind the build-time
   `VITE_REDCAP_APP_ORIGIN`. Links carry only the project id and are hidden
   entirely when the origin is unset, which is the public Pages default.

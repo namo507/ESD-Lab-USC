@@ -359,7 +359,18 @@ export function selectScopeMetrics(
   };
 }
 
-export function selectRedcapSummary(metrics: DashboardMetrics | null | undefined): DashboardRedcapSummary {
+/**
+ * Aggregate REDCap health for a study scope.
+ *
+ * `scope` defaults to the whole portfolio, which is the historical behaviour.
+ * Naming a study narrows the project counts and instrument totals to that
+ * study's projects; the form totals still come from the study row, because
+ * per-study form breakdowns are the only ones the payload verifies.
+ */
+export function selectRedcapSummary(
+  metrics: DashboardMetrics | null | undefined,
+  scope = "all",
+): DashboardRedcapSummary {
   if (!metrics) {
     return {
       projectsOk: 0,
@@ -373,9 +384,46 @@ export function selectRedcapSummary(metrics: DashboardMetrics | null | undefined
     };
   }
 
-  const instrumentCounts = metrics.projects
+  const normalized = scope.trim().toLowerCase();
+  const isPortfolio = normalized === "all";
+  const scopedProjects = isPortfolio
+    ? metrics.projects
+    : metrics.projects.filter((project) => project.study === normalized);
+
+  const instrumentCounts = scopedProjects
     .map((project) => project.forms.instrumentsTotal)
     .filter((value): value is number => value !== null);
+
+  if (!isPortfolio) {
+    const study = selectStudyMetrics(metrics, normalized);
+    const scopedForms = study?.forms ?? {
+      instrumentsTotal: null,
+      incomplete: null,
+      unverified: null,
+      complete: null,
+      unknown: null,
+      total: null,
+      completionRate: null,
+    };
+    const scopedReview = [scopedForms.incomplete, scopedForms.unverified, scopedForms.unknown]
+      .filter((value): value is number => value !== null);
+
+    return {
+      projectsOk: scopedProjects.filter((project) => project.status !== "error").length,
+      projectsTotal: scopedProjects.length,
+      instrumentsTotal: instrumentCounts.length
+        ? instrumentCounts.reduce((sum, value) => sum + value, 0)
+        : null,
+      eventRecords: study?.eventRecords ?? null,
+      formsComplete: scopedForms.complete,
+      formsTotal: scopedForms.total,
+      completionRate: scopedForms.completionRate,
+      reviewCount: scopedReview.length
+        ? scopedReview.reduce((sum, value) => sum + value, 0)
+        : null,
+    };
+  }
+
   const forms = metrics.portfolio.forms;
   const reviewParts = [forms.incomplete, forms.unverified, forms.unknown]
     .filter((value): value is number => value !== null);
