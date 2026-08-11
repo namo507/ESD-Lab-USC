@@ -29,6 +29,12 @@ on:
       - "dashboard/pipelines/study_blocks.py"
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/sync_redcap_portfolio.py"
+      - "scripts/sync_redcap_dictionary.py"
+      # The sync scripts are thin wrappers; the logic that shapes what gets
+      # published lives in these modules, so they must trigger a deploy too.
+      - "redcap/api/multi_project.py"
+      - "redcap/api/dictionary.py"
+      - "src/utils/env_loader.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"

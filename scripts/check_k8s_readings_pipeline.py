@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -135,5 +136,28 @@ def main() -> int:
     return 0
 
 
+def _run() -> int:
+    """Report an unreachable dashboard as a clean failure, not a traceback.
+
+    This runs in CI and in operator terminals, where a raw URLError stack tells
+    nobody what to do. `check_docker_health.py` already fails this way; match
+    it so every smoke check reads the same.
+    """
+    try:
+        return main()
+    except KeyboardInterrupt:
+        return 130
+    except urllib.error.URLError as exc:
+        print(
+            "k8s-readings-smoke-failed "
+            f"reason=dashboard unreachable: {exc.reason} "
+            "(start it with `make dashboard-up`, or pass --base-url)"
+        )
+        return 1
+    except (RuntimeError, OSError, json.JSONDecodeError) as exc:
+        print(f"k8s-readings-smoke-failed reason={exc}")
+        return 1
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_run())

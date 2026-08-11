@@ -1,7 +1,7 @@
 # REDCap PID 5955 — NANO Study Surveys Contract
 
 This glossary describes the REDCap structure used by the live dashboard,
-the grounded NVIDIA assistant, and the public insight tiles. It is PHI-free and
+the grounded ESD Buddy assistant, and the public insight tiles. It is PHI-free and
 should be regenerated from `config/redcap_config.yml` when the contract
 changes.
 

@@ -107,6 +107,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   naming the configured primary.
 
 ### Fixed
+- `deploy-pages.yml` triggered on the REDCap sync *scripts* but not the modules
+  they depend on, so editing `redcap/api/multi_project.py`,
+  `redcap/api/dictionary.py`, or `src/utils/env_loader.py` changed what gets
+  published without triggering a deploy.
+- `check_k8s_readings_pipeline.py` dumped a raw `URLError` traceback when the
+  dashboard was not running. It now fails cleanly with the reason and how to
+  start the dashboard, matching `check_docker_health.py`.
+- Three runtime pipeline artifacts (`readings_pipeline_status.json`,
+  `readings_event_state.json`, `web_package_trigger.json`) were not gitignored,
+  so a local pipeline run left untracked files that could be committed by
+  accident. Their siblings were already ignored.
+- Assistant copy across the health checks, share script, Pages fallback, and
+  frontend help content said "NVIDIA assistant" when the assistant has been a
+  Gemini/NVIDIA/local provider chain since the failover work.
 - `parseProject` dropped `project_id` from the metrics payload, so the REDCap
   project id was published by the backend but unavailable to the frontend.
 - A stored `activeStudy` of `BOTH` from the retired NANO/NICO toggle now

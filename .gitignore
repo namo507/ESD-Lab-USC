@@ -176,6 +176,13 @@ dashboard/data/readings_pipeline.lock
 dashboard/data/readings_pipeline_events.jsonl
 dashboard/data/dashboard_metrics.json
 dashboard/data/redcap_dictionary.json
+# Runtime pipeline state written by the readings worker and web packager.
+# Their siblings (events.jsonl, the lock, presentation jobs) were already
+# ignored; these three were missed, so a local pipeline run left untracked
+# files behind that could be committed by accident.
+dashboard/data/readings_pipeline_status.json
+dashboard/data/readings_event_state.json
+dashboard/data/web_package_trigger.json
 
 # ─── Vite / Vitest stale timestamp files ────────────────────
 web/*.timestamp-*.mjs
