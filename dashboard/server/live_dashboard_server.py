@@ -21,6 +21,7 @@ import json
 import math
 import os
 import posixpath
+import re
 import sqlite3
 import subprocess
 import sys
@@ -53,6 +54,7 @@ from dashboard.pipelines.participant_operations import (
     operation_lookup,
 )
 from dashboard.server import data_features
+from dashboard.server.redcap_portfolio_health import portfolio_health_from_env
 from k8s.pipeline import (
     PipelineConfig,
     assistant_freshness_payload,
@@ -142,12 +144,18 @@ LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
 PUBLIC_RUNTIME_DATA_ROUTES = {
     f"/dashboard/data/{name}": DATA_DIR / name
     for name in (
-        "dashboard_data.json",
         "nano_dashboard_data.json",
         "readings_data.json",
         "runtime_status.json",
     )
 }
+PRIVATE_RUNTIME_DATA_ROUTES = frozenset(
+    {
+        # This payload contains participant rows and visit-level operational
+        # data.  It is an internal build input, never a public web artifact.
+        "/dashboard/data/dashboard_data.json",
+    }
+)
 PUBLIC_READING_SUFFIXES = {".pdf"}
 
 logger = get_pipeline_logger(__name__)
@@ -408,6 +416,50 @@ PROTECTED_POST_PATHS = frozenset(
     }
 )
 
+# Record-level views remain available to explicitly authenticated operators for
+# local/internal workflows.  Public requests fail closed with a generic 404 so
+# the runtime never returns participant rows, visit dates, or form timestamps.
+PROTECTED_RECORD_GET_PATHS = frozenset(
+    {
+        "/api/participants",
+        "/api/v2/archetypes",
+        "/api/v2/cluster-tsne",
+        "/api/v2/cohort-swimmer",
+        "/api/v2/hda-transitions",
+        "/api/v2/hr-deceleration",
+        "/api/v2/redcap-completeness",
+        "/api/v2/redcap-missing-data",
+        "/api/v2/redcap-visit-health",
+        "/api/v2/shap-values",
+    }
+)
+PROTECTED_RECORD_GET_PREFIXES = (
+    "/api/participants/",
+    "/api/visits/",
+    "/api/v2/cva/",
+    "/api/v2/dyad/coregulation/",
+    "/api/v2/ecg-quality/",
+    "/api/v2/hda-session/",
+    "/api/v2/multimodal/",
+    "/api/v2/passport/",
+    "/api/v2/phase-portrait/",
+    "/api/v2/redcap-visit-health/",
+    "/api/v2/stillface/",
+    "/api/v2/stream-coverage/",
+    "/api/v2/thermal-heatmap/",
+)
+REDCAP_FIELD_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+MIN_PSEUDONYM_SALT_BYTES = 32
+INSECURE_PSEUDONYM_SALTS = frozenset(
+    {
+        "change_me",
+        "changeme",
+        "default",
+        "nano_default_salt",
+        "participant_id_salt",
+    }
+)
+
 
 class SlidingWindowRateLimiter:
     """Small in-process limiter for paid assistant generation endpoints."""
@@ -487,6 +539,29 @@ def _mutation_requires_operator(method: str, request_path: str) -> bool:
     if method.upper() == "PATCH":
         return request_path.startswith("/api/")
     return method.upper() == "POST" and request_path in PROTECTED_POST_PATHS
+
+
+def _normalized_public_path(request_path: str) -> str:
+    """Normalize one request path before applying security allow/deny lists."""
+
+    try:
+        decoded = unquote(request_path, errors="strict")
+    except UnicodeDecodeError:
+        return "/__invalid_path__"
+    if "\x00" in decoded:
+        return "/__invalid_path__"
+    return posixpath.normpath("/" + decoded.lstrip("/"))
+
+
+def _record_level_get_requires_operator(request_path: str) -> bool:
+    """Return whether a GET surface can expose participant-level data."""
+
+    normalized = _normalized_public_path(request_path)
+    if normalized in PROTECTED_RECORD_GET_PATHS:
+        return True
+    if any(normalized.startswith(prefix) for prefix in PROTECTED_RECORD_GET_PREFIXES):
+        return True
+    return normalized.startswith("/api/snapshots/") and normalized.endswith("/export")
 
 
 def _validated_audit_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -620,12 +695,36 @@ def atomic_write_json(output_path: Path, payload: dict[str, Any]) -> None:
 
 def is_runtime_healthy(state: dict[str, Any]) -> bool:
     """Return whether the runtime is healthy enough for external checks."""
+    portfolio = state.get("redcap_portfolio")
+    portfolio_ready = not isinstance(portfolio, dict) or bool(
+        portfolio.get("ready", True)
+    )
     return (
         state.get("status") == "ok"
         and bool(state.get("dashboard"))
         and bool(state.get("readings"))
         and not state.get("errors")
+        and portfolio_ready
     )
+
+
+def runtime_readiness_payload(state: dict[str, Any]) -> dict[str, Any]:
+    """Attach aggregate REDCap freshness to the external readiness payload."""
+
+    portfolio = portfolio_health_from_env()
+    payload = {**state, "redcap_portfolio": portfolio}
+    if portfolio["ready"]:
+        return payload
+    errors = [
+        error
+        for error in payload.get("errors", [])
+        if error != "REDCap portfolio snapshot is not ready"
+    ]
+    return {
+        **payload,
+        "status": "degraded",
+        "errors": ["REDCap portfolio snapshot is not ready", *errors][:5],
+    }
 
 
 def build_watch_list(readings_dir: Path, config_path: Path) -> list[Path]:
@@ -3732,8 +3831,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         if self._redirect_legacy_dashboard(request_path):
             return
 
-        if request_path == "/api/healthz":
+        if request_path in {"/api/healthz", "/api/livez"}:
             payload = self.runtime.read_state()
+            if request_path == "/api/healthz":
+                payload = runtime_readiness_payload(payload)
             k8s_config = PipelineConfig.from_env()
             if k8s_config.k8s_mode_enabled or k8s_config.cluster_visualization_enabled:
                 pipeline = pipeline_status_payload(k8s_config)
@@ -3762,6 +3863,18 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(body)
+            return
+
+        if request_path == "/api/redcap/portfolio-health":
+            payload = portfolio_health_from_env()
+            self._send_json(
+                payload,
+                status=(
+                    HTTPStatus.OK
+                    if payload["ready"]
+                    else HTTPStatus.SERVICE_UNAVAILABLE
+                ),
+            )
             return
 
         if request_path == "/api/chat/status":
