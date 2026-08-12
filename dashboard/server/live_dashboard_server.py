@@ -147,6 +147,12 @@ PUBLIC_RUNTIME_DATA_ROUTES = {
         "nano_dashboard_data.json",
         "readings_data.json",
         "runtime_status.json",
+        # Aggregate-only REDCap artifacts. Both are privacy-validated before
+        # the Pages packager publishes them, and the SPA reads them from the
+        # same paths in local development and in production.
+        "dashboard_metrics.json",
+        "redcap_portfolio.json",
+        "redcap_portfolio_fields.json",
     )
 }
 PRIVATE_RUNTIME_DATA_ROUTES = frozenset(

@@ -102,11 +102,32 @@ PUBLIC_METRICS_ENROLLMENT_AUTHORITIES = {
     "nano_surveys",
 }
 PUBLIC_METRICS_PATH = "/dashboard/data/dashboard_metrics.json"
-PUBLIC_METRICS_HEADER_RULE = f"""{PUBLIC_METRICS_PATH}
+PUBLIC_PORTFOLIO_SCHEMA = "redcap.portfolio.metadata.v1"
+PUBLIC_PORTFOLIO_FIELDS_SCHEMA = "redcap.portfolio.fields.v1"
+PUBLIC_PORTFOLIO_NAME = "redcap_portfolio.json"
+PUBLIC_PORTFOLIO_FIELDS_NAME = "redcap_portfolio_fields.json"
+PUBLIC_PORTFOLIO_PATHS = (
+    f"/dashboard/data/{PUBLIC_PORTFOLIO_NAME}",
+    f"/dashboard/data/{PUBLIC_PORTFOLIO_FIELDS_NAME}",
+)
+# A REDCap API token is 32 uppercase hexadecimal characters.
+PUBLIC_REDCAP_TOKEN_RE = re.compile(r"\b[0-9A-F]{32}\b")
+PUBLIC_PORTFOLIO_COUNT_KEYS = (
+    "complete",
+    "incomplete",
+    "unverified",
+    "not_started",
+    "started",
+)
+PUBLIC_METRICS_HEADER_RULE = "".join(
+    f"""{path}
   Cache-Control: no-store, max-age=0, must-revalidate
   Content-Type: application/json; charset=utf-8
   X-Content-Type-Options: nosniff
+
 """
+    for path in (PUBLIC_METRICS_PATH, *PUBLIC_PORTFOLIO_PATHS)
+).rstrip() + "\n"
 
 
 def _read(path: pathlib.Path) -> str:
@@ -120,10 +141,13 @@ def _write_pages_headers(out_dir: pathlib.Path) -> pathlib.Path:
 
     headers_path = out_dir / "_headers"
     existing = headers_path.read_text(encoding="utf-8") if headers_path.exists() else ""
-    existing_rule = re.compile(
-        rf"(?m)^{re.escape(PUBLIC_METRICS_PATH)}[ \t]*\n(?:^[ \t]+.*(?:\n|$))*"
-    )
-    preserved = existing_rule.sub("", existing).rstrip()
+    preserved = existing
+    for path in (PUBLIC_METRICS_PATH, *PUBLIC_PORTFOLIO_PATHS):
+        existing_rule = re.compile(
+            rf"(?m)^{re.escape(path)}[ \t]*\n(?:^[ \t]+.*(?:\n|$))*"
+        )
+        preserved = existing_rule.sub("", preserved)
+    preserved = preserved.rstrip()
     sections = [
         section
         for section in (preserved, PUBLIC_METRICS_HEADER_RULE.rstrip())
@@ -586,6 +610,124 @@ def _validate_public_dashboard_metrics(
     return payload
 
 
+def _validate_portfolio_counts(value: object, *, label: str) -> None:
+    """Validate one published completion block and its suppression flag."""
+
+    if not isinstance(value, dict):
+        raise ValueError(f"public REDCap portfolio {label} counts must be an object")
+    suppressed = value.get("counts_suppressed")
+    if not isinstance(suppressed, bool):
+        raise ValueError(f"public REDCap portfolio {label} suppression flag is invalid")
+    if suppressed:
+        if any(value.get(key) is not None for key in PUBLIC_PORTFOLIO_COUNT_KEYS):
+            raise ValueError(f"suppressed REDCap portfolio {label} counts are exposed")
+        if value.get("completion_rate") is not None:
+            raise ValueError(f"suppressed REDCap portfolio {label} rate is exposed")
+        return
+    for key in PUBLIC_PORTFOLIO_COUNT_KEYS:
+        if not _is_nonnegative_int(value.get(key)):
+            raise ValueError(f"public REDCap portfolio {label} count {key} is invalid")
+        if 0 < int(value[key]) < PUBLIC_METRICS_SMALL_CELL_THRESHOLD:
+            raise ValueError(
+                f"public REDCap portfolio {label} exposes an unsuppressed small cell"
+            )
+    started = sum(
+        int(value[key]) for key in ("complete", "incomplete", "unverified")
+    )
+    if started != int(value["started"]):
+        raise ValueError(f"public REDCap portfolio {label} started total is inconsistent")
+
+
+def _validate_public_redcap_portfolio(payload: object) -> dict:
+    """Reject a portfolio metadata artifact that could carry PHI or a token."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("public REDCap portfolio must be a JSON object")
+    if payload.get("schema") != PUBLIC_PORTFOLIO_SCHEMA:
+        raise ValueError(f"public REDCap portfolio must use {PUBLIC_PORTFOLIO_SCHEMA}")
+    if payload.get("aggregate_only") is not True:
+        raise ValueError("public REDCap portfolio must be marked aggregate_only")
+    if payload.get("small_cell_threshold") != PUBLIC_METRICS_SMALL_CELL_THRESHOLD:
+        raise ValueError("public REDCap portfolio must use the five-cell threshold")
+    if not PUBLIC_METRICS_VERSION_RE.fullmatch(str(payload.get("data_version", ""))):
+        raise ValueError("public REDCap portfolio data_version must be a sha256 digest")
+
+    for key, _value in _walk_json(payload):
+        if key.casefold() in PUBLIC_NANO_FORBIDDEN_KEYS:
+            raise ValueError(f"public REDCap portfolio contains forbidden key: {key}")
+    serialized = json.dumps(payload, ensure_ascii=True, allow_nan=False)
+    if PUBLIC_REDCAP_TOKEN_RE.search(serialized):
+        raise ValueError("public REDCap portfolio contains a token-shaped value")
+
+    projects = payload.get("projects")
+    if not isinstance(projects, list):
+        raise ValueError("public REDCap portfolio projects must be a list")
+    if len(projects) + len(payload.get("failed") or []) != len(
+        PUBLIC_METRICS_PROJECT_IDS
+    ):
+        raise ValueError("public REDCap portfolio must account for all eight projects")
+    for project in projects:
+        if not isinstance(project, dict):
+            raise ValueError("public REDCap portfolio project must be an object")
+        key = project.get("key")
+        if PUBLIC_METRICS_PROJECT_IDS.get(str(key)) != project.get("project_id"):
+            raise ValueError("public REDCap portfolio project identity is invalid")
+        _validate_participant_count(
+            project.get("records"),
+            project.get("records_suppressed"),
+            label=f"{key} records",
+        )
+        _validate_portfolio_counts(project.get("completion"), label=str(key))
+        for row in project.get("instrument_rows") or []:
+            _validate_portfolio_counts(row, label=f"{key} instrument")
+        for row in project.get("event_rows") or []:
+            _validate_portfolio_counts(row, label=f"{key} event")
+            _validate_participant_count(
+                row.get("records"),
+                row.get("records_suppressed"),
+                label=f"{key} event records",
+            )
+    _validate_portfolio_counts(
+        (payload.get("totals") or {}).get("completion"), label="portfolio"
+    )
+    return payload
+
+
+def _validate_public_redcap_portfolio_fields(payload: object) -> dict:
+    """Reject a field index that is malformed or carries a token."""
+
+    if not isinstance(payload, dict):
+        raise ValueError("public REDCap field index must be a JSON object")
+    if payload.get("schema") != PUBLIC_PORTFOLIO_FIELDS_SCHEMA:
+        raise ValueError(
+            f"public REDCap field index must use {PUBLIC_PORTFOLIO_FIELDS_SCHEMA}"
+        )
+    if payload.get("aggregate_only") is not True:
+        raise ValueError("public REDCap field index must be marked aggregate_only")
+    fields = payload.get("fields")
+    if not isinstance(fields, dict):
+        raise ValueError("public REDCap field index is missing its fields object")
+    for name in ("projects", "forms", "types", "validations"):
+        table = fields.get(name)
+        if not isinstance(table, list) or any(
+            not isinstance(item, str) for item in table
+        ):
+            raise ValueError(f"public REDCap field index {name} table is invalid")
+    rows = fields.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("public REDCap field index rows must be a list")
+    project_count = len(fields["projects"])
+    for row in rows:
+        if not isinstance(row, list) or len(row) != 10:
+            raise ValueError("public REDCap field index row shape is invalid")
+        if not _is_nonnegative_int(row[0]) or row[0] >= project_count:
+            raise ValueError("public REDCap field index row has an unknown project")
+    serialized = json.dumps(payload, ensure_ascii=True, allow_nan=False)
+    if PUBLIC_REDCAP_TOKEN_RE.search(serialized):
+        raise ValueError("public REDCap field index contains a token-shaped value")
+    return payload
+
+
 def _clean_public_document_text(value: str, *, limit: int) -> str:
     text = re.sub(r"[\x00-\x1f\x7f]", " ", value)
     text = re.sub(
@@ -756,6 +898,11 @@ const BUDDY_MAX_BODY_BYTES = 32 * 1024;
 const BUDDY_RATE_LIMIT = 12;
 const BUDDY_RATE_WINDOW_MS = 60 * 1000;
 const PUBLIC_METRICS_PATH = "/dashboard/data/dashboard_metrics.json";
+const PUBLIC_NO_STORE_PATHS = new Set([
+  PUBLIC_METRICS_PATH,
+  "/dashboard/data/redcap_portfolio.json",
+  "/dashboard/data/redcap_portfolio_fields.json",
+]);
 
 const presentationJobs = new Map();
 const buddyRequests = new Map();
@@ -1716,7 +1863,7 @@ export default {
 
     const assetResponse = await env.ASSETS.fetch(request);
     if (assetResponse.status !== 404) {
-      return url.pathname === PUBLIC_METRICS_PATH
+      return PUBLIC_NO_STORE_PATHS.has(url.pathname)
         ? publicMetricsResponse(assetResponse)
         : assetResponse;
     }
@@ -1844,6 +1991,28 @@ def build(
             sys.exit(f"[build_pages_site] unsafe public dashboard metrics: {exc}")
         (dashboard_data_out / metrics_source.name).write_text(
             json.dumps(metrics_payload, indent=2, ensure_ascii=True, allow_nan=False),
+            encoding="utf-8",
+        )
+
+    for name, validator in (
+        (PUBLIC_PORTFOLIO_NAME, _validate_public_redcap_portfolio),
+        (PUBLIC_PORTFOLIO_FIELDS_NAME, _validate_public_redcap_portfolio_fields),
+    ):
+        portfolio_source = REPO_ROOT / "dashboard" / "data" / name
+        if require_live_metrics and not portfolio_source.exists():
+            sys.exit(
+                f"[build_pages_site] missing live {name}; "
+                "run scripts/build_redcap_portfolio_data.py first"
+            )
+        if not portfolio_source.exists():
+            continue
+        try:
+            portfolio_payload = json.loads(portfolio_source.read_text(encoding="utf-8"))
+            validator(portfolio_payload)
+        except (json.JSONDecodeError, ValueError) as exc:
+            sys.exit(f"[build_pages_site] unsafe public REDCap portfolio: {exc}")
+        (dashboard_data_out / name).write_text(
+            json.dumps(portfolio_payload, ensure_ascii=True, allow_nan=False),
             encoding="utf-8",
         )
 

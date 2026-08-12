@@ -29,6 +29,9 @@ on:
       - "dashboard/pipelines/study_blocks.py"
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/sync_redcap_portfolio.py"
+      - "scripts/build_redcap_portfolio_data.py"
+      - "redcap/api/multi_project.py"
+      - "redcap/api/portfolio_metadata.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
       - "scripts/check_live_surfaces.py"
@@ -77,7 +80,7 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Synchronize all eight REDCap projects
+      - name: Synchronize REDCap aggregates and portfolio structure
         env:
           REDCAP_API_URL: ${{ vars.REDCAP_API_URL || 'https://redcap.research.sc.edu/api/' }}
           REDCAP_ABC_SURVEYS_TOKEN: ${{ secrets.REDCAP_ABC_SURVEYS_TOKEN }}
@@ -92,6 +95,9 @@ jobs:
           umask 077
           python scripts/sync_redcap_portfolio.py --require-all
           test -s dashboard/data/dashboard_metrics.json
+          python scripts/build_redcap_portfolio_data.py --require-all
+          test -s dashboard/data/redcap_portfolio.json
+          test -s dashboard/data/redcap_portfolio_fields.json
 
       - name: Generate REDCap TypeScript constants
         run: |
@@ -141,6 +147,8 @@ jobs:
           test -s dist/pages-wrapper/_worker.js
           test -s dist/pages-wrapper/_redirects
           test -s dist/pages-wrapper/dashboard/data/dashboard_metrics.json
+          test -s dist/pages-wrapper/dashboard/data/redcap_portfolio.json
+          test -s dist/pages-wrapper/dashboard/data/redcap_portfolio_fields.json
           test ! -e dist/pages-wrapper/dashboard/data/dashboard_data.json
 
       - name: Deploy to Cloudflare Pages

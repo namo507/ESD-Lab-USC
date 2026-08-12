@@ -26,6 +26,19 @@ import {
   selectRedcapSummary,
   useDashboardMetrics,
 } from "@/api/dashboardMetrics";
+import {
+  getPortfolioFreshness,
+  useRedcapPortfolio,
+  type PortfolioFreshness,
+  type RedcapPortfolio,
+} from "@/api/redcapPortfolio";
+import {
+  RedcapComparisonTab,
+  RedcapDefinitionsTab,
+  RedcapFieldExplorerTab,
+  RedcapPortfolioTab,
+  RedcapProjectDetailTab,
+} from "@/components/redcap";
 import { DataProvenance } from "@/components/data/DataProvenance";
 import { SwimLane } from "@/components/timeline/SwimLane";
 import type { TimelineEvent } from "@/components/timeline/EventMark";
@@ -53,7 +66,26 @@ const REDCAP_FAST_PATHS: FastPathPrompt[] = [
   { lane: "redcap", label: "Weekly study memo",       prompt: "Draft this week's REDCap study memo using redcap_clinical, redcap_schedule, redcap_integrity, redcap_platform, and redcap_predictive." },
 ];
 
-type RedcapTab = "ops" | "sync" | "visit-health" | "coverage" | "next-wave";
+type RedcapTab =
+  | "portfolio"
+  | "project"
+  | "comparison"
+  | "fields"
+  | "definitions"
+  | "ops"
+  | "sync"
+  | "visit-health"
+  | "coverage"
+  | "next-wave";
+
+/** Tabs that read the portfolio structure artifact rather than the ops feeds. */
+const PORTFOLIO_TABS: ReadonlyArray<{ value: RedcapTab; label: string }> = [
+  { value: "portfolio", label: "Portfolio" },
+  { value: "project", label: "Project Detail" },
+  { value: "comparison", label: "Instrument Comparison" },
+  { value: "fields", label: "Field Explorer" },
+];
+
 type VisitKey = "sixMonth" | "nineMonth" | "twelveMonth" | "twentyFourMonth";
 
 const VISIT_COLUMNS: Array<{ key: VisitKey; label: string }> = [
@@ -215,26 +247,33 @@ export function Redcap() {
   const lastSyncAt = useUi((s) => s.lastSyncAt);
   const setLastSyncAt = useUi((s) => s.setLastSyncAt);
   const fastPathTone = resolveTheme(theme);
-  const [activeTab, setActiveTab] = useState<RedcapTab>("ops");
+  const [activeTab, setActiveTab] = useState<RedcapTab>("portfolio");
   const [alertDismissed, setAlertDismissed] = useState(false);
+  const portfolio = useRedcapPortfolio();
+  const portfolioFreshness = getPortfolioFreshness(portfolio.data);
+  const [selectedProject, setSelectedProject] = useState("");
 
   const tabOptions = useMemo(
-    () =>
-      visitHealthEnabled
+    () => [
+      ...PORTFOLIO_TABS,
+      ...(visitHealthEnabled ? [{ value: "ops" as const, label: "Ops Monitor" }] : []),
+      { value: "sync" as const, label: "Sync & Completeness" },
+      ...(visitHealthEnabled
         ? [
-            { value: "ops" as const, label: "Ops Monitor" },
-            { value: "sync" as const, label: "Sync & Completeness" },
             { value: "visit-health" as const, label: "Visit Health" },
             { value: "coverage" as const, label: "Coverage" },
             { value: "next-wave" as const, label: "Next-Wave Intelligence" },
           ]
-        : [{ value: "sync" as const, label: "Sync & Completeness" }],
+        : []),
+      { value: "definitions" as const, label: "Definitions" },
+    ],
     [visitHealthEnabled],
   );
 
   useEffect(() => {
-    if (!visitHealthEnabled && activeTab !== "sync") setActiveTab("sync");
-  }, [activeTab, visitHealthEnabled]);
+    if (tabOptions.some((option) => option.value === activeTab)) return;
+    setActiveTab("portfolio");
+  }, [activeTab, tabOptions]);
 
   useEffect(() => {
     if (dashboardMetrics.data?.generatedAt) {
@@ -259,6 +298,7 @@ export function Redcap() {
   function reloadSnapshot() {
     if (!visitHealthEnabled) void dashboardMetrics.refetch();
     void eventsQuery.refetch();
+    void portfolio.refetch();
     if (visitHealthEnabled) refreshVisitHealth();
   }
 
@@ -310,16 +350,14 @@ export function Redcap() {
         />
       </section>
 
-      {visitHealthEnabled && (
-        <div className={styles.tabRow}>
-          <Segmented
-            options={tabOptions}
-            value={activeTab}
-            onChange={setActiveTab}
-            ariaLabel="REDCap dashboard sections"
-          />
-        </div>
-      )}
+      <div className={styles.tabRow}>
+        <Segmented
+          options={tabOptions}
+          value={activeTab}
+          onChange={setActiveTab}
+          ariaLabel="REDCap dashboard sections"
+        />
+      </div>
 
       <section className={styles.kpis}>
         <KPI
@@ -349,11 +387,28 @@ export function Redcap() {
         onReload={reloadSnapshot}
       />
 
-      <DataProvenance
-        kind="snapshot"
-        label="Operational snapshot"
-        detail="Detailed sync events, visit health, completeness matrices, and next-wave panels below use their existing snapshot feeds."
-      />
+      {PORTFOLIO_TABS.some((option) => option.value === activeTab) && (
+        <RedcapPortfolioSection
+          activeTab={activeTab}
+          portfolio={portfolio.data}
+          freshness={portfolioFreshness}
+          isLoading={portfolio.isLoading}
+          isError={portfolio.isError}
+          onReload={() => void portfolio.refetch()}
+          selectedProject={selectedProject}
+          onSelectProject={setSelectedProject}
+        />
+      )}
+
+      {activeTab === "definitions" && <RedcapDefinitionsTab portfolio={portfolio.data} />}
+
+      {activeTab !== "definitions" && !PORTFOLIO_TABS.some((option) => option.value === activeTab) && (
+        <DataProvenance
+          kind="snapshot"
+          label="Operational snapshot"
+          detail="Sync events, visit health, completeness matrices, and next-wave panels use their existing snapshot feeds."
+        />
+      )}
 
       {visitHealthEnabled && activeTab === "ops" && redcapPayload.data && (
         <CoordinatorOpsMonitor payload={redcapPayload.data} records={visitRecords} />
@@ -383,6 +438,91 @@ export function Redcap() {
         <NextWavePanel payload={redcapPayload.data} onAsk={fastPath} />
       )}
     </div>
+  );
+}
+
+interface RedcapPortfolioSectionProps {
+  activeTab: RedcapTab;
+  portfolio: RedcapPortfolio | undefined;
+  freshness: PortfolioFreshness;
+  isLoading: boolean;
+  isError: boolean;
+  onReload: () => void;
+  selectedProject: string;
+  onSelectProject: (key: string) => void;
+}
+
+/**
+ * Structure panels backed by the portfolio artifact. They stay mounted next to
+ * the operational panels, so a failure to read the structure snapshot never
+ * takes the rest of the REDCap page down with it.
+ */
+export function RedcapPortfolioSection({
+  activeTab,
+  portfolio,
+  freshness,
+  isLoading,
+  isError,
+  onReload,
+  selectedProject,
+  onSelectProject,
+}: RedcapPortfolioSectionProps) {
+  if (isLoading && !portfolio) {
+    return (
+      <Card pad={20}>
+        <div role="status" aria-live="polite">
+          <strong>Loading REDCap structure…</strong>
+          <p className={styles.note}>
+            Reading the aggregate-only portfolio snapshot published by the five-minute sync.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!portfolio) {
+    return (
+      <Card pad={20}>
+        <div role="alert">
+          <strong>REDCap structure snapshot unavailable</strong>
+          <p className={styles.note}>
+            {isError
+              ? "The portfolio artifact could not be loaded or did not pass its privacy contract."
+              : "No portfolio artifact has been published yet. Run scripts/build_redcap_portfolio_data.py to create one."}
+          </p>
+          <Button size="sm" variant="secondary" icon="refresh-cw" onClick={onReload}>
+            Retry
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <DataProvenance
+        source={{
+          status: freshness.status,
+          label: freshness.label,
+          detail: freshness.detail,
+          isLive: freshness.isLive,
+          generatedAt: freshness.generatedAt,
+          ageSeconds: freshness.ageSeconds,
+          projectsOk: freshness.projectsOk,
+          projectsTotal: freshness.projectsTotal,
+        }}
+      />
+      {activeTab === "portfolio" && <RedcapPortfolioTab portfolio={portfolio} />}
+      {activeTab === "project" && (
+        <RedcapProjectDetailTab
+          portfolio={portfolio}
+          selectedKey={selectedProject}
+          onSelect={onSelectProject}
+        />
+      )}
+      {activeTab === "comparison" && <RedcapComparisonTab portfolio={portfolio} />}
+      {activeTab === "fields" && <RedcapFieldExplorerTab portfolio={portfolio} />}
+    </>
   );
 }
 

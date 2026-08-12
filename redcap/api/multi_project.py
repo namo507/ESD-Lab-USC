@@ -410,6 +410,33 @@ class RedcapApiClient:
             raise RedcapRequestError("invalid_metadata")
         return payload
 
+    def _export_rows(self, content: str, error_code: str) -> list[Mapping[str, Any]]:
+        payload = self._post({"content": content})
+        if not isinstance(payload, list) or not all(
+            isinstance(row, Mapping) for row in payload
+        ):
+            raise RedcapRequestError(error_code)
+        return payload
+
+    def instruments(self) -> list[Mapping[str, Any]]:
+        """Export the instrument list (name and label only)."""
+
+        return self._export_rows("instrument", "invalid_instruments")
+
+    def events(self) -> list[Mapping[str, Any]]:
+        """Export longitudinal event definitions.
+
+        Classic projects make REDCap answer with an error payload, which the
+        transport turns into ``RedcapRequestError("api_error")``.
+        """
+
+        return self._export_rows("event", "invalid_events")
+
+    def form_event_mapping(self) -> list[Mapping[str, Any]]:
+        """Export the instrument-to-event map for longitudinal projects."""
+
+        return self._export_rows("formEventMapping", "invalid_form_event_mapping")
+
     def records(
         self, fields: Sequence[str], records: Sequence[str] | None = None
     ) -> list[Mapping[str, Any]]:

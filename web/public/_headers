@@ -14,3 +14,12 @@
 /dashboard/data/dashboard_metrics.json
   Cache-Control: no-store, must-revalidate
   X-Content-Type-Options: nosniff
+
+# Aggregate-only REDCap portfolio structure and its lazily fetched field index.
+/dashboard/data/redcap_portfolio.json
+  Cache-Control: no-store, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/dashboard/data/redcap_portfolio_fields.json
+  Cache-Control: no-store, must-revalidate
+  X-Content-Type-Options: nosniff

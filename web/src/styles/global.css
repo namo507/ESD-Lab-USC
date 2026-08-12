@@ -51,6 +51,15 @@
   --status-grey: var(--slate-400);
   --status-blue: var(--blue);
 
+  /* REDCap portfolio study identity. Fixed hues assigned in this order and
+     never cycled, so a study keeps one colour across every panel. Validated
+     for CVD separation and surface contrast in both themes. */
+  --study-nano:   #3366ff;
+  --study-nico:   #d74e2d;
+  --study-ipsa:   #00a17a;
+  --study-action: #8b5cf6;
+  --study-abc:    #e67e22;
+
   --warm-bg:    #fafaf8;
   --warm-card:  #ffffff;
   --warm-border:#ececea;
@@ -116,6 +125,14 @@
    stays untouched — colour swap happens entirely at the variable layer.
    ======================================================================== */
 :root[data-theme="dark"] {
+  /* Re-stepped, not flipped: each study hue is re-picked against the dark
+     surface so lightness, chroma, and contrast all stay in band. */
+  --study-nano:   #5c86f0;
+  --study-nico:   #e0655b;
+  --study-ipsa:   #12a585;
+  --study-action: #9c7df0;
+  --study-abc:    #c87a1b;
+
   --warm-bg:    #16140f;
   --warm-card:  #1f1c17;
   --warm-border:#2e2a23;
