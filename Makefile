@@ -18,7 +18,7 @@ MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 SHARE_PROFILE ?= share
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -122,10 +122,15 @@ redcap-dictionary:  ## Export the structural REDCap instrument dictionary (no it
 	$(PYTHON) scripts/sync_redcap_dictionary.py
 	@echo "✓ REDCap instrument dictionary refreshed."
 
+redcap-portfolio:  ## Build the REDCap metadata watcher artifact (structure and completion, aggregate-only)
+	$(PYTHON) scripts/build_redcap_portfolio_data.py
+	@echo "✓ REDCap portfolio metadata refreshed."
+
 redcap-publish:  ## Pull REDCap, rebuild payload/context, reindex assistant, and fan out to Pages/Docker/K8s checks
 	@echo "Publishing REDCap dashboard payload across Pages, Docker, and Kubernetes surfaces..."
 	@$(MAKE) redcap-sync
 	@$(MAKE) redcap-dictionary
+	@$(MAKE) redcap-portfolio
 	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
 	node scripts/gen_redcap_constants.mjs
 	$(PYTHON) dashboard/context_skill/extract_context.py --emit

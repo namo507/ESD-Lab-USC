@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- REDCap metadata watcher at `/redcap-portfolio` (`make redcap-portfolio`).
+  Five tabs over one pre-built artifact: a portfolio roll-up of all eight
+  projects, per-project detail with completion by instrument and by event,
+  cross-project instrument comparison with field-level harmonization verdicts,
+  a searchable field index with CSV export, and a definitions tab that states
+  what every number means. A freshness stamp reads the artifact's own
+  timestamp and marks it stale past two sync cycles.
+- `redcap/api/portfolio_metadata.py` builds that artifact through an
+  export-only client. Content types outside the export allowlist are refused
+  before a request is built, as is any request carrying a REDCap write
+  parameter, so an import or delete cannot be issued through it. One record
+  export per project reads only the record ID and `<form>_complete` status
+  fields; those rows are reduced to per-instrument and per-event counts and
+  dropped in the same function.
+- The artifact inherits the dictionary's exclusions -- no verbatim item text,
+  identifier-flagged fields withheld with only a count kept -- and applies the
+  portfolio's small-cell rule to every record-derived count. When one bucket of
+  a completion breakdown is suppressed the rest goes with it, so the hidden
+  number cannot be recovered by subtraction. `scripts/build_pages_site.py`
+  re-validates all of it, including a scan for published small cells, before
+  the payload can reach Pages.
 - Structural REDCap instrument dictionary (`make redcap-dictionary`). Exports
   every project's survey instruments, field names, field types, form grouping,
   and required/branching counts across all eight projects -- 278 instruments and

@@ -20,6 +20,9 @@ const QA = lazy(() => import("@/routes/QA").then((m) => ({ default: m.QA })));
 const Results = lazy(() => import("@/routes/Results").then((m) => ({ default: m.Results })));
 const Runs = lazy(() => import("@/routes/Runs").then((m) => ({ default: m.Runs })));
 const Redcap = lazy(() => import("@/routes/Redcap").then((m) => ({ default: m.Redcap })));
+const RedcapPortfolio = lazy(() =>
+  import("@/routes/RedcapPortfolio").then((m) => ({ default: m.RedcapPortfolio })),
+);
 const PipelineHealth = lazy(() => import("@/routes/PipelineHealth").then((m) => ({ default: m.PipelineHealth })));
 const Matlab = lazy(() => import("@/routes/Matlab").then((m) => ({ default: m.Matlab })));
 const DataExplorer = lazy(() => import("@/routes/DataExplorer").then((m) => ({ default: m.DataExplorer })));
@@ -112,6 +115,7 @@ function dashboardRoutes(prefix = "") {
       <Route path={path("/results")} element={<Results />} />
       <Route path={path("/runs")} element={<Runs />} />
       <Route path={path("/redcap")} element={<Redcap />} />
+      <Route path={path("/redcap-portfolio")} element={<RedcapPortfolio />} />
       <Route path={path("/pipeline-health")} element={<PipelineHealth />} />
       <Route path={path("/matlab")} element={<Matlab />} />
       <Route path={path("/data-explorer")} element={<DataExplorer />} />

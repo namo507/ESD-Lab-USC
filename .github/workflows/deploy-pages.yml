@@ -30,10 +30,12 @@ on:
       - "dashboard/server/live_dashboard_server.py"
       - "scripts/sync_redcap_portfolio.py"
       - "scripts/sync_redcap_dictionary.py"
+      - "scripts/build_redcap_portfolio_data.py"
       # The sync scripts are thin wrappers; the logic that shapes what gets
       # published lives in these modules, so they must trigger a deploy too.
       - "redcap/api/multi_project.py"
       - "redcap/api/dictionary.py"
+      - "redcap/api/portfolio_metadata.py"
       - "src/utils/env_loader.py"
       - "scripts/gen_redcap_constants.mjs"
       - "scripts/build_pages_site.py"
@@ -100,6 +102,8 @@ jobs:
           test -s dashboard/data/dashboard_metrics.json
           python scripts/sync_redcap_dictionary.py
           test -s dashboard/data/redcap_dictionary.json
+          python scripts/build_redcap_portfolio_data.py
+          test -s dashboard/data/redcap_portfolio.json
 
       - name: Generate REDCap TypeScript constants
         run: |
