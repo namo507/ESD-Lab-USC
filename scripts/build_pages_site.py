@@ -278,6 +278,79 @@ def _validate_public_redcap_dictionary(payload: object) -> None:
             )
 
 
+def _validate_public_redcap_portfolio(payload: object) -> None:
+    """Refuse to publish metadata watcher output that carries excluded content.
+
+    The builder already withholds item text, identifier field names, and record
+    data, and suppresses small cells. This is a second, independent gate: a
+    regression upstream should stop the deploy rather than quietly place
+    licensed wording or a recoverable small count on a public site.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("portfolio payload is not an object")
+    if payload.get("schema") != "redcap.metadata.v1":
+        raise ValueError("unexpected portfolio schema")
+    for flag, expected in (
+        ("aggregate_only", True),
+        ("contains_item_text", False),
+        ("contains_record_data", False),
+        ("identifier_fields_withheld", True),
+        ("read_only", True),
+    ):
+        if payload.get(flag) is not expected:
+            raise ValueError(f"portfolio {flag} must be {expected}")
+
+    threshold = payload.get("small_cell_threshold")
+    if not _is_nonnegative_int(threshold) or threshold < 1:
+        raise ValueError("portfolio small_cell_threshold is invalid")
+
+    banned = {
+        "field_label",
+        "select_choices_or_calculations",
+        "field_note",
+        "section_header",
+        "identifier",
+        "branching_logic",
+        "record_id",
+        "redcap_event_name",
+    }
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            leaked = banned.intersection(node)
+            if leaked:
+                raise ValueError(f"portfolio carries excluded keys: {sorted(leaked)}")
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    walk(payload)
+
+    # Any published count derived from records must clear the threshold. A
+    # value of 0 is not a small cell -- it is the absence of one.
+    for project in payload.get("projects") or []:
+        if not isinstance(project, dict) or project.get("status") != "ok":
+            continue
+        counted = [project.get("records"), project.get("record_events")]
+        completion = project.get("completion")
+        if isinstance(completion, dict) and not completion.get("suppressed"):
+            counted.extend(
+                completion.get(key)
+                for key in ("complete", "unverified", "incomplete", "not_started")
+            )
+        for value in counted:
+            if value is None:
+                continue
+            if not _is_nonnegative_int(value):
+                raise ValueError(f"portfolio count is invalid for {project.get('key')}")
+            if 0 < value < threshold:
+                raise ValueError(
+                    f"portfolio publishes a small cell for {project.get('key')}"
+                )
+
+
 def _validate_public_dashboard_metrics(
     payload: object,
     *,
@@ -1780,6 +1853,20 @@ def build(
             json.dumps(
                 dictionary_payload, indent=2, ensure_ascii=True, allow_nan=False
             ),
+            encoding="utf-8",
+        )
+
+    # REDCap metadata watcher. Optional in the same way as the dictionary, and
+    # re-validated here for the same reason.
+    portfolio_source = REPO_ROOT / "dashboard" / "data" / "redcap_portfolio.json"
+    if portfolio_source.exists():
+        try:
+            portfolio_payload = json.loads(portfolio_source.read_text(encoding="utf-8"))
+            _validate_public_redcap_portfolio(portfolio_payload)
+        except (json.JSONDecodeError, ValueError) as exc:
+            sys.exit(f"[build_pages_site] unsafe public REDCap portfolio: {exc}")
+        (dashboard_data_out / portfolio_source.name).write_text(
+            json.dumps(portfolio_payload, indent=2, ensure_ascii=True, allow_nan=False),
             encoding="utf-8",
         )
 

@@ -67,6 +67,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     items: [
       { to: "/runs", label: "Clinical Pipeline", icon: "git-branch" },
       { to: "/redcap", label: "REDCap Sync", icon: "refresh-cw" },
+      { to: "/redcap-portfolio", label: "REDCap Portfolio", icon: "database" },
       { to: "/pipeline-health", label: "Pipeline Health", icon: "server-cog", flag: "REDCAP_PIPELINE_HEALTH" },
       { to: "/matlab", label: "MATLAB Bridge", icon: "function-square" },
       { to: "/data-explorer", label: "Data Explorer", icon: "table", flag: "SQL_TABLE_EXPLORER" },

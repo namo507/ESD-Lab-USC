@@ -1,0 +1,234 @@
+/*
+ * REDCap metadata watcher chart primitives.
+ *
+ * Study hues are declared once here as custom properties and referenced by
+ * role everywhere else, so light and dark swap in one place. Both sets were
+ * validated for colorblind separation and surface contrast against the mode
+ * they are used in -- the dark steps are stepped for the dark surface rather
+ * than being an automatic lightening of the light ones.
+ */
+
+.bars,
+.legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Declared on :root rather than on a chart class, because the same hue has to
+ * reach marks in this file and study chips in the page stylesheet. Scoping
+ * them to the chart wrapper left the chips resolving to nothing.
+ *
+ * Light steps: validated on #ffffff (CVD ΔE 9.6 worst adjacent, all ≥ 3:1).
+ */
+:global(:root) {
+  --study-nano: #3366ff;
+  --study-nico: #d74e2d;
+  --study-ipsa: #00a17a;
+  --study-action: #8b5cf6;
+  --study-abc: #b5620a;
+  --study-other: #6b7482;
+  --heat-ink: #3366ff;
+}
+
+/* Dark steps: validated on #1f1c17 (CVD ΔE 8.3 worst adjacent, all ≥ 3:1).
+   Stepped for the dark surface, not an automatic lightening of the above. */
+:global(:root[data-theme="dark"]) {
+  --study-nano: #5a87f5;
+  --study-nico: #ce5f3a;
+  --study-ipsa: #12a279;
+  --study-action: #9878e2;
+  --study-abc: #bc7a1e;
+  --study-other: #8a94a6;
+  --heat-ink: #5a87f5;
+}
+
+/* ── Bars ────────────────────────────────────────────────────────────────── */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: var(--label-w, 132px) 1fr 62px;
+  align-items: center;
+  gap: 10px;
+}
+
+.barLabel {
+  overflow: hidden;
+  color: var(--warm-fg2, #22303f);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack {
+  display: flex;
+  /* A 2px surface gap keeps adjacent stack segments from reading as one mark. */
+  gap: 2px;
+  overflow: hidden;
+  width: 100%;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--warm-rule, #e7edf8);
+}
+
+.barFill,
+.stackPart {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 220ms ease;
+}
+
+.stackPart:not(:last-child) {
+  border-radius: 4px 0 0 4px;
+}
+
+.stackPart:not(:first-child) {
+  border-radius: 0 4px 4px 0;
+}
+
+.stackPart:only-child {
+  border-radius: 4px;
+}
+
+.suppressedFill {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  /* Hatching, not a color, so "withheld" never reads as a real magnitude. */
+  background: repeating-linear-gradient(
+    45deg,
+    var(--warm-rule, #e7edf8) 0 5px,
+    var(--warm-card, #fff) 5px 10px
+  );
+}
+
+.barValue {
+  color: var(--warm-fg3, #55606b);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.empty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--warm-fg4, #758091);
+  font-size: 13px;
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warm-fg3, #55606b);
+  font-size: 11px;
+}
+
+.legendDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+/* ── Heatmap ─────────────────────────────────────────────────────────────── */
+
+.heatScroll {
+  overflow-x: auto;
+}
+
+.heat {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 11px;
+}
+
+.heatHead,
+.heatRowHead {
+  padding: 4px 6px;
+  color: var(--warm-fg3, #55606b);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.heatHead {
+  text-align: center;
+}
+
+.heatRowHead {
+  text-align: right;
+}
+
+.heatCorner {
+  width: 1px;
+}
+
+.heatCell {
+  width: 42px;
+  height: 30px;
+  border-radius: 5px;
+  background: var(--warm-rule, #e7edf8);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatSelf {
+  background: transparent;
+  color: var(--warm-fg5, #a8b4c5);
+}
+
+.heatValue {
+  color: var(--warm-fg2, #22303f);
+}
+
+.heatValueOn {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── Progress cell ───────────────────────────────────────────────────────── */
+
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressTrack {
+  overflow: hidden;
+  width: 76px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--warm-rule, #e7edf8);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.progressValue {
+  color: var(--warm-fg3, #55606b);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressEmpty {
+  color: var(--warm-fg5, #a8b4c5);
+}

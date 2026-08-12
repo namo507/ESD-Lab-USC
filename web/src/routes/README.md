@@ -11,7 +11,7 @@ splitting remains one route per lazy import. The intended grouping is:
 | Models | `CascadeDag`, `CascadeSimulator`, `ModelConfidenceTerrain`, `ModelLeaderboard`, `CoRegulation`, `PhasePortrait` |
 | Research | `Publications`, `PublicationDetail`, `PublicInsights`, `Results`, `Changelog` |
 | Visualization | `AttachmentHeatmap`, `ThermalHeatmap`, `SdohMap`, `SpatialAssessmentMatrix`, `SwimmerPlot`, `StreamCoverage`, `CgaMilestoneRiver`, `CountyComparator`, `Attrition`, `AttritionFunnel` |
-| Tools | `Matlab`, `Redcap`, `Runs`, `QA`, `PresentationMaker`, `CvaTheater`, `ShapExplorer`, `StillFace` |
+| Tools | `Matlab`, `Redcap`, `RedcapPortfolio`, `Runs`, `QA`, `PresentationMaker`, `CvaTheater`, `ShapExplorer`, `StillFace` |
 
 `routeUtils.tsx` is PascalCase because it exports React components used by
 multiple dynamic route surfaces. Feature routes may use shared CSS modules

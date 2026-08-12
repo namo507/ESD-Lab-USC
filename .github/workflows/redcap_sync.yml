@@ -61,6 +61,8 @@ jobs:
           test -s dashboard/data/dashboard_metrics.json
           python scripts/sync_redcap_dictionary.py
           test -s dashboard/data/redcap_dictionary.json
+          python scripts/build_redcap_portfolio_data.py
+          test -s dashboard/data/redcap_portfolio.json
 
       - name: Generate REDCap TypeScript constants
         run: |

@@ -176,6 +176,10 @@ dashboard/data/readings_pipeline.lock
 dashboard/data/readings_pipeline_events.jsonl
 dashboard/data/dashboard_metrics.json
 dashboard/data/redcap_dictionary.json
+# Built live from REDCap by the sync workflow, like the two artifacts above.
+# Committing a copy would ship a stale portfolio to Pages.
+dashboard/data/redcap_portfolio.json
+web/public/dashboard/data/redcap_portfolio.json
 # Runtime pipeline state written by the readings worker and web packager.
 # Their siblings (events.jsonl, the lock, presentation jobs) were already
 # ignored; these three were missed, so a local pipeline run left untracked
