@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The readings index no longer degrades silently. Without `pypdf` every PDF
+  yields no page count, no embedded title, and no excerpt, so categories and
+  titles fall back to filename guesses -- a structurally valid index that is
+  materially worse, which previously overwrote the good one with nothing
+  reported. `build_readings_index.py` now warns loudly, refuses to replace a
+  PDF-backed index unless `--allow-degraded-overwrite` is passed, and exits
+  non-zero under `--require-pdf-metadata`.
+- `/redcap-portfolio` is now in the canonical surface list, so
+  `check_live_surfaces.py` monitors it like every other route.
+- The portfolio page no longer invents its own staleness threshold. It had used
+  `refresh_cadence_seconds * 2`, disagreeing with every other surface on the
+  site about when the same artifact goes stale; the backend now publishes
+  `sla_seconds` and the page reads it.
+
 ### Added
 - REDCap metadata watcher at `/redcap-portfolio` (`make redcap-portfolio`).
   Five tabs over one pre-built artifact: a portfolio roll-up of all eight

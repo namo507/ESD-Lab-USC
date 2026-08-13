@@ -139,6 +139,8 @@ const PortfolioSchema = z.object({
   read_only: z.literal(true),
   small_cell_threshold: z.number().int().positive(),
   refresh_cadence_seconds: z.number().int().positive(),
+  // Optional so an artifact built before this field existed still parses.
+  sla_seconds: z.number().int().positive().optional(),
   projects_total: z.number().int().nonnegative(),
   projects_ok: z.number().int().nonnegative(),
   instruments_total: z.number().int().nonnegative(),
@@ -353,9 +355,22 @@ export function portfolioTotals(
 export interface PortfolioFreshness {
   generatedAt: string | null;
   ageSeconds: number | null;
-  /** `stale` once the artifact is older than two sync cycles. */
+  /** `stale` once the artifact is older than the portfolio's published SLA. */
   status: "live" | "stale" | "unavailable";
   label: string;
+}
+
+/**
+ * Freshness budget in seconds.
+ *
+ * Uses the SLA the backend publishes, which is the same budget every other
+ * dashboard surface is judged against — an earlier version of this page
+ * invented `cadence * 2`, which flagged stale on a different schedule than the
+ * rest of the site for the same underlying data. Falls back to the SLA's
+ * historical value only when an older artifact omits the field.
+ */
+function freshnessBudgetSeconds(portfolio: RedcapPortfolio): number {
+  return portfolio.sla_seconds ?? portfolio.refresh_cadence_seconds * 3;
 }
 
 export function portfolioFreshness(
@@ -380,7 +395,7 @@ export function portfolioFreshness(
     };
   }
   const ageSeconds = Math.max(0, Math.round((now - parsed) / 1000));
-  const stale = ageSeconds > portfolio.refresh_cadence_seconds * 2;
+  const stale = ageSeconds > freshnessBudgetSeconds(portfolio);
   return {
     generatedAt: portfolio.generated_at,
     ageSeconds,
