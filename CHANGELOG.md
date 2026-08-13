@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Speed-first tier routing for ESD Buddy (`dashboard/assistant/routing.py`).
+  The provider chain already failed over on *availability*; it had no notion of
+  question difficulty, so a request needing the 120B model still started at the
+  fast tier and got a fast, shallow answer. Questions are now classified as
+  quick, standard, or deep from the shape of the wording -- reasoning markers,
+  multi-part structure, pasted stack traces, length -- and each class gets a
+  tier order, a token ceiling, and a temperature. Lookups stay on the fastest
+  tier at low temperature; only questions that show they need reasoning
+  escalate.
+- The preference reorders the chain without filtering it, so an outage on the
+  preferred tier still falls through to the rest exactly as before. Routing is
+  a pure function with no network access, covered by 34 tests including the
+  chain integration.
 - REDCap metadata watcher at `/redcap-portfolio` (`make redcap-portfolio`).
   Five tabs over one pre-built artifact: a portfolio roll-up of all eight
   projects, per-project detail with completion by instrument and by event,
