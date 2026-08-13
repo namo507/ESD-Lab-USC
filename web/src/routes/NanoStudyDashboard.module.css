@@ -1,5 +1,11 @@
 .page {
   --blue: var(--esd-discovery-blue, #3366ff);
+  /* Discovery Blue is a fill colour. As small text it lands at 4.01-4.29
+     against this page's own surfaces (--cool-white, --cool-blue, --blue-050)
+     -- under the 4.5 needed for body copy, in both themes. --blue keeps the
+     exact brand hue for fills, borders and large display type; --blue-text is
+     the darkened/lightened pair used wherever the blue carries a word. */
+  --blue-text: var(--brand-600, #2450e6);
   --science-blue: var(--esd-science-blue, #91baf4);
   --cool-blue: var(--esd-cool-blue, #e6eefc);
   --cool-white: var(--esd-cool-white, #f4f4f6);
@@ -71,7 +77,7 @@
   display: inline-flex;
   align-items: center;
   gap: .5rem;
-  color: var(--blue);
+  color: var(--blue-text);
   font-size: .72rem;
   font-weight: 800;
   letter-spacing: .14em;
@@ -88,7 +94,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--blue) !important;
+  color: var(--blue-text) !important;
   font-size: .88rem;
   font-weight: 700;
 }
@@ -174,7 +180,7 @@
 }
 
 .navLink:hover {
-  color: var(--blue) !important;
+  color: var(--blue-text) !important;
   background: var(--blue-050);
 }
 
@@ -193,7 +199,7 @@
 }
 
 .navLink.active {
-  color: var(--blue) !important;
+  color: var(--blue-text) !important;
 }
 
 .navLink.active::after {
@@ -335,7 +341,10 @@
 }
 
 .separator {
-  color: var(--science-blue);
+  /* Science Blue on --blue-050 is 1.83:1. No blue pale enough to read as a
+     separator clears 4.5 on that tint, so the dot takes the muted text colour,
+     which tracks the theme and passes in both. */
+  color: var(--text-soft);
 }
 
 .pulseDot {
@@ -755,7 +764,7 @@
 }
 
 .marqueeItem span {
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 /* Dashboard band */
@@ -824,7 +833,7 @@
 .segmented button.selected {
   background: #fff;
   box-shadow: 0 1px 2px rgba(16, 29, 66, .05), 0 1px 1px rgba(16, 29, 66, .04);
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .timeline {
@@ -997,14 +1006,14 @@
   justify-content: center;
   border-radius: 7px;
   background: var(--cool-blue);
-  color: var(--blue);
+  color: var(--blue-text);
   font-size: .72rem;
   font-weight: 800;
 }
 
 .delta,
 .negativeDelta {
-  color: var(--blue);
+  color: var(--blue-text);
   font-weight: 800;
 }
 
@@ -1033,7 +1042,8 @@
   padding: 5px 10px;
   border-radius: 999px;
   background: #e7f7ee;
-  color: #12864b;
+  /* 4.17:1 at #12864b, and this is 0.68rem uppercase. */
+  color: #0f7040;
   font-size: .68rem;
   font-weight: 800;
   letter-spacing: .08em;
@@ -1076,7 +1086,7 @@
 .outlineButton {
   border: 1.5px solid var(--cool-blue);
   background: #fff;
-  color: var(--blue) !important;
+  color: var(--blue-text) !important;
 }
 
 .outlineButton:hover {
@@ -1138,7 +1148,7 @@
 }
 
 .footerColumn a:hover {
-  color: var(--blue) !important;
+  color: var(--blue-text) !important;
   transform: translateX(3px);
 }
 
@@ -1217,14 +1227,14 @@
 }
 
 .footerMeta svg {
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .footerMeta button {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--blue);
+  color: var(--blue-text);
   cursor: pointer;
   font-weight: 700;
 }
@@ -1239,7 +1249,9 @@
   gap: 12px;
   padding: 32px;
   background: #fff;
-  color: var(--text);
+  /* .statePage is its own <main>, rendered outside .page, so the palette
+     tokens defined there are not in scope here. Keep the literal. */
+  color: #0a0d14;
   font-family: "Libre Franklin", "Source Sans 3", sans-serif;
   text-align: center;
 }
@@ -1256,7 +1268,7 @@
 }
 
 .statePage span {
-  color: var(--text-soft);
+  color: #5a6472;
 }
 
 /* Canonical ESD 2026 dark translation. The aggregate-data and interaction
@@ -1264,6 +1276,9 @@
    the few literal white panels are remapped. */
 :global(:root[data-theme="dark"]) .page {
   --blue: var(--esd-discovery-blue, #3366ff);
+  /* On the dark surfaces the brand blue falls to 3.70-4.25; lift rather than
+     darken. 7.0:1 or better on every panel this page paints. */
+  --blue-text: #7ba3ff;
   --science-blue: var(--esd-science-blue, #91baf4);
   --cool-blue: #111a2e;
   --cool-white: #0c1017;

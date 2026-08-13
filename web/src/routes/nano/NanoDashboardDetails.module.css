@@ -43,12 +43,19 @@
 :global(:root[data-theme="dark"]) .headlineMetric,
 :global(:root[data-theme="dark"]) .supportCard,
 :global(:root[data-theme="dark"]) .systemCard,
-:global(:root[data-theme="dark"]) .disclosure,
-:global(:root[data-theme="dark"]) .libraryAction a,
-:global(:root[data-theme="dark"]) .safetyState {
+:global(:root[data-theme="dark"]) .disclosure {
   border-color: #232a3a;
   background: #0c1017;
   box-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  color: var(--ink);
+}
+
+/* .safetyState is a caution panel: its amber wash is the affordance, not
+   decoration. Darkening it to the same #0c1017 as every other card made it
+   read as an ordinary section. Keep the hue, drop the luminance. */
+:global(:root[data-theme="dark"]) .safetyState {
+  border-color: #5a4415;
+  background: #1c1408;
   color: var(--ink);
 }
 
@@ -74,6 +81,74 @@
   border-color: #232a3a;
   background: #141a26;
   color: var(--ink);
+}
+
+/* Darkening a card is only half the job: anything inside it that names its own
+   ink or rule keeps the value it was tuned for on white. The rules below run
+   through the descendants of the cards above -- table text and rules, the
+   disclosure's open/hover bar, the system card's terms, the prompt buttons --
+   which otherwise render near-black on near-black or flash a white bar on
+   hover. #232a3a is the rule, #141a26 the raised/hover tint, matching .chip. */
+:global(:root[data-theme="dark"]) .supportCard:hover {
+  border-color: color-mix(in srgb, var(--tone) 34%, #232a3a);
+}
+
+:global(:root[data-theme="dark"]) .supportLabel,
+:global(:root[data-theme="dark"]) .scrollCue,
+:global(:root[data-theme="dark"]) .emptyCell,
+:global(:root[data-theme="dark"]) .tableScroll thead th {
+  color: var(--muted);
+}
+
+:global(:root[data-theme="dark"]) .disclosure[open] summary {
+  border-bottom-color: #232a3a;
+  background: #141a26;
+}
+
+:global(:root[data-theme="dark"]) .disclosure summary:hover {
+  background: #141a26;
+}
+
+/* The scrollbar track is the second value; the thumb already reads on dark. */
+:global(:root[data-theme="dark"]) .tableScroll {
+  scrollbar-color: var(--esd-science-blue, #91baf4) #232a3a;
+}
+
+:global(:root[data-theme="dark"]) .detailTables .tableRegion {
+  border-color: #232a3a;
+}
+
+:global(:root[data-theme="dark"]) .tableScroll table,
+:global(:root[data-theme="dark"]) .tableScroll tbody th,
+:global(:root[data-theme="dark"]) .systemCard h3,
+:global(:root[data-theme="dark"]) .systemCard dd {
+  color: var(--ink);
+}
+
+:global(:root[data-theme="dark"]) .tableScroll caption {
+  color: var(--esd-science-blue, #91baf4);
+}
+
+:global(:root[data-theme="dark"]) .tableScroll th,
+:global(:root[data-theme="dark"]) .tableScroll td,
+:global(:root[data-theme="dark"]) .systemCard dl div {
+  border-top-color: #232a3a;
+}
+
+:global(:root[data-theme="dark"]) .tableScroll tbody tr:hover {
+  background: #141a26;
+}
+
+:global(:root[data-theme="dark"]) .promptGrid button {
+  border-color: #232a3a;
+  background: linear-gradient(145deg, #141a26, #0c1017);
+  color: var(--ink);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+}
+
+:global(:root[data-theme="dark"]) .promptGrid button:hover {
+  border-color: #33507e;
+  box-shadow: 0 15px 35px rgb(0 0 0 / 45%);
 }
 
 .contextBar {
@@ -658,7 +733,12 @@
   white-space: nowrap;
 }
 
-.libraryAction a {
+/* :any-link is here for specificity, not filtering. NanoStudyDashboard.module.css
+   carries `.page a { color: inherit }`, which is also (0,1,1) and is bundled
+   after this file -- so a plain `.libraryAction a` lost the tie and the button
+   inherited the banner's white, painting white text on its own white pill.
+   The pseudo-class takes this to (0,2,1) and settles it in either bundle order. */
+.libraryAction a:any-link {
   gap: 8px;
   background: #ffffff;
   color: #183982;
