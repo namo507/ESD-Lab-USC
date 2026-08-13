@@ -142,7 +142,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                 textAnchor="middle"
                 style={{
                   fontSize: 10,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                   fill: flowing ? "var(--usc-garnet)" : "var(--warm-fg4)",
                   fontWeight: 600,
                 }}
@@ -210,7 +210,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                 y={n.y + 2}
                 textAnchor="middle"
                 style={{
-                  fontFamily: "Source Serif 4, serif",
+                  fontFamily: "var(--font-serif)",
                   fontSize: 24,
                   fontWeight: 600,
                   fill: "var(--warm-fg1)",
@@ -225,7 +225,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                 textAnchor="middle"
                 style={{
                   fontSize: 9,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                   fill: "var(--warm-fg3)",
                   letterSpacing: "0.06em",
                   textTransform: "uppercase",
@@ -241,7 +241,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                   fontSize: 13,
                   fontWeight: 600,
                   fill: "var(--warm-fg1)",
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 {n.label}
@@ -252,7 +252,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                 textAnchor="middle"
                 style={{
                   fontSize: 10,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                   fill: "var(--warm-fg4)",
                 }}
               >
@@ -264,7 +264,7 @@ export function AnimatedDAG({ stages, selected, onSelect, syncing = false, syncT
                 textAnchor="middle"
                 style={{
                   fontSize: 10,
-                  fontFamily: "JetBrains Mono, monospace",
+                  fontFamily: "var(--font-mono)",
                   fill: "var(--warm-fg4)",
                 }}
               >

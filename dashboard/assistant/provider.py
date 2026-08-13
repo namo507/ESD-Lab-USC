@@ -1049,14 +1049,40 @@ class FallbackProvider:
         with self._lock:
             self._active_index = index
 
-    def _selectable(self) -> list[tuple[int, AssistantProvider]]:
-        """Return tiers worth attempting, healthiest-first within the order."""
+    def _selectable(
+        self, prefer_providers: Sequence[str] | None = None
+    ) -> list[tuple[int, AssistantProvider]]:
+        """Return tiers worth attempting, healthiest-first within the order.
+
+        ``prefer_providers`` reorders the candidates without filtering them, so
+        a routing preference can put the strongest tier first for a hard
+        question while every other tier stays available as a fallback. A tier
+        whose family is not named keeps its configured position behind those
+        that are.
+        """
         candidates: list[tuple[int, AssistantProvider]] = []
         for index, provider in enumerate(self._tiers):
             status = provider.status()
             if status.get("ready") or status.get("can_attempt"):
                 candidates.append((index, provider))
-        return candidates
+
+        if not prefer_providers:
+            return candidates
+
+        rank = {name: order for order, name in enumerate(prefer_providers)}
+        unranked = len(rank)
+
+        def sort_key(item: tuple[int, AssistantProvider]) -> tuple[int, int]:
+            index, provider = item
+            # normalized_provider names the tier exactly ("gemini",
+            # "nvidia", "local"); `family` is coarser and groups local under
+            # "openai", which would not distinguish tiers here.
+            config = getattr(provider, "config", None)
+            name = str(getattr(config, "normalized_provider", "") or "")
+            # Ties keep configured order, so the sort stays deterministic.
+            return (rank.get(name, unranked), index)
+
+        return sorted(candidates, key=sort_key)
 
     def active(self) -> AssistantProvider:
         with self._lock:
@@ -1105,9 +1131,7 @@ class FallbackProvider:
         merged["fallback_tiers"] = len(self._tiers)
         merged["active_tier"] = chosen_index
         merged["active_tier_label"] = tier_states[chosen_index]["label"]
-        merged["fallback_ready_tiers"] = sum(
-            1 for tier in tier_states if tier["ready"]
-        )
+        merged["fallback_ready_tiers"] = sum(1 for tier in tier_states if tier["ready"])
         if self._last_error and not merged.get("last_error"):
             merged["last_error"] = self._last_error
         return merged
@@ -1146,10 +1170,11 @@ class FallbackProvider:
         temperature: float,
         top_p: float,
         response_format: dict[str, Any] | None = None,
+        prefer_providers: Sequence[str] | None = None,
     ) -> str:
         last_error: ProviderError | None = None
 
-        for index, provider in self._selectable():
+        for index, provider in self._selectable(prefer_providers):
             try:
                 answer = provider.complete(
                     messages,
@@ -1179,10 +1204,11 @@ class FallbackProvider:
         temperature: float,
         top_p: float,
         cancel_event: threading.Event | None = None,
+        prefer_providers: Sequence[str] | None = None,
     ) -> Iterator[str]:
         last_error: ProviderError | None = None
 
-        for index, provider in self._selectable():
+        for index, provider in self._selectable(prefer_providers):
             emitted = False
             try:
                 for chunk in provider.stream(

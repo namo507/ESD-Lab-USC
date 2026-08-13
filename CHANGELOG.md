@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+- Removed the render-blocking Google Fonts `@import` from `tokens.css`. It sat
+  on the critical path of every route and, being a CSS `@import`, was
+  discovered only after its own stylesheet had parsed -- a serialized blocking
+  request rather than a parallel one. First contentful paint on
+  `/redcap-portfolio` went from **12,988 ms to 136 ms** when the font CDN was
+  unreachable, which is the worst case the dependency made possible.
+- None of the three families it fetched (Source Serif 4, Source Sans 3,
+  JetBrains Mono) are ESD brand typefaces, and Libre Franklin -- which is --
+  was already self-hosted and shadowing them in the cascade, so they largely
+  never rendered. Font stacks now lead with Libre Franklin; the mono stack uses
+  local system faces.
+- Dropped `fonts.googleapis.com` and `fonts.gstatic.com` from the CSP, so the
+  site no longer sends visitor IP and user-agent to a third party on load.
+
+### Fixed
+- The readings index no longer degrades silently. Without `pypdf` every PDF
+  yields no page count, no embedded title, and no excerpt, so categories and
+  titles fall back to filename guesses -- a structurally valid index that is
+  materially worse, which previously overwrote the good one with nothing
+  reported. `build_readings_index.py` now warns loudly, refuses to replace a
+  PDF-backed index unless `--allow-degraded-overwrite` is passed, and exits
+  non-zero under `--require-pdf-metadata`.
+- `/redcap-portfolio` is now in the canonical surface list, so
+  `check_live_surfaces.py` monitors it like every other route.
+- The portfolio page no longer invents its own staleness threshold. It had used
+  `refresh_cadence_seconds * 2`, disagreeing with every other surface on the
+  site about when the same artifact goes stale; the backend now publishes
+  `sla_seconds` and the page reads it.
+
 ### Changed
 - Theme consistency pass over all 74 stylesheets. Audited every raw hex against
   the ESD palette, separating legitimate `var(--token, #fallback)` fallbacks
@@ -25,6 +55,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   guidelines call out as bugs, appear nowhere in the codebase.
 
 ### Added
+- Speed-first tier routing for ESD Buddy (`dashboard/assistant/routing.py`).
+  The provider chain already failed over on *availability*; it had no notion of
+  question difficulty, so a request needing the 120B model still started at the
+  fast tier and got a fast, shallow answer. Questions are now classified as
+  quick, standard, or deep from the shape of the wording -- reasoning markers,
+  multi-part structure, pasted stack traces, length -- and each class gets a
+  tier order, a token ceiling, and a temperature. Lookups stay on the fastest
+  tier at low temperature; only questions that show they need reasoning
+  escalate.
+- The preference reorders the chain without filtering it, so an outage on the
+  preferred tier still falls through to the rest exactly as before. Routing is
+  a pure function with no network access, covered by 34 tests including the
+  chain integration.
 - REDCap metadata watcher at `/redcap-portfolio` (`make redcap-portfolio`).
   Five tabs over one pre-built artifact: a portfolio roll-up of all eight
   projects, per-project detail with completion by instrument and by event,

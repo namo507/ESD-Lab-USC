@@ -771,6 +771,10 @@ def build_metadata_payload(
         "read_only": True,
         "small_cell_threshold": threshold,
         "refresh_cadence_seconds": config.refresh_cadence_seconds,
+        # The freshness budget, published so the page does not have to invent a
+        # staleness threshold of its own. It is the same SLA every other
+        # dashboard surface is judged against.
+        "sla_seconds": config.sla_seconds,
         "projects_total": len(snapshots),
         "projects_ok": len(healthy),
         "instruments_total": sum(len(snapshot.instruments) for snapshot in healthy),
