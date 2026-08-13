@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cross-project instrument comparison with field-level harmonization verdicts,
   a searchable field index with CSV export, and a definitions tab that states
   what every number means. A freshness stamp reads the artifact's own
-  timestamp and marks it stale past two sync cycles.
+  timestamp and marks it stale once it is older than the portfolio SLA.
 - `redcap/api/portfolio_metadata.py` builds that artifact through an
   export-only client. Content types outside the export allowlist are refused
   before a request is built, as is any request carrying a REDCap write
