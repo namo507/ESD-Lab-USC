@@ -4,7 +4,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: SAMEORIGIN
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://server.arcgisonline.com; connect-src 'self' https://*.trycloudflare.com http://127.0.0.1:8080 http://localhost:8080 http://127.0.0.1:1234 http://localhost:1234; frame-src 'self' https://*.trycloudflare.com; frame-ancestors 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob: https://server.arcgisonline.com; connect-src 'self' https://*.trycloudflare.com http://127.0.0.1:8080 http://localhost:8080 http://127.0.0.1:1234 http://localhost:1234; frame-src 'self' https://*.trycloudflare.com; frame-ancestors 'self'; form-action 'self'
 
 /api/*
   Cache-Control: no-store

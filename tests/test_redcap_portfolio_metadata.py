@@ -346,6 +346,17 @@ def test_payload_declares_its_own_safety_properties(portfolio_config):
     assert payload["small_cell_threshold"] == portfolio_config.small_cell_threshold
 
 
+def test_payload_publishes_the_freshness_budget_the_page_renders(portfolio_config):
+    # The page must not invent its own staleness threshold: it reads the same
+    # SLA every other dashboard surface is judged against.
+    payload = build_metadata_payload(portfolio_config, snapshots_for(portfolio_config))
+
+    assert payload["sla_seconds"] == portfolio_config.sla_seconds
+    assert (
+        payload["refresh_cadence_seconds"] == portfolio_config.refresh_cadence_seconds
+    )
+
+
 def test_payload_never_carries_item_text_or_record_identifiers(portfolio_config):
     payload = build_metadata_payload(portfolio_config, snapshots_for(portfolio_config))
     serialized = json.dumps(payload)

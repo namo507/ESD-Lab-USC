@@ -64,6 +64,7 @@ const PAYLOAD: RedcapPortfolio = {
   read_only: true,
   small_cell_threshold: 5,
   refresh_cadence_seconds: 300,
+  sla_seconds: 900,
   projects_total: 3,
   projects_ok: 2,
   instruments_total: 3,
@@ -383,16 +384,29 @@ describe("portfolio roll-up", () => {
 });
 
 describe("freshness", () => {
-  it("reads as live within two sync cycles", () => {
+  it("reads as live within the published SLA", () => {
     const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T15:04:00Z"));
     expect(state.status).toBe("live");
     expect(state.ageSeconds).toBe(240);
   });
 
-  it("goes stale past two sync cycles", () => {
+  it("stays live at twice the sync cadence, which is still inside the SLA", () => {
+    // The page used to invent `cadence * 2` (10 min) as its own threshold and
+    // flagged stale here, disagreeing with every other surface on the site.
+    const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T15:12:00Z"));
+    expect(state.status).toBe("live");
+  });
+
+  it("goes stale once the artifact is older than the SLA", () => {
     const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T15:20:00Z"));
     expect(state.status).toBe("stale");
     expect(state.label).toBe("20 min ago");
+  });
+
+  it("falls back to a cadence multiple when an older artifact omits the SLA", () => {
+    const { sla_seconds: _omitted, ...legacy } = PAYLOAD;
+    const state = portfolioFreshness(legacy as RedcapPortfolio, Date.parse("2026-08-12T15:20:00Z"));
+    expect(state.status).toBe("stale");
   });
 
   it("reports an unpublished artifact rather than guessing", () => {
