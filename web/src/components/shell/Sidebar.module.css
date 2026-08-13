@@ -103,7 +103,7 @@
   border: 1px solid var(--sidebar-line);
   border-radius: 14px;
   background: var(--sidebar-surface);
-  box-shadow: 0 5px 16px color-mix(in srgb, #0b1c45 6%, transparent);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--shadow-ink, #0b1c45) 6%, transparent);
 }
 
 .eyebrow,
@@ -403,6 +403,6 @@
 @media (max-width: 767px) {
   .sidebar {
     width: min(286px, calc(100vw - 48px));
-    box-shadow: 20px 0 54px color-mix(in srgb, #07112b 28%, transparent);
+    box-shadow: 20px 0 54px color-mix(in srgb, var(--shadow-ink, #07112b) 28%, transparent);
   }
 }

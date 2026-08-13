@@ -157,12 +157,12 @@
 .primary {
   border-color: var(--usc-garnet);
   background: var(--usc-garnet);
-  color: #fff8f3;
+  color: var(--fg-on-brand, #fff);
 }
 
 .primary:hover {
   background: var(--usc-garnet-600);
-  color: #fff8f3;
+  color: var(--fg-on-brand, #fff);
 }
 
 @media (max-width: 720px) {

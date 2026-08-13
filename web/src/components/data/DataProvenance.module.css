@@ -54,8 +54,8 @@
 
 .pilot {
   border-color: color-mix(in srgb, var(--violet, #7357c5) 32%, transparent);
-  background: color-mix(in srgb, #eee9ff 72%, var(--surface, #fff));
-  color: #5a43a3;
+  background: color-mix(in srgb, var(--purple-tint, #edeaf6) 72%, var(--surface, #fff));
+  color: var(--purple, #8172b2);
 }
 
 .compact {

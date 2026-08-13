@@ -78,7 +78,7 @@ figure.figureBox {
 .stepActive .stepNum {
   background: var(--usc-garnet);
   border-color: var(--usc-garnet);
-  color: #fff8f3;
+  color: var(--fg-on-brand, #fff);
 }
 
 /* sublinks that redirect to the real routes */
@@ -118,7 +118,7 @@ figure.figureBox {
 .openLink {
   background: var(--usc-garnet);
   border-color: var(--usc-garnet);
-  color: #fff8f3;
+  color: var(--fg-on-brand, #fff);
 }
 .openLink:hover {
   background: var(--usc-garnet-600);
