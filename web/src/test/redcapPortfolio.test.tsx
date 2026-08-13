@@ -404,8 +404,9 @@ describe("freshness", () => {
   });
 
   it("falls back to a cadence multiple when an older artifact omits the SLA", () => {
-    const { sla_seconds: _omitted, ...legacy } = PAYLOAD;
-    const state = portfolioFreshness(legacy as RedcapPortfolio, Date.parse("2026-08-12T15:20:00Z"));
+    const legacy: RedcapPortfolio = { ...PAYLOAD };
+    delete (legacy as Partial<RedcapPortfolio>).sla_seconds;
+    const state = portfolioFreshness(legacy, Date.parse("2026-08-12T15:20:00Z"));
     expect(state.status).toBe("stale");
   });
 
