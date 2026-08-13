@@ -4,8 +4,19 @@
    Loaded before any UI kit / preview.
    ======================================================================== */
 
-/* ---- Fonts -------------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,300..900&family=Source+Sans+3:wght@300..800&family=JetBrains+Mono:wght@400..700&display=swap');
+/* ---- Fonts --------------------------------------------------------------
+   No webfont is fetched here. Libre Franklin -- the ESD brand typeface -- is
+   self-hosted and declared with @font-face in brand-esd.css, so a third-party
+   request would be redundant on top of being slow and leaky.
+
+   This file used to `@import` three families from fonts.googleapis.com. A CSS
+   @import is the worst way to load a font: it blocks render AND is discovered
+   only after this stylesheet has itself downloaded and parsed, so the request
+   is serialized rather than parallel. Measured at 14,457 ms on the critical
+   path of every route. It also sent every visitor's IP and user-agent to a
+   third party from a dashboard that sits behind an IRB, and none of the three
+   families it fetched are brand typefaces -- Libre Franklin already shadowed
+   them in the cascade, so they mostly never rendered at all. */
 
 :root {
   /* ---- Color: USC brand anchors (from src/visualization/trajectory_plots.R) */
@@ -61,10 +72,14 @@
   --border-strong: var(--slate-300);
   --border-focus: var(--usc-gold);
 
-  /* ---- Type: families -------------------------------------------------- */
-  --font-serif: 'Source Serif 4', 'Charter', 'Georgia', serif;
-  --font-sans:  'Source Sans 3', 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:  'JetBrains Mono', 'SFMono-Regular', 'Menlo', monospace;
+  /* ---- Type: families --------------------------------------------------
+     Libre Franklin leads every stack: it is the brand typeface and the only
+     one this site ships. The rest are local system fallbacks for the moment
+     before the self-hosted face loads, and for the mono stack, which the brand
+     does not specify. */
+  --font-serif: 'Libre Franklin', 'Charter', 'Georgia', serif;
+  --font-sans:  'Libre Franklin', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:  ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
 
   /* ---- Type: sizes (see readme Type section) --------------------------- */
   --text-display: 48px;
