@@ -100,17 +100,17 @@ jobs:
         working-directory: web
         run: npm run lint
 
-      - name: Typecheck
+      # Build before test, and no separate typecheck step: `npm run build` is
+      # `tsc --noEmit && vite build`, so a standalone typecheck would run tsc
+      # twice. Running build first still fails fast on a type error, without
+      # paying for the ~60s test run to find it.
+      - name: Build (typechecks, then bundles)
         working-directory: web
-        run: npm run typecheck
+        run: npm run build
 
       - name: Test
         working-directory: web
         run: npm run test
-
-      - name: Build
-        working-directory: web
-        run: npm run build
 
   test-dashboard-docker:
     runs-on: ubuntu-latest
