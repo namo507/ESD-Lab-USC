@@ -1,17 +1,17 @@
 .page {
-  --blue: #3366ff;
-  --science-blue: #91baf4;
-  --cool-blue: #e6eefc;
-  --cool-white: #f4f4f6;
+  --blue: var(--esd-discovery-blue, #3366ff);
+  --science-blue: var(--esd-science-blue, #91baf4);
+  --cool-blue: var(--esd-cool-blue, #e6eefc);
+  --cool-white: var(--esd-cool-white, #f4f4f6);
   --blue-050: #f1f5ff;
   --blue-700: var(--brand-600, #2450e6);
   --text: #0a0d14;
   --text-soft: #5a6472;
   --line: #e6eefc;
   --line-2: #edf1f7;
-  --orange: #f57f00;
-  --yellow: #f4da26;
-  --red: #d74e2d;
+  --orange: var(--accent-orange, #f57f00);
+  --yellow: var(--accent-yellow, #f4da26);
+  --red: var(--accent-red, #d74e2d);
   --max-width: 1240px;
   --header-height: 74px;
   --ease-expo: cubic-bezier(.16, 1, .3, 1);
@@ -456,7 +456,7 @@
   overflow: hidden;
   padding: 30px 32px;
   border-radius: 26px;
-  background: radial-gradient(120% 140% at 100% 0%, #4a7bff 0%, #3366ff 45%, #274fcc 100%);
+  background: radial-gradient(120% 140% at 100% 0%, #4a7bff 0%, var(--blue) 45%, #274fcc 100%);
   box-shadow: 0 22px 48px rgba(51, 102, 255, .28);
   color: #fff;
 }
@@ -1239,7 +1239,7 @@
   gap: 12px;
   padding: 32px;
   background: #fff;
-  color: var(--text, #0a0d14);
+  color: var(--text);
   font-family: "Libre Franklin", "Source Sans 3", sans-serif;
   text-align: center;
 }
@@ -1256,15 +1256,15 @@
 }
 
 .statePage span {
-  color: #5a6472;
+  color: var(--text-soft);
 }
 
 /* Canonical ESD 2026 dark translation. The aggregate-data and interaction
    structure remains unchanged; only the local light-first surface tokens and
    the few literal white panels are remapped. */
 :global(:root[data-theme="dark"]) .page {
-  --blue: #3366ff;
-  --science-blue: #91baf4;
+  --blue: var(--esd-discovery-blue, #3366ff);
+  --science-blue: var(--esd-science-blue, #91baf4);
   --cool-blue: #111a2e;
   --cool-white: #0c1017;
   --blue-050: #111a2e;

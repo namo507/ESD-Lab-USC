@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- The NANO dashboard's details surface had no dark-mode block at all. Its
+  palette stayed at light values while the page around it went to `#07090f`,
+  so every section heading rendered near-black on near-black -- measured at
+  luminance 13 against a page at 9, roughly 1:1 contrast, effectively
+  invisible. Headings, card values, progress tracks, disclosure links, and the
+  assistant prompts now all carry dark treatments; heading contrast is 244
+  against 9. Light mode is byte-for-byte unchanged.
 - The readings index no longer degrades silently. Without `pypdf` every PDF
   yields no page count, no embedded title, and no excerpt, so categories and
   titles fall back to filename guesses -- a structurally valid index that is

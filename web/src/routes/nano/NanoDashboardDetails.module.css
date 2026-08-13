@@ -1,16 +1,79 @@
 .detailsSurface {
-  --discovery: #3366ff;
+  --discovery: var(--esd-discovery-blue, #3366ff);
   --discovery-dark: var(--brand-600, #2450e6);
   --science: #91baf4;
   --ink: #0a0d14;
   --muted: #5a6472;
   --line: #e7edf7;
+  /* Set but never referenced *in this file* -- and not dead. Descendant
+     components defined in other stylesheets inherit them through the cascade,
+     so removing them silently repainted every card on this surface. */
   --surface: #f7f9fd;
   width: min(100%, 1240px);
   margin: 0 auto;
   padding: 32px clamp(18px, 4vw, 40px) 96px;
   color: var(--ink);
   font-family: "Libre Franklin", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* This surface shipped with no dark-mode block at all, so --ink stayed at
+   its light value while the page around it went to #07090f -- every section heading
+   rendered near-black on near-black, about 1:1 contrast, effectively
+   invisible. The values below mirror NanoStudyDashboard.module.css, which
+   renders directly above this on the same page. */
+:global(:root[data-theme="dark"]) .detailsSurface {
+  --ink: #f4f4f6;
+  --muted: #a9b2c4;
+  --line: #232a3a;
+  /* Inherited by descendant components that paint their own surface. */
+  --surface: #0c1017;
+  /* These two are darker-than-brand blues chosen to sit on white. On a dark
+     ground they fall to roughly 2:1 against the surface, so the dark theme
+     takes the lighter science blue instead. */
+  --discovery: #7ba3ff;
+  --discovery-dark: var(--esd-science-blue, #91baf4);
+}
+
+/* Every surface below paints an explicit light background, so flipping --ink
+   alone would leave near-white text on a near-white card. The values match the
+   dark palette in NanoStudyDashboard.module.css, which renders directly above
+   this on the same page: #0c1017 for a raised card, #232a3a for a rule. */
+:global(:root[data-theme="dark"]) .contextBar,
+:global(:root[data-theme="dark"]) .privacyNote,
+:global(:root[data-theme="dark"]) .headlineMetric,
+:global(:root[data-theme="dark"]) .supportCard,
+:global(:root[data-theme="dark"]) .systemCard,
+:global(:root[data-theme="dark"]) .disclosure,
+:global(:root[data-theme="dark"]) .libraryAction a,
+:global(:root[data-theme="dark"]) .safetyState {
+  border-color: #232a3a;
+  background: #0c1017;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+  color: var(--ink);
+}
+
+:global(:root[data-theme="dark"]) .supportCard {
+  border-color: color-mix(in srgb, var(--tone) 26%, #232a3a);
+}
+
+/* Progress tracks: the unfilled portion is a light rule on light cards, which
+   reads as a solid bar once the card goes dark. */
+:global(:root[data-theme="dark"]) .supportCard progress,
+:global(:root[data-theme="dark"]) .supportCard progress::-webkit-progress-bar,
+:global(:root[data-theme="dark"]) .tableScroll progress,
+:global(:root[data-theme="dark"]) .tableScroll progress::-webkit-progress-bar {
+  background: #232a3a;
+}
+
+/* The disclosure summary is a deep navy tuned for a white card. */
+:global(:root[data-theme="dark"]) .disclosure summary {
+  color: var(--esd-science-blue, #91baf4);
+}
+
+:global(:root[data-theme="dark"]) .chip {
+  border-color: #232a3a;
+  background: #141a26;
+  color: var(--ink);
 }
 
 .contextBar {
@@ -64,7 +127,7 @@
   border: 1px solid color-mix(in srgb, var(--tone, #70809a) 20%, white);
   border-radius: 999px;
   background: color-mix(in srgb, var(--tone, #70809a) 9%, white);
-  color: color-mix(in srgb, var(--tone, #52627a) 86%, #0a0d14);
+  color: color-mix(in srgb, var(--tone, #52627a) 86%, var(--ink));
   font-size: 0.69rem;
   font-weight: 800;
   letter-spacing: 0.055em;
@@ -447,7 +510,7 @@
 
 .tableScroll thead th {
   border-top: 0;
-  background: #f7f9fd;
+  background: var(--surface);
   color: #667286;
   font-size: 0.65rem;
   font-weight: 820;
