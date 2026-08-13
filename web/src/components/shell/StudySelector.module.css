@@ -56,7 +56,7 @@
 .option[data-active] {
   background: var(--esd-discovery-blue, #3366ff);
   color: #fff;
-  box-shadow: 0 1px 2px color-mix(in srgb, #07112b 10%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink, #07112b) 10%, transparent);
 }
 
 .option[data-unavailable]:not([data-active]) {

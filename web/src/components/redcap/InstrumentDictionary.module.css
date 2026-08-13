@@ -139,7 +139,7 @@
   border: 1px solid var(--esd-cool-blue, #e6eefc);
   border-radius: var(--esd-radius-card, 20px);
   background: var(--warm-card, #fff);
-  box-shadow: 0 1px 2px color-mix(in srgb, #07112b 5%, transparent);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow-ink, #07112b) 5%, transparent);
 }
 
 .projectHead {

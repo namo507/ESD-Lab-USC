@@ -1,6 +1,6 @@
 .detailsSurface {
   --discovery: #3366ff;
-  --discovery-dark: #274fcc;
+  --discovery-dark: var(--brand-600, #2450e6);
   --science: #91baf4;
   --ink: #0a0d14;
   --muted: #5a6472;
@@ -367,13 +367,13 @@
 
 .libraryAction a:focus-visible,
 .promptGrid button:focus-visible {
-  outline: 3px solid #274fcc;
+  outline: 3px solid var(--discovery-dark);
   outline-offset: 3px;
 }
 
 .disclosure summary:focus-visible {
   border-radius: 16px;
-  outline: 3px solid #274fcc;
+  outline: 3px solid var(--discovery-dark);
   outline-offset: -4px;
 }
 
@@ -397,7 +397,7 @@
 
 .tableScroll:focus-visible {
   border-radius: 12px;
-  outline: 3px solid #274fcc;
+  outline: 3px solid var(--discovery-dark);
   outline-offset: 2px;
 }
 

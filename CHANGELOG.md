@@ -37,6 +37,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site about when the same artifact goes stale; the backend now publishes
   `sla_seconds` and the page reads it.
 
+### Changed
+- Theme consistency pass over all 74 stylesheets. Audited every raw hex against
+  the ESD palette, separating legitimate `var(--token, #fallback)` fallbacks
+  (312, fine) from real token bypasses. Off-brand values dropped from 94 to 71,
+  and the shared shell layer -- which renders on every route -- is now clean.
+- Added a single `--shadow-ink` token. Six stylesheets each carried their own
+  near-identical navy (`#07112b`, `#0b1c45`, `#0d265d`, `#112969`) to tint
+  elevation shadows, so shadows drifted in hue between surfaces sitting side by
+  side. Dark mode uses black, because a navy tint reads as haze on a dark
+  ground.
+- Replaced off-canon colors with brand tokens: `#274fcc` and `#2856e8` (both
+  near-misses for the brand's `--brand-600` #2450e6), a `#7ae2ad` status dot
+  (now `--status-green`), `#5a43a3`/`#eee9ff` (now the `--purple` pair), and
+  `#fff8f3` body text on brand backgrounds (now `--fg-on-brand`).
+- Confirmed absent: `#005CBE` and `#2A61E6`, the two drift hexes the brand
+  guidelines call out as bugs, appear nowhere in the codebase.
+
 ### Added
 - Speed-first tier routing for ESD Buddy (`dashboard/assistant/routing.py`).
   The provider chain already failed over on *availability*; it had no notion of

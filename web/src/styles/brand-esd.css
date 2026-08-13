@@ -31,6 +31,11 @@
 }
 
 [data-brand="esd-2026"] {
+  /* Every elevation shadow tints from this one ink. Six stylesheets each
+     carried their own near-identical navy (#07112b, #0b1c45, #0d265d,
+     #112969), so shadows drifted in hue between surfaces sitting side by
+     side. One token, one hue. */
+  --shadow-ink: #07112b;
   --bg-page: #f4f4f6;
   --bg-surface: #ffffff;
   --bg-subtle: #e6eefc;
@@ -166,6 +171,8 @@
 
 [data-brand="esd-2026"][data-theme="dark"],
 :root[data-theme="dark"] [data-brand="esd-2026"] {
+  /* A navy tint reads as haze on a dark ground; black keeps the edge. */
+  --shadow-ink: #000000;
   --bg-page: #071126;
   --bg-surface: #0d1931;
   --bg-subtle: #102244;
