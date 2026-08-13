@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+- Removed the render-blocking Google Fonts `@import` from `tokens.css`. It sat
+  on the critical path of every route and, being a CSS `@import`, was
+  discovered only after its own stylesheet had parsed -- a serialized blocking
+  request rather than a parallel one. First contentful paint on
+  `/redcap-portfolio` went from **12,988 ms to 136 ms** when the font CDN was
+  unreachable, which is the worst case the dependency made possible.
+- None of the three families it fetched (Source Serif 4, Source Sans 3,
+  JetBrains Mono) are ESD brand typefaces, and Libre Franklin -- which is --
+  was already self-hosted and shadowing them in the cascade, so they largely
+  never rendered. Font stacks now lead with Libre Franklin; the mono stack uses
+  local system faces.
+- Dropped `fonts.googleapis.com` and `fonts.gstatic.com` from the CSP, so the
+  site no longer sends visitor IP and user-agent to a third party on load.
+
 ### Fixed
 - The readings index no longer degrades silently. Without `pypdf` every PDF
   yields no page count, no embedded title, and no excerpt, so categories and
