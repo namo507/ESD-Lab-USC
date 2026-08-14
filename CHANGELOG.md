@@ -23,6 +23,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- The NANO dashboard's details surface had no dark-mode block at all. Its
+  palette stayed at light values while the page around it went to `#07090f`,
+  so every section heading rendered near-black on near-black -- measured at
+  luminance 13 against a page at 9, roughly 1:1 contrast, effectively
+  invisible. Headings, card values, progress tracks, disclosure links, and the
+  assistant prompts now all carry dark treatments; heading contrast is 244
+  against 9. Light mode is byte-for-byte unchanged.
+- Darkening those cards turned out to be only half the job: anything *inside*
+  a card that names its own ink or rule keeps the value it was tuned for on
+  white. The detail tables rendered near-black text on a near-black card and
+  flashed a white bar on row hover. Dark treatments added for table text,
+  captions, rules, header ink, row hover, and the scrollbar *track*, plus the
+  disclosure's open/hover bar, the system card's headings and terms, and the
+  prompt buttons. `.safetyState` keeps its amber hue rather than flattening to
+  the generic card colour -- on a caution panel the wash is the affordance.
+- The NANO "Open reading library" call to action rendered **white on white in
+  both themes**, not just dark. `NanoStudyDashboard.module.css` carries
+  `.page a { color: inherit }`, which is also specificity (0,1,1) and is
+  bundled after the details module, so `.libraryAction a` lost the tie on
+  source order and the button inherited its banner's white onto its own white
+  pill. Settled with `:any-link`.
+- Discovery Blue is a fill colour, and the NANO study page used it as small
+  text in 40+ places: 4.01-4.29 against that page's own surfaces in light and
+  3.70-4.25 in dark, under the 4.5 body copy needs in either theme. Split into
+  `--blue` (exact brand hue, for fills, borders, and large display type) and
+  `--blue-text` (darkened in light, lifted in dark). `.kpiStatus` stays on
+  `--blue`: at >=24px it is large text and already clears the 3:1 bar. Also
+  fixed the `·` separator at 1.83:1 and the NEW tag at 4.17:1. Measured on the
+  rendered page, contrast failures went from 46 to 4 in light and 62 to 3 in
+  dark; the details surface is at 0 in both. The remainder are in two shared
+  components that render here but are not NANO stylesheets -- `DataProvenance`
+  and `ChatDrawer` -- left for a separately scoped change.
 - The readings index no longer degrades silently. Without `pypdf` every PDF
   yields no page count, no embedded title, and no excerpt, so categories and
   titles fall back to filename guesses -- a structurally valid index that is
