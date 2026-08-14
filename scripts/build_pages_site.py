@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import functools
 import hashlib
 import json
 import os
@@ -40,6 +41,9 @@ import urllib.request
 from urllib.parse import urlparse
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+# Where the source tree lives, independent of REPO_ROOT, which tests redirect
+# to a tmp dir to relocate data and build output.
+_SOURCE_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT_BUILD_DIR = REPO_ROOT / "web" / "build"
 DEFAULT_OUT_DIR = REPO_ROOT / "dist" / "pages-wrapper"
 DEFAULT_MANIFEST = (
@@ -351,6 +355,34 @@ def _validate_public_redcap_portfolio(payload: object) -> None:
                 )
 
 
+@functools.lru_cache(maxsize=1)
+def _freshness_contract() -> tuple[str, dict[str, int]]:
+    """Read the published cadence and SLA from the portfolio config.
+
+    These were literals here (``"every_5_minutes"`` / 15 minutes) and in
+    check_live_surfaces.py, independent of the config that actually generates
+    them. That is how the contract came to claim a cadence the GitHub scheduler
+    never delivered. One source of truth now.
+
+    Resolved from this file's own location, not REPO_ROOT: REPO_ROOT is the
+    root for *data and output* and tests redirect it to a tmp dir, but the
+    config being read here is part of the source tree either way.
+    """
+    if str(_SOURCE_ROOT) not in sys.path:
+        sys.path.insert(0, str(_SOURCE_ROOT))
+    from redcap.api.multi_project import (  # noqa: E402
+        cadence_label,
+        load_portfolio_config,
+        sla_payload,
+    )
+
+    config = load_portfolio_config(_SOURCE_ROOT / "config" / "redcap_projects.yml")
+    return (
+        cadence_label(config.refresh_cadence_seconds),
+        sla_payload(config.sla_seconds),
+    )
+
+
 def _validate_public_dashboard_metrics(
     payload: object,
     *,
@@ -426,10 +458,14 @@ def _validate_public_dashboard_metrics(
         or source.get("system") != "REDCap"
     ):
         raise ValueError("public dashboard metrics must identify the live REDCap API")
-    if source.get("cadence") != "every_5_minutes":
-        raise ValueError("public dashboard metrics cadence must be five minutes")
-    if source.get("sla") != {"max_age_minutes": 15}:
-        raise ValueError("public dashboard metrics freshness SLA must be 15 minutes")
+    expected_cadence, expected_sla = _freshness_contract()
+    if source.get("cadence") != expected_cadence:
+        raise ValueError(f"public dashboard metrics cadence must be {expected_cadence}")
+    if source.get("sla") != expected_sla:
+        raise ValueError(
+            "public dashboard metrics freshness SLA must be "
+            f"{expected_sla['max_age_minutes']} minutes"
+        )
     if source.get("projects_total") != 8 or source.get("projects_ok") != 8:
         raise ValueError("public dashboard metrics require 8/8 healthy projects")
 
@@ -1827,7 +1863,11 @@ def build(
             metrics_payload = json.loads(metrics_source.read_text(encoding="utf-8"))
             _validate_public_dashboard_metrics(
                 metrics_payload,
-                max_age_minutes=15 if require_live_metrics else None,
+                max_age_minutes=(
+                    _freshness_contract()[1]["max_age_minutes"]
+                    if require_live_metrics
+                    else None
+                ),
             )
         except (json.JSONDecodeError, ValueError) as exc:
             sys.exit(f"[build_pages_site] unsafe public dashboard metrics: {exc}")

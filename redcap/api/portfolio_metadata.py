@@ -141,8 +141,8 @@ class ReadOnlyViolation(RuntimeError):
 class RequestPacer:
     """Process-wide floor on the interval between outbound REDCap calls.
 
-    The portfolio sync already runs every five minutes. Pacing this export
-    keeps the metadata pass from arriving as a burst on top of it.
+    The portfolio sync is already running on its own schedule. Pacing this
+    export keeps the metadata pass from arriving as a burst on top of it.
     """
 
     def __init__(

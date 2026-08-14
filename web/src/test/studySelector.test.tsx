@@ -25,8 +25,8 @@ function metricsFixture() {
     source: {
       kind: "live",
       system: "REDCap",
-      cadence: "every_5_minutes",
-      sla: { max_age_minutes: 15 },
+      cadence: "every_30_minutes",
+      sla: { max_age_minutes: 90 },
       projects_total: 8,
       projects_ok: 8,
     },

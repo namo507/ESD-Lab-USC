@@ -63,8 +63,8 @@ const PAYLOAD: RedcapPortfolio = {
   identifier_fields_withheld: true,
   read_only: true,
   small_cell_threshold: 5,
-  refresh_cadence_seconds: 300,
-  sla_seconds: 900,
+  refresh_cadence_seconds: 1800,
+  sla_seconds: 5400,
   projects_total: 3,
   projects_ok: 2,
   instruments_total: 3,
@@ -391,22 +391,22 @@ describe("freshness", () => {
   });
 
   it("stays live at twice the sync cadence, which is still inside the SLA", () => {
-    // The page used to invent `cadence * 2` (10 min) as its own threshold and
-    // flagged stale here, disagreeing with every other surface on the site.
-    const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T15:12:00Z"));
+    // The page used to invent `cadence * 2` as its own threshold and flagged
+    // stale here, disagreeing with every other surface on the site.
+    const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T16:00:00Z"));
     expect(state.status).toBe("live");
   });
 
   it("goes stale once the artifact is older than the SLA", () => {
-    const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T15:20:00Z"));
+    const state = portfolioFreshness(PAYLOAD, Date.parse("2026-08-12T16:31:00Z"));
     expect(state.status).toBe("stale");
-    expect(state.label).toBe("20 min ago");
+    expect(state.label).toBe("2 h ago");
   });
 
   it("falls back to a cadence multiple when an older artifact omits the SLA", () => {
     const legacy: RedcapPortfolio = { ...PAYLOAD };
     delete (legacy as Partial<RedcapPortfolio>).sla_seconds;
-    const state = portfolioFreshness(legacy, Date.parse("2026-08-12T15:20:00Z"));
+    const state = portfolioFreshness(legacy, Date.parse("2026-08-12T16:31:00Z"));
     expect(state.status).toBe("stale");
   });
 
@@ -449,7 +449,7 @@ describe("definitions panel", () => {
     const text = container.textContent ?? "";
 
     expect(text).toContain("fewer than 5 participants");
-    expect(text).toContain("every 5 minutes");
+    expect(text).toContain("every 30 minutes");
     expect(text).toContain("Complete ÷ Started");
   });
 

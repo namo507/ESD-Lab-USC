@@ -160,8 +160,8 @@ def test_config_has_fixed_five_studies_and_eight_projects(portfolio_config):
         next(study for study in portfolio_config.studies if study.key == "nano").target
         == 260
     )
-    assert portfolio_config.refresh_cadence_seconds == 300
-    assert portfolio_config.sla_seconds == 900
+    assert portfolio_config.refresh_cadence_seconds == 1800
+    assert portfolio_config.sla_seconds == 5400
 
 
 def test_sync_emits_aggregate_only_portfolio_contract(
@@ -182,8 +182,8 @@ def test_sync_emits_aggregate_only_portfolio_contract(
         "kind": "live",
         "transport": "api",
         "system": "REDCap",
-        "cadence": "every_5_minutes",
-        "sla": {"max_age_minutes": 15},
+        "cadence": "every_30_minutes",
+        "sla": {"max_age_minutes": 90},
         "projects_total": 8,
         "projects_ok": 8,
     }
