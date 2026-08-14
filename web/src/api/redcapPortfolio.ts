@@ -181,10 +181,18 @@ export function useRedcapPortfolio(): UseQueryResult<RedcapPortfolio, Error> {
   return useQuery({
     queryKey: REDCAP_PORTFOLIO_QUERY_KEY,
     queryFn: fetchRedcapPortfolio,
-    // The sync runs every five minutes; refetching on that cadence keeps the
-    // freshness stamp honest without hammering the CDN.
+    // Poll at the cadence the artifact itself publishes rather than a literal.
+    // This was pinned at five minutes to match a sync that was believed to run
+    // every five minutes; it does not -- GitHub throttles it to roughly every
+    // 30 -- so five-minute polling was fetching the same bytes about six times
+    // over. Half the published cadence keeps the freshness stamp current
+    // without hammering the CDN. Falls back to five minutes until the first
+    // payload lands, and for older artifacts that omit the field.
     staleTime: 5 * 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: (query) => {
+      const cadence = query.state.data?.refresh_cadence_seconds;
+      return cadence ? (cadence / 2) * 1000 : 5 * 60_000;
+    },
     retry: 1,
   });
 }

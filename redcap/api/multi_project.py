@@ -657,10 +657,24 @@ def _aggregate_studies(
     return studies
 
 
-def _cadence_label(seconds: int) -> str:
+def cadence_label(seconds: int) -> str:
+    """Render the published cadence string for ``dashboard_metrics.json``.
+
+    Public because the build and the live-surface probe both validate the
+    artifact against this exact string. They used to hardcode
+    ``"every_5_minutes"`` and a 15-minute SLA of their own, which is how the
+    published contract drifted away from the sync it was describing: the number
+    lived in five places and only one of them was the config. Deriving it here
+    means the producer and every validator move together.
+    """
     if seconds % 60 == 0:
         return f"every_{seconds // 60}_minutes"
     return f"every_{seconds}_seconds"
+
+
+def sla_payload(seconds: int) -> dict[str, int]:
+    """Render the published freshness SLA block. See :func:`cadence_label`."""
+    return {"max_age_minutes": seconds // 60}
 
 
 def _iso_utc_now() -> str:
@@ -743,8 +757,8 @@ def build_portfolio_payload(
             "kind": "live" if projects_ok == len(config.projects) else "partial",
             "transport": "api",
             "system": "REDCap",
-            "cadence": _cadence_label(config.refresh_cadence_seconds),
-            "sla": {"max_age_minutes": config.sla_seconds // 60},
+            "cadence": cadence_label(config.refresh_cadence_seconds),
+            "sla": sla_payload(config.sla_seconds),
             "projects_total": len(config.projects),
             "projects_ok": projects_ok,
         },

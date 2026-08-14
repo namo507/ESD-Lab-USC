@@ -2,8 +2,19 @@
 # of environment variables only; API tokens must never be stored here.
 schema: redcap.portfolio.v1
 api_url_env: REDCAP_API_URL
-refresh_cadence_seconds: 300
-sla_seconds: 900
+# Delivered cadence, not the cron. redcap_sync.yml asks GitHub for */5, but
+# GitHub throttles scheduled workflows under load and does not honour it: over
+# 30 consecutive scheduled runs the gap was min 18.3 / median 28.4 / mean 30.5 /
+# p95 47.1 / max 56.6 minutes. Not one interval came in under 15 minutes, so the
+# previous 900s SLA was missed 29 times out of 29 -- it described the cron we
+# asked for rather than the sync we get. These two values describe delivery.
+#
+# SLA is 3x cadence, matching the ratio the frontend falls back to when an older
+# artifact omits sla_seconds. At 90 minutes it clears the worst staleness we have
+# measured (max gap 56.6 + ~3.4 run = ~60 min) with room for a tail worse than a
+# 15-hour sample shows.
+refresh_cadence_seconds: 1800
+sla_seconds: 5400
 small_cell_threshold: 5
 
 http:

@@ -30,6 +30,31 @@ if _SCRIPTS_DIR not in sys.path:
 
 from check_site_health import check  # noqa: E402
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _freshness_contract() -> tuple[str, dict[str, int]]:
+    """Read the published cadence and SLA from the portfolio config.
+
+    Was a pair of literals here (``"every_5_minutes"`` / 15 minutes) duplicated
+    from build_pages_site.py and neither derived from the config that emits
+    them, which let the published contract drift off the sync it described.
+    """
+    if str(_REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(_REPO_ROOT))
+    from redcap.api.multi_project import (  # noqa: E402
+        cadence_label,
+        load_portfolio_config,
+        sla_payload,
+    )
+
+    config = load_portfolio_config(_REPO_ROOT / "config" / "redcap_projects.yml")
+    return (
+        cadence_label(config.refresh_cadence_seconds),
+        sla_payload(config.sla_seconds),
+    )
+
+
 DEFAULT_CANONICAL_URL = "https://esd-lab-namo.pages.dev/"
 DEFAULT_RUNTIME_URL = "https://runtime-share.esd-lab-namo.pages.dev/"
 METRICS_PATH = "/dashboard/data/dashboard_metrics.json"
@@ -89,15 +114,19 @@ def validate_live_metrics(
         or source.get("system") != "REDCap"
     ):
         raise ValueError("dashboard metrics are not from the live REDCap API")
-    if source.get("cadence") != "every_5_minutes":
-        raise ValueError("dashboard metrics cadence is not every five minutes")
+    expected_cadence, expected_sla = _freshness_contract()
+    if source.get("cadence") != expected_cadence:
+        raise ValueError(f"dashboard metrics cadence is not {expected_cadence}")
     if source.get("projects_total") != EXPECTED_PROJECTS:
         raise ValueError("dashboard metrics do not cover all eight projects")
     if source.get("projects_ok") != EXPECTED_PROJECTS:
         raise ValueError("dashboard metrics do not report 8/8 project health")
     sla = source.get("sla")
-    if not isinstance(sla, dict) or sla.get("max_age_minutes") != 15:
-        raise ValueError("dashboard metrics freshness SLA must be 15 minutes")
+    if sla != expected_sla:
+        raise ValueError(
+            "dashboard metrics freshness SLA must be "
+            f"{expected_sla['max_age_minutes']} minutes"
+        )
 
     projects = payload.get("projects")
     if not isinstance(projects, list) or len(projects) != EXPECTED_PROJECTS:
@@ -302,7 +331,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-metrics-age-minutes",
         type=float,
-        default=float(os.environ.get("REDCAP_METRICS_MAX_AGE_MINUTES", "15")),
+        default=float(
+            os.environ.get(
+                "REDCAP_METRICS_MAX_AGE_MINUTES",
+                _freshness_contract()[1]["max_age_minutes"],
+            )
+        ),
         help="Maximum accepted age for the live REDCap aggregate snapshot.",
     )
     parser.add_argument("--json", action="store_true", help="Print JSON summary.")

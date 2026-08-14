@@ -37,8 +37,8 @@ function metricsFixture(projects: ReturnType<typeof project>[]) {
     source: {
       kind: "live",
       system: "REDCap",
-      cadence: "every_5_minutes",
-      sla: { max_age_minutes: 15 },
+      cadence: "every_30_minutes",
+      sla: { max_age_minutes: 90 },
       projects_total: projects.length,
       projects_ok: projects.length,
     },

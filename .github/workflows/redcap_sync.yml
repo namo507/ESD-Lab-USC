@@ -2,6 +2,11 @@ name: REDCap Portfolio Sync and Deploy
 
 on:
   schedule:
+    # A request, not a guarantee. GitHub throttles scheduled workflows under
+    # load: across 30 consecutive runs this one arrived every 18-57 minutes
+    # (median 28.4), never once at five. Kept at */5 because asking less often
+    # can only reduce freshness -- the cadence and SLA the dashboard publishes
+    # are in config/redcap_projects.yml and describe what actually lands.
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
@@ -128,6 +133,12 @@ jobs:
         run: |
           sleep 60
           canonical_url="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev/"
+          # The --max-metrics-age-minutes bound below is deliberately tighter
+          # than the published freshness SLA in config/redcap_projects.yml.
+          # This is a deploy-freshness check: the sync step regenerated this
+          # artifact minutes ago in this same job, so anything approaching the
+          # SLA here means the sync silently shipped stale data. It is not a
+          # claim about how often the dashboard refreshes.
           python scripts/check_live_surfaces.py \
             --canonical-url "$canonical_url" \
             --skip-runtime \

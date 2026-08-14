@@ -17,8 +17,8 @@ function fixture(overrides: Record<string, unknown> = {}) {
       kind: "live",
       transport: "api",
       system: "REDCap",
-      cadence: "every_5_minutes",
-      sla: { max_age_minutes: 15 },
+      cadence: "every_30_minutes",
+      sla: { max_age_minutes: 90 },
       projects_total: 8,
       projects_ok: 8,
     },
@@ -82,8 +82,8 @@ describe("dashboard.metrics.v1", () => {
     const metrics = parseDashboardMetrics(fixture());
     const nano = selectNanoMetrics(metrics);
 
-    expect(metrics.source.refreshCadenceSeconds).toBe(300);
-    expect(metrics.source.slaSeconds).toBe(900);
+    expect(metrics.source.refreshCadenceSeconds).toBe(1800);
+    expect(metrics.source.slaSeconds).toBe(5400);
     expect(metrics.studies).toHaveLength(5);
     expect(nano?.enrollment).toBe(221);
     expect(nano?.target).toBe(260);
@@ -106,8 +106,8 @@ describe("dashboard.metrics.v1", () => {
         kind: "partial",
         transport: "api",
         system: "REDCap",
-        refresh_cadence_seconds: 300,
-        sla_seconds: 900,
+        refresh_cadence_seconds: 1800,
+        sla_seconds: 5400,
         projects_total: 8,
         projects_ok: 7,
       },
@@ -118,7 +118,7 @@ describe("dashboard.metrics.v1", () => {
     );
     const stale = getDashboardSourceState(
       parseDashboardMetrics(fixture()),
-      new Date("2026-08-07T12:16:00Z"),
+      new Date("2026-08-07T13:31:00Z"),
     );
 
     expect(partial).toMatchObject({ status: "partial", isLive: false });
@@ -131,8 +131,8 @@ describe("dashboard.metrics.v1", () => {
       source: {
         kind: "demo",
         system: "REDCap",
-        cadence: "every_5_minutes",
-        sla: { max_age_minutes: 15 },
+        cadence: "every_30_minutes",
+        sla: { max_age_minutes: 90 },
         projects_total: 8,
         projects_ok: 8,
       },

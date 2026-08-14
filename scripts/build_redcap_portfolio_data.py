@@ -44,7 +44,7 @@ from src.utils.env_loader import load_project_env  # noqa: E402
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "redcap_projects.yml"
 DEFAULT_OUTPUT = PROJECT_ROOT / "dashboard" / "data" / "redcap_portfolio.json"
 
-# The metadata pass runs alongside the five-minute enrollment sync. Pacing its
+# The metadata pass runs alongside the scheduled enrollment sync. Pacing its
 # calls keeps the two from arriving at REDCap as one burst.
 DEFAULT_MIN_INTERVAL_SECONDS = 1.25
 

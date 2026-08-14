@@ -23,6 +23,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- The REDCap sync advertised a freshness SLA it missed every single time. The
+  dashboard published `every_5_minutes` with a 15-minute staleness budget,
+  taken from the `*/5` cron rather than from the sync. GitHub throttles
+  scheduled workflows under load and does not honour that cron: across 30
+  consecutive scheduled runs the interval was min 18.3 / median 28.4 / mean
+  30.5 / p95 47.1 / max 56.6 minutes. **Not one of the 29 intervals came in
+  under 15 minutes**, so the SLA was breached 29 times out of 29 and the
+  "Live" badge was a coin flip against a budget nothing could meet.
+  The published contract is now cadence 1800s (30 min, matching measured
+  delivery) and SLA 5400s (90 min). 90 minutes is 3x cadence -- the same ratio
+  the frontend already falls back to when an artifact omits `sla_seconds` --
+  and clears the worst staleness measured (max gap 56.6 + ~3.4 min run) with
+  room for a tail worse than a 15-hour sample shows.
+- The cron itself is unchanged. `*/5` is a *request*, and asking less often can
+  only make the sync less fresh; what was wrong was describing the request as
+  though it were the delivery. Both are now commented to say so.
+- Root cause of the drift: the number lived in five places and only one of them
+  was the config. `build_pages_site.py` and `check_live_surfaces.py` each
+  hardcoded `"every_5_minutes"` and a 15-minute SLA to validate an artifact
+  generated from `config/redcap_projects.yml`, so the config could move without
+  them. Both now derive the expected values from that config through the same
+  `cadence_label()` / `sla_payload()` helpers the emitter uses, making producer
+  and validators impossible to separate.
+- The portfolio page polled every five minutes on the same false premise,
+  refetching identical bytes about six times per actual update. It now polls at
+  half the cadence the artifact itself publishes.
 - The NANO dashboard's details surface had no dark-mode block at all. Its
   palette stayed at light values while the page around it went to `#07090f`,
   so every section heading rendered near-black on near-black -- measured at

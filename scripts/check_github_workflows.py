@@ -434,12 +434,22 @@ def check_redcap_sync(data: dict[str, Any], errors: list[str]) -> None:
     if not isinstance(trigger, dict):
         errors.append("redcap_sync.yml: on must be a mapping")
         return
+    # The cron stays at */5 deliberately, but it is a *request*, not a promise:
+    # GitHub throttles scheduled workflows under load and actually delivers this
+    # one about every 28-30 minutes. Asking less often can only make the sync
+    # less fresh, so the schedule is unchanged -- what changed is that the
+    # published cadence and SLA in config/redcap_projects.yml now describe
+    # delivery instead of this line.
     schedule = trigger.get("schedule")
     if not isinstance(schedule, list) or not any(
         isinstance(item, dict) and item.get("cron") == "*/5 * * * *"
         for item in schedule
     ):
-        errors.append("redcap_sync.yml: five-minute schedule is required")
+        errors.append(
+            "redcap_sync.yml: the */5 schedule request is required (GitHub "
+            "throttles it to roughly every 30 minutes; the delivered cadence "
+            "and SLA live in config/redcap_projects.yml)"
+        )
     if "workflow_dispatch" not in trigger:
         errors.append("redcap_sync.yml: workflow_dispatch trigger missing")
 
