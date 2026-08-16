@@ -18,7 +18,11 @@
   letter-spacing: 0.01em;
 }
 .btn:last-child { border-right: none; }
-.btn:hover { background: var(--bg-hover); }
+/* Not `.btn:hover`. That set a pale hover fill on the *selected* segment too,
+   while .active's `color: var(--fg-on-brand)` stayed put -- white on #e6eefc in
+   light (1.17:1) and dark ink on #142b55 in dark (1.35:1). Hovering the segment
+   you are already on should not repaint it. */
+.btn:not(.active):hover { background: var(--bg-hover); }
 .btn:focus-visible {
   outline: 2px solid var(--usc-garnet);
   outline-offset: -2px;

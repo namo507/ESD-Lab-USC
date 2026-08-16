@@ -30,7 +30,7 @@
   margin-left: auto;
   font-size: 11px;
 }
-.d-up   { color: var(--green); }
+.d-up   { color: var(--green-ink, #0f7040); } /* fill hue was 3.20:1 as text */
 .d-down { color: var(--red); }
 .d-flat { color: var(--fg3); }
 

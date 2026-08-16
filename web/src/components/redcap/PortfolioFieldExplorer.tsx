@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Badge, Button, Card, SectionLabel } from "@/components/primitives";
 import { healthyProjects, type DecodedField, type RedcapPortfolio } from "@/api/redcapPortfolio";
-import { formatCount, studyColor } from "./PortfolioCharts";
+import { formatCount, studyChipColor } from "./PortfolioCharts";
 import { exportCsvFile } from "@/lib/exportCsv";
 import { logAudit } from "@/lib/audit";
 import styles from "@/routes/RedcapPortfolio.module.css";
@@ -217,7 +217,7 @@ export function PortfolioFieldExplorer({ portfolio, fields }: PortfolioFieldExpl
                   <td>
                     <span
                       className={styles.chipSmall}
-                      style={{ background: studyColor(studyFor(field.project)) }}
+                      style={{ background: studyChipColor(studyFor(field.project)) }}
                     >
                       {field.project.replace(/_/g, " ")}
                     </span>

@@ -6,7 +6,12 @@
   --sidebar-fg: var(--fg, #000);
   --sidebar-fg-2: var(--fg2, #4a5163);
   --sidebar-fg-3: var(--fg3, #7c8497);
+  /* Fill: the active count badge's background. Kept at the brand hue --
+     pointing it at the text pair made the badge white-on-light-blue in
+     dark (1.99:1). */
   --sidebar-blue: var(--esd-discovery-blue, #3366ff);
+  /* Ink: the active item's label, 4.01 on its tint and 3.70 on dark. */
+  --sidebar-blue-ink: var(--blue-ink, #2450e6);
   --sidebar-blue-soft: var(--bg-tint, #e6eefc);
   width: 236px;
   height: 100vh;
@@ -217,7 +222,7 @@
 }
 
 .navItem.active {
-  color: var(--sidebar-blue);
+  color: var(--sidebar-blue-ink);
   background: var(--sidebar-blue-soft);
 }
 
@@ -240,7 +245,7 @@
 }
 
 .active .navIcon {
-  color: var(--sidebar-blue);
+  color: var(--sidebar-blue-ink);
   background: color-mix(in srgb, var(--sidebar-blue) 10%, var(--sidebar-surface));
 }
 
@@ -275,6 +280,9 @@
 .badgeActive {
   border-color: color-mix(in srgb, var(--sidebar-blue) 25%, transparent);
   background: var(--sidebar-blue);
+  /* Pinned white, not --fg-on-brand: this fill is --esd-discovery-blue,
+     which does not lighten in dark, so the flipped on-brand ink landed
+     dark-on-dark at 4.01:1. White clears it at 4.68 in both themes. */
   color: #fff;
 }
 

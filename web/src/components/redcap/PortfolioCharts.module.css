@@ -30,6 +30,18 @@
   --study-abc: #b5620a;
   --study-other: #6b7482;
   --heat-ink: #3366ff;
+
+  /* Chip variants. The steps above are chart fills, validated for CVD
+     separation against the page -- a 3:1 job. Study chips put white text
+     *on* those same fills, which is a 4.5 job, and several missed it
+     (ipsa 3.29, nico 4.19, action 4.23, abc 4.45). Darkened just enough
+     for white to clear 4.5, so the validated chart palette stays put. */
+  --study-nano-chip: #3366ff;
+  --study-nico-chip: #ca492a;
+  --study-ipsa-chip: #008464;
+  --study-action-chip: #8558ec;
+  --study-abc-chip: #b1600a;
+  --study-other-chip: #6b7482;
 }
 
 /* Dark steps: validated on #1f1c17 (CVD ΔE 8.3 worst adjacent, all ≥ 3:1).
@@ -42,6 +54,15 @@
   --study-abc: #bc7a1e;
   --study-other: #8a94a6;
   --heat-ink: #5a87f5;
+
+  /* Dark steps are lightened for the dark surface, which makes white text
+     on them worse, not better -- every chip failed here (3.06-3.95). */
+  --study-nano-chip: #4c71ce;
+  --study-nico-chip: #be5735;
+  --study-ipsa-chip: #0f8563;
+  --study-action-chip: #8065be;
+  --study-abc-chip: #a2691a;
+  --study-other-chip: #6e7685;
 }
 
 /* ── Bars ────────────────────────────────────────────────────────────────── */
