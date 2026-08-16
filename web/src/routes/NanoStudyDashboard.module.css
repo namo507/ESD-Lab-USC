@@ -286,7 +286,10 @@
    where it is #91baf4. The button pins its text to white, so hovering it in
    dark mode took the fill up to 1.99:1. Darken on hover in dark instead. */
 :global(:root[data-theme="dark"]) .primaryButton:hover {
-  background: #2450e6;
+  /* --brand-600, not --blue-ink: the ink token is #91baf4 in dark, and this is
+     a fill sitting under text pinned to white, so the ink pair would put it
+     straight back at 1.99:1. --brand-600 is #2450e6 in both themes. */
+  background: var(--brand-600, #2450e6);
 }
 
 .sheen {

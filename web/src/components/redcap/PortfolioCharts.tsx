@@ -22,7 +22,12 @@ export const STUDY_VAR: Record<string, string> = {
 };
 
 export function studyColor(studyKey: string | null | undefined): string {
-  return STUDY_VAR[String(studyKey ?? "").toLowerCase()] ?? "var(--study-other)";
+  const key = String(studyKey ?? "").toLowerCase();
+  // Own-property check: `STUDY_VAR["toString"]` resolves up the prototype chain
+  // to a function, which `??` happily accepts, so an unknown key like that
+  // stringified a function into a CSS value instead of falling back.
+  const hue = Object.hasOwn(STUDY_VAR, key) ? STUDY_VAR[key] : undefined;
+  return hue ?? "var(--study-other)";
 }
 
 /** Same identity, darkened so white text on it clears 4.5. Use this wherever a
@@ -31,7 +36,9 @@ export function studyColor(studyKey: string | null | undefined): string {
  *  for colour-vision deficiency. */
 export function studyChipColor(studyKey: string | null | undefined): string {
   const key = String(studyKey ?? "").toLowerCase();
-  return key in STUDY_VAR ? `var(--study-${key}-chip)` : "var(--study-other-chip)";
+  return Object.hasOwn(STUDY_VAR, key)
+    ? `var(--study-${key}-chip)`
+    : "var(--study-other-chip)";
 }
 
 /** Completion states reuse the site's reserved status colors, so a green bar

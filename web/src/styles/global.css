@@ -247,9 +247,8 @@ html .leaflet-container .leaflet-control a {
    over the tiles -- so the link lifts with it. (A probe that walked *past*
    that 84%-opaque backdrop instead of compositing it reported the panel as
    light and sent me the other way; the blend is what the eye sees.) */
-:root[data-theme="dark"] html .leaflet-container a,
-:root[data-theme="dark"] html .leaflet-control-attribution a,
-:root[data-theme="dark"] .leaflet-container a {
+:root[data-theme="dark"] .leaflet-container a,
+:root[data-theme="dark"] .leaflet-control-attribution a {
   color: #8ecfee;
 }
 
@@ -261,15 +260,11 @@ html .satellite-map-soft .leaflet-control-attribution,
   color: #333333;
 }
 
-/* A disabled control is exempt from WCAG 1.4.3, so this is not a conformance
-   fix -- at 1.75:1 it was simply invisible. Lifted to ~3:1, which still reads
-   as greyed out against the #333 of an enabled control. */
 /* The zoom controls are anchors too, but their buttons stay white in both
    themes, so they must NOT follow the dark link lift above -- doing so put a
    pale glyph on a white button (1.55:1). They keep Leaflet's dark ink. */
 html .leaflet-control-zoom a,
-:root[data-theme="dark"] html .leaflet-control-zoom a,
-:root[data-theme="dark"] .leaflet-container .leaflet-control-zoom a {
+:root[data-theme="dark"] .leaflet-control-zoom a {
   color: #333333;
 }
 
@@ -278,7 +273,7 @@ html .leaflet-control-zoom a,
    as greyed out against the #333 of an enabled control. */
 html .leaflet-disabled,
 html .leaflet-bar a.leaflet-disabled,
-:root[data-theme="dark"] html .leaflet-control-zoom a.leaflet-disabled {
+:root[data-theme="dark"] .leaflet-control-zoom a.leaflet-disabled {
   color: #818181;
 }
 
