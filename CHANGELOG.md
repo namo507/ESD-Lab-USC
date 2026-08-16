@@ -23,6 +23,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- Contrast fixes for `DataProvenance` and the ESD Buddy assistant drawer, the
+  two shared components left over from the NANO sweep. Measured by rendering
+  the production build across six routes in both themes and computing contrast
+  against each element's nearest opaque painted ancestor: **DataProvenance 3 ->
+  0, assistant drawer 14 -> 0**, with 26 failures cleared site-wide, no new
+  failures and no regressions.
+- Three root causes, all token-level rather than component-level:
+  - **Fill hues used as text.** `--green` (2.89:1 on its own tint) and
+    `--purple` (3.55:1) coloured the provenance status pills. A colour chosen
+    to fill a shape is rarely legible as 11px type on a wash of itself, and one
+    value cannot serve both themes -- the accessible light ink measures 2.84:1
+    on the dark card. Added `--green-ink` / `--purple-ink` pairs that flip.
+  - **Surfaces that never flipped.** `--sand-tint`, `--mint-tint`,
+    `--sage-tint` and `--ocean-tint` were defined only in the light block, so
+    in dark mode the text tokens above them inverted to near-white while the
+    panels stayed near-white: `--warm-fg2` on `--sand-tint` measured **1.10:1**.
+    Same for `--fg-on-brand`, which stayed white while brand fills inverted to
+    light blue (1.99:1), and a hardcoded `rgba(255,255,255,0.92)` panel in the
+    readings map. A colour token is only half a theme; the surface has to move
+    with the ink.
+  - **Muted tiers too faint to be text.** `--warm-fg4` (4.00:1) and
+    `--warm-fg5` (2.10:1) carry real 10-12px labels, timestamps and empty-state
+    dashes, as do `--warm-500` (4.32:1) and `--fg3` (3.75:1). Darkened in light
+    and lifted in dark, keeping each tier visibly distinct from its neighbour.
+- Made the `esd-2026` dark button ramp internally coherent. Its `--usc-garnet`
+  ramp *lightened* as you interacted (base `#3366ff`, hover `#4c78ff`, active
+  `#91baf4`) while the text on it stayed white, so a primary button would get
+  less readable the more you touched it -- 4.68 at rest, 3.86 on hover, 1.99
+  pressed. It now descends like the light ramp, keeping white legible through
+  all three states (4.68 / 5.86 / 8.14). No rendered pixel changes today:
+  every `.v-primary` on the site sits inside `[data-brand="esd-2026"]`, where
+  the more specific `brand-esd.css` rule already supplies a coherent ramp and
+  the corrected `--fg-on-brand`. This closes the latent case of one rendering
+  outside that wrapper.
 - The REDCap sync advertised a freshness SLA it missed every single time. The
   dashboard published `every_5_minutes` with a 15-minute staleness budget,
   taken from the `*/5` cron rather than from the sync. GitHub throttles

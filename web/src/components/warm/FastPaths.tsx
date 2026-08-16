@@ -119,7 +119,7 @@ export function FastPaths({ onSelect, tone = "dark", prompts = FAST_PATHS, densi
           on
             ? dark
               ? "bg-gold/15 border border-gold/40 text-gold"
-              : "bg-[color:var(--usc-garnet)] border border-[color:var(--usc-garnet)] text-[color:var(--cream)]"
+              : "bg-[color:var(--usc-garnet)] border border-[color:var(--usc-garnet)] text-[color:var(--fg-on-brand)]"
             : dark
               ? "bg-white/[0.04] border border-white/[0.08] text-[color:#9c9893] hover:text-[color:#e8e6e2]"
               : "bg-[color:var(--glass-200)] border border-[color:var(--glass-stroke-soft)] text-[color:var(--warm-600)] hover:text-[color:var(--ink)]"

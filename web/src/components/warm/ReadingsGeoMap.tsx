@@ -288,7 +288,7 @@ function ReadingSatelliteMap({
         <div className="pointer-events-none absolute inset-0 bg-[rgba(250,246,238,0.12)] mix-blend-soft-light" aria-hidden />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[rgba(28,26,24,0.22)] to-transparent" aria-hidden />
         {tileStatus === "error" ? (
-          <div className="absolute left-4 right-4 top-4 rounded-xl border border-[color:var(--usc-gold)] bg-[rgba(255,255,255,0.92)] px-4 py-3 text-[12px] leading-snug text-[color:var(--warm-fg2)] shadow-[var(--shadow-overlay)]">
+          <div className="absolute left-4 right-4 top-4 rounded-xl border border-[color:var(--usc-gold)] bg-[color:var(--warm-card)] px-4 py-3 text-[12px] leading-snug text-[color:var(--warm-fg2)] shadow-[var(--shadow-overlay)]">
             Satellite imagery could not load. The aggregate markers remain available; check CSP or tile-provider reachability.
           </div>
         ) : null}

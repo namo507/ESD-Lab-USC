@@ -79,7 +79,10 @@
   --cream-2: #f6f1e6;
   --warm-300: #c9c0b1;
   --warm-400: #a59c8d;
-  --warm-500: #807969;
+  /* Used for small uppercase labels in the assistant drawer; 4.32:1 on white
+     at #807969. The 300/400 tiers above stay put -- they are borders and
+     fills, not text. */
+  --warm-500: #6f6959;
   --warm-600: #5a5447;
   --warm-700: #3d3a31;
   --peach: #f3c9a8;
