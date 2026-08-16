@@ -47,6 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `--warm-fg5` (2.10:1) carry real 10-12px labels, timestamps and empty-state
     dashes, as do `--warm-500` (4.32:1) and `--fg3` (3.75:1). Darkened in light
     and lifted in dark, keeping each tier visibly distinct from its neighbour.
+- Made the `esd-2026` dark button ramp internally coherent. Its `--usc-garnet`
+  ramp *lightened* as you interacted (base `#3366ff`, hover `#4c78ff`, active
+  `#91baf4`) while the text on it stayed white, so a primary button would get
+  less readable the more you touched it -- 4.68 at rest, 3.86 on hover, 1.99
+  pressed. It now descends like the light ramp, keeping white legible through
+  all three states (4.68 / 5.86 / 8.14). No rendered pixel changes today:
+  every `.v-primary` on the site sits inside `[data-brand="esd-2026"]`, where
+  the more specific `brand-esd.css` rule already supplies a coherent ramp and
+  the corrected `--fg-on-brand`. This closes the latent case of one rendering
+  outside that wrapper.
 - The REDCap sync advertised a freshness SLA it missed every single time. The
   dashboard published `every_5_minutes` with a 15-minute staleness budget,
   taken from the `*/5` cron rather than from the sync. GitHub throttles
