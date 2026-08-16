@@ -52,8 +52,14 @@
   --warm-fg1: #0a0a0a;
   --warm-fg2: #22303f;
   --warm-fg3: #55606b;
-  --warm-fg4: #758091;
-  --warm-fg5: #a8b4c5;
+  /* fg4 and fg5 are the muted label and placeholder tiers, and both are used
+     for real 10-12px text -- component labels, timestamps, empty-state dashes.
+     At #758091 / #a8b4c5 they measured 4.00 and 2.10 against white, so the
+     faintest tier was effectively decorative. Darkened to clear 4.5 on every
+     surface this theme paints (white, --warm-bg, and the four tints) while
+     keeping fg5 visibly lighter than fg4. */
+  --warm-fg4: #5f6980;
+  --warm-fg5: #66707f;
 
   --ink: #0a0a0a;
   --slate-900: #0a0a0a;
@@ -90,10 +96,17 @@
   --blue: #3366ff;
   --blue-tint: #e6eefc;
   --green: #2fa36b;
+  /* Fill hues. The *-ink pairs below exist because these were being used
+     as text on their own tints -- --green at 2.89:1, --purple at 3.55:1.
+     A colour chosen to fill a shape is rarely legible as 11px type on a
+     wash of itself, and the pair has to flip with the theme: the light
+     ink measures 2.84:1 on the dark card, so one value cannot serve both. */
+  --green-ink: #0f7040;
   --green-tint: #e5f5ed;
   --red: #d74e2d;
   --red-tint: #fae7e0;
   --purple: #8172b2;
+  --purple-ink: #5a43a3;
   --purple-tint: #edeaf6;
 
   --accent-orange: #f57f00;
@@ -190,7 +203,8 @@
   --warm-fg2: #dce8ff;
   --warm-fg3: #adc2e6;
   --warm-fg4: #8098c0;
-  --warm-fg5: #50678e;
+  /* 3.22:1 against the dark panels; this tier still carries text. */
+  --warm-fg5: #7b90b5;
 
   --ink: #f7faff;
   --slate-900: #f7faff;
@@ -208,6 +222,10 @@
   --fg1: var(--warm-fg1);
   --fg2: var(--warm-fg2);
   --fg3: var(--warm-fg3);
+  /* In dark the brand fills invert to light blue (--blue/--usc-garnet go
+     to #91baf4), so white-on-brand drops to 1.99:1. Text sitting on a
+     brand fill has to darken when the fill lightens. */
+  --fg-on-brand: #071126;
   --fg-link: #91baf4;
   --usc-garnet: #91baf4;
   --usc-garnet-600: #73a5f5;
@@ -221,6 +239,18 @@
   --green-tint: #0d2c21;
   --red-tint: #3a1a17;
   --purple-tint: #211c3a;
+  --green-ink: #6ddba4;
+  --purple-ink: #b9a9e8;
+
+  /* These four tints are painted surfaces that this block never overrode, so
+     in dark mode the *text* tokens inverted to near-white while the panels
+     under them stayed near-white: --warm-fg2 on --sand-tint measured 1.10:1,
+     and --warm-fg3 on it 1.61:1. A colour token is only half a theme -- the
+     surface has to move with the ink. Hues preserved, luminance dropped. */
+  --sand-tint: #2e2412;
+  --mint-tint: #10261c;
+  --sage-tint: #10261c;
+  --ocean-tint: #102244;
   --hipaa-bg: #0d1931;
   --hipaa-notice-bg: linear-gradient(90deg, rgba(145, 186, 244, 0.16) 0%, rgba(145, 186, 244, 0.05) 100%);
   --hipaa-fg: #dce8ff;

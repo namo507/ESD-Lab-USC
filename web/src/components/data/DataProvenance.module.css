@@ -22,14 +22,16 @@
 }
 
 .detail {
-  color: var(--fg3, var(--warm-fg3, #64748b));
+  color: var(--fg3, var(--warm-fg3, #5f6980));
   font-weight: 500;
 }
 
 .live {
   border-color: color-mix(in srgb, var(--green, #16875b) 38%, transparent);
   background: color-mix(in srgb, var(--green-tint, #e8f7ef) 82%, var(--surface, #fff));
-  color: var(--green, #13734d);
+  /* --green is the fill hue and measured 2.89:1 as 11px text on its own tint.
+     --green-ink is the paired text colour and flips with the theme. */
+  color: var(--green-ink, #0f7040);
 }
 
 .partial,
@@ -42,7 +44,7 @@
 .unavailable {
   border-color: var(--line, var(--warm-border, #d9dee8));
   background: var(--bg-sub, var(--warm-pill, #f3f5f8));
-  color: var(--fg3, var(--warm-fg3, #64748b));
+  color: var(--fg3, var(--warm-fg3, #5f6980));
 }
 
 .snapshot,
@@ -55,7 +57,8 @@
 .pilot {
   border-color: color-mix(in srgb, var(--violet, #7357c5) 32%, transparent);
   background: color-mix(in srgb, var(--purple-tint, #edeaf6) 72%, var(--surface, #fff));
-  color: var(--purple, #8172b2);
+  /* Same as .live: 3.55:1 when the fill hue was used as text. */
+  color: var(--purple-ink, #5a43a3);
 }
 
 .compact {

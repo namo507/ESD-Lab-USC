@@ -28,7 +28,9 @@
   --line-soft: #eef1f7;
   --fg: #000000;
   --fg2: #4a5163;
-  --fg3: #7c8497;
+  /* fg3 is the muted tier and carries real 11px text -- the DataProvenance
+     timestamp line, among others. At #7c8497 that measured 3.75:1 on white. */
+  --fg3: #5f6980;
   --blue: #3366ff;
   --blue-ink: #3366ff;
   --science: #91baf4;
@@ -84,8 +86,11 @@
   --red: var(--esd-red);
   --red-tint: #fae9e3;
   --green: #2d9b69;
+  /* Text pair for the fill hue above; see brand-esd.css. */
+  --green-ink: #0f7040;
   --green-tint: #e7f5ee;
   --purple: #796ac5;
+  --purple-ink: #5a43a3;
   --purple-tint: #efecfa;
   --blue-tint: var(--bg-tint);
   --amber: var(--esd-orange);
@@ -148,8 +153,12 @@
   --line-soft: #1a202c;
   --fg: #f4f4f6;
   --fg2: #a9b2c4;
-  --fg3: #6e7789;
+  /* 4.42:1 against the dark page at #6e7789; lifted to clear 4.5. */
+  --fg3: #808a9e;
   --blue-ink: #91baf4;
+  /* Light on dark, mirroring the light block's dark-on-tint pair. */
+  --green-ink: #6ddba4;
+  --purple-ink: #b9a9e8;
 
   --slate-800: #d8ddea;
   --slate-600: #939daf;
@@ -158,7 +167,7 @@
   --border-strong: #394256;
   --bg-active: #19233a;
   --warm-fg4: #687286;
-  --warm-fg5: #485266;
+  --warm-fg5: #7f899e;
   --dot-grid: rgba(145, 186, 244, 0.065);
   --usc-garnet-600: #4c78ff;
   --usc-garnet-800: #91baf4;
