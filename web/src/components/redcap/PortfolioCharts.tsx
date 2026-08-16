@@ -25,6 +25,15 @@ export function studyColor(studyKey: string | null | undefined): string {
   return STUDY_VAR[String(studyKey ?? "").toLowerCase()] ?? "var(--study-other)";
 }
 
+/** Same identity, darkened so white text on it clears 4.5. Use this wherever a
+ *  study colour is a background with a label on it; `studyColor` stays for
+ *  marks, where the requirement is 3:1 separation and the palette is validated
+ *  for colour-vision deficiency. */
+export function studyChipColor(studyKey: string | null | undefined): string {
+  const key = String(studyKey ?? "").toLowerCase();
+  return key in STUDY_VAR ? `var(--study-${key}-chip)` : "var(--study-other-chip)";
+}
+
 /** Completion states reuse the site's reserved status colors, so a green bar
  *  means the same thing here as on the REDCap Sync page. */
 export const STATUS_COLOR = {

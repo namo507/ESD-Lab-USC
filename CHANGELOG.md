@@ -23,6 +23,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- Site-wide contrast sweep: **70 failures to 0**, measured across 16 routes in
+  both themes, resting plus forced `:hover` / `:focus-visible` / `:active`.
+  Nearly every one was a token doing two jobs at once:
+  - **Fill hues used as text.** `--slate-400` (2.56:1), `--slate-500` (4.08:1),
+    `--blue-ink` at the raw brand hue (4.01:1), `--green` on a KPI delta
+    (3.20:1). Darkened in light, lifted in dark.
+  - **One token serving both a fill and the text on it.** `--toolbar-blue` and
+    `--sidebar-blue` coloured an eyebrow *and* filled a button behind white
+    text, so fixing either end broke the other. Split into a fill and an `-ink`
+    pair. Study chips got the same treatment: the chart palette carries
+    documented CVD validation as *marks* (a 3:1 job) but was also the
+    background for white chip labels (a 4.5 job, failing at 3.25-4.45), so
+    `--study-*-chip` variants were added and the validated palette left alone.
+  - **Selected states repainted on hover.** The segmented control's `.btn:hover`
+    set a pale fill on the *already-selected* segment while its on-brand text
+    stayed put: 1.17:1 in light, 1.35:1 in dark. Hovering the segment you are
+    already on no longer repaints it.
+  - **Third-party Leaflet.** Attribution ink, the credit link, and the zoom
+    glyphs all failed on maps outside the existing `.satellite-map-soft`
+    wrapper. The zoom buttons stay white in both themes and are deliberately
+    excluded from the dark link lift. The disabled zoom control was 1.75:1;
+    disabled controls are exempt from WCAG 1.4.3, so that one is a legibility
+    fix rather than a conformance fix, lifted to ~3:1 so it still reads as
+    greyed out.
 - Contrast fixes for `DataProvenance` and the ESD Buddy assistant drawer, the
   two shared components left over from the NANO sweep. Measured by rendering
   the production build across six routes in both themes and computing contrast

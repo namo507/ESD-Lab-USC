@@ -9,7 +9,7 @@ import {
   type HarmonizationVerdict,
   type RedcapPortfolio,
 } from "@/api/redcapPortfolio";
-import { HBar, Heatmap, formatCount, studyColor } from "./PortfolioCharts";
+import { HBar, Heatmap, formatCount, studyChipColor } from "./PortfolioCharts";
 import styles from "@/routes/RedcapPortfolio.module.css";
 
 /**
@@ -160,7 +160,7 @@ export function PortfolioComparison({ portfolio, fields }: PortfolioComparisonPr
                         {row.projects.includes(key) ? (
                           <span
                             className={styles.dot}
-                            style={{ background: studyColor(studyFor(key)) }}
+                            style={{ background: studyChipColor(studyFor(key)) }}
                             title={`${row.label} is defined in ${titleFor(key)}`}
                           />
                         ) : (

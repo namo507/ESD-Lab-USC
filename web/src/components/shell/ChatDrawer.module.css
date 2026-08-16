@@ -1,5 +1,9 @@
 .panel {
   --assistant-blue: var(--esd-discovery-blue, #3366ff);
+  /* --assistant-blue is a fill (the send button, focus rings). Where it is
+     used as *text* -- the retry link on hover -- it measured 3.94 on the
+     dark drawer, so that use takes the theme-aware text pair instead. */
+  --assistant-blue-ink: var(--blue-ink, #2450e6);
   --assistant-blue-dark: #2856e8;
   --assistant-science: var(--esd-science-blue, #91baf4);
   --assistant-tint: var(--bg-tint, #e6eefc);
@@ -363,7 +367,7 @@
 
 .retryBtn:hover:not(:disabled) {
   border-color: var(--assistant-blue);
-  color: var(--assistant-blue);
+  color: var(--assistant-blue-ink);
 }
 
 .retryBtn:disabled {

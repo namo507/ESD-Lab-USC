@@ -5,7 +5,12 @@
   --toolbar-fg-2: var(--fg2, #4a5163);
   --toolbar-fg-3: var(--fg3, #7c8497);
   --toolbar-tint: var(--bg-tint, #e6eefc);
+  /* Fill: the sync button's background, borders, focus rings. Kept at the
+     brand hue -- pointing it at the text pair turned the sync button into
+     white-on-light-blue in dark mode (1.99:1). */
   --toolbar-blue: var(--esd-discovery-blue, #3366ff);
+  /* Ink: the same identity where it carries a word. 4.25 as the raw hue. */
+  --toolbar-blue-ink: var(--blue-ink, #2450e6);
   min-height: 72px;
   position: sticky;
   top: 0;
@@ -32,7 +37,7 @@
 }
 
 .eyebrow {
-  color: var(--toolbar-blue);
+  color: var(--toolbar-blue-ink);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -157,7 +162,7 @@
 .controlCluster .toggle:hover {
   border-color: color-mix(in srgb, var(--toolbar-blue) 45%, var(--toolbar-line));
   background: var(--toolbar-tint);
-  color: var(--toolbar-blue);
+  color: var(--toolbar-blue-ink);
 }
 
 .iconControl:focus-visible,

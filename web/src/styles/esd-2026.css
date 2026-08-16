@@ -32,7 +32,9 @@
      timestamp line, among others. At #7c8497 that measured 3.75:1 on white. */
   --fg3: #5f6980;
   --blue: #3366ff;
-  --blue-ink: #3366ff;
+  /* Named for text, so it has to read as text: Discovery Blue measured
+     4.01:1 on --cool-blue. The fill hue stays --blue. */
+  --blue-ink: #2450e6;
   --science: #91baf4;
   --coolblue: #e6eefc;
   --orange: #f57f00;
@@ -46,7 +48,7 @@
   --slate-700: var(--fg2);
   --slate-600: #616a7c;
   --slate-500: var(--fg3);
-  --slate-400: #9ba3b4;
+  --slate-400: #667488;
   --slate-300: #cbd1de;
   --slate-200: var(--line);
   --slate-100: var(--line-soft);
@@ -162,7 +164,7 @@
 
   --slate-800: #d8ddea;
   --slate-600: #939daf;
-  --slate-400: #697387;
+  --slate-400: #808a9e;
   --slate-300: #394256;
   --border-strong: #394256;
   --bg-active: #19233a;

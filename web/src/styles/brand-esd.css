@@ -66,8 +66,11 @@
   --slate-800: #22303f;
   --slate-700: #334155;
   --slate-600: #475569;
-  --slate-500: #64748b;
-  --slate-400: #94a3b8;
+  /* Both tiers are used for real label text. At #64748b/#94a3b8 they measured
+     4.08 on --cool-blue and 2.56 on white. Darkened to clear 4.5 where each
+     is actually used, keeping 400 lighter than 500. */
+  --slate-500: #5a6980;
+  --slate-400: #667488;
   --slate-300: #c5d3e7;
   --slate-200: #dce6f7;
   --slate-100: #e6eefc;
@@ -212,7 +215,8 @@
   --slate-700: #c7d8f8;
   --slate-600: #adc2e6;
   --slate-500: #8098c0;
-  --slate-400: #61779d;
+  /* 3.86:1 against the dark page as eyebrow text. */
+  --slate-400: #7b90b5;
   --slate-300: #3d5480;
   --slate-200: #233a66;
   --slate-100: #172b50;

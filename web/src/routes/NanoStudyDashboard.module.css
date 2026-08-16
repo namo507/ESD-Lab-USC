@@ -282,6 +282,13 @@
   transform: translateY(-2px);
 }
 
+/* --blue-700 is the darker step in light mode but the *lighter* one in dark,
+   where it is #91baf4. The button pins its text to white, so hovering it in
+   dark mode took the fill up to 1.99:1. Darken on hover in dark instead. */
+:global(:root[data-theme="dark"]) .primaryButton:hover {
+  background: #2450e6;
+}
+
 .sheen {
   position: relative;
   overflow: hidden;

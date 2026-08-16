@@ -14,6 +14,7 @@ import {
   formatCount,
   formatRate,
   studyColor,
+  studyChipColor,
   type BarRow,
 } from "@/components/redcap/PortfolioCharts";
 import { PortfolioStudyDetail } from "@/components/redcap/PortfolioStudyDetail";
@@ -217,7 +218,7 @@ function PortfolioTab({ portfolio }: { portfolio: RedcapPortfolio }) {
                   <th scope="row">
                     <span
                       className={styles.chip}
-                      style={{ background: studyColor(study.key) }}
+                      style={{ background: studyChipColor(study.key) }}
                     >
                       {study.label}
                     </span>
@@ -301,7 +302,7 @@ function PortfolioTab({ portfolio }: { portfolio: RedcapPortfolio }) {
                   <td>
                     <span
                       className={styles.chipSmall}
-                      style={{ background: studyColor(project.study) }}
+                      style={{ background: studyChipColor(project.study) }}
                     >
                       {project.study.toUpperCase()}
                     </span>
