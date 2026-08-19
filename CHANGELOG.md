@@ -51,13 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The step now carries `timeout-minutes: 12` in `ci.yml` and
   `daily-health-sweep.yml` -- sized against measured healthy runs of 3m15s and
   5m51s -- so a dead mirror fails fast, against the step that caused it, while
-  still leaving 8 minutes of job budget. `npx playwright install --with-deps`
-  in `test-contrast` shells out to the same apt path and hung the same way on
-  the same day, so it is bounded at 8 minutes against a ~60s healthy run. The
-  step
-  was also misnamed "Set up R for rpy2-backed tests"; nothing under `tests/`
+  still leaving 8 minutes of job budget. The step was also misnamed
+  "Set up R for rpy2-backed tests"; nothing under `tests/`
   references rpy2, robjects or Rscript, and R is in fact there for the `rpy2`
   pin in `requirements.txt`. Renamed to say so.
+- `test-contrast` no longer depends on apt being reachable. `npx playwright
+  install --with-deps chromium` stalled on the identical
+  `archive.ubuntu.com ... noble-security InRelease` fetch that hung the R step,
+  twice in a row, against a ~60s healthy cost. Only the `--with-deps` half
+  touches apt; the probe just needs a Chromium that runs, and a plain
+  `playwright install` pulls the browser from Playwright's CDN. The step now
+  tries the full install under a 5-minute bound and falls back to the
+  browser-only install when the apt path stalls, so a dead Ubuntu mirror
+  degrades instead of failing the run. Only a real Playwright failure fails
+  the step now.
 
 ### Added
 - Contrast probe in CI (`web/scripts/contrast-probe.mjs`, `npm run test:contrast`).

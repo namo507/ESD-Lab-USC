@@ -140,13 +140,29 @@ jobs:
         working-directory: web
         run: npm ci
 
-      # `--with-deps` shells out to apt-get, so this step shares the failure
-      # mode bounded on the R step above: on 2026-08-19 it hung here for the
-      # full job budget while a healthy run of the same step takes ~60s.
+      # `--with-deps` is the only part of this job that touches apt, and apt is
+      # the least reliable thing in the run: on 2026-08-19 the Azure mirror
+      # returned Ign: for every index, apt fell back to archive.ubuntu.com, and
+      # `noble-security InRelease` stalled indefinitely -- twice in a row, in
+      # this step and in the R step of test-python.
+      # The probe does not need the apt half. It needs a Chromium that runs,
+      # and `playwright install` without --with-deps takes the browser straight
+      # from Playwright's CDN with no apt involved. So: try the full install,
+      # bounded, and fall back to the browser-only install when the apt path
+      # stalls or fails. The runner image already carries Chromium's shared
+      # libraries, which is why the full install normally finishes in ~60s
+      # having little left to do.
+      # Only a genuine Playwright failure now fails this step.
       - name: Install Chromium for Playwright
-        timeout-minutes: 8
+        timeout-minutes: 10
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: |
+          if timeout -k 10 300 npx playwright install --with-deps chromium; then
+            echo "Chromium installed with system dependencies."
+          else
+            echo "::warning::apt path stalled or failed; installing the browser only."
+            npx playwright install chromium
+          fi
 
       # Built with mocks on. The probe needs pages with real content: the
       # dashboard/data/*.json artefacts come from live REDCap and are not in
