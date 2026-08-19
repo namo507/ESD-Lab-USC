@@ -36,6 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/nano/dashboard` is excluded by name because it reads live-REDCap artefacts
   absent from CI; adding it back without that data trips the guard rather than
   passing quietly.
+- The state sweep measures every text-owning element in a control's subtree,
+  not just direct text children. A label wrapped in a span -- `<a><span
+  class=title>` -- has no direct text node, so checking direct children alone
+  skipped those controls entirely; the wrapper is also usually not where the
+  colour lives, so the descendant is the right thing to measure.
+- The colour parser understands `color(srgb r g b / a)`, which is how Chromium
+  serialises `color-mix()`. Without it the background walk skipped straight
+  past any `color-mix()` surface to a lighter ancestor and reported a
+  dark-blue button as white-on-white at 1.00:1.
 
 ### Fixed
 - 20 further contrast failures on `/participants`, `/publications`, `/qa`,

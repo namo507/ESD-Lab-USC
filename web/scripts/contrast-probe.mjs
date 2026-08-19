@@ -53,8 +53,18 @@ const JSON_OUT = argOf('--json', null);
 const IN_PAGE = `
 const lum = ([r,g,b]) => { const f=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};
   return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b); };
-const parse = s => { const m=String(s).match(/rgba?\\(([^)]+)\\)/); if(!m) return null;
-  const p=m[1].split(/[,\\s/]+/).filter(Boolean).map(Number); return {rgb:p.slice(0,3), a:p.length>3?p[3]:1}; };
+/* Chromium serialises color-mix() as color(srgb r g b / a) with 0..1
+   components. A parser that only knows rgb() silently fails on it, and the
+   background walk then skips straight past the element to a lighter ancestor
+   -- which reported a dark-blue button as white-on-white at 1.00:1. */
+const parse = s => { const t=String(s);
+  const m=t.match(/rgba?\\(([^)]+)\\)/);
+  if(m){ const p=m[1].split(/[,\\s/]+/).filter(Boolean).map(Number);
+    return {rgb:p.slice(0,3), a:p.length>3?p[3]:1}; }
+  const c=t.match(/color\\(srgb\\s+([^)]+)\\)/);
+  if(c){ const p=c[1].split(/[\\s/]+/).filter(Boolean).map(Number);
+    return {rgb:p.slice(0,3).map(v=>Math.round(v*255)), a:p.length>3?p[3]:1}; }
+  return null; };
 const ratio = (a,b) => { const [x,y]=[lum(a),lum(b)].sort((m,n)=>n-m); return (x+0.05)/(y+0.05); };
 const effBg = el => { const stack=[]; let n=el;
   while(n&&n.nodeType===1){ const cs=getComputedStyle(n);
@@ -111,38 +121,47 @@ async function collectStates(page, findings, theme, route) {
     nodeId: root.nodeId,
     selector: 'button, a, input, select, [role=button], [role=tab], [role=radio]',
   });
+  /* Measure every text-owning element in the control's subtree, not just the
+     control itself. A label wrapped in a span -- `<a><span class=title>..` --
+     has no direct text node, so a check on direct children alone skips the
+     control entirely and its hover/focus/active states go unmeasured. The
+     wrapper is also usually not where the colour lives, so the descendant is
+     the right thing to measure, not just the right thing to detect. */
+  const SUBTREE_FN = `function(){
+    ${IN_PAGE}
+    const out=[];
+    for (const el of [this, ...this.querySelectorAll('*')]) {
+      const cs=getComputedStyle(el);
+      if(cs.display==='none'||cs.visibility==='hidden'||+cs.opacity===0)continue;
+      const b=el.getBoundingClientRect(); if(b.width<2||b.height<2)continue;
+      const own=ownText(el); if(!own)continue;
+      const fg=parse(cs.color); const bg=effBg(el);
+      if(!fg||!bg||fg.a<0.5)continue;
+      const cr=ratio(fg.rgb,bg); const px=parseFloat(cs.fontSize);
+      const need=(px>=24||(px>=18.66&&+cs.fontWeight>=700))?3:4.5;
+      if(cr>=need)continue;
+      out.push({color:cs.color, bg:'rgb('+bg+')', ratio:+cr.toFixed(2), need,
+        text:own.slice(0,36), tag:el.tagName.toLowerCase(),
+        cls:(el.className||'').toString().slice(0,46)});
+    }
+    return out;
+  }`;
+
   for (const nodeId of nodeIds) {
     for (const st of [['hover'], ['focus-visible'], ['active']]) {
       try {
+        await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: st });
         const { object } = await cdp.send('DOM.resolveNode', { nodeId });
-        const txt = await cdp.send('Runtime.callFunctionOn', {
+        const res = await cdp.send('Runtime.callFunctionOn', {
           objectId: object.objectId,
-          functionDeclaration:
-            'function(){return [...this.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent.trim()).join("")}',
+          functionDeclaration: SUBTREE_FN,
           returnByValue: true,
         });
-        if (!txt.result.value) continue;
-        await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: st });
-        const s = await cdp.send('CSS.getComputedStyleForNode', { nodeId });
-        const g = (n) => (s.computedStyle.find((x) => x.name === n) || {}).value;
-        const pc = (v) => { const m = String(v).match(/rgba?\(([^)]+)\)/); if (!m) return null;
-          const p = m[1].split(/[,\s/]+/).filter(Boolean).map(Number);
-          return { rgb: p.slice(0, 3), a: p.length > 3 ? p[3] : 1 }; };
-        const fg = pc(g('color')); const bg = pc(g('background-color'));
-        if (!fg || !bg || bg.a < 0.85) continue;
-        const L = ([r, gg, b]) => { const f = (c) => { c /= 255;
-          return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-          return 0.2126 * f(r) + 0.7152 * f(gg) + 0.0722 * f(b); };
-        const [x, y] = [L(fg.rgb), L(bg.rgb)].sort((a, b) => b - a);
-        const cr = (x + 0.05) / (y + 0.05);
-        const px = parseFloat(g('font-size'));
-        const need = (px >= 24 || (px >= 18.66 && +g('font-weight') >= 700)) ? 3 : 4.5;
-        if (cr >= need) continue;
-        const attrs = (await cdp.send('DOM.describeNode', { nodeId })).node.attributes || [];
-        const ci = attrs.indexOf('class');
-        findings.push({ state: st[0], theme, route, sel: '(state)', declared: g('color'),
-          color: g('color'), bg: g('background-color'), ratio: +cr.toFixed(2), need,
-          text: (ci >= 0 ? attrs[ci + 1] : '').slice(0, 46) });
+        for (const f of res.result.value || []) {
+          findings.push({ state: st[0], theme, route, sel: `(state) ${f.tag}.${f.cls}`,
+            declared: f.color, color: f.color, bg: f.bg, ratio: f.ratio, need: f.need,
+            text: f.text });
+        }
       } catch { /* node detached mid-sweep */ }
     }
     try { await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] }); } catch { /* */ }

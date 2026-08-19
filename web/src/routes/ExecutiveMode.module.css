@@ -11,7 +11,9 @@
   color: var(--ink);
   font-size: 13px;
 }
-.banner a { color: var(--usc-garnet); font-weight: var(--w-bold); }
+/* --usc-garnet is Discovery Blue in this brand -- a fill hue. As a link on
+   the banner's gold tint it measured 4.45; --blue-ink is the text pair. */
+.banner a { color: var(--blue-ink, #2450e6); font-weight: var(--w-bold); }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .kpi {
   border: 1px solid var(--border);
