@@ -45,7 +45,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up R for rpy2-backed tests
+      # Despite the old name, no test needs R: nothing under tests/ references
+      # rpy2, robjects or Rscript. R is here for the step below it --
+      # requirements.txt pins rpy2, whose install wants an R toolchain present.
+      # The timeout is deliberate. This step runs apt-get update, and a stalled
+      # Ubuntu mirror hangs it silently: on 2026-08-19 it sat 19 minutes inside
+      # a single `Get: archive.ubuntu.com noble-security InRelease` with no
+      # output, consumed the whole 20-minute job budget, and surfaced as
+      # `cancelled` -- which reads as "a human cancelled this", not "CI broke".
+      # Six minutes is roughly 3x this step's normal cost.
+      - name: Install R (toolchain for the rpy2 dependency)
+        timeout-minutes: 6
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true

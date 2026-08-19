@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dependencies are already in `requirements.txt`, so the exclusion was costing
   coverage of a 228-line analysis module for nothing. Removed everywhere; the
   suite goes from 299 to 309 passing.
+- The R setup step could hang for the entire CI job budget. `r-lib/actions/setup-r`
+  runs `apt-get update`, and when the Azure Ubuntu mirror stops answering, apt
+  falls back to `archive.ubuntu.com` and can stall there indefinitely: on
+  2026-08-19 both `test-python` jobs sat 19 minutes inside a single index fetch
+  with no output, burned the whole 20-minute job timeout, and reported
+  `cancelled` -- which reads as a human cancellation rather than a broken run.
+  The step now carries `timeout-minutes: 6` in `ci.yml` and
+  `daily-health-sweep.yml`, so a dead mirror fails fast and legibly. The step
+  was also misnamed "Set up R for rpy2-backed tests"; nothing under `tests/`
+  references rpy2, robjects or Rscript, and R is in fact there for the `rpy2`
+  pin in `requirements.txt`. Renamed to say so.
 
 ### Added
 - Contrast probe in CI (`web/scripts/contrast-probe.mjs`, `npm run test:contrast`).
