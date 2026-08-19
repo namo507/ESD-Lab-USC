@@ -40,15 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "NANO docs" commit with no explanation. All 8 tests pass in 1.4s and their
   dependencies are already in `requirements.txt`, so the exclusion was costing
   coverage of a 228-line analysis module for nothing. Removed everywhere; the
-  suite goes from 299 to 309 passing.
+  suite goes from 301 to 309 passing locally (311 in CI, where R and rpy2 are
+  installed and two locally-skipped tests also run).
 - The R setup step could hang for the entire CI job budget. `r-lib/actions/setup-r`
   runs `apt-get update`, and when the Azure Ubuntu mirror stops answering, apt
   falls back to `archive.ubuntu.com` and can stall there indefinitely: on
   2026-08-19 both `test-python` jobs sat 19 minutes inside a single index fetch
   with no output, burned the whole 20-minute job timeout, and reported
   `cancelled` -- which reads as a human cancellation rather than a broken run.
-  The step now carries `timeout-minutes: 6` in `ci.yml` and
-  `daily-health-sweep.yml`, so a dead mirror fails fast and legibly. The step
+  The step now carries `timeout-minutes: 12` in `ci.yml` and
+  `daily-health-sweep.yml` -- sized against measured healthy runs of 3m15s and
+  5m51s -- so a dead mirror fails fast, against the step that caused it, while
+  still leaving 8 minutes of job budget. `npx playwright install --with-deps`
+  in `test-contrast` shells out to the same apt path and hung the same way on
+  the same day, so it is bounded at 8 minutes against a ~60s healthy run. The
+  step
   was also misnamed "Set up R for rpy2-backed tests"; nothing under `tests/`
   references rpy2, robjects or Rscript, and R is in fact there for the `rpy2`
   pin in `requirements.txt`. Renamed to say so.

@@ -50,7 +50,7 @@ jobs:
       # and the timeout keeps a stalled apt mirror from silently consuming the
       # entire job budget.
       - name: Install R (toolchain for the rpy2 dependency)
-        timeout-minutes: 6
+        timeout-minutes: 12
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
