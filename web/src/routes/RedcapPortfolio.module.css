@@ -84,7 +84,9 @@
   padding: 1px 5px;
   border-radius: 5px;
   background: var(--esd-cool-blue, #e6eefc);
-  color: var(--esd-discovery-blue, #3366ff);
+  /* The brand hue on its own tint is 4.01 as 12px code; --blue-ink is the
+     text pair and follows the theme. */
+  color: var(--blue-ink, #2450e6);
   font-size: 12px;
 }
 

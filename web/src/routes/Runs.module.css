@@ -77,7 +77,9 @@
 .runScope { font-size: 11px; color: var(--slate-500); margin-top: 4px; }
 .runMeta {
   font-size: 10px;
-  color: var(--slate-400);
+  /* Sits on --bg-subtle when its row is selected, where --slate-400 is
+     4.07 at 10px. --slate-500 is the next tier down and clears it. */
+  color: var(--slate-500);
   margin-top: 4px;
   display: flex;
   justify-content: space-between;
@@ -108,6 +110,9 @@
   grid-template-columns: 70px 50px 1fr;
   gap: 10px;
 }
-.logTs { color: var(--slate-500); }
+/* This panel paints --terminal-bg, which is dark in both themes, so these
+   two cannot use theme-flipping tokens: --slate-500 read 3.30 and --blue
+   3.94 against it in light mode. Fixed inks tuned for the terminal. */
+.logTs { color: var(--terminal-muted, #8b93a5); }
 .logLvl { font-weight: var(--w-semibold); }
-.streaming { color: var(--blue); margin-top: 6px; }
+.streaming { color: var(--terminal-accent, #7ba3ff); margin-top: 6px; }

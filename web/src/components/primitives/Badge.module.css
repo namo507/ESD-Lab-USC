@@ -26,7 +26,9 @@
 .kind-pending { background: var(--purple-tint); color: var(--on-pending); }
 .kind-neutral { background: var(--slate-100); color: var(--slate-700); }
 .kind-phi     { background: var(--usc-garnet); color: var(--fg-on-brand); }
-.kind-asib    { background: var(--asib-bg); color: var(--fg-on-brand); }
+/* --asib-bg is a deep purple in both themes, so its ink is pinned rather
+   than following --fg-on-brand, which flips dark and gave 1.52:1. */
+.kind-asib    { background: var(--asib-bg); color: #fff; }
 .kind-pt      { background: var(--usc-gold); color: var(--on-gold); }
 .kind-td      { background: var(--slate-500); color: var(--fg-on-brand); }
 .kind-vpt     { background: var(--usc-garnet); color: var(--fg-on-brand); }

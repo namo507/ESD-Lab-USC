@@ -15,6 +15,20 @@
   --warn-fg: #5c4500;
 
   --amber: #d97706;        /* SQI 0.3-0.5 */
+  /* Text pair for --red, which is a fill hue: 4.19 on white as text. */
+  --red-ink: #b23a1c;
+  /* Tag-badge fills. The hues above are marks and status washes; a tag
+     badge puts white text *on* them, which several missed (amber 2.65,
+     ocean 3.49, green 2.92). Darkened until white clears 4.5, and pinned
+     rather than themed because the badge pins its own text to white. */
+  --tag-purple: #7b6daa;
+  --tag-garnet: #73000a;
+  --tag-amber:  #af6005;
+  --tag-blue:   #4c72b0;
+  --tag-ocean:  #5b769c;
+  --tag-green:  #428251;
+  --tag-red:    #cd4a2b;
+  --tag-slate:  #6b7076;
   --amber-warn: #a06000;   /* ectopic / motion stroke */
 
   --tile-accept-bg: #f0f7f1;
@@ -28,6 +42,11 @@
   --hipaa-fg: var(--usc-garnet-800);
   --hipaa-border: rgba(115, 0, 10, 0.15);
   --hipaa-icon: var(--usc-garnet);
+  /* The terminal panel is dark in both themes, so anything painted on it
+     needs an ink that does not flip. */
+  --terminal-muted: #8b93a5;
+  --terminal-accent: #7ba3ff;
+  --terminal-danger: #f08a6a;
   --terminal-bg: #121419;
   --ecg-grid: #1f2228;
   --terminal-fg: #e8e6e2;
@@ -149,7 +168,9 @@
   --asib-bg2: #1f1a2c; --asib-fg: #c5a8db;
   --td-bg: #161f17; --td-fg: #a8d1b4;
 
-  --on-gold:    #f1d97b;
+  /* NOT lightened. --usc-gold stays #f4da26 in dark, so the ink on it has
+     to stay dark too -- at #f1d97b this was gold on gold, 1.00:1. */
+  --on-gold:    #3a2a00;
   --on-info:    #b9d1f0;
   --on-ok:      #b1d8bc;
   --on-fail:    #f0b1b4;
@@ -173,6 +194,10 @@
   --hipaa-fg: var(--warm-fg2);
   --hipaa-border: rgba(240, 177, 180, 0.26);
   --hipaa-icon: var(--on-fail);
+  /* #b23a1c is 2.93 against the dark card; lift the red ink with the theme.
+     --tag-* deliberately do NOT appear here: those badges pin white text,
+     so their fills must stay put in both themes. */
+  --red-ink: #f08a6a;
   --terminal-bg: #0a0d12;
   --ecg-grid: #1b1f27;
   --terminal-fg: #f1ece1;

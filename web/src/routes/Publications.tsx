@@ -15,18 +15,18 @@ import styles from "./Publications.module.css";
 type PubType = "All" | "Journal Article" | "Review" | "Book Chapter";
 
 const TAG_COLORS: Record<string, string> = {
-  "autism-asd": "var(--purple)",
-  "fragile-x": "var(--usc-garnet)",
-  preterm: "var(--amber)",
-  "hrv-rsa": "var(--blue)",
-  "eye-tracking": "var(--ocean)",
-  motor: "var(--green)",
-  social: "var(--purple)",
-  "ecg-cardiac": "var(--red)",
-  longitudinal: "var(--slate-500)",
-  intervention: "var(--blue)",
-  review: "var(--slate-500)",
-  "grant-related": "var(--green)",
+  "autism-asd": "var(--tag-purple)",
+  "fragile-x": "var(--tag-garnet)",
+  preterm: "var(--tag-amber)",
+  "hrv-rsa": "var(--tag-blue)",
+  "eye-tracking": "var(--tag-ocean)",
+  motor: "var(--tag-green)",
+  social: "var(--tag-purple)",
+  "ecg-cardiac": "var(--tag-red)",
+  longitudinal: "var(--tag-slate)",
+  intervention: "var(--tag-blue)",
+  review: "var(--tag-slate)",
+  "grant-related": "var(--tag-green)",
 };
 
 function useDebounced(value: string, delayMs: number): string {
@@ -40,8 +40,10 @@ function useDebounced(value: string, delayMs: number): string {
 
 function tagStyle(tag: string): CSSProperties {
   return {
-    background: TAG_COLORS[tag] ?? "var(--slate-500)",
-    color: "var(--fg-on-brand)",
+    background: TAG_COLORS[tag] ?? "var(--tag-slate)",
+    // Pinned white, not --fg-on-brand: these fills do not flip with the
+    // theme, so an ink that does landed at 4.46 on purple in dark.
+    color: "#fff",
   };
 }
 
