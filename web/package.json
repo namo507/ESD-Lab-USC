@@ -3,7 +3,7 @@
   "version": "0.14.2",
   "private": true,
   "type": "module",
-  "description": "ESD Lab · NANO Study research dashboard (React 18 + Vite + TypeScript port of the design-system prototype).",
+  "description": "ESD Lab \u00b7 NANO Study research dashboard (React 18 + Vite + TypeScript port of the design-system prototype).",
   "engines": {
     "node": ">=20.19.0",
     "npm": ">=10"
@@ -15,7 +15,8 @@
     "lint": "eslint --ext .ts,.tsx src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:contrast": "node scripts/contrast-probe.mjs"
   },
   "dependencies": {
     "@nivo/core": "^0.88.0",

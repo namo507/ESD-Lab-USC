@@ -45,7 +45,9 @@
 
 .v-danger {
   background: var(--white);
-  color: var(--red);
+  /* --red is a fill hue; as text it measured 4.19 on white and 4.18 on the
+     dark card. --red-ink is the paired text colour and flips with theme. */
+  color: var(--red-ink, #b23a1c);
   border-color: var(--tile-reject-border);
 }
 .v-danger:hover:not(.disabled) { background: var(--red-tint); }

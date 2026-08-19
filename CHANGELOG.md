@@ -22,7 +22,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropped `fonts.googleapis.com` and `fonts.gstatic.com` from the CSP, so the
   site no longer sends visitor IP and user-agent to a third party on load.
 
+### Added
+- Contrast probe in CI (`web/scripts/contrast-probe.mjs`, `npm run test:contrast`).
+  Renders the built app across 15 routes in both themes, at rest and under
+  forced `:hover` / `:focus-visible` / `:active`, and fails the build on any
+  WCAG contrast failure. Four rounds of contrast bugs reached production before
+  anything measured them; a stylesheet reads fine and renders at 1.1:1.
+- The probe carries a **render guard**, which is the part that matters. A page
+  that fails to load has no text and therefore no failures, which is
+  indistinguishable from a clean pass — the first run of this probe reported a
+  perfect score against six blank error pages. Every route must clear a minimum
+  text-node count or the run fails with an explicit refusal to certify.
+  `/nano/dashboard` is excluded by name because it reads live-REDCap artefacts
+  absent from CI; adding it back without that data trips the guard rather than
+  passing quietly.
+
 ### Fixed
+- 20 further contrast failures on `/participants`, `/publications`, `/qa`,
+  `/runs` and `/redcap-portfolio`, found only once CI built with mocks: those
+  routes had rendered too thin to measure in earlier sweeps, so the previous
+  "0 failures" was true of what rendered rather than of the whole site. Causes
+  were the familiar ones plus a new shape — **surfaces that do not flip with
+  the theme**. The run-log and ECG scope panels paint `--terminal-bg`, dark in
+  both themes, so theme-flipping tokens on them broke in *light* mode
+  (`--slate-500` at 3.30, `--blue` at 3.94, `--red` at 4.40). Same for
+  `--on-gold`, which lightened in dark while `--usc-gold` stayed put: gold on
+  gold, **1.00:1**. Added `--terminal-muted` / `--terminal-accent` /
+  `--terminal-danger`, `--red-ink`, and a `--tag-*` set for publication tag
+  badges whose fills sit under pinned white text.
 - Site-wide contrast sweep: **70 failures to 0**, measured across 16 routes in
   both themes, resting plus forced `:hover` / `:focus-visible` / `:active`.
   Nearly every one was a token doing two jobs at once:

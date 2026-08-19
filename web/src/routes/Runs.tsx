@@ -25,11 +25,14 @@ const SAMPLE_LOG: LogLine[] = [
   { t: "09:58:02", lvl: "info", msg: "[hda] queued · awaiting hrv completion" },
 ];
 
+// These paint on --terminal-bg, which is dark in BOTH themes, so a token that
+// flips with the theme breaks here in light mode: --slate-500 measured 3.30
+// and --red 4.40. ok and warn already clear it comfortably (6.31 / 13.08).
 const LVL_COLOR: Record<LogLine["lvl"], string> = {
-  info: "var(--slate-500)",
+  info: "var(--terminal-muted, #8b93a5)",
   ok: "var(--green)",
   warn: "var(--usc-gold)",
-  fail: "var(--red)",
+  fail: "var(--terminal-danger, #f08a6a)",
 };
 
 /**
