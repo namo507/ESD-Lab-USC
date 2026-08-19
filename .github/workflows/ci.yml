@@ -45,7 +45,20 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up R for rpy2-backed tests
+      # Despite the old name, no test needs R: nothing under tests/ references
+      # rpy2, robjects or Rscript. R is here for the step below it --
+      # requirements.txt pins rpy2, whose install wants an R toolchain present.
+      # The timeout is deliberate. This step runs apt-get update, and a stalled
+      # Ubuntu mirror hangs it silently: on 2026-08-19 it sat 19 minutes inside
+      # a single `Get: archive.ubuntu.com noble-security InRelease` with no
+      # output, consumed the whole 20-minute job budget, and surfaced as
+      # `cancelled` -- which reads as "a human cancelled this", not "CI broke".
+      # A step timeout turns that into a `failure` against the step that caused
+      # it. Sizing is measured, not guessed: healthy runs of this step on the
+      # same day took 3m15s and 5m51s, so the bound has to clear ~6 minutes
+      # comfortably. 12 still fails 8 minutes inside the job budget.
+      - name: Install R (toolchain for the rpy2 dependency)
+        timeout-minutes: 12
         uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
@@ -57,8 +70,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest tests/ -v --tb=short \
-            --ignore=tests/test_imputation.py
+          pytest tests/ -v --tb=short
 
       - name: Validate Compose config
         run: python scripts/check_compose_config.py
@@ -128,9 +140,29 @@ jobs:
         working-directory: web
         run: npm ci
 
+      # `--with-deps` is the only part of this job that touches apt, and apt is
+      # the least reliable thing in the run: on 2026-08-19 the Azure mirror
+      # returned Ign: for every index, apt fell back to archive.ubuntu.com, and
+      # `noble-security InRelease` stalled indefinitely -- twice in a row, in
+      # this step and in the R step of test-python.
+      # The probe does not need the apt half. It needs a Chromium that runs,
+      # and `playwright install` without --with-deps takes the browser straight
+      # from Playwright's CDN with no apt involved. So: try the full install,
+      # bounded, and fall back to the browser-only install when the apt path
+      # stalls or fails. The runner image already carries Chromium's shared
+      # libraries, which is why the full install normally finishes in ~60s
+      # having little left to do.
+      # Only a genuine Playwright failure now fails this step.
       - name: Install Chromium for Playwright
+        timeout-minutes: 10
         working-directory: web
-        run: npx playwright install --with-deps chromium
+        run: |
+          if timeout -k 10 300 npx playwright install --with-deps chromium; then
+            echo "Chromium installed with system dependencies."
+          else
+            echo "::warning::apt path stalled or failed; installing the browser only."
+            npx playwright install chromium
+          fi
 
       # Built with mocks on. The probe needs pages with real content: the
       # dashboard/data/*.json artefacts come from live REDCap and are not in

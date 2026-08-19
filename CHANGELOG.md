@@ -22,6 +22,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropped `fonts.googleapis.com` and `fonts.gstatic.com` from the CSP, so the
   site no longer sends visitor IP and user-agent to a third party on load.
 
+### Fixed
+- **QA keyboard shortcuts could file a decision against the wrong visit.**
+  `qaSelectedEpoch` lives in the global UI store rather than component state,
+  so it does not reset when you move between visits. The keydown effect
+  depended only on `[selected, total]`, so opening one visit and then another
+  with the same epoch count left both unchanged: the listener was never
+  rebuilt and kept the previous visit's `visitId` and mutation. A keyboard
+  accept/reject then wrote the decision -- and its audit entry -- against the
+  visit you had just navigated away from. Mouse clicks were unaffected, which
+  is why it went unnoticed. `setDecision` is now memoised and the effect lists
+  it, so the handler always holds the visit on screen. Covered by a regression
+  test that fails against the old code with the exact symptom.
+- `tests/test_imputation.py` ran nowhere. It was excluded via
+  `--ignore=tests/test_imputation.py` in **three** workflows (`ci.yml`,
+  `daily-health-sweep.yml`, `devcontainer-ci.yml`), added in an unrelated
+  "NANO docs" commit with no explanation. All 8 tests pass in 1.4s and their
+  dependencies are already in `requirements.txt`, so the exclusion was costing
+  coverage of a 228-line analysis module for nothing. Removed everywhere; the
+  suite goes from 301 to 309 passing locally (311 in CI, where R and rpy2 are
+  installed and two locally-skipped tests also run).
+- The R setup step could hang for the entire CI job budget. `r-lib/actions/setup-r`
+  runs `apt-get update`, and when the Azure Ubuntu mirror stops answering, apt
+  falls back to `archive.ubuntu.com` and can stall there indefinitely: on
+  2026-08-19 both `test-python` jobs sat 19 minutes inside a single index fetch
+  with no output, burned the whole 20-minute job timeout, and reported
+  `cancelled` -- which reads as a human cancellation rather than a broken run.
+  The step now carries `timeout-minutes: 12` in `ci.yml` and
+  `daily-health-sweep.yml` -- sized against measured healthy runs of 3m15s and
+  5m51s -- so a dead mirror fails fast, against the step that caused it, while
+  still leaving 8 minutes of job budget. The step was also misnamed
+  "Set up R for rpy2-backed tests"; nothing under `tests/`
+  references rpy2, robjects or Rscript, and R is in fact there for the `rpy2`
+  pin in `requirements.txt`. Renamed to say so.
+- `test-contrast` no longer depends on apt being reachable. `npx playwright
+  install --with-deps chromium` stalled on the identical
+  `archive.ubuntu.com ... noble-security InRelease` fetch that hung the R step,
+  twice in a row, against a ~60s healthy cost. Only the `--with-deps` half
+  touches apt; the probe just needs a Chromium that runs, and a plain
+  `playwright install` pulls the browser from Playwright's CDN. The step now
+  tries the full install under a 5-minute bound and falls back to the
+  browser-only install when the apt path stalls, so a dead Ubuntu mirror
+  degrades instead of failing the run. Only a real Playwright failure fails
+  the step now.
+
 ### Added
 - Contrast probe in CI (`web/scripts/contrast-probe.mjs`, `npm run test:contrast`).
   Renders the built app across 15 routes in both themes, at rest and under
