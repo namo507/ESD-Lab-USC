@@ -11,8 +11,9 @@
  * perfectly well in the stylesheet and renders at 1.1:1. Four rounds of those
  * shipped to production before anything measured them.
  *
- * Four corrections are baked in. Each one silently falsified a run before it
- * was found, so none of them should be removed without a replacement:
+ * Six corrections are baked in. Every one of them silently falsified a run
+ * before it was found -- none produced an error, they produced plausible
+ * numbers -- so none should be removed without a replacement:
  *
  *   1. RENDER GUARD. A page that failed to load has no text and therefore no
  *      failures, which looks identical to a clean pass. The first run of this
@@ -25,6 +26,14 @@
  *      behind it and pointed a fix in the wrong direction.
  *   4. Only elements that actually render text are judged against the 4.5 text
  *      threshold. Scoring icon-only buttons that way invented 18 failures.
+ *   5. The forced-state sweep measures every text-owning element in a
+ *      control's subtree. Checking direct text children alone skipped any
+ *      control with a wrapped label -- `<a><span class=title>..` -- and the
+ *      wrapper is usually not where the colour lives anyway.
+ *   6. parse() understands color(srgb r g b / a), which is how Chromium
+ *      serialises color-mix(). Without it the background walk skips past any
+ *      color-mix() surface to a lighter ancestor and reports a dark button as
+ *      white-on-white.
  *
  * Usage:  node scripts/contrast-probe.mjs [--base URL] [--json PATH]
  */
