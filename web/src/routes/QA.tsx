@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Gloss, KPI, SectionLabel, Segmented } from "@/components/primitives";
 import { EpochTile } from "@/components/qa/EpochTile";
@@ -60,11 +60,23 @@ export function QA() {
   const ep = epochs[selected];
   const total = epochs.length;
 
-  function setDecision(idx: number, decision: EpochDecision) {
-    dispatch({ type: "set", idx, decision });
-    void logAudit({ action: "epoch.decision", scope: visitId, detail: { idx, decision } });
-    decisionMutation.mutate({ idx, decision });
-  }
+  // useCallback, not a plain function, because the keyboard-shortcut effect
+  // below closes over this. `selected` lives in the global UI store rather than
+  // component state, so it does NOT reset when you move between visits: open
+  // one visit, then another with the same epoch count, and the effect's old
+  // [selected, total] deps were both unchanged. The listener was never rebuilt
+  // and kept the previous visit's `visitId` and mutation -- so a keyboard
+  // accept/reject wrote the decision, and its audit entry, against the visit
+  // you had just navigated away from. Mouse clicks were unaffected; they call
+  // this through JSX with the current render's closure.
+  const setDecision = useCallback(
+    (idx: number, decision: EpochDecision) => {
+      dispatch({ type: "set", idx, decision });
+      void logAudit({ action: "epoch.decision", scope: visitId, detail: { idx, decision } });
+      decisionMutation.mutate({ idx, decision });
+    },
+    [dispatch, visitId, decisionMutation],
+  );
 
   function bulkAccept() {
     dispatch({ type: "auto_accept_clean" });
@@ -106,8 +118,7 @@ export function QA() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, total]);
+  }, [selected, total, setDecision, setSelected]);
 
   if (!subject || !ep) {
     return <div className={styles.empty}>Loading visit…</div>;

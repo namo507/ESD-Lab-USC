@@ -57,8 +57,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          pytest tests/ -v --tb=short \
-            --ignore=tests/test_imputation.py
+          pytest tests/ -v --tb=short
 
       - name: Validate Compose config
         run: python scripts/check_compose_config.py

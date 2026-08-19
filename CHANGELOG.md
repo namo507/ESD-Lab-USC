@@ -22,6 +22,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dropped `fonts.googleapis.com` and `fonts.gstatic.com` from the CSP, so the
   site no longer sends visitor IP and user-agent to a third party on load.
 
+### Fixed
+- **QA keyboard shortcuts could file a decision against the wrong visit.**
+  `qaSelectedEpoch` lives in the global UI store rather than component state,
+  so it does not reset when you move between visits. The keydown effect
+  depended only on `[selected, total]`, so opening one visit and then another
+  with the same epoch count left both unchanged: the listener was never
+  rebuilt and kept the previous visit's `visitId` and mutation. A keyboard
+  accept/reject then wrote the decision -- and its audit entry -- against the
+  visit you had just navigated away from. Mouse clicks were unaffected, which
+  is why it went unnoticed. `setDecision` is now memoised and the effect lists
+  it, so the handler always holds the visit on screen. Covered by a regression
+  test that fails against the old code with the exact symptom.
+- `tests/test_imputation.py` ran nowhere. It was excluded via
+  `--ignore=tests/test_imputation.py` in **three** workflows (`ci.yml`,
+  `daily-health-sweep.yml`, `devcontainer-ci.yml`), added in an unrelated
+  "NANO docs" commit with no explanation. All 8 tests pass in 1.4s and their
+  dependencies are already in `requirements.txt`, so the exclusion was costing
+  coverage of a 228-line analysis module for nothing. Removed everywhere; the
+  suite goes from 299 to 309 passing.
+
 ### Added
 - Contrast probe in CI (`web/scripts/contrast-probe.mjs`, `npm run test:contrast`).
   Renders the built app across 15 routes in both themes, at rest and under

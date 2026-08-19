@@ -96,7 +96,7 @@ jobs:
       - name: Backend checks
         run: |
           python scripts/check_compose_config.py
-          pytest tests/ -q --tb=short --ignore=tests/test_imputation.py
+          pytest tests/ -q --tb=short
 
       - name: Frontend checks
         run: |
