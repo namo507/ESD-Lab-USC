@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-27T15:43:27",
+    "generated_at": "2026-08-27T15:54:48",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2242,7 +2242,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-08-27T15:43:27",
+      "generated_at": "2026-08-27T15:54:48",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8823,13 +8823,11 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-08-27T15:43:24",
+      "generated_at": "2026-08-27T15:54:44",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
-      "pages_crawled": 9,
-      "errors": [
-        "team: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1016)>"
-      ]
+      "pages_crawled": 10,
+      "errors": []
     },
     "summary": {
       "current_public_studies": 2,
@@ -8925,16 +8923,44 @@
     "team_highlights": [
       {
         "name": "Jessica Bradshaw, PhD",
-        "role": "Lab Director",
-        "summary": "Associate Professor of Psychology focused on early identification and intervention of autism spectrum disorder.",
-        "email": "jbradshaw@sc.edu",
+        "role": "LAB DIRECTOR | [email protected]",
+        "summary": "Dr. Bradshaw is the Lab Director at the Early Social Development Lab and an Associate Professor of Psychology at the University of South Carolina.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Julia Yurkovic-Harding, PhD",
+        "role": "POST-DOCTORAL FELLOW | [email protected]",
+        "summary": "Dr. Yurkovic-Harding is a Postdoctoral Researcher in the Early Social Development Lab at USC.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Samuel Harding, PhD",
+        "role": "ASSOCIATE SCIENTIST | [email protected]",
+        "summary": "Dr. Harding is an Associate Scientist at the Early Social Development Lab and an Instructor in Psychology at the University of South Carolina.",
+        "email": "",
         "href": "https://www.esdlabsc.com/our-team"
       },
       {
         "name": "Ellen E. Spiller, MPH, DPT",
-        "role": "Research Scientist",
-        "summary": "Supports NIH- and foundation-funded studies focused on infant behavior and physiological development.",
-        "email": "espiller@sc.edu",
+        "role": "RESEARCH SCIENTIST | [email protected]",
+        "summary": "Dr. Spiller is the Research and Grants Manager at the Early Social Development Lab at USC. She supports NIH- and foundation-funded studies focused on infant behavior, physiological development, and autism.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Joshua Burgess, MBA",
+        "role": "LAB MANAGER | [email protected]",
+        "summary": "Josh is the Research Program Manager at the Early Social Development Lab at USC. He received a Masters in Business Administration from North Greenville University in 2015. Josh brings a decade of experience from working for a Fortune 1000 company with global roles in finance and operations. His professional focus is people development, process improvement, and operational excellence. Josh is passionate about the lab\u2019s mission to utilize scientific research to improve the lives of neurodiverse children and their families. Outside of the lab, Josh enjoys music, working in his yard, and spending time with his dog, Senator.",
+        "email": "",
+        "href": "https://www.esdlabsc.com/our-team"
+      },
+      {
+        "name": "Megan Streetman, LMSW",
+        "role": "RECRUITMENT & OUTREACH | [email protected]",
+        "summary": "Megan is the Recruitment and Outreach Coordinator at the Early Social Development Lab at USC. Megan is a Licensed Master Social Worker with a degree from Winthrop University, earned in 2017.",
+        "email": "",
         "href": "https://www.esdlabsc.com/our-team"
       }
     ],
@@ -9763,7 +9789,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-08-27T15:43:27",
+      "generated_at": "2026-08-27T15:54:48",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9794,7 +9820,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-08-27T15:18:27",
+        "last_run": "2026-08-27T15:29:48",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9802,7 +9828,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-08-27T15:18:27",
+        "last_run": "2026-08-27T15:29:48",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9810,7 +9836,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-08-27T15:33:27",
+        "last_run": "2026-08-27T15:44:48",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9818,7 +9844,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-08-27T15:23:27",
+        "last_run": "2026-08-27T15:34:48",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -10574,13 +10600,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-08-27T15:43:26Z",
+    "generated_at": "2026-08-27T15:54:47Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-08-27T15:43:26Z"
+    "payload_version": "2026-08-27T15:54:47Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33146,7 +33172,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-08-27T15:43:26Z",
+      "generated_at": "2026-08-27T15:54:47Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33160,7 +33186,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-adb937ae5d20",
-        "started_at": "2026-08-27T15:43:26Z",
+        "started_at": "2026-08-27T15:54:47Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33200,7 +33226,7 @@
     }
   },
   "lab_operations": {
-    "generated_at": "2026-08-27T15:43:26Z",
+    "generated_at": "2026-08-27T15:54:47Z",
     "source_documents": [
       {
         "study": "NANO",
@@ -33812,7 +33838,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-08-27T15:43:26Z"
+      "last_updated": "2026-08-27T15:54:47Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -34831,7 +34857,7 @@
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-08-27T15:43:26Z",
+      "last_sync": "2026-08-27T15:54:47Z",
       "records_locked": 0,
       "double_entry_discrepancies": 19,
       "instruments_defined": 14,
@@ -34885,7 +34911,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-08-27T15:42:41"
+      "last_indexed": "2026-08-27T15:54:13"
     },
     "study_meta": {
       "award": "R01MH132925",
@@ -35220,7 +35246,7 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-08-27T15:43:26Z"
+      "last_updated": "2026-08-27T15:54:47Z"
     },
     "participants": [
       {
@@ -35584,7 +35610,7 @@
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-08-27T15:43:26Z",
+      "last_success": "2026-08-27T15:54:47Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35672,7 +35698,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-08-27T15:43:26Z",
+        "timestamp": "2026-08-27T15:54:47Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }
