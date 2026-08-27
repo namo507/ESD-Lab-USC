@@ -805,7 +805,11 @@ def test_helm_provider_keys_are_secret_backed_and_reliability_is_configured():
     )
     # A cluster has no Docker Model Runner on its host, so the local tier must
     # stay off unless an in-cluster endpoint is deliberately configured.
-    assert values["assistant"]["localEnabled"] is False
+    # Local-first: the in-cluster Ollama deployment is the primary tier, and
+    # the hosted NVIDIA tier stays defined so rollback is a values edit.
+    assert values["assistant"]["localEnabled"] is True
+    assert values["assistant"]["localRuntime"] == "ollama"
+    assert values["ollama"]["enabled"] is True
 
     for key in (
         "DASHBOARD_ASSISTANT_RETRY_MAX_SECONDS",

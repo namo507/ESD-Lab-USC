@@ -237,7 +237,11 @@ def test_spa_route_whitelist_includes_new_and_existing_routes():
     assert is_spa_route("/presentation-maker/anything")
     # Existing routes still resolve (regression guard, incl. /matlab).
     assert is_spa_route("/matlab")
-    assert is_spa_route("/overview")
+    # /overview was retired in favour of /esd-lab. It is deliberately NOT an
+    # SPA route any more: LEGACY_DASHBOARD_PATHS 301s it at the server, which
+    # keeps old bookmarks working without shipping a dead route to the client.
+    assert not is_spa_route("/overview")
+    assert is_spa_route("/esd-lab")
     assert is_spa_route("/docs")
     assert is_spa_route("/how-to")
     assert is_spa_route("/redcap")

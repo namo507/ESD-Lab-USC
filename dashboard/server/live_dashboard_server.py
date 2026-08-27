@@ -138,7 +138,22 @@ SPA_ROUTE_PREFIXES = (
     "/publications",
     "/changelog",
 )
-LEGACY_DASHBOARD_PATHS = {"/dashboard", "/dashboard/", "/dashboard/index.html"}
+# Paths that 301 to the current front door.
+#
+# /overview is here because it was retired in favour of /esd-lab. Without it the
+# server 404s the path outright, so the SPA-level <Navigate> never gets a chance
+# to run -- every existing bookmark, and every assistant chunk indexed before the
+# rebuild, dies at the edge instead of redirecting. A real 301 is also better
+# than a client-side redirect: crawlers and curl follow it too.
+LEGACY_DASHBOARD_PATHS = {
+    "/dashboard",
+    "/dashboard/",
+    "/dashboard/index.html",
+    "/overview",
+    "/overview/",
+    "/discovery/overview",
+    "/discovery/overview/",
+}
 PUBLIC_RUNTIME_DATA_ROUTES = {
     f"/dashboard/data/{name}": DATA_DIR / name
     for name in (
@@ -3730,6 +3745,29 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         query = parse_qs(urlparse(self.path).query)
 
         if self._redirect_legacy_dashboard(request_path):
+            return
+
+        if request_path == "/api/livez":
+            # Liveness, not readiness. Deliberately the cheapest possible answer:
+            # no data read, no pipeline query, no dependency touched. It says only
+            # "this process is running and can serve a request".
+            #
+            # This distinction is the whole point. /api/healthz reports whether
+            # the dashboard can serve *useful* traffic right now, and it goes
+            # SERVICE_UNAVAILABLE when the data is missing or stale. Wiring a
+            # Kubernetes livenessProbe to that endpoint restarts a pod whose only
+            # problem is a stale artifact -- which loses the warm model cache and
+            # turns a data problem into a crash loop. Liveness gets its own
+            # endpoint so it can never accidentally depend on the data layer.
+            body = json.dumps(
+                {"status": "alive", "service": "esd-lab-dashboard", "contract": "livez.v1"}
+            ).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
             return
 
         if request_path == "/api/healthz":

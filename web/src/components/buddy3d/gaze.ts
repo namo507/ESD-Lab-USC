@@ -80,8 +80,13 @@ export function splitGaze(target: Vec2): {
   head: { yaw: number; pitch: number };
   bodyYaw: number;
 } {
-  const wantYaw = target.x * GAZE_LIMITS.headYaw * 1.6;
-  const wantPitch = -target.y * GAZE_LIMITS.headPitch * 1.4;
+  // Saturate the input first. Every joint below is clamped, but the body term is
+  // computed from the *residual*, which grows without bound as the target does —
+  // an off-canvas pointer could turn the character right around.
+  const tx = clamp(target.x, 1);
+  const ty = clamp(target.y, 1);
+  const wantYaw = tx * GAZE_LIMITS.headYaw * 1.6;
+  const wantPitch = -ty * GAZE_LIMITS.headPitch * 1.4;
 
   const eyeYaw = clamp(wantYaw, GAZE_LIMITS.eyeYaw);
   const eyePitch = clamp(wantPitch, GAZE_LIMITS.eyePitch);

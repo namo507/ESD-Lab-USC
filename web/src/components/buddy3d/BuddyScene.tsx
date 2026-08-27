@@ -93,9 +93,26 @@ export function BuddyScene({
     const onMove = (event: PointerEvent) => {
       const rect = host.current?.getBoundingClientRect();
       if (!rect || rect.width === 0) return;
+      // Direction from the character to the cursor, measured against the
+      // *viewport* rather than the canvas box.
+      //
+      // Normalising against the box was wrong twice over. The box is a fraction
+      // of the page, so a cursor resting on the ask bar normalised to roughly
+      // (1.2, -2.4) — off the scale, which spilled into a body turn and left the
+      // character answering with its back to the reader. Clamping fixed the
+      // spin but still read that cursor as "far right", swivelling ~70° for a
+      // pointer that is barely off-centre on the page.
+      //
+      // Measuring from the character's centre across the viewport gives the
+      // reading a person would make: the ask bar is slightly right and well
+      // below, so the buddy glances down at it.
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const nx = (event.clientX - cx) / (window.innerWidth / 2);
+      const ny = -(event.clientY - cy) / (window.innerHeight / 2);
       pointer.current = {
-        x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        y: -(((event.clientY - rect.top) / rect.height) * 2 - 1),
+        x: Math.max(-1, Math.min(1, nx)),
+        y: Math.max(-1, Math.min(1, ny)),
       };
       exitEdge.current = null;
       lastPointerMove.current = performance.now();

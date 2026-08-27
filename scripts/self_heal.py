@@ -124,13 +124,20 @@ def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
     """Poll the live surfaces and the freshness SLAs."""
     findings: list[Finding] = []
 
-    live = _get_json(f"{base_url}/api/livez")
-    if live is None:
-        findings.append(Finding("livez", "process not answering /api/livez", 4, "critical"))
     health = _get_json(f"{base_url}/api/healthz")
-    if health is None:
+    live = _get_json(f"{base_url}/api/livez")
+
+    # Only a *pair* of silences means the process is wedged. /api/livez was added
+    # with this overhaul, so a deployment that predates it answers healthz and
+    # 404s livez -- reporting that as critical would have the supervisor trying
+    # to restart a perfectly healthy server.
+    if health is None and live is None:
+        findings.append(Finding("livez", "process answering neither /api/livez nor /api/healthz", 4, "critical"))
+    elif health is None:
         findings.append(Finding("healthz", "not answering /api/healthz", 4, "critical"))
     elif health.get("status") != "ok":
+        # Answering but not serving: a readiness problem, repaired further down
+        # the ladder than a wedged process.
         findings.append(Finding("healthz", f"status={health.get('status')!r}", 3))
 
     status = _get_json(f"{base_url}/api/assistant/status")

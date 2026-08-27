@@ -96,7 +96,21 @@ describe("gaze cone limits", () => {
       expect(Math.abs(split.eye.pitch)).toBeLessThanOrEqual(GAZE_LIMITS.eyePitch + 1e-9);
       expect(Math.abs(split.head.yaw)).toBeLessThanOrEqual(GAZE_LIMITS.headYaw + 1e-9);
       expect(Math.abs(split.head.pitch)).toBeLessThanOrEqual(GAZE_LIMITS.headPitch + 1e-9);
+      // The body term is computed from the residual the eyes and head could not
+      // cover, so it grows with the target unless the input is saturated. An
+      // off-canvas pointer once rotated the character away from the viewer
+      // entirely — it answered with its back turned.
+      expect(Math.abs(split.bodyYaw)).toBeLessThanOrEqual(GAZE_LIMITS.headYaw + 1e-9);
     }
+  });
+
+  it("saturates an off-canvas target instead of spinning the body", () => {
+    // A pointer far outside the scene box must read the same as one at the edge.
+    const edge = splitGaze({ x: 1, y: 0 });
+    const far = splitGaze({ x: 6, y: 0 });
+    expect(far.bodyYaw).toBeCloseTo(edge.bodyYaw, 9);
+    expect(far.head.yaw).toBeCloseTo(edge.head.yaw, 9);
+    expect(far.eye.yaw).toBeCloseTo(edge.eye.yaw, 9);
   });
 
   it("moves the eyes before the head, so the head lags", () => {

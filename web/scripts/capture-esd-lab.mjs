@@ -12,7 +12,7 @@
 import { chromium } from "playwright";
 
 const OUT = "/workspaces/ESD-Lab-USC/reports/esd-lab-overhaul";
-const BASE = "http://127.0.0.1:4173";
+const BASE = process.env.ESD_CAPTURE_BASE ?? "http://127.0.0.1:4173";
 
 const browser = await chromium.launch({
   args: ["--use-gl=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"],
@@ -34,6 +34,10 @@ async function shot(name, path, opts = {}) {
   // intermittently. Wait for the surface's own readiness signal instead.
   await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("nav[aria-label='Studies'] button", { timeout: 20000 });
+  // Park the pointer on the character. Gaze is measured from the viewport, so a
+  // cursor left at (0,0) makes every capture a hard up-left stare.
+  const box = await page.locator("canvas, .buddy-static").first().boundingBox();
+  if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   // Let the character settle into its idle pose before capturing.
   await page.waitForTimeout(opts.settle ?? 2500);
 

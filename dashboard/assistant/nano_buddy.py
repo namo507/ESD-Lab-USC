@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import threading
 from dataclasses import dataclass
@@ -63,6 +64,11 @@ _RAW_SIGNAL_RE = re.compile(
     r"\b(?:ecg|ekg|temperature|signal|rr|r-r|sensor)\b.{0,35}"
     r"\b(?:raw|sample[- ]level|waveform|trace)\b",
     re.IGNORECASE,
+)
+#: A request for a count. Mirrors routing._COUNT_RE; kept here so the buddy has
+#: no import-time dependency on the router.
+_COUNT_REQUEST_RE = re.compile(
+    r"\bhow (?:many|much)\b|\b(?:count|total number|number) of\b", re.IGNORECASE
 )
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[-. (]*)?\d{3}[-. )]*\d{3}[-. ]*\d{4}(?!\d)")
@@ -1076,6 +1082,20 @@ class NanoBuddyAssistant:
                 "refused": True,
             }
 
+        # Classify once. The domain decides whether the model is allowed to
+        # synthesise, which is what keeps a counting question the metric lookup
+        # could not answer from being handed to a model that will guess.
+        try:
+            from dashboard.assistant.routing import plan_domain
+
+            domain = plan_domain(prompt).domain
+        except Exception:  # noqa: BLE001 - routing must never break answering
+            domain = "exploratory"
+        may_synthesize = domain != "deterministic"
+        # Only a *count* gets the "no published figure" framing; a definitional
+        # lookup is simply answered from its source.
+        numeric_request = bool(_COUNT_REQUEST_RE.search(prompt))
+
         nano = self._load_nano_metrics()
         prompt_tokens = _tokens(prompt)
         if prompt_tokens & {"pipeline", "stage", "stages"}:
@@ -1095,7 +1115,10 @@ class NanoBuddyAssistant:
         if self._is_document_help_request(prompt):
             documents = self._find_documents(prompt, limit=2)
             if documents:
-                return self._answer_from_documents(prompt, nano, documents)
+                return self._answer_from_documents(
+                    prompt, nano, documents,
+                    synthesize=may_synthesize, numeric_request=numeric_request,
+                )
 
         metric_answer = answer_live_metric(
             prompt, nano, requested_as_of=safe_context.get("as_of")
@@ -1111,9 +1134,12 @@ class NanoBuddyAssistant:
 
         documents = self._find_documents(prompt, limit=2)
         if documents:
-            return self._answer_from_documents(prompt, nano, documents)
+            return self._answer_from_documents(
+                prompt, nano, documents,
+                synthesize=may_synthesize, numeric_request=numeric_request,
+            )
 
-        if nano:
+        if nano and may_synthesize:
             context_block = json.dumps(
                 {"nano": nano}, ensure_ascii=True, separators=(",", ":")
             )
@@ -1164,7 +1190,24 @@ class NanoBuddyAssistant:
         prompt: str,
         nano: dict[str, Any],
         documents: list[_DocumentMatch],
+        *,
+        synthesize: bool = True,
+        numeric_request: bool = False,
     ) -> dict[str, Any]:
+        """Answer from retrieved documents, with or without the model.
+
+        ``synthesize=False`` quotes the source instead of asking the model to
+        summarise it. That mode exists for lookups: a small model handed a chunk
+        that mentions "260 infants" will happily answer "the lab runs 260
+        studies", which is a number it cannot cite and exactly what the
+        no-number-no-claim rule forbids. Quoting cannot invent a figure.
+
+        ``numeric_request`` separates the two reasons a lookup gets quoted. A
+        question asking for a *count* the metrics could not supply is told
+        plainly that the figure is not published. A definitional lookup -- "who
+        is the PI", "what is DataVyu" -- is answered from the source without that
+        disclaimer, which would otherwise be a confusing non-sequitur.
+        """
         citations = [match.citation() for match in documents]
         context_block = json.dumps(
             {
@@ -1185,15 +1228,22 @@ class NanoBuddyAssistant:
             ensure_ascii=True,
             separators=(",", ":"),
         )
-        generated = self._try_provider(prompt, context_block)
+        generated = self._try_provider(prompt, context_block) if synthesize else None
         if generated:
             answer = generated
         else:
             first = documents[0]
-            answer = (
-                f"According to {first.title}, {first.snippet} "
-                "The linked citation is the approved source for the full procedure."
-            )
+            if numeric_request:
+                answer = (
+                    f"I do not have that as a published figure. The closest source I have is "
+                    f"{first.title}: {first.snippet} "
+                    "The linked citation is the approved source."
+                )
+            else:
+                answer = (
+                    f"According to {first.title}, {first.snippet} "
+                    "The linked citation is the approved source for the full procedure."
+                )
         return {
             "answer": answer,
             "citations": citations,
@@ -1366,7 +1416,72 @@ class NanoBuddyAssistant:
                 )
         return records
 
+    def _hybrid_documents(self, question: str, *, limit: int) -> list[_DocumentMatch]:
+        """Consult the hybrid retrieval index, if one has been built.
+
+        The token-overlap search below only sees the document *catalog* -- titles
+        and a summary snippet. The hybrid index sees the full chunked corpus and
+        fuses BM25 with embeddings, so it answers questions whose wording never
+        appears in a title.
+
+        Optional by construction. No index, no embedding service, or an import
+        failure all fall through to the catalog search rather than raising: the
+        deterministic floor must never depend on retrieval being healthy.
+        """
+        if os.environ.get("DASHBOARD_ASSISTANT_HYBRID_RETRIEVAL", "true").strip().lower() in {
+            "0", "false", "no", "off",
+        }:
+            return []
+        try:
+            from dashboard.assistant import retrieval
+        except ImportError:
+            return []
+        # Resolve the index relative to *this* assistant's data directory, not the
+        # module-level default. The buddy is constructed against a project root --
+        # tests use a temporary one -- and reaching past it to the repository's
+        # real index makes an isolated fixture answer from the whole corpus.
+        index_path = Path(self.data_dir) / retrieval.DEFAULT_INDEX_PATH.name
+        if not index_path.exists():
+            return []
+
+        # Empty means sparse-only, which is the correct degradation when the
+        # embedding service is down. It stays fast rather than hanging.
+        embed_base = os.environ.get("ESD_INDEX_EMBED_BASE", "").strip() or None
+        try:
+            hits = retrieval.search(
+                question, index_path=index_path, limit=limit, embed_base_url=embed_base
+            )
+        except Exception:  # noqa: BLE001 - retrieval is best-effort here
+            return []
+
+        matches: list[_DocumentMatch] = []
+        for rank, hit in enumerate(hits):
+            path = _safe_citation_path(hit.source_path)
+            if not path:
+                continue
+            snippet = _clean_snippet(hit.text)
+            if not snippet:
+                continue
+            matches.append(
+                _DocumentMatch(
+                    title=PurePosixPath(hit.source_path).name or hit.source_path,
+                    path=path,
+                    loc=f"chunk {hit.chunk_id}",
+                    snippet=snippet,
+                    # Rank-derived so it orders consistently with the catalog
+                    # scores this list is compared against elsewhere.
+                    score=100.0 - rank,
+                )
+            )
+        return matches[:limit]
+
     def _find_documents(self, question: str, *, limit: int) -> list[_DocumentMatch]:
+        # The full-corpus index answers first when it has something; the catalog
+        # search below remains the floor.
+        hybrid = self._hybrid_documents(question, limit=limit)
+        if hybrid:
+            return hybrid
+
         query_tokens = _tokens(question) - _COMMON_QUERY_TOKENS
         if not query_tokens:
             return []
