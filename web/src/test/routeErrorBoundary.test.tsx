@@ -27,7 +27,7 @@ describe("RouteErrorBoundary", () => {
     expect(screen.getByText(/could not be displayed/i)).toBeInTheDocument();
     // recovery affordances are present
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /go to overview/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /go to esd lab/i })).toHaveAttribute("href", "/esd-lab");
     spy.mockRestore();
   });
 });

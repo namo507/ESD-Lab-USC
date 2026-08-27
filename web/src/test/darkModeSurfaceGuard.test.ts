@@ -72,7 +72,6 @@ describe("dark mode surface guard", () => {
       "src/components/warm/ReadingsGeoMap.tsx",
       "src/components/shell/Sidebar.tsx",
       "src/components/shell/TopNav.tsx",
-      "src/routes/EsdLab.tsx",
     ];
     for (const file of surfaces) {
       const src = read(file);
@@ -81,6 +80,68 @@ describe("dark mode surface guard", () => {
         /surface-card|bg-\[color:var\(--warm-card\)\]/.test(src),
         `${file} must reference the warm-card surface token`,
       ).toBe(true);
+    }
+  });
+
+  /**
+   * The /esd-lab front door is styled by a CSS module rather than Tailwind
+   * utilities, so the `bg-white` audit above does not apply to it. The property
+   * that matters is the same one though: its surfaces must resolve from theme
+   * tokens, so they invert with the theme instead of being pinned to a literal
+   * colour that only looks right in one of them.
+   */
+  it("keeps the ESD Lab front door on theme tokens rather than literal colours", () => {
+    const css = read("src/routes/EsdLab.module.css");
+
+    // Every background must come from a token.
+    expect(css).toMatch(/background:\s*[^;]*var\(--/);
+
+    // No literal hex outside a var() fallback. A hardcoded surface colour is
+    // exactly the drift this suite exists to catch.
+    const declarations = css
+      .split("\n")
+      .filter((line) => /(background|color|border-color)\s*:/.test(line))
+      .filter((line) => !line.includes("var(--"));
+    for (const line of declarations) {
+      expect(line, `literal colour in EsdLab.module.css: ${line.trim()}`).not.toMatch(
+        /#[0-9a-f]{3,8}\b/i,
+      );
+    }
+  });
+
+  it("keeps the 3D buddy palette in step with the brand stylesheet", () => {
+    // WebGL cannot read a CSS custom property, so brand3d.ts mirrors the hexes.
+    // This is the check that stops the mirror drifting from the source.
+    const brandCss = read("src/styles/esd-2026.css");
+    const brand3d = read("src/components/buddy3d/brand3d.ts");
+    const pairs: Array<[string, string]> = [
+      ["--esd-discovery-blue", "discoveryBlue"],
+      ["--esd-science-blue", "scienceBlue"],
+      ["--esd-cool-blue", "coolBlue"],
+      ["--esd-cool-white", "coolWhite"],
+    ];
+    for (const [token, key] of pairs) {
+      const declared = new RegExp(`${token}:\\s*(#[0-9a-f]{3,8})`, "i").exec(brandCss)?.[1];
+      const mirrored = new RegExp(`${key}:\\s*"(#[0-9a-f]{3,8})"`, "i").exec(brand3d)?.[1];
+      expect(declared, `${token} missing from esd-2026.css`).toBeDefined();
+      expect(mirrored, `${key} missing from brand3d.ts`).toBeDefined();
+      expect(mirrored?.toLowerCase(), `${key} has drifted from ${token}`).toBe(
+        declared?.toLowerCase(),
+      );
+    }
+  });
+
+  it("ships no off-brand blues anywhere in the front door or the buddy", () => {
+    // #005CBE and #2A61E6 are drift from an old export. If either appears, that
+    // is a bug by definition.
+    for (const file of [
+      "src/routes/EsdLab.module.css",
+      "src/components/buddy3d/brand3d.ts",
+      "src/components/esdlab/CodexCard.module.css",
+      "src/components/esdlab/StudyGlyph.module.css",
+    ]) {
+      const src = read(file);
+      expect(src, `${file} carries an off-brand blue`).not.toMatch(/#005cbe|#2a61e6/i);
     }
   });
 

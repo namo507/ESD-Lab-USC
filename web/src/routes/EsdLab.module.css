@@ -32,7 +32,10 @@
   font-size: 1.02rem;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: var(--esd-discovery-blue);
+  /* --blue-ink, not the raw signature blue: Discovery Blue measures 4.44:1 on
+     this background, which misses AA for small text. The brand sheet defines
+     --blue-ink for exactly this case. */
+  color: var(--blue-ink);
 }
 
 .labMarkSub {
@@ -55,6 +58,21 @@
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--esd-garnet);
+}
+
+/* Dark theme corrections.
+   UofSC Garnet is 1.57:1 on the dark surface and Discovery Blue is 4.06:1 --
+   both fail AA for small text, and the garnet is effectively invisible. The
+   marks keep their identity by moving to a lighter value of the same hue rather
+   than by changing colour. */
+:global(:root[data-theme="dark"]) .uscMark,
+:global(:root[data-esd-theme="dark"]) .uscMark {
+  color: var(--esd-garnet-on-dark);
+}
+
+:global(:root[data-theme="dark"]) .labMarkName,
+:global(:root[data-esd-theme="dark"]) .labMarkName {
+  color: var(--esd-science-blue);
 }
 
 /* ── Stage ─────────────────────────────────────────────────────────────── */
@@ -213,7 +231,10 @@
   border: 1px solid var(--esd-discovery-blue);
   border-radius: var(--r-pill, 999px);
   background: var(--esd-discovery-blue);
-  color: #fff;
+  /* The fill is Discovery Blue in both themes, so the label does not invert --
+     but it still comes from the palette rather than a literal, so there is one
+     place to change it. */
+  color: var(--esd-cool-white);
   padding: 0.55rem 1.3rem;
   font: inherit;
   font-size: 0.82rem;

@@ -29,7 +29,11 @@ async function shot(name, path, opts = {}) {
   page.on("pageerror", (e) => errors.push(String(e)));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 
-  await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+  // Not `networkidle`: the front door polls the portfolio artifact on an
+  // interval, so the network is never idle for long and the wait times out
+  // intermittently. Wait for the surface's own readiness signal instead.
+  await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("nav[aria-label='Studies'] button", { timeout: 20000 });
   // Let the character settle into its idle pose before capturing.
   await page.waitForTimeout(opts.settle ?? 2500);
 

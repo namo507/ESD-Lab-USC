@@ -147,6 +147,10 @@
 
 :root[data-theme="dark"],
 :root[data-esd-theme="dark"] {
+  /* Co-brand garnet is 1.57:1 on the dark surface -- invisible, and a hard
+     AA failure. This is the same hue lightened until it reads, so the mark
+     keeps its identity instead of changing colour. */
+  --esd-garnet-on-dark: #d6737d;
   --bg: #07090f;
   --bg-sub: #0c1017;
   --bg-tint: #111a2e;
