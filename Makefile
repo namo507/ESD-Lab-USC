@@ -17,8 +17,16 @@ ROOT_COMPOSE := docker compose -f docker-compose.yml
 MAIN_CONTAINER ?= esd-lab-usc-dashboard-1
 SHARE_SERVICE ?= dashboard-share
 SHARE_PROFILE ?= share
+K8S_HELM_NAMESPACE ?= esd-lab
+K8S_HELM_RELEASE ?= esd-lab-dashboard
+K8S_HELM_CHART ?= k8s/helm/esd-lab-dashboard
+K8S_SECRET_NAME ?= esd-lab-dashboard-secrets
+K8S_READINGS_CLAIM ?= esd-readings-rwx
+K8S_DATA_CLAIM ?= esd-dashboard-data-rwx
+K8S_IMAGE_REPOSITORY ?= esd-lab-dashboard
+K8S_IMAGE_TAG ?= local
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-helm-lint k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -224,15 +232,32 @@ pages-watch:  ## Watch the canonical Pages dashboard inputs and redeploy on chan
 pages-watch-once:  ## One-shot build + deploy of the canonical Pages dashboard site
 	$(PYTHON) scripts/watch_pages_site.py --once
 
+k8s-secrets-apply:  ## Sync Kubernetes Secret from .env/current environment values
+	K8S_HELM_NAMESPACE=$(K8S_HELM_NAMESPACE) K8S_SECRET_NAME=$(K8S_SECRET_NAME) bash scripts/k8s_sync_secret_from_env.sh
+
 k8s-helm-lint:  ## Validate Kubernetes Helm templates locally
-	$(HELM) lint k8s/helm/esd-lab-dashboard \
-		--set existingClaims.readings=esd-readings-rwx \
-		--set existingClaims.data=esd-dashboard-data-rwx
-	$(HELM) template esd-lab-dashboard k8s/helm/esd-lab-dashboard \
-		--namespace esd-lab \
-		--set existingClaims.readings=esd-readings-rwx \
-		--set existingClaims.data=esd-dashboard-data-rwx >/tmp/esd-lab-dashboard.yaml
-	@echo "✓ Helm templates rendered to /tmp/esd-lab-dashboard.yaml"
+	$(HELM) lint $(K8S_HELM_CHART) \
+		--set existingClaims.readings=$(K8S_READINGS_CLAIM) \
+		--set existingClaims.data=$(K8S_DATA_CLAIM)
+	@mkdir -p k8s/.rendered
+	$(HELM) template $(K8S_HELM_RELEASE) $(K8S_HELM_CHART) \
+		--namespace $(K8S_HELM_NAMESPACE) \
+		--set existingClaims.readings=$(K8S_READINGS_CLAIM) \
+		--set existingClaims.data=$(K8S_DATA_CLAIM) >k8s/.rendered/$(K8S_HELM_RELEASE).yaml
+	@echo "✓ Helm templates rendered to k8s/.rendered/$(K8S_HELM_RELEASE).yaml"
+
+k8s-helm-up: k8s-secrets-apply  ## Install or upgrade Kubernetes dashboard stack via Helm
+	$(HELM) upgrade --install $(K8S_HELM_RELEASE) $(K8S_HELM_CHART) \
+		--namespace $(K8S_HELM_NAMESPACE) \
+		--create-namespace \
+		--set image.repository=$(K8S_IMAGE_REPOSITORY) \
+		--set image.tag=$(K8S_IMAGE_TAG) \
+		--set existingClaims.readings=$(K8S_READINGS_CLAIM) \
+		--set existingClaims.data=$(K8S_DATA_CLAIM) \
+		--set secret.name=$(K8S_SECRET_NAME)
+
+k8s-helm-down:  ## Uninstall Kubernetes dashboard Helm release
+	-$(HELM) uninstall $(K8S_HELM_RELEASE) --namespace $(K8S_HELM_NAMESPACE)
 
 k8s-smoke:  ## Smoke-check readings pipeline endpoints against a running dashboard
 	$(PYTHON) scripts/check_k8s_readings_pipeline.py --base-url $(DASHBOARD_LOCAL_URL) --mode local

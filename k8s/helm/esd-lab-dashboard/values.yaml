@@ -128,6 +128,7 @@ secret:
   dashboardOperatorToken: ""
   pagesDeployHookUrl: ""
   dashboardAssistantApiKey: ""
+  dashboardAssistantGeminiApiKey: ""
 
 networkPolicy:
   enabled: true

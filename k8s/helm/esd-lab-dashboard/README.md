@@ -22,13 +22,27 @@ Secrets are never hardcoded. To enable the optional Pages redeploy hook, create
 or render a Secret named by `secret.name` with key `pagesDeployHookUrl`.
 
 The default assistant runtime is NVIDIA's hosted OpenAI-compatible endpoint and
-does not download model weights into the pod. Inject the API key through the
-existing Secret (key `dashboardAssistantApiKey` by default):
+does not download model weights into the pod. Inject keys through the existing
+Secret (keys `dashboardAssistantApiKey` and `dashboardAssistantGeminiApiKey` by
+default):
 
 ```bash
 kubectl -n esd-lab create secret generic esd-lab-dashboard-secrets \
-  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY"
+  --from-literal=dashboardAssistantApiKey="$DASHBOARD_ASSISTANT_API_KEY" \
+  --from-literal=dashboardAssistantGeminiApiKey="$DASHBOARD_ASSISTANT_GEMINI_API_KEY"
 ```
+
+From the repository root, the Makefile now provides a complete sync + deploy
+path driven by `.env` (or exported env vars):
+
+```bash
+make k8s-secrets-apply
+make k8s-helm-up
+```
+
+You can override namespace/release/image/claim values with these environment
+variables: `K8S_HELM_NAMESPACE`, `K8S_HELM_RELEASE`, `K8S_IMAGE_REPOSITORY`,
+`K8S_IMAGE_TAG`, `K8S_READINGS_CLAIM`, and `K8S_DATA_CLAIM`.
 
 The dashboard starts and passes readiness checks when that key is missing or the
 provider is unavailable; only the assistant reports a degraded state. A future

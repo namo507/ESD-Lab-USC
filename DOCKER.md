@@ -94,6 +94,41 @@ make dashboard-smoke
 make docker-health
 ```
 
+## Kubernetes Workflow
+
+Use the Makefile targets to mirror the Docker runtime into Kubernetes with Helm.
+The values come from `.env` (or exported environment variables):
+
+```bash
+make k8s-secrets-apply
+make k8s-helm-lint
+make k8s-helm-up
+```
+
+On Windows PowerShell (without bash), run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/k8s_sync_secret_from_env.ps1
+```
+
+Common overrides:
+
+```bash
+K8S_HELM_NAMESPACE=esd-lab \
+K8S_HELM_RELEASE=esd-lab-dashboard \
+K8S_IMAGE_REPOSITORY=ghcr.io/<org>/esd-lab-dashboard \
+K8S_IMAGE_TAG=<tag> \
+K8S_READINGS_CLAIM=esd-readings-rwx \
+K8S_DATA_CLAIM=esd-dashboard-data-rwx \
+make k8s-helm-up
+```
+
+To remove the release:
+
+```bash
+make k8s-helm-down
+```
+
 ## Self-Healing
 
 The dashboard service has a Docker healthcheck against `/api/healthz`; provider
