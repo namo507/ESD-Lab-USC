@@ -26,7 +26,7 @@ K8S_DATA_CLAIM ?= esd-dashboard-data-rwx
 K8S_IMAGE_REPOSITORY ?= esd-lab-dashboard
 K8S_IMAGE_TAG ?= local
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune models-resolve models-pull models-verify assistant-reindex assistant-reindex-sparse assistant-eval index-freshness similar-studies stack-up stack-stats self-heal self-heal-watch self-heal-test buddy-preview buddy-capture
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune models-resolve models-pull models-verify assistant-reindex assistant-reindex-sparse assistant-eval index-freshness similar-studies stack-up stack-stats self-heal self-heal-watch self-heal-test buddy-preview buddy-capture gpu-check gpu-env models-benchmark model-sync model-warm model-residency check-automations check-automations-quick
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -377,6 +377,30 @@ buddy-preview:  ## Vite dev server with the 3D buddy scene
 
 buddy-capture:  ## Build, serve, and screenshot /esd-lab with design assertions
 	cd web && npx vite build && (npx vite preview --port 4173 & sleep 6; node scripts/capture-esd-lab.mjs; kill %1)
+
+gpu-check:  ## Detect the GPU, pick the model tier, and report honestly
+	$(PYTHON) scripts/check_gpu_runtime.py
+
+gpu-env:  ## Emit sourceable runtime config for the detected tier
+	$(PYTHON) scripts/check_gpu_runtime.py --env
+
+models-benchmark:  ## Rank installed models on this lab's grounded-answer task
+	$(PYTHON) scripts/benchmark_local_models.py --write config/model_benchmark.json
+
+model-warm:  ## Load the serving model into memory and hold it there
+	$(PYTHON) scripts/warm_local_model.py
+
+model-residency:  ## Report which models are actually resident
+	$(PYTHON) scripts/warm_local_model.py --check
+
+model-sync:  ## Build the tuned esd-buddy model from the benchmark winner
+	$(PYTHON) scripts/sync_local_model.py --apply
+
+check-automations:  ## Run every automation and report what is healthy
+	$(PYTHON) scripts/check_automations.py
+
+check-automations-quick:  ## Same, minus the slow rebuild and scrape checks
+	$(PYTHON) scripts/check_automations.py --quick
 
 logs-prune:  ## Delete local log files older than LOG_RETENTION_DAYS (default: 30)
 	bash scripts/prune_logs.sh

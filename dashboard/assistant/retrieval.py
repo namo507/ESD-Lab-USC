@@ -464,10 +464,21 @@ def build_index(
         "sources": sorted({chunk.source_path for chunk in chunks}),
         "source_count": len({chunk.source_path for chunk in chunks}),
         "content_hash": content_hash,
-        "index_path": str(index_path.relative_to(root)),
+        # Relative when it lives in the repo, absolute when it does not: a
+        # verification build writes to a scratch directory outside the tree, and
+        # relative_to() raises there rather than returning something sensible.
+        "index_path": (
+            str(index_path.relative_to(root))
+            if index_path.is_relative_to(root)
+            else str(index_path)
+        ),
         "degraded": embed_base_url is None,
     }
-    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    # Only the canonical index owns the manifest. A build written elsewhere -- a
+    # health check verifying the pipeline still works -- must not stamp its own
+    # (worse, sparse-only) manifest over the live one.
+    if index_path == DEFAULT_INDEX_PATH:
+        MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
 
 

@@ -136,7 +136,12 @@ export function EsdLab() {
   const busyActivity = conversation.busy ? 1 : status.word === "live" ? 0.15 : 0;
 
   return (
-    <main className={styles.page}>
+    <main
+      className={styles.page}
+      // The ring yields vertical space once there is an answer to read, so the
+      // citations stay on screen instead of being pushed below the fold.
+      data-answering={conversation.revealed || conversation.error ? "true" : "false"}
+    >
       {/* Decorative only; never intercepts a pointer. */}
       <div className={styles.ambientField} aria-hidden="true">
         {AMBIENT_MOTES.map((mote) => (

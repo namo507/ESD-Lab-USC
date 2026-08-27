@@ -256,12 +256,16 @@ services:
     init: true
     environment:
       OLLAMA_MODELS: /models
-      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      # A cold load is ~45 s on CPU; residency is the biggest speed lever there.
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-24h}
       OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
-      # One large model resident at a time. A 12 GB card cannot hold the
-      # generalist and the specialist together, and letting Ollama try means
-      # both spill to CPU instead of one running properly.
-      OLLAMA_MAX_LOADED_MODELS: "1"
+      # Two, not one. The generalist and the embedding model are both needed on
+      # every retrieval-backed answer, and at a limit of 1 the embedder evicts
+      # the generalist on each query -- every request then paid a ~45 s reload
+      # while actual generation took under two seconds. The embedder is 274 MB,
+      # so holding both costs almost nothing. Keep this at 2; raise it only if a
+      # second *large* model is added, which a 12 GB card cannot host anyway.
+      OLLAMA_MAX_LOADED_MODELS: "${OLLAMA_MAX_LOADED_MODELS:-2}"
     volumes:
       - type: bind
         source: ./models/ollama

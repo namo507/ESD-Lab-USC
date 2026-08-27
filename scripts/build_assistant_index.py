@@ -26,6 +26,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--embed-base-url", default="http://127.0.0.1:11434")
     parser.add_argument(
+        "--index-path",
+        type=Path,
+        default=None,
+        help="Write somewhere other than the live index. Used by health checks, which "
+             "must verify the build works without replacing a good index with a worse one.",
+    )
+    parser.add_argument(
         "--sparse-only",
         action="store_true",
         help="Build FTS5 only. Retrieval still works and gets measurably worse; "
@@ -34,7 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        manifest = build_index(embed_base_url=None if args.sparse_only else args.embed_base_url)
+        kwargs = {"embed_base_url": None if args.sparse_only else args.embed_base_url}
+        if args.index_path is not None:
+            kwargs["index_path"] = args.index_path
+        manifest = build_index(**kwargs)
     except Exception as exc:  # noqa: BLE001 - surfaced to the operator verbatim
         print(f"index build failed: {exc}", file=sys.stderr)
         return 1

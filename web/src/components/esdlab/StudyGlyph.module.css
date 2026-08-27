@@ -19,7 +19,7 @@
   display: grid;
   justify-items: center;
   gap: 0.1rem;
-  width: 8.5rem;
+  width: 10rem;
   padding: 0.55rem 0.4rem;
   border: 1px solid transparent;
   border-radius: var(--r-card, 18px);
@@ -68,8 +68,8 @@
 }
 
 .star {
-  width: 2.3rem;
-  height: 2.3rem;
+  width: 2.8rem;
+  height: 2.8rem;
   color: var(--glyph-accent);
   filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--glyph-accent) 45%, transparent));
   animation: glyph-float 6.5s ease-in-out infinite;
@@ -93,15 +93,15 @@
 }
 
 .label {
-  font-size: 0.8rem;
+  font-size: 1.02rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--fg);
 }
 
 .publicName {
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--fg3);
   text-align: center;

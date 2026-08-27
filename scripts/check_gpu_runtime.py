@@ -109,6 +109,42 @@ def detect_gpu() -> GpuInfo:
     return info
 
 
+
+def cpu_threads() -> int:
+    """Inference threads for the CPU tier.
+
+    llama.cpp scales with *physical* cores and then goes backwards: past that
+    point the extra threads contend for the same memory bandwidth and add
+    synchronisation cost per token. Hyperthreads do not help a workload that is
+    already saturating the FPU and the cache.
+
+    So: physical cores if we can read them, otherwise half the logical count,
+    which is the right answer on any SMT-2 machine and merely conservative
+    elsewhere. Two cores are held back for the server, the indexer and the OS,
+    so generation cannot starve the thing serving the page.
+    """
+    physical = 0
+    try:
+        # MemTotal-style parsing of /proc/cpuinfo: count distinct
+        # (physical id, core id) pairs.
+        seen: set[tuple[str, str]] = set()
+        pkg = core = None
+        for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
+            if line.startswith("physical id"):
+                pkg = line.split(":")[1].strip()
+            elif line.startswith("core id"):
+                core = line.split(":")[1].strip()
+                if pkg is not None:
+                    seen.add((pkg, core))
+        physical = len(seen)
+    except OSError:
+        physical = 0
+
+    logical = os.cpu_count() or 4
+    base = physical or max(1, logical // 2)
+    return max(2, min(base, logical) - 2)
+
+
 def load_manifest() -> dict[str, Any] | None:
     if not MANIFEST_PATH.exists():
         return None
@@ -128,6 +164,18 @@ def installed_models(base_url: str = "http://127.0.0.1:11434") -> list[dict[str,
             return json.loads(response.read()).get("models", [])
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
         return []
+
+
+
+def _configured_serving_model() -> str | None:
+    """The model config/llm_model.json says is serving, if any."""
+    config = PROJECT_ROOT / "config" / "llm_model.json"
+    if not config.exists():
+        return None
+    try:
+        return (json.loads(config.read_text(encoding="utf-8")).get("local") or {}).get("serving_model")
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dict[str, Any]]) -> dict[str, Any]:
@@ -151,7 +199,7 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
             "generalist_resident": primary["ref"] in have,
             "embedding": (embedding or {}).get("ref"),
             "keep_alive": "30m",
-            "max_loaded_models": 1,
+            "max_loaded_models": 2,
             "num_gpu_layers": -1,           # offload everything
             "reason": (
                 f"{primary['ref']} needs {primary['size_gb']:.2f} GB and the card offers "
@@ -162,14 +210,25 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
             "context_budget": 12000,
             "max_new_tokens": 1024,
             "request_timeout_seconds": 45,
+            # The GPU carries generation; the CPU only needs to keep it fed.
+            "num_thread": max(2, (os.cpu_count() or 8) // 4),
         }
 
     # CPU tier. Supported, and slower -- which is stated, not hidden.
-    smaller = sorted(
-        (m for m in present if m.get("size", 0) and "embed" not in m.get("name", "")),
-        key=lambda m: m.get("size", 0),
-    )
-    cpu_generalist = smaller[0]["name"] if smaller else None
+    #
+    # Prefer the model actually configured to serve. Falling back to "smallest
+    # installed" reported qwen2.5:1.5b as the generalist while esd-buddy was the
+    # one answering, which made the runtime report disagree with reality.
+    names = {m.get("name", "") for m in present}
+    configured = _configured_serving_model()
+    if configured and (configured in names or f"{configured}:latest" in names):
+        cpu_generalist = configured
+    else:
+        smaller = sorted(
+            (m for m in present if m.get("size", 0) and "embed" not in m.get("name", "")),
+            key=lambda m: m.get("size", 0),
+        )
+        cpu_generalist = smaller[0]["name"] if smaller else None
 
     if gpu.present and gpu.vram_gb == 0:
         reason = "a GPU is present but its VRAM could not be measured, so the CPU tier is assumed"
@@ -184,8 +243,12 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
         "generalist": cpu_generalist,
         "generalist_resident": bool(cpu_generalist),
         "embedding": (embedding or {}).get("ref"),
-        "keep_alive": "10m",
-        "max_loaded_models": 1,
+        # Long, deliberately. Reloading a 4.7 GB model from disk on CPU costs
+        # ~45 s, which measured as the entire latency of a "slow" answer while
+        # actual generation was under two seconds. Residency is the single
+        # biggest speed lever on this tier, and the weights fit in headroom.
+        "keep_alive": "24h",
+        "max_loaded_models": 2,
         "num_gpu_layers": 0,
         "reason": reason,
         "speed_warning": (
@@ -200,6 +263,7 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
         "context_budget": 2400,
         "max_new_tokens": 220,
         "request_timeout_seconds": 120,
+        "num_thread": cpu_threads(),
     }
 
 
@@ -241,6 +305,8 @@ OLLAMA_MAX_LOADED_MODELS={max_loaded}
 DASHBOARD_ASSISTANT_CONTEXT_BUDGET={context_budget}
 DASHBOARD_ASSISTANT_MAX_NEW_TOKENS={max_new_tokens}
 DASHBOARD_ASSISTANT_REQUEST_TIMEOUT_SECONDS={request_timeout}
+DASHBOARD_ASSISTANT_NUM_THREAD={num_thread}
+OLLAMA_NUM_PARALLEL={num_parallel}
 ESD_RUNTIME_TIER={tier}
 ESD_RUNTIME_DEGRADED={degraded}
 """
@@ -267,6 +333,10 @@ def main(argv: list[str] | None = None) -> int:
             context_budget=plan["context_budget"],
             max_new_tokens=plan["max_new_tokens"],
             request_timeout=plan["request_timeout_seconds"],
+            num_thread=plan["num_thread"],
+            # One request at a time on CPU: parallel decodes split the same
+            # cores and make every answer slower than serialising them.
+            num_parallel=1 if plan["tier"] == "cpu" else 2,
             tier=plan["tier"],
             degraded=str(plan["degraded"]).lower(),
         ), end="")
@@ -302,6 +372,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  embedding    {plan['embedding'] or '(none)'}")
         print(f"  gpu layers   {plan['num_gpu_layers']}")
         print(f"  context      {plan['context_budget']} tokens, {plan['max_new_tokens']} max new")
+        print(f"  threads      {plan['num_thread']} of {os.cpu_count()} logical")
         print(f"  reason       {plan['reason']}")
         if plan["speed_warning"]:
             print(f"\n  ⚠ {plan['speed_warning']}")

@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-08-27T21:28:44Z",
+  "host": {
+    "cpus": 32,
+    "gpu": false
+  },
+  "questions": [
+    "Which instruments are administered at the 12 month visit?",
+    "What is CPTd and how is skin temperature collected?",
+    "What are the participant groups in the NANO study and what do the codes mean?",
+    "What hardware is used to record ECG, and at what sampling rate?",
+    "What tool is used for behavioural coding and is it double-coded?",
+    "What was the median household income of enrolled families in 2019?"
+  ],
+  "ranked": [
+    {
+      "model": "qwen2.5:7b",
+      "ttft_ms_median": 19060.3,
+      "total_ms_median": 21948.7,
+      "tok_per_s_median": 1.5,
+      "faithfulness": 0.8,
+      "unsupported_numbers": 1,
+      "total_numbers": 5,
+      "context_overlap": 0.697,
+      "admitted_unanswerable": true,
+      "empty_answers": 0,
+      "reasoning_leaks": 0,
+      "usable": true,
+      "license": "apache-2.0",
+      "permissive": true,
+      "error": null
+    },
+    {
+      "model": "qwen2.5:1.5b",
+      "ttft_ms_median": 4624.6,
+      "total_ms_median": 6263.6,
+      "tok_per_s_median": 4.9,
+      "faithfulness": 0.312,
+      "unsupported_numbers": 11,
+      "total_numbers": 16,
+      "context_overlap": 0.845,
+      "admitted_unanswerable": false,
+      "empty_answers": 0,
+      "reasoning_leaks": 0,
+      "usable": true,
+      "license": "apache-2.0",
+      "permissive": true,
+      "error": null
+    },
+    {
+      "model": "qwen3:4b",
+      "ttft_ms_median": 11831.1,
+      "total_ms_median": 21851.8,
+      "tok_per_s_median": 7.3,
+      "faithfulness": 0.857,
+      "unsupported_numbers": 1,
+      "total_numbers": 7,
+      "context_overlap": 0.578,
+      "admitted_unanswerable": false,
+      "empty_answers": 0,
+      "reasoning_leaks": 2,
+      "usable": false,
+      "license": "apache-2.0",
+      "permissive": true,
+      "error": null
+    },
+    {
+      "model": "gemma3:4b",
+      "ttft_ms_median": 11761.0,
+      "total_ms_median": 13383.9,
+      "tok_per_s_median": 1.6,
+      "faithfulness": 1.0,
+      "unsupported_numbers": 0,
+      "total_numbers": 3,
+      "context_overlap": 0.925,
+      "admitted_unanswerable": false,
+      "empty_answers": 0,
+      "reasoning_leaks": 0,
+      "usable": true,
+      "license": "gemma",
+      "permissive": false,
+      "error": null
+    }
+  ],
+  "failed": [],
+  "winner": "qwen2.5:7b"
+}

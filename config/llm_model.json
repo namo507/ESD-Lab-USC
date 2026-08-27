@@ -44,6 +44,11 @@
       "context": 8192,
       "license": "apache-2.0",
       "source_url": "https://ollama.com/library/nomic-embed-text:latest"
-    }
+    },
+    "serving_model": "esd-buddy",
+    "serving_base": "qwen2.5:7b",
+    "serving_tier": "cpu",
+    "num_thread": 14,
+    "modelfile": "config/esd-buddy.Modelfile"
   }
 }

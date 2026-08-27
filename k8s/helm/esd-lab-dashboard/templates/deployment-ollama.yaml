@@ -37,9 +37,11 @@ spec:
               value: {{ .Values.ollama.keepAlive | quote }}
             - name: OLLAMA_NUM_PARALLEL
               value: {{ .Values.ollama.numParallel | quote }}
-            # One large model resident at a time. Two will not fit in the VRAM
-            # this chart targets, and letting Ollama try means both spill to CPU
-            # instead of one running properly.
+            # Two loaded models: the generalist and the embedder. Setting this
+            # to 1 makes the embedder evict the generalist on every
+            # retrieval-backed answer, so each request pays a full model reload
+            # -- measured at ~45 s against under two seconds of generation. The
+            # embedder is 274 MB; both fit. Do not lower this to "save VRAM".
             - name: OLLAMA_MAX_LOADED_MODELS
               value: {{ .Values.ollama.maxLoadedModels | quote }}
           # ── Probe semantics. Do not "simplify" these into one probe. ──

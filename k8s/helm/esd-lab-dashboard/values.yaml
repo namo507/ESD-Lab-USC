@@ -145,10 +145,12 @@ ollama:
     repository: ollama/ollama
     tag: "0.13.0"
     pullPolicy: IfNotPresent
-  keepAlive: 30m
+  keepAlive: 24h
   numParallel: 2
-  # One large model resident at a time; see the deployment template.
-  maxLoadedModels: 1
+  # Two: the generalist plus the embedding model. At 1 the embedder evicts the
+  # generalist on every retrieval-backed answer and each request pays a full
+  # reload. See the deployment template.
+  maxLoadedModels: 2
   persistence:
     # Weights survive a pod restart only with a real claim. Without one a
     # restart re-pulls ~9 GB.
