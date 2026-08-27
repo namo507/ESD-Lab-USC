@@ -92,7 +92,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-08-27T15:54:47Z"
+      "last_updated": "2026-08-27T15:56:44Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -1111,7 +1111,7 @@
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-08-27T15:54:47Z",
+      "last_sync": "2026-08-27T15:56:44Z",
       "records_locked": 0,
       "double_entry_discrepancies": 19,
       "instruments_defined": 14,
@@ -1165,7 +1165,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-08-27T15:54:13"
+      "last_indexed": "2026-08-27T15:56:12"
     },
     "study_meta": {
       "award": "R01MH132925",
