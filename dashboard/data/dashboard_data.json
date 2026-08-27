@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-27T19:54:50",
+    "generated_at": "2026-08-27T20:33:14",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -2242,7 +2242,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-08-27T19:54:50",
+      "generated_at": "2026-08-27T20:33:14",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8823,7 +8823,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-08-27T19:54:46",
+      "generated_at": "2026-08-27T20:33:10",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9789,7 +9789,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-08-27T19:54:50",
+      "generated_at": "2026-08-27T20:33:14",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9820,7 +9820,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-08-27T19:29:50",
+        "last_run": "2026-08-27T20:08:14",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9828,7 +9828,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-08-27T19:29:50",
+        "last_run": "2026-08-27T20:08:14",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9836,7 +9836,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-08-27T19:44:50",
+        "last_run": "2026-08-27T20:23:14",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9844,7 +9844,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-08-27T19:34:50",
+        "last_run": "2026-08-27T20:13:14",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9852,7 +9852,6 @@
     ],
     "throughput_24h": {
       "hours": [
-        "20:00",
         "21:00",
         "22:00",
         "23:00",
@@ -9875,7 +9874,8 @@
         "16:00",
         "17:00",
         "18:00",
-        "19:00"
+        "19:00",
+        "20:00"
       ],
       "rows": [
         526,
@@ -10600,13 +10600,13 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-08-27T19:54:49Z",
+    "generated_at": "2026-08-27T20:33:13Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-08-27T19:54:49Z"
+    "payload_version": "2026-08-27T20:33:13Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
@@ -33172,7 +33172,7 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-08-27T19:54:49Z",
+      "generated_at": "2026-08-27T20:33:13Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
@@ -33186,7 +33186,7 @@
     "run_ledger": [
       {
         "run_id": "redcap-adb937ae5d20",
-        "started_at": "2026-08-27T19:54:49Z",
+        "started_at": "2026-08-27T20:33:13Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33226,7 +33226,7 @@
     }
   },
   "lab_operations": {
-    "generated_at": "2026-08-27T19:54:49Z",
+    "generated_at": "2026-08-27T20:33:13Z",
     "source_documents": [
       {
         "study": "NANO",
@@ -33838,7 +33838,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-08-27T19:54:49Z"
+      "last_updated": "2026-08-27T20:33:13Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -34857,7 +34857,7 @@
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-08-27T19:54:49Z",
+      "last_sync": "2026-08-27T20:33:13Z",
       "records_locked": 0,
       "double_entry_discrepancies": 19,
       "instruments_defined": 14,
@@ -34911,7 +34911,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-08-27T19:54:17"
+      "last_indexed": "2026-08-27T20:32:45"
     },
     "study_meta": {
       "award": "R01MH132925",
@@ -35246,7 +35246,7 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-08-27T19:54:49Z"
+      "last_updated": "2026-08-27T20:33:13Z"
     },
     "participants": [
       {
@@ -35610,7 +35610,7 @@
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-08-27T19:54:49Z",
+      "last_success": "2026-08-27T20:33:13Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35698,7 +35698,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-08-27T19:54:49Z",
+        "timestamp": "2026-08-27T20:33:13Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }

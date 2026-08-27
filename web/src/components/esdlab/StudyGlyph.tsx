@@ -1,12 +1,13 @@
 /**
- * One study, as a glyph.
+ * One study, as a glyph on the ring around the character.
  *
  * A star, because the icon semantics in the design system are specific: the
  * sunburst is the lab's work, the star is programs and studies, and the IMB
  * building is the physical location. A study is a study, so it gets a star.
  *
- * At rest the glyph shows a name and nothing else — no count, no badge, no
- * sparkline. The numbers live one hover or one Tab away, in the codex card.
+ * Each glyph carries its own accent from the secondary palette, so the ring
+ * reads as five distinct things rather than five copies. At rest it shows a
+ * name and nothing else — the numbers live one hover or one Tab away.
  */
 import { forwardRef } from "react";
 
@@ -16,6 +17,12 @@ export interface StudyGlyphProps {
   label: string;
   /** Family-facing name, shown under the label at low emphasis. */
   publicName: string;
+  /** Secondary-palette accent for this study. */
+  accent: string;
+  /** Position on the ring, in degrees clockwise from the top. */
+  angle: number;
+  /** Staggers the float so the ring breathes rather than pulsing as one. */
+  index: number;
   active: boolean;
   pinned: boolean;
   /** Set on closed studies so the eye can sort them without reading. */
@@ -27,10 +34,26 @@ export interface StudyGlyphProps {
 }
 
 export const StudyGlyph = forwardRef<HTMLButtonElement, StudyGlyphProps>(function StudyGlyph(
-  { label, publicName, active, pinned, dimmed, describedBy, onEnter, onLeave, onToggle },
+  { label, publicName, accent, angle, index, active, pinned, dimmed, describedBy, onEnter, onLeave, onToggle },
   ref,
 ) {
   return (
+    <span
+      className={styles.slot}
+      style={{
+        // Ring placement lives on this wrapper, never on the button.
+        //
+        // The brand stylesheet has a global `button:active { transform:
+        // translateY(1px) }` press effect. `transform` is one property, so that
+        // rule *replaced* the placement transform on mousedown and the glyph
+        // snapped to the centre of the ring — mouseup then landed somewhere
+        // else and the click never fired. Splitting placement onto a wrapper
+        // lets both effects coexist.
+        ["--glyph-angle" as string]: `${angle}deg`,
+        ["--glyph-accent" as string]: accent,
+        ["--glyph-delay" as string]: `${index * 0.42}s`,
+      }}
+    >
     <button
       ref={ref}
       type="button"
@@ -62,5 +85,6 @@ export const StudyGlyph = forwardRef<HTMLButtonElement, StudyGlyphProps>(functio
       <span className={styles.label}>{label}</span>
       <span className={styles.publicName}>{publicName}</span>
     </button>
+    </span>
   );
 });

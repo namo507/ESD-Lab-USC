@@ -72,7 +72,17 @@ export function BuddyScene({
   const exitEdge = useRef<Vec2 | null>(null);
   const lastPointerMove = useRef(0);
   const idleTarget = useRef<Vec2>({ x: 0, y: 0 });
-  const [target, setTarget] = useState<Vec2>({ x: 0, y: 0 });
+  /**
+   * The resolved gaze target, held in a ref rather than in state.
+   *
+   * This used to be `useState` written from a requestAnimationFrame loop, which
+   * re-rendered this component — and therefore the entire route above it — sixty
+   * times a second for a value only the render loop reads. It burned frame
+   * budget and left the DOM permanently unsettled: Playwright could not click a
+   * glyph because the page never stopped re-rendering, and a real pointer had
+   * the same problem in miniature.
+   */
+  const target = useRef<Vec2>({ x: 0, y: 0 });
 
   /* Idle wander. Resampled every 2–5 s so the gaze has somewhere to go when
      nothing is asking for its attention. */
@@ -135,12 +145,13 @@ export function BuddyScene({
   }, []);
 
   /* Resolve the gaze on a rAF loop rather than inside useFrame, so the target
-     is still correct on the static path where there is no render loop. */
+     is still correct on the static path where there is no render loop. It writes
+     to a ref, so nothing re-renders. */
   useEffect(() => {
     let raf = 0;
     const tick = () => {
       const now = performance.now();
-      setTarget(
+      target.current = (
         resolveGazeTarget({
           pinnedAnchor,
           hoveredAnchor,
@@ -149,7 +160,7 @@ export function BuddyScene({
           exitEdge: exitEdge.current,
           idleTarget: idleTarget.current,
           pointerIdleMs: lastPointerMove.current ? now - lastPointerMove.current : 0,
-        }),
+        })
       );
       raf = requestAnimationFrame(tick);
     };
@@ -199,12 +210,14 @@ export function BuddyScene({
             washed to white and the shadow side went neutral, so the brand
             colour never appeared. A hemisphere light puts Science Blue in the
             shadows instead, which is what keeps the palette reading as blue. */}
-        <hemisphereLight args={[BRAND.coolWhite, BRAND.discoveryBlue, 1.15]} />
+        <hemisphereLight args={[BRAND.coolWhite, BRAND.discoveryBlue, 1.45]} />
         <ambientLight intensity={0.25} />
         <directionalLight position={[2.5, 3, 4]} intensity={0.85} color={BRAND.coolWhite} />
-        <directionalLight position={[-3, -1, 2]} intensity={0.7} color={BRAND.scienceBlue} />
+        <directionalLight position={[-3, -1, 2]} intensity={0.95} color={BRAND.scienceBlue} />
+        {/* Warm kicker from below so the silhouette is not uniformly cool. */}
+        <pointLight position={[0, -2.2, 1.6]} intensity={0.5} color={BRAND.scienceBlue} />
         <BuddyCharacter
-          target={target}
+          targetRef={target}
           state={state}
           openness={openness}
           reducedMotion={reducedMotion}

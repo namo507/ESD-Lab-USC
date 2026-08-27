@@ -38,6 +38,10 @@ export interface StudyProfile {
   /** Where visits happened. */
   setting: string;
   sources: string[];
+  /** Secondary-palette accent. One per study so the ring reads as five things. */
+  accent: string;
+  /** Where "open the data" goes for this study. */
+  route: string;
 }
 
 export const PUBLIC_SITE_SOURCE = "esdlabsc.com/our-studies";
@@ -59,6 +63,8 @@ export const STUDY_PROFILES: readonly StudyProfile[] = [
     ages: "birth to 36 months",
     setting: "NICU, lab, and in-home",
     sources: [PUBLIC_SITE_SOURCE, ENTITIES_SOURCE],
+    accent: "#3366ff",
+    route: "/nano/lgcm-trajectories",
   },
   {
     key: "nico",
@@ -72,6 +78,8 @@ export const STUDY_PROFILES: readonly StudyProfile[] = [
     ages: "under 1 month to 12 months",
     setting: "PRISMA-Richland NICU, lab, and in-home",
     sources: [PUBLIC_SITE_SOURCE],
+    accent: "#f57f00",
+    route: "/nico/aim3-clusters",
   },
   {
     key: "ipsa",
@@ -85,6 +93,8 @@ export const STUDY_PROFILES: readonly StudyProfile[] = [
     ages: "birth to 36 months",
     setting: "lab and in-home",
     sources: [PUBLIC_SITE_SOURCE],
+    accent: "#f4da26",
+    route: "/redcap-portfolio",
   },
   {
     key: "action",
@@ -98,6 +108,8 @@ export const STUDY_PROFILES: readonly StudyProfile[] = [
     ages: "4, 8, and 18 months",
     setting: "in-home only",
     sources: [PUBLIC_SITE_SOURCE],
+    accent: "#f8b2b1",
+    route: "/participants",
   },
   {
     key: "abc",
@@ -111,6 +123,8 @@ export const STUDY_PROFILES: readonly StudyProfile[] = [
     ages: "12, 24, and 36 months",
     setting: "lab only",
     sources: [PUBLIC_SITE_SOURCE],
+    accent: "#d74e2d",
+    route: "/redcap-portfolio",
   },
 ] as const;
 

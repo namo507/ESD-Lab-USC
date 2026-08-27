@@ -16,7 +16,7 @@ import { easing } from "maath";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 
-import { BRAND, DAMPING, GAZE_LIMITS } from "./brand3d";
+import { ACCENT, BRAND, DAMPING, GAZE_LIMITS } from "./brand3d";
 import {
   BLINK_CLOSE_MS,
   blinkIntervalMs,
@@ -30,9 +30,32 @@ import { STATE_PROFILE, accentHex, type BuddyState } from "./buddyState";
 
 const RAY_COUNT = 12;
 
+/**
+ * Colour per sunburst ray.
+ *
+ * The signature blue leads and the secondary palette threads through it, so the
+ * core reads as the lab's sunburst rather than a plain ring. Accents still never
+ * dominate: they are one ray in three, at partial opacity, against nine blues.
+ */
+const RAY_PALETTE = [
+  BRAND.discoveryBlue, BRAND.scienceBlue, ACCENT.attention,
+  BRAND.discoveryBlue, BRAND.scienceBlue, ACCENT.discovery,
+  BRAND.discoveryBlue, BRAND.scienceBlue, ACCENT.warm,
+  BRAND.discoveryBlue, BRAND.scienceBlue, ACCENT.attention,
+];
+
+/** Motes that orbit the core; they speed up with system activity. */
+const ORBIT_COUNT = 8;
+
 export interface BuddyCharacterProps {
-  /** Resolved gaze target, normalised to -1..1. */
-  target: Vec2;
+  /**
+   * Resolved gaze target, normalised to -1..1, passed as a ref.
+   *
+   * A ref rather than a value on purpose: the target changes every frame, and
+   * threading it through props would re-render the whole route sixty times a
+   * second for something only the render loop reads.
+   */
+  targetRef: React.RefObject<Vec2>;
   state: BuddyState;
   /** 0..1 mouth opening from the token stream. */
   openness: number;
@@ -42,7 +65,7 @@ export interface BuddyCharacterProps {
   activity: number;
 }
 
-export function BuddyCharacter({ target, state, openness, reducedMotion, activity }: BuddyCharacterProps) {
+export function BuddyCharacter({ targetRef, state, openness, reducedMotion, activity }: BuddyCharacterProps) {
   const root = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
   const eyes = useRef<THREE.Group>(null);
@@ -50,6 +73,7 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
   const rightLid = useRef<THREE.Mesh>(null);
   const mouth = useRef<THREE.Mesh>(null);
   const sunburst = useRef<THREE.InstancedMesh>(null);
+  const orbit = useRef<THREE.InstancedMesh>(null);
   const core = useRef<THREE.Mesh>(null);
   const accentRing = useRef<THREE.Mesh>(null);
   const leftEar = useRef<THREE.Mesh>(null);
@@ -58,6 +82,21 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
   // Per-instance transform scratch. Reused every frame so the sunburst never
   // allocates inside the render loop.
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const rayColors = useMemo(
+    () => Float32Array.from(RAY_PALETTE.flatMap((hex) => new THREE.Color(hex).toArray())),
+    [],
+  );
+  const orbitColors = useMemo(
+    () =>
+      Float32Array.from(
+        Array.from({ length: ORBIT_COUNT }, (_, i) =>
+          new THREE.Color(
+            [ACCENT.attention, ACCENT.discovery, ACCENT.warm, BRAND.scienceBlue][i % 4],
+          ).toArray(),
+        ).flat(),
+      ),
+    [],
+  );
   const accentColor = useMemo(() => new THREE.Color(BRAND.discoveryBlue), []);
 
   const timers = useRef({
@@ -99,7 +138,7 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
       t.saccadeAt = t.elapsed + s.nextMs;
     }
     const saccading = !reducedMotion && t.elapsed < t.saccadeUntil;
-    const split = splitGaze(target);
+    const split = splitGaze(targetRef.current ?? { x: 0, y: 0 });
 
     if (eyes.current) {
       easing.damp(
@@ -199,6 +238,31 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
       sunburst.current.instanceMatrix.needsUpdate = true;
     }
 
+    /* ── Orbiting motes ─────────────────────────────────────────────────
+       Always present, but they tighten and speed up while the buddy is
+       thinking, which is what makes the wait legible without a spinner. */
+    if (orbit.current) {
+      const busy = state === "thinking" || state === "speaking";
+      const speed = (busy ? 1.4 : 0.35) * (1 + activity);
+      const radius = busy ? 0.92 : 1.12;
+      for (let i = 0; i < ORBIT_COUNT; i += 1) {
+        const phase = (i / ORBIT_COUNT) * Math.PI * 2;
+        const angle = phase + (reducedMotion ? 0 : (t.elapsed / 1000) * speed);
+        const wobble = reducedMotion ? 0 : Math.sin(t.elapsed / 900 + i) * 0.1;
+        dummy.position.set(
+          Math.cos(angle) * (radius + wobble),
+          Math.sin(angle) * (radius + wobble) * 0.62,
+          Math.sin(angle * 1.6) * 0.28,
+        );
+        const scale = busy ? 1 : 0.68;
+        dummy.rotation.set(0, 0, angle);
+        dummy.scale.setScalar(scale);
+        dummy.updateMatrix();
+        orbit.current.setMatrixAt(i, dummy.matrix);
+      }
+      orbit.current.instanceMatrix.needsUpdate = true;
+    }
+
     /* ── Accent: exactly one lit at a time ───────────────────────────── */
     const hex = accentHex(state);
     accentColor.lerp(new THREE.Color(hex ?? BRAND.discoveryBlue), 1 - Math.exp(-dt / DAMPING.accent));
@@ -224,8 +288,17 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
           the head outline rather than hide inside it. */}
       <group position={[0, 0.42, -0.9]}>
         <instancedMesh ref={sunburst} args={[undefined, undefined, RAY_COUNT]} frustumCulled={false}>
-          <capsuleGeometry args={[0.032, 0.4, 3, 6]} />
-          <meshBasicMaterial color={BRAND.discoveryBlue} transparent opacity={0.5} />
+          <capsuleGeometry args={[0.032, 0.4, 3, 6]}>
+            <instancedBufferAttribute attach="attributes-color" args={[rayColors, 3]} />
+          </capsuleGeometry>
+          <meshBasicMaterial vertexColors transparent opacity={0.62} />
+        </instancedMesh>
+        {/* Orbiting motes. One draw call, eight instances. */}
+        <instancedMesh ref={orbit} args={[undefined, undefined, ORBIT_COUNT]} frustumCulled={false}>
+          <sphereGeometry args={[0.05, 10, 8]}>
+            <instancedBufferAttribute attach="attributes-color" args={[orbitColors, 3]} />
+          </sphereGeometry>
+          <meshBasicMaterial vertexColors transparent opacity={0.85} />
         </instancedMesh>
         <mesh ref={core}>
           <sphereGeometry args={[0.3, 24, 18]} />
@@ -245,7 +318,13 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
       {/* Body: rounded capsule, Cool Blue, with a Science Blue rim. */}
       <mesh position={[0, -0.58, 0]}>
         <capsuleGeometry args={[0.4, 0.34, 8, 28]} />
-        <meshStandardMaterial color={BRAND.coolBlue} roughness={0.62} metalness={0.02} />
+        <meshStandardMaterial
+          color={BRAND.coolBlue}
+          emissive={BRAND.scienceBlue}
+          emissiveIntensity={0.22}
+          roughness={0.5}
+          metalness={0.04}
+        />
       </mesh>
       <mesh position={[0, -0.58, 0]} scale={1.035}>
         <capsuleGeometry args={[0.4, 0.34, 6, 24]} />
@@ -255,7 +334,13 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
       <group ref={head} position={[0, 0.42, 0]}>
         <mesh>
           <sphereGeometry args={[0.5, 32, 24]} />
-          <meshStandardMaterial color={BRAND.coolBlue} roughness={0.55} metalness={0.02} />
+          <meshStandardMaterial
+            color={BRAND.coolBlue}
+            emissive={BRAND.scienceBlue}
+            emissiveIntensity={0.2}
+            roughness={0.45}
+            metalness={0.04}
+          />
         </mesh>
         {/* Fresnel-ish rim: a slightly larger back-faced shell. Cheaper than a
             custom shader and it survives the low-power path unchanged. */}
@@ -267,11 +352,11 @@ export function BuddyCharacter({ target, state, openness, reducedMotion, activit
         {/* Ears: the geometry that expands while listening. */}
         <mesh ref={leftEar} position={[-0.49, 0.04, -0.1]}>
           <sphereGeometry args={[0.072, 16, 12]} />
-          <meshStandardMaterial color={BRAND.scienceBlue} roughness={0.6} />
+          <meshStandardMaterial color={BRAND.scienceBlue} emissive={BRAND.discoveryBlue} emissiveIntensity={0.25} roughness={0.5} />
         </mesh>
         <mesh ref={rightEar} position={[0.49, 0.04, -0.1]}>
           <sphereGeometry args={[0.072, 16, 12]} />
-          <meshStandardMaterial color={BRAND.scienceBlue} roughness={0.6} />
+          <meshStandardMaterial color={BRAND.scienceBlue} emissive={BRAND.discoveryBlue} emissiveIntensity={0.25} roughness={0.5} />
         </mesh>
 
         {/* Eyes. Oversized relative to the head, the way appealing game

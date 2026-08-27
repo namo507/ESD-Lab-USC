@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { nanoBuddyCitationHref } from "@/api/nanoBuddyApi";
 import { useRedcapPortfolio } from "@/api/redcapPortfolio";
 import { BuddyScene } from "@/components/buddy3d/BuddyScene";
 import type { Vec2 } from "@/components/buddy3d/gaze";
@@ -26,6 +27,24 @@ import { GLYPH_ORDER, studyProfile, type StudyKey } from "@/data/studyProfiles";
 import styles from "./EsdLab.module.css";
 
 const CODEX_ID = "esd-lab-codex";
+
+/**
+ * Where each glyph sits on the ring, in degrees clockwise from the top.
+ *
+ * Not five equal fifths. An even split puts a glyph at 180° — straight down,
+ * where the ask bar and the answer panel live — and that glyph ends up
+ * overlapped and unclickable. These five span roughly 280° and leave the bottom
+ * of the ring open.
+ */
+const RING_ANGLES = [-138, -69, 0, 69, 138];
+
+/** Ambient field: brand-blue forms drifting behind the composition. */
+const AMBIENT_MOTES = [
+  { top: "8%", left: "6%", size: "26rem", dx: "60px", dy: "-40px", seconds: 68 },
+  { top: "52%", left: "-6%", size: "20rem", dx: "-40px", dy: "50px", seconds: 84 },
+  { top: "-4%", left: "62%", size: "30rem", dx: "-55px", dy: "45px", seconds: 76 },
+  { top: "58%", left: "72%", size: "24rem", dx: "45px", dy: "-55px", seconds: 92 },
+];
 
 /**
  * A clock that ticks on an interval.
@@ -118,6 +137,24 @@ export function EsdLab() {
 
   return (
     <main className={styles.page}>
+      {/* Decorative only; never intercepts a pointer. */}
+      <div className={styles.ambientField} aria-hidden="true">
+        {AMBIENT_MOTES.map((mote) => (
+          <span
+            key={`${mote.top}-${mote.left}`}
+            style={{
+              top: mote.top,
+              left: mote.left,
+              width: mote.size,
+              height: mote.size,
+              animationDuration: `${mote.seconds}s`,
+              ["--dx" as string]: mote.dx,
+              ["--dy" as string]: mote.dy,
+            }}
+          />
+        ))}
+      </div>
+
       <header className={styles.lockup}>
         {/* Lab mark left of the university mark, at equal height. The order is
             fixed by the design system and is not a layout preference. */}
@@ -129,7 +166,8 @@ export function EsdLab() {
         <span className={styles.uscMark}>University of South Carolina</span>
       </header>
 
-      <div className={styles.stage} ref={stage}>
+      <div className={styles.stage}>
+        <div className={styles.ring} ref={stage}>
         <div className={styles.buddy}>
           <BuddyScene
             state={conversation.state}
@@ -145,11 +183,14 @@ export function EsdLab() {
 
         {/* Five glyphs, names only. The counts live in the codex card. */}
         <nav className={styles.glyphs} aria-label="Studies">
-          {GLYPH_ORDER.map((key) => {
+          {GLYPH_ORDER.map((key, index) => {
             const profile = studyProfile(key);
             return (
               <StudyGlyph
                 key={key}
+                accent={profile.accent}
+                angle={RING_ANGLES[index] ?? 0}
+                index={index}
                 ref={(node) => {
                   if (node) glyphRefs.current.set(key, node);
                   else glyphRefs.current.delete(key);
@@ -183,8 +224,10 @@ export function EsdLab() {
             />
           </div>
         )}
+        </div>
       </div>
 
+      <div className={styles.foot}>
       {/* One ambient line. The timestamp exists but waits to be asked for. */}
       <p className={styles.ambient} title={status.detail}>
         <span className={styles.dot} data-status={status.word} aria-hidden="true" />
@@ -226,16 +269,64 @@ export function EsdLab() {
               </p>
               {conversation.turn && conversation.turn.citations.length > 0 && (
                 <ul className={styles.citations}>
-                  {conversation.turn.citations.map((citation) => (
-                    <li key={`${citation.path}-${citation.loc}`}>
-                      <span className={styles.citationTitle}>{citation.title}</span>
-                      <span className={styles.citationPath}>
-                        {citation.path}
-                        {citation.loc ? ` · ${citation.loc}` : ""}
-                      </span>
-                    </li>
-                  ))}
+                  {conversation.turn.citations.map((citation) => {
+                    // A source you cannot open is not a citation you can check.
+                    // The helper refuses anything outside the allow-listed roots,
+                    // so an unopenable path degrades to plain text rather than a
+                    // broken link.
+                    const href = nanoBuddyCitationHref(citation);
+                    const body = (
+                      <>
+                        <span className={styles.citationTitle}>{citation.title}</span>
+                        <span className={styles.citationPath}>
+                          {citation.path}
+                          {citation.loc ? ` · ${citation.loc}` : ""}
+                        </span>
+                      </>
+                    );
+                    return (
+                      <li key={`${citation.path}-${citation.loc}`}>
+                        {href ? (
+                          <a
+                            className={styles.citationLink}
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {body}
+                          </a>
+                        ) : (
+                          <span className={styles.citationLink}>{body}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
+              )}
+
+              {/* Where to go next. Offered only once there is an answer to follow
+                  up on, so the resting surface stays empty. */}
+              {conversation.turn && !conversation.turn.refused && (
+                <nav className={styles.followUps} aria-label="Related views">
+                  <span className={styles.followUpLabel}>open</span>
+                  {(intent.active
+                    ? [studyProfile(intent.active)]
+                    : GLYPH_ORDER.map(studyProfile).filter((profile) =>
+                        conversation.turn?.answer
+                          .toUpperCase()
+                          .includes(profile.label),
+                      )
+                  )
+                    .slice(0, 3)
+                    .map((profile) => (
+                      <Link key={profile.key} className={styles.followUp} to={profile.route}>
+                        {profile.label} data
+                      </Link>
+                    ))}
+                  <Link className={styles.followUp} to="/redcap-portfolio">
+                    REDCap portfolio
+                  </Link>
+                </nav>
               )}
             </>
           )}
@@ -253,6 +344,7 @@ export function EsdLab() {
         <Link to="/pipeline-health">Pipeline health</Link>
         <Link to="/docs">Documentation</Link>
       </footer>
+      </div>
     </main>
   );
 }
