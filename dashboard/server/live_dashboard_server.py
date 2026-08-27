@@ -91,7 +91,7 @@ SPA_ROUTE_PREFIXES = (
     "/discovery",
     "/nano",
     "/nico",
-    "/overview",
+    "/esd-lab",
     "/docs",
     "/how-to",
     "/participants",
@@ -4914,7 +4914,7 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
         if request_path not in LEGACY_DASHBOARD_PATHS:
             return False
         self.send_response(HTTPStatus.MOVED_PERMANENTLY)
-        self.send_header("Location", "/overview")
+        self.send_header("Location", "/esd-lab")
         self.end_headers()
         return True
 
@@ -5183,7 +5183,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     httpd = ThreadingHTTPServer((args.host, args.port), handler)
     logger.info(
-        "Serving public website shell on http://%s:%s/ (overview at /overview)",
+        "Serving public website shell on http://%s:%s/ (front door at /esd-lab)",
         args.host,
         args.port,
     )

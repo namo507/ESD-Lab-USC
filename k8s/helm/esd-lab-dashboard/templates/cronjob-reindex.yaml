@@ -1,0 +1,45 @@
+{{- if .Values.reindex.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-reindex
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reindex
+spec:
+  schedule: {{ .Values.reindex.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.reindex.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.reindex.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.reindex.backoffLimit }}
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: reindex
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - python
+                - scripts/build_assistant_index.py
+                - --embed-base-url
+                - http://{{ include "esd-lab-dashboard.fullname" . }}-ollama:11434
+              resources:
+                {{- toYaml .Values.reindex.resources | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /app/dashboard/data
+          volumes:
+            - name: data
+              {{- if .Values.existingClaims.data }}
+              persistentVolumeClaim:
+                claimName: {{ .Values.existingClaims.data }}
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+{{- end }}

@@ -84,7 +84,7 @@ Repo source and build (tracked files):
 
 - `web/vite.config.ts`: `build.sourcemap` set from `true` to `false`.
 - `scripts/build_pages_site.py`: the `_redirects` writer now emits the
-  `/dashboard`, `/dashboard/`, and `/dashboard/index.html` to `/overview` 308
+  `/dashboard`, `/dashboard/`, and `/dashboard/index.html` to `/esd-lab` 308
   rules in addition to the SPA fallback, so rebuilds keep those redirects.
 - `web/public/_headers`: new canonical headers file with a CSP that no longer
   allowlists `esd-lab-namo.sc.edu`, so future `vite build` runs stay clean.
@@ -106,12 +106,12 @@ API origin pinned to `https://equivalent-industrial-smoke-xbox.trycloudflare.com
 All checks were run against the public site after deploy:
 
 - `https://esd-lab-namo.pages.dev/` returns 200.
-- `https://esd-lab-namo.pages.dev/overview` returns 200.
+- `https://esd-lab-namo.pages.dev/esd-lab` returns 200.
 - `https://esd-lab-namo.pages.dev/api/healthz` returns 200 with `"status": "ok"`.
-- `scripts/check_site_health.py` for both `/` and `/overview` exits 0 and reports
+- `scripts/check_site_health.py` for both `/` and `/esd-lab` exits 0 and reports
   `assistant=ready`.
 - `/dashboard`, `/dashboard/`, and `/dashboard/index.html` each return 308 to
-  `/overview`.
+  `/esd-lab`.
 - No source maps are emitted. The bundle contains zero `.map` files and the
   config now sets `sourcemap: false`. A request to a `.map` URL returns the SPA
   shell as `text/html` via the `/* /index.html 200` catch-all, not a real source
@@ -130,7 +130,7 @@ the `PAGES_API_ORIGIN`.
 I want to be clear about the durability limit. That quick tunnel runs on the
 local machine and will rotate or stop at some point. When it does, `/api/*` will
 return 530 again until the origin is re-pinned, either by the `make share-live`
-watcher or by another deploy. The static frontend (`/` and `/overview`) stays up
+watcher or by another deploy. The static frontend (`/` and `/esd-lab`) stays up
 regardless because it does not depend on the tunnel. I am not claiming the named
 tunnel cutover is complete, because it is not.
 

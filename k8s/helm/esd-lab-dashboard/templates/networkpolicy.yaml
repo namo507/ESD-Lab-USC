@@ -1,4 +1,37 @@
 {{- if .Values.networkPolicy.enabled }}
+{{/*
+  Default deny, then explicit allows.
+
+  The first policy selects every pod in the release and permits nothing: in
+  Kubernetes, a pod selected by any policy is denied everything not explicitly
+  allowed, so this is what makes the allow-list below meaningful rather than
+  decorative.
+
+  Egress leaves the cluster only for the study-landscape APIs and REDCap. Slack
+  is deliberately absent: it is opt-in, off by default, and adding it here would
+  quietly grant the egress before anyone enabled the feature.
+
+  NetworkPolicy cannot express DNS names, so the host allow-list in
+  values.yaml is enforced at the application layer and recorded here as the
+  reviewed list. What this policy enforces is the *port* surface -- 443 out,
+  nothing else -- which is what stops an unexpected protocol from leaving.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-default-deny
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+  annotations:
+    esdlabusc.com/egress-allowlist: {{ join "," .Values.networkPolicy.egressAllowlist | quote }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "esd-lab-dashboard.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -8,8 +41,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "esd-lab-dashboard.selectorLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
     - Egress
@@ -18,16 +50,24 @@ spec:
         - protocol: TCP
           port: 8080
   egress:
+    # DNS, or nothing resolves and every allow below is moot.
     - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+    # Outbound HTTPS to the reviewed hosts, and the API server.
     - ports:
         - protocol: TCP
           port: 443
         - protocol: TCP
           port: 6443
+    # In-cluster traffic: dashboard -> ollama, indexer -> ollama.
     - to:
         - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 11434
 {{- end }}

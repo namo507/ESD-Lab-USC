@@ -13,7 +13,7 @@ import { applyTheme, loadInitialTheme, persistTheme, useUi } from "@/store/ui";
 const Landing = lazy(() => import("@/routes/Landing").then((m) => ({ default: m.Landing })));
 const Docs = lazy(() => import("@/routes/Docs").then((m) => ({ default: m.Docs })));
 const HowTo = lazy(() => import("@/routes/HowTo").then((m) => ({ default: m.HowTo })));
-const Overview = lazy(() => import("@/routes/Overview").then((m) => ({ default: m.Overview })));
+const EsdLab = lazy(() => import("@/routes/EsdLab").then((m) => ({ default: m.EsdLab })));
 const Participants = lazy(() => import("@/routes/Participants").then((m) => ({ default: m.Participants })));
 const ParticipantDetail = lazy(() => import("@/routes/ParticipantDetail").then((m) => ({ default: m.ParticipantDetail })));
 const QA = lazy(() => import("@/routes/QA").then((m) => ({ default: m.QA })));
@@ -107,7 +107,9 @@ function dashboardRoutes(prefix = "") {
 
   return (
     <>
-      <Route path={path("/overview")} element={<Overview />} />
+      {/* Retired surface. Kept as a redirect so bookmarks and any assistant
+          chunk indexed before the rebuild still resolve. */}
+      <Route path={path("/overview")} element={<Navigate to="/esd-lab" replace />} />
       <Route path={path("/participants")} element={<Participants />} />
       <Route path={path("/participants/:id")} element={<ParticipantDetail />} />
       <Route path={path("/qa")} element={<QA />} />
@@ -248,7 +250,16 @@ export default function App() {
       <Suspense fallback={<PageFallback />}>
         <KeyedBoundary>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<Navigate to="/esd-lab" replace />} />
+            <Route
+              path="/esd-lab"
+              element={
+                <BrandScope>
+                  <EsdLab />
+                </BrandScope>
+              }
+            />
+            <Route path="/landing" element={<Landing />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/how-to" element={<HowTo />} />
             <Route
@@ -261,6 +272,7 @@ export default function App() {
                 </DiscoveryGate>
               }
             />
+            <Route path="/discovery/esd-lab" element={<Navigate to="/esd-lab" replace />} />
             <Route
               path="/discovery/docs"
               element={

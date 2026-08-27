@@ -77,7 +77,7 @@ and repository hygiene.
   the current API origin.
 - PASS: `https://esd-lab-namo.pages.dev/?v=20260604-032545` returned 200,
   `spa_shell=yes`, `assistant=ready`.
-- PASS: `https://esd-lab-namo.pages.dev/overview` returned 200,
+- PASS: `https://esd-lab-namo.pages.dev/esd-lab` returned 200,
   `spa_shell=yes`, `assistant=ready`.
 - PASS: `https://esd-lab-namo.pages.dev/` returned 200 and passed the deploy
   stamp freshness check.

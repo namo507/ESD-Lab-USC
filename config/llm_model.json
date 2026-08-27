@@ -1,8 +1,8 @@
 {
-  "schema_version": 4,
-  "policy": "hosted-provider",
-  "provider": "nvidia",
-  "runtime": "nvidia-build-api",
+  "schema_version": 5,
+  "policy": "local-first",
+  "provider": "ollama",
+  "runtime": "ollama",
   "api_base_env": "DASHBOARD_ASSISTANT_API_BASE",
   "api_key_env": "DASHBOARD_ASSISTANT_API_KEY",
   "model_env": "DASHBOARD_ASSISTANT_MODEL",
@@ -15,8 +15,35 @@
     "example_base_url": "http://nemotron-nim:8000/v1"
   },
   "notes": [
-    "Runtime values are sourced from environment variables; this file contains no credentials.",
-    "The hosted NVIDIA endpoint is the supported default.",
-    "Self-hosted NIM requires dedicated GPU infrastructure and is opt-in only."
-  ]
+    "Tags and digests in this file were resolved from registry.ollama.ai, not copied from documentation.",
+    "Re-run scripts/resolve_local_models.py --write to refresh; make models-verify re-checks the digests.",
+    "The hosted NVIDIA tier below is retained and disabled, so a rollback is a policy change only.",
+    "Runtime values are sourced from environment variables; this file contains no credentials."
+  ],
+  "resolved_at": "2026-08-27T16:56:48+00:00",
+  "resolved_for_vram_gb": 12.0,
+  "local": {
+    "enabled_by_default": true,
+    "runtime": "ollama",
+    "api_base_env": "DASHBOARD_ASSISTANT_LOCAL_API_BASE",
+    "default_api_base": "http://ollama:11434/v1",
+    "keep_alive": "30m",
+    "max_loaded_models": 1,
+    "primary": {
+      "model": "qwen2.5:14b",
+      "digest": "sha256:2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+      "size_bytes": 8988110688,
+      "context": 131072,
+      "license": "apache-2.0",
+      "source_url": "https://ollama.com/library/qwen2.5:14b"
+    },
+    "embedding": {
+      "model": "nomic-embed-text:latest",
+      "digest": "sha256:970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+      "size_bytes": 274290656,
+      "context": 8192,
+      "license": "apache-2.0",
+      "source_url": "https://ollama.com/library/nomic-embed-text:latest"
+    }
+  }
 }

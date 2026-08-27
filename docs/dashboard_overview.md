@@ -8,7 +8,7 @@ The canonical website UI lives in `web/` and is served locally by
 `dashboard/server/live_dashboard_server.py`.
 
 - Public landing route: `/`
-- Operator dashboard route: `/overview`
+- Operator dashboard route: `/esd-lab`
 - Additive NANO Study dashboard route: `/nano/dashboard`
 - Legacy `/dashboard/` route: redirect only
 
@@ -45,7 +45,7 @@ The canonical website UI lives in `web/` and is served locally by
 * Python and R pipelines still produce the same payload schema documented in `dashboard/context_skill/references/dashboard_schema.md`.
 * No PHI leaves the secure mount; rendered values stay group-level or surrogate-only.
 * Cloudflare Pages and localhost now share the same SPA shell and route model.
-* Cluster observability is additive: `/overview` shows Kubernetes topology and
+* Cluster observability is additive: `/esd-lab` shows Kubernetes topology and
   readings pipeline status when available, and a labeled local fallback when
   Kubernetes is disabled.
 * Retired dashboard sources can be inspected or restored from the pre-sweep Git tag without bloating the active tree.

@@ -16,7 +16,7 @@ The sweep is intentionally repair-first and commit-later:
 7. Starts the local dashboard backend and checks `/api/healthz`.
 8. Runs Playwright desktop/mobile visual checks with
    `web/scripts/visual-health-check.mjs`.
-9. Probes the public Pages URLs, including `/overview` and
+9. Probes the public Pages URLs, including `/esd-lab` and
    `/?v=20260604-032545`.
 
 If all checks pass and safe repairs changed tracked files, the workflow commits
@@ -29,6 +29,6 @@ Run the visual check locally after starting the dashboard backend:
 ```bash
 node web/scripts/visual-health-check.mjs \
   --base-url http://127.0.0.1:8080 \
-  --live-url https://esd-lab-namo.pages.dev/overview \
+  --live-url https://esd-lab-namo.pages.dev/esd-lab \
   --live-url 'https://esd-lab-namo.pages.dev/?v=20260604-032545'
 ```

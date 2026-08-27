@@ -1,0 +1,45 @@
+{{- if .Values.scrape.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-scrape
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scrape
+spec:
+  schedule: {{ .Values.scrape.schedule | quote }}
+  # A scrape that is still running when the next one fires should be left alone,
+  # not raced -- the sources rate-limit and two concurrent runs get both throttled.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.scrape.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.scrape.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.scrape.backoffLimit }}
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: scrape
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - python
+                - dashboard/pipelines/build_similar_studies.py
+              resources:
+                {{- toYaml .Values.scrape.resources | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /app/dashboard/data
+          volumes:
+            - name: data
+              {{- if .Values.existingClaims.data }}
+              persistentVolumeClaim:
+                claimName: {{ .Values.existingClaims.data }}
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+{{- end }}

@@ -25,6 +25,11 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
+{{- define "esd-lab-dashboard.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "esd-lab-dashboard.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
 {{- define "esd-lab-dashboard.image" -}}
 {{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end -}}

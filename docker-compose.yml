@@ -128,12 +128,16 @@ services:
       <<: *dashboard-assistant-environment
       PYTHONUNBUFFERED: "1"
       DASHBOARD_REUSE_EXISTING_SPA_BUILD: ${DASHBOARD_REUSE_EXISTING_SPA_BUILD:-true}
+      # Sized to the CPU grant above. Unset, these default to the host's core
+      # count (32) inside an 8-CPU quota and the process thrashes.
+      OMP_NUM_THREADS: ${OMP_NUM_THREADS:-8}
+      MKL_NUM_THREADS: ${MKL_NUM_THREADS:-8}
     # Docker Desktop resolves host.docker.internal on its own; declaring it
     # keeps the local model tier reachable on plain Linux Docker too.
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    cpus: "2.0"
-    mem_limit: ${DASHBOARD_MEM_LIMIT:-2g}
+    cpus: "8.0"
+    mem_limit: ${DASHBOARD_MEM_LIMIT:-3g}
     pids_limit: 512
     volumes:
       - type: bind
@@ -243,8 +247,125 @@ services:
     networks:
       - esd-lab-dashboard
 
+  # ── Local model server ───────────────────────────────────────────────────
+  # The primary generalist runs here. Tags and digests come from
+  # config/llm_model.json, which scripts/resolve_local_models.py pins against
+  # the live registry -- this file never names a model.
+  ollama:
+    image: ollama/ollama:0.13.0
+    init: true
+    environment:
+      OLLAMA_MODELS: /models
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-30m}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+      # One large model resident at a time. A 12 GB card cannot hold the
+      # generalist and the specialist together, and letting Ollama try means
+      # both spill to CPU instead of one running properly.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - type: bind
+        source: ./models/ollama
+        target: /models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    cpus: "12.0"
+    mem_limit: ${OLLAMA_MEM_LIMIT:-7g}
+    pids_limit: 512
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # A cold model load is minutes, not seconds. Too short a start_period here
+      # produces a restart loop that looks exactly like a crash.
+      start_period: 150s
+    labels:
+      com.esdlabusc.autoheal: "true"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - esd-lab-dashboard
+
+  # ── Retrieval index builder ──────────────────────────────────────────────
+  indexer:
+    init: true
+    build:
+      context: .
+      dockerfile: docker/dashboard/Dockerfile
+    image: esd-lab-usc-dashboard:latest
+    command: ["python", "scripts/run_indexer.py", "--watch"]
+    environment:
+      <<: *dashboard-assistant-environment
+      PYTHONUNBUFFERED: "1"
+      OMP_NUM_THREADS: ${INDEXER_OMP_THREADS:-6}
+      MKL_NUM_THREADS: ${INDEXER_OMP_THREADS:-6}
+      ESD_INDEX_EMBED_BASE: http://ollama:11434
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+    cpus: "6.0"
+    mem_limit: ${INDEXER_MEM_LIMIT:-2g}
+    pids_limit: 256
+    healthcheck:
+      # Healthy means the manifest exists and is not older than its own rebuild
+      # cadence. A builder that is running but not producing is not healthy.
+      test: ["CMD", "python", "scripts/check_index_freshness.py", "--quiet"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    labels:
+      com.esdlabusc.autoheal: "true"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - esd-lab-dashboard
+
+  # ── Dense vector store ───────────────────────────────────────────────────
+  # Profile-gated on purpose. The default retrieval path is SQLite FTS5 plus
+  # sqlite-vec in the dashboard process, which needs no extra service and no
+  # extra gigabyte. Start this profile when the corpus outgrows that.
+  vectorstore:
+    profiles: ["qdrant"]
+    image: qdrant/qdrant:v1.12.4
+    init: true
+    volumes:
+      - type: volume
+        source: qdrant-storage
+        target: /qdrant/storage
+    cpus: "2.0"
+    mem_limit: ${QDRANT_MEM_LIMIT:-1g}
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      com.esdlabusc.autoheal: "true"
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    networks:
+      - esd-lab-dashboard
+
 volumes:
   dashboard-node-modules:
+  qdrant-storage:
 
 secrets:
   cloudflare-tunnel-token:

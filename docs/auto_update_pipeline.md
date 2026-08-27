@@ -56,7 +56,7 @@ docker compose -f docker/compose.dev.yml up --build dashboard
 What that does:
 
 1. Serves the repository root at `http://localhost:8080/`.
-2. Serves the canonical SPA at `/` and `/overview`.
+2. Serves the canonical SPA at `/` and `/esd-lab`.
 3. Polls dashboard inputs and `esd-lab-readings/` every 20 seconds.
 4. Rebuilds `dashboard_data.json`, `readings_data.json`, and `runtime_status.json` when an input changes.
 
@@ -178,7 +178,7 @@ python dashboard/pipelines/build_dashboard_data.py --fallback-synthetic
 Rscript dashboard/pipelines/build_dashboard_data.R
 ```
 
-After any of these, open `http://localhost:8080/` or `http://localhost:8080/overview`,
+After any of these, open `http://localhost:8080/` or `http://localhost:8080/esd-lab`,
 or run the Docker service for automatic refreshes.
 
 ## 5. Inputs

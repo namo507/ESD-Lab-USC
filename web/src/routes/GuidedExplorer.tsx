@@ -30,7 +30,7 @@ const QA_EPOCHS: Epoch[] = [
 ];
 
 const LINKS = [
-  { title: "Open Lab Pulse", body: "Start with the operator overview.", to: "/overview" },
+  { title: "Open Lab Pulse", body: "Start with the operator overview.", to: "/esd-lab" },
   { title: "Review Results", body: "See HRV and HDA trajectories.", to: "/results" },
   { title: "Ask ESD Buddy", body: "Use Cmd/Ctrl+K anywhere in the shell.", to: "/public-insights" },
 ];

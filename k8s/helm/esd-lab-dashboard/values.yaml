@@ -1,9 +1,11 @@
 replicaCount: 1
 
 autoscaling:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 6
+  enabled: true
+  minReplicas: 1
+  # Bounded by the single-node memory budget, not by ambition: three dashboard
+  # replicas at 3Gi already sits beside a 7Gi model server on a 15.1 GB host.
+  maxReplicas: 3
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
@@ -33,14 +35,17 @@ dashboard:
   fallbackSynthetic: true
   resources:
     requests:
-      cpu: 250m
-      memory: 768Mi
+      cpu: "2"
+      memory: 1Gi
     limits:
-      cpu: "1"
-      memory: 1536Mi
+      cpu: "8"
+      memory: 3Gi
 
 assistant:
   enabled: true
+  # The in-cluster Ollama deployment is the primary tier now. The hosted NVIDIA
+  # tier below is retained and disabled: rolling back is a values edit.
+  ollamaEnabled: true
   # Primary provider. Remaining tiers are tried in order when this one is
   # unconfigured or failing, so one provider outage cannot take ESD Buddy down.
   provider: gemini
@@ -52,9 +57,12 @@ assistant:
   geminiApiKeySecretKey: dashboardAssistantGeminiApiKey
   # A cluster has no Docker Model Runner on its host, so the local tier stays
   # off unless an OpenAI-compatible in-cluster service is pointed at here.
-  localEnabled: false
-  localApiBase: http://model-runner.default.svc.cluster.local:12434/engines/v1
-  localModel: ai/nemotron-3-nano
+  localEnabled: true
+  localRuntime: ollama
+  # Resolved into the release name by the templates.
+  localApiBase: http://esd-lab-dashboard-ollama:11434/v1
+  # Pinned by scripts/resolve_local_models.py; see models/MANIFEST.json.
+  localModel: qwen2.5:14b
   runtime: nvidia-build-api
   apiBase: https://integrate.api.nvidia.com/v1
   apiKeySecretKey: dashboardAssistantApiKey
@@ -130,8 +138,85 @@ secret:
   dashboardAssistantApiKey: ""
   dashboardAssistantGeminiApiKey: ""
 
+# ─── Local model server ──────────────────────────────────────────────────────
+ollama:
+  enabled: true
+  image:
+    repository: ollama/ollama
+    tag: "0.13.0"
+    pullPolicy: IfNotPresent
+  keepAlive: 30m
+  numParallel: 2
+  # One large model resident at a time; see the deployment template.
+  maxLoadedModels: 1
+  persistence:
+    # Weights survive a pod restart only with a real claim. Without one a
+    # restart re-pulls ~9 GB.
+    existingClaim: ""
+  podDisruptionBudget:
+    enabled: true
+  resources:
+    requests:
+      cpu: "4"
+      memory: 4Gi
+    limits:
+      cpu: "12"
+      memory: 7Gi
+      nvidia.com/gpu: 1
+
+# ─── Retrieval index builder ─────────────────────────────────────────────────
+indexer:
+  enabled: true
+  threads: 6
+  resources:
+    requests:
+      cpu: "1"
+      memory: 512Mi
+    limits:
+      cpu: "6"
+      memory: 2Gi
+
+# ─── Study landscape refresh ─────────────────────────────────────────────────
+scrape:
+  enabled: true
+  schedule: "0 3 * * *"
+  backoffLimit: 1
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+
+# ─── Full index rebuild ──────────────────────────────────────────────────────
+reindex:
+  enabled: true
+  schedule: "0 4 * * 0"
+  backoffLimit: 1
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  resources:
+    requests:
+      cpu: "1"
+      memory: 512Mi
+    limits:
+      cpu: "6"
+      memory: 2Gi
+
 networkPolicy:
   enabled: true
+  # Default deny, then an explicit allow-list. Only these hosts are reachable
+  # from the cluster; everything else is dropped. Slack is absent on purpose --
+  # it is opt-in and off by default.
+  egressAllowlist:
+    - clinicaltrials.gov
+    - eutils.ncbi.nlm.nih.gov
+    - api.reporter.nih.gov
+    - www.esdlabsc.com
+    - redcap.research.sc.edu
 
 podSecurityContext:
   runAsNonRoot: true

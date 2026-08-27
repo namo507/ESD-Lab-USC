@@ -4,7 +4,8 @@ import { useStudyData, type NanoData, type NicoData, type ScatterPointData } fro
 import { useUi } from "@/store/ui";
 
 /**
- * Dual-study hero for the Overview page.
+ * Dual-study hero. Built for the retired Overview page; kept because the
+ * codex cards on /esd-lab reuse its study vocabulary.
  *
  * Renders the NANO and/or NICO hero panels driven entirely by the additive
  * `nano` / `nico` blocks of `dashboard_data.json` — every count and statistic

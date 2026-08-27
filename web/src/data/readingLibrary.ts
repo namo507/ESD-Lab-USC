@@ -7,7 +7,7 @@
  * (counts, pages, sources, years, indexed terms) as metric graphs without
  * depending on the readings API being reachable from the static deployment.
  *
- * The Overview route still streams the same library live via `useReadingsLibrary`
+ * The operator routes still stream the same library live via `useReadingsLibrary`
  * for its geography map; this module is the static, always-available view used
  * for the landing showcase.
  */

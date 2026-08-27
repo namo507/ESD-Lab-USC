@@ -206,7 +206,7 @@ export function Participants() {
           <p className={styles.scopeNotice} role="status">
             The de-identified participant table covers NANO and NICO only.{" "}
             {activeStudy} participants are not part of this feed &mdash; open that study
-            in REDCap from the Overview page to review its records.
+            in REDCap from the ESD Lab front door to review its records.
           </p>
         )}
 

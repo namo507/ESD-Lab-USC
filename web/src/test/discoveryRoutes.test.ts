@@ -4,20 +4,20 @@ import { fromDiscoveryRoute, isDiscoveryPath, toDiscoveryRoute } from "@/lib/dis
 describe("Discovery route helpers", () => {
   it("detects Discovery paths", () => {
     expect(isDiscoveryPath("/discovery")).toBe(true);
-    expect(isDiscoveryPath("/discovery/overview")).toBe(true);
-    expect(isDiscoveryPath("/overview")).toBe(false);
+    expect(isDiscoveryPath("/discovery/participants")).toBe(true);
+    expect(isDiscoveryPath("/participants")).toBe(false);
   });
 
   it("prefixes internal app routes once", () => {
     expect(toDiscoveryRoute("/")).toBe("/discovery");
-    expect(toDiscoveryRoute("/overview")).toBe("/discovery/overview");
+    expect(toDiscoveryRoute("/results")).toBe("/discovery/results");
     expect(toDiscoveryRoute("/participants?study=home")).toBe("/discovery/participants?study=home");
-    expect(toDiscoveryRoute("/discovery/overview")).toBe("/discovery/overview");
+    expect(toDiscoveryRoute("/discovery/results")).toBe("/discovery/results");
   });
 
   it("restores default routes from Discovery routes", () => {
     expect(fromDiscoveryRoute("/discovery")).toBe("/");
-    expect(fromDiscoveryRoute("/discovery/overview")).toBe("/overview");
+    expect(fromDiscoveryRoute("/discovery/results")).toBe("/results");
     expect(fromDiscoveryRoute("/discovery/participants?study=home")).toBe("/participants?study=home");
   });
 });

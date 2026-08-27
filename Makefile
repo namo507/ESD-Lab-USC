@@ -26,7 +26,7 @@ K8S_DATA_CLAIM ?= esd-dashboard-data-rwx
 K8S_IMAGE_REPOSITORY ?= esd-lab-dashboard
 K8S_IMAGE_TAG ?= local
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune models-resolve models-pull models-verify assistant-reindex assistant-reindex-sparse assistant-eval index-freshness similar-studies stack-up stack-stats self-heal self-heal-watch self-heal-test buddy-preview buddy-capture
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -170,7 +170,7 @@ rebuild:  ## Recreate the canonical Docker stack from a fresh build
 dashboard-build:  ## Build the live dashboard Docker image
 	$(COMPOSE) build dashboard
 
-dashboard-up:  ## Start the live website runtime at http://localhost:8080/ (overview at /overview)
+dashboard-up:  ## Start the live website runtime at http://localhost:8080/ (front door at /esd-lab)
 	$(COMPOSE) up --build dashboard
 
 dashboard-down:  ## Stop the live dashboard container
@@ -318,6 +318,65 @@ docker-share-health:  ## Check dashboard plus the currently selected share sidec
 
 ops-check: compose-validate  ## Check canonical + runtime-share public dashboard surfaces
 	$(PYTHON) scripts/check_live_surfaces.py --max-stamp-age-hours 168
+
+# ─── Local model stack ──────────────────────────────────────────────────────
+
+models-resolve:  ## Resolve real model tags + digests from the live Ollama registry
+	$(PYTHON) scripts/resolve_local_models.py
+
+models-pull:  ## Pin the resolved tags, then download the weights
+	$(PYTHON) scripts/resolve_local_models.py --write
+	ollama pull $$($(PYTHON) -c "import json;print(json.load(open('config/llm_model.json'))['local']['primary']['model'])")
+	ollama pull $$($(PYTHON) -c "import json;print(json.load(open('config/llm_model.json'))['local']['embedding']['model'])")
+
+models-verify:  ## Re-check every pinned digest against the registry; fails CI on drift
+	$(PYTHON) scripts/verify_model_manifest.py
+
+# ─── Retrieval index ────────────────────────────────────────────────────────
+
+assistant-reindex:  ## Rebuild the hybrid retrieval index from the approved corpus
+	$(PYTHON) scripts/build_assistant_index.py
+
+assistant-reindex-sparse:  ## Rebuild FTS5 only (no embedding service required)
+	$(PYTHON) scripts/build_assistant_index.py --sparse-only
+
+assistant-eval:  ## Run the assistant eval fixtures; blocks deploy on a regression
+	$(PYTHON) scripts/run_assistant_eval.py
+
+index-freshness:  ## Report the age of the retrieval index manifest
+	$(PYTHON) scripts/check_index_freshness.py
+
+# ─── Study landscape ────────────────────────────────────────────────────────
+
+similar-studies:  ## Refresh the comparable-study landscape from the official APIs
+	$(PYTHON) dashboard/pipelines/build_similar_studies.py
+
+# ─── Stack ──────────────────────────────────────────────────────────────────
+
+stack-up:  ## Start the full local stack (dashboard + ollama + indexer)
+	docker compose up -d --build dashboard ollama indexer
+
+stack-stats:  ## Snapshot container resource use against the budget in DOCKER.md
+	$(PYTHON) scripts/check_stack_budget.py
+
+# ─── Self-healing ───────────────────────────────────────────────────────────
+
+self-heal:  ## Run one detect-and-repair cycle
+	$(PYTHON) scripts/self_heal.py --once
+
+self-heal-watch:  ## Supervise continuously
+	$(PYTHON) scripts/self_heal.py --watch --interval 60
+
+self-heal-test:  ## Chaos suite: prove the system heals rather than just survives
+	$(PYTHON) scripts/chaos_suite.py
+
+# ─── Front door ─────────────────────────────────────────────────────────────
+
+buddy-preview:  ## Vite dev server with the 3D buddy scene
+	cd web && npm run dev
+
+buddy-capture:  ## Build, serve, and screenshot /esd-lab with design assertions
+	cd web && npx vite build && (npx vite preview --port 4173 & sleep 6; node scripts/capture-esd-lab.mjs; kill %1)
 
 logs-prune:  ## Delete local log files older than LOG_RETENTION_DAYS (default: 30)
 	bash scripts/prune_logs.sh

@@ -280,7 +280,7 @@ export function Landing() {
             <button
               type="button"
               className={styles.dashboardNavButton}
-              onClick={() => navigate(route("/overview"))}
+              onClick={() => navigate(route("/esd-lab"))}
               tabIndex={navVisible ? 0 : -1}
               data-tour="operator-toggle"
             >
@@ -308,7 +308,7 @@ export function Landing() {
                 infants from the NICU to age three, reading attention and autonomic regulation directly from the heart.
               </p>
               <div className={styles.heroActions}>
-                <button type="button" className={styles.primaryButton} onClick={() => navigate(route("/overview"))} data-tour="operator-toggle">
+                <button type="button" className={styles.primaryButton} onClick={() => navigate(route("/esd-lab"))} data-tour="operator-toggle">
                   Open the dashboard
                 </button>
                 <button type="button" className={styles.secondaryButton} onClick={() => jumpTo("aims")}>

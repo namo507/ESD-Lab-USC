@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-I found the two public Pages URLs were broken at the start of the sweep because the deployed Pages Worker still proxied `/api/*` to a dead quick Cloudflare Tunnel origin. I rebuilt the Docker dashboard image, started a fresh quick tunnel, rebuilt and redeployed the Cloudflare Pages artifact, and verified that `https://esd-lab-namo.pages.dev/`, `https://esd-lab-namo.pages.dev/overview`, and `https://esd-lab-namo.pages.dev/api/healthz` are healthy now. The main remaining reliability risk is still the rotating quick tunnel. The named tunnel cannot be completed until USC IT creates the `esd-lab-namo.sc.edu` CNAME and the named connector is running.
+I found the two public Pages URLs were broken at the start of the sweep because the deployed Pages Worker still proxied `/api/*` to a dead quick Cloudflare Tunnel origin. I rebuilt the Docker dashboard image, started a fresh quick tunnel, rebuilt and redeployed the Cloudflare Pages artifact, and verified that `https://esd-lab-namo.pages.dev/`, `https://esd-lab-namo.pages.dev/esd-lab`, and `https://esd-lab-namo.pages.dev/api/healthz` are healthy now. The main remaining reliability risk is still the rotating quick tunnel. The named tunnel cannot be completed until USC IT creates the `esd-lab-namo.sc.edu` CNAME and the named connector is running.
 
 ## Findings
 
@@ -11,7 +11,7 @@ I found the two public Pages URLs were broken at the start of the sweep because 
 | INF-001 | Cloudflare Pages | CRITICAL | `dist/pages-wrapper/_worker.js`, Cloudflare Pages | Public `/api/*` returned Cloudflare 530 through a dead quick tunnel origin. | AUTO-SAFE plus live deploy | Fixed and verified |
 | INF-002 | Cloudflare Tunnel | HIGH | `docs/cloudflare_cutover_blockers.md`, Cloudflare account | Named hostname `esd-lab-namo.sc.edu` is NXDOMAIN and named tunnel `ESD Lab Namo` is down. | PROPOSE | Blocked on USC DNS and connector |
 | INF-003 | Pages hardening | MEDIUM | `web/vite.config.ts`, `web/public/_headers` | Production build shipped source maps and no Pages security headers. | AUTO-SAFE | Fixed and verified |
-| INF-004 | Legacy routing | MEDIUM | `scripts/build_pages_site.py` | Pages Worker served `/dashboard/` as the SPA shell instead of redirecting to `/overview`. | AUTO-SAFE | Fixed and verified |
+| INF-004 | Legacy routing | MEDIUM | `scripts/build_pages_site.py` | Pages Worker served `/dashboard/` as the SPA shell instead of redirecting to `/esd-lab`. | AUTO-SAFE | Fixed and verified |
 | INF-005 | Docker build | HIGH | `docker/dashboard/Dockerfile`, `dashboard/requirements.txt` | Cold Docker build failed because `llama-cpp-python` fell back to a source build without a compiler. | AUTO-SAFE | Fixed and verified |
 | INF-006 | Docker runtime hygiene | MEDIUM | `docker/compose.dev.yml`, `docker/compose.prod.yml` | Dev compose bind-mounts the whole repo, including ignored local files, into `/app`. | AUTO-SAFE | Fixed with production compose file |
 | INF-007 | Local smoke reliability | MEDIUM | `scripts/share_dashboard.sh`, `Makefile`, `docker/compose.dev.yml` | Health probes could hang on a bad listener at `127.0.0.1:8080`, and Python 3.9 could not run dashboard modules. | AUTO-SAFE | Fixed and verified |
@@ -23,7 +23,7 @@ I found the two public Pages URLs were broken at the start of the sweep because 
 
 - Rebuilt and redeployed Cloudflare Pages production branch `main` with API origin `https://equivalent-industrial-smoke-xbox.trycloudflare.com`.
 - Added production Pages headers and disabled production sourcemaps.
-- Added Worker and `_redirects` handling for `/dashboard`, `/dashboard/`, and `/dashboard/index.html` to `/overview`.
+- Added Worker and `_redirects` handling for `/dashboard`, `/dashboard/`, and `/dashboard/index.html` to `/esd-lab`.
 - Added Docker build prerequisites and used the documented prebuilt `llama-cpp-python` CPU wheel index.
 - Added `docker/compose.prod.yml` without the whole-repo bind mount.
 - Added configurable `DASHBOARD_HOST_PORT` and `DASHBOARD_LOCAL_URL`.
@@ -87,9 +87,9 @@ Expected: rollout succeeds and the HPA shows dashboard pods scaling from 2 to 6 
 | Check | Result |
 | --- | --- |
 | `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/ --timeout 25 --min-bytes 8192` | PASS, 200, assistant ready |
-| `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/overview --timeout 25 --min-bytes 8192` | PASS, 200, assistant ready |
+| `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/esd-lab --timeout 25 --min-bytes 8192` | PASS, 200, assistant ready |
 | `curl -fsS https://esd-lab-namo.pages.dev/api/healthz` | PASS, JSON `status: ok` |
-| `curl https://esd-lab-namo.pages.dev/dashboard/` | PASS, 308 to `/overview` |
+| `curl https://esd-lab-namo.pages.dev/dashboard/` | PASS, 308 to `/esd-lab` |
 | `make check-env` | PASS |
 | `DASHBOARD_LOCAL_URL=https://esd-lab-namo.pages.dev make docker-health` | PASS |
 | `DASHBOARD_LOCAL_URL='http://[::1]:8080' make dashboard-smoke` | PASS |

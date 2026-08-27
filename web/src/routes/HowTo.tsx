@@ -53,7 +53,7 @@ function HelpNav() {
           <HelpCircle size={14} strokeWidth={1.5} />
           How-to
         </Link>
-        <Link className={styles.link} to={route("/overview")}>Operator</Link>
+        <Link className={styles.link} to={route("/esd-lab")}>Operator</Link>
       </div>
       <button type="button" className={styles.navButton} onClick={() => startNanoTour("public")} data-insight="tour-trigger">
         <Sparkles size={14} strokeWidth={1.5} />

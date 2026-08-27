@@ -33,7 +33,7 @@ describe("dashboard help content", () => {
       "Ask the lab search",
       "Session timer",
       "Force Sync",
-      "Overview",
+      "ESD Lab",
       "Intakes and Stories",
       "Window QA",
       "NANO Study VPT",

@@ -72,7 +72,7 @@ describe("dark mode surface guard", () => {
       "src/components/warm/ReadingsGeoMap.tsx",
       "src/components/shell/Sidebar.tsx",
       "src/components/shell/TopNav.tsx",
-      "src/routes/Overview.tsx",
+      "src/routes/EsdLab.tsx",
     ];
     for (const file of surfaces) {
       const src = read(file);

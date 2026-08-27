@@ -1,0 +1,60 @@
+{{- if .Values.indexer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-indexer
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: indexer
+spec:
+  replicas: 1
+  strategy:
+    # Two indexers would build the same index over each other. Serialise.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "esd-lab-dashboard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: indexer
+  template:
+    metadata:
+      labels:
+        {{- include "esd-lab-dashboard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: indexer
+    spec:
+      serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: indexer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "scripts/run_indexer.py", "--watch"]
+          env:
+            - name: ESD_INDEX_EMBED_BASE
+              value: http://{{ include "esd-lab-dashboard.fullname" . }}-ollama:11434
+            - name: OMP_NUM_THREADS
+              value: {{ .Values.indexer.threads | quote }}
+            - name: MKL_NUM_THREADS
+              value: {{ .Values.indexer.threads | quote }}
+          # "Running" is not "producing": a builder whose manifest has gone stale
+          # is unhealthy even though the process is alive.
+          livenessProbe:
+            exec:
+              command: ["python", "scripts/check_index_freshness.py", "--quiet"]
+            initialDelaySeconds: 120
+            periodSeconds: 300
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.indexer.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/dashboard/data
+      volumes:
+        - name: data
+          {{- if .Values.existingClaims.data }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.existingClaims.data }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

@@ -13,7 +13,7 @@ import styles from "./Matlab.module.css";
  *
  * Mirrors the REDCap Sync surface so jump atlas, sidebar, and AI Buddy
  * continuity stay intact. Visual language, ambient orbit, and KPI grid all
- * reuse the existing primitives so symmetry with /overview and /redcap is
+ * reuse the existing primitives so symmetry with /esd-lab and /redcap is
  * preserved. The page is data-driven by `useMatlabIntegration`, which reads
  * the `matlab_integration` block emitted by both the synthetic generator
  * and the production builder (manifest.json under data/interim/matlab/).

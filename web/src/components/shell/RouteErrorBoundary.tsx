@@ -69,9 +69,9 @@ export class RouteErrorBoundary extends Component<Props, State> {
             </button>
             <a
               style={{ ...actionStyle, background: "var(--usc-garnet)", borderColor: "var(--usc-garnet)", color: "#fff8f3" }}
-              href="/overview"
+              href="/esd-lab"
             >
-              Go to overview
+              Go to ESD Lab
             </a>
           </div>
           {import.meta.env.DEV && (

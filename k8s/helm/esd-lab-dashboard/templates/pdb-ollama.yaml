@@ -1,0 +1,17 @@
+{{- if and .Values.ollama.enabled .Values.ollama.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-ollama
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  # A single GPU-backed replica: evicting it means a cold model load on the way
+  # back, so voluntary disruption is blocked outright.
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "esd-lab-dashboard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama
+{{- end }}

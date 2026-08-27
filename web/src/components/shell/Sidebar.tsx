@@ -36,7 +36,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "ops",
     title: "Lab Operations",
     items: [
-      { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+      { to: "/esd-lab", label: "ESD Lab", icon: "layout-dashboard" },
       { to: "/participants", label: "Intakes & Stories", icon: "heart-handshake" },
       { to: "/qa", label: "Window QA", icon: "shield-check" },
       { to: DOC_ROUTE, label: "Documentation", icon: "book-open" },
@@ -47,7 +47,7 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
     id: "studies",
     title: "Active Studies",
     items: [
-      { to: "/overview", label: "NANO Study (VPT)", icon: "activity" },
+      { to: "/esd-lab", label: "NANO Study (VPT)", icon: "activity" },
       { to: "/participants?study=home", label: "Home Study", icon: "home" },
       { to: "/participants?study=fiscal", label: "FiSCAL-ASD", icon: "baby" },
     ],
@@ -139,15 +139,6 @@ const NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
       { to: "/changelog", label: "Change History", icon: "clock", flag: "DATA_CHANGELOG" },
     ],
   },
-  {
-    id: "brand-preview",
-    title: "Brand Preview · 2026",
-    items: [
-      { to: "/discovery", label: "Discovery Landing", icon: "wand-sparkles", flag: "BRAND_ESD_2026" },
-      { to: "/discovery/overview", label: "Discovery Overview", icon: "layout-dashboard", flag: "BRAND_ESD_2026" },
-      { to: "/discovery/public-insights", label: "Discovery Insights", icon: "bar-chart-3", flag: "BRAND_ESD_2026" },
-    ],
-  },
 ];
 
 const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] }> = [
@@ -156,7 +147,7 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
     title: "Executive View",
     items: [
       { to: "/executive", label: "Executive", icon: "presentation", flag: "EXECUTIVE_MODE" },
-      { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+      { to: "/esd-lab", label: "ESD Lab", icon: "layout-dashboard" },
       { to: "/pipeline-health", label: "Pipeline Health", icon: "server-cog", flag: "REDCAP_PIPELINE_HEALTH" },
       { to: "/public-insights", label: "Public Insights", icon: "bar-chart-3", flag: "PUBLIC_INSIGHTS" },
       { to: "/results", label: "Results", icon: "line-chart" },
@@ -167,7 +158,7 @@ const EXECUTIVE_NAV_GROUPS: Array<{ id: string; title: string; items: NavItem[] 
 ];
 
 const CORE_NAV_ITEMS: NavItem[] = [
-  { to: "/overview", label: "Overview", icon: "layout-dashboard" },
+  { to: "/esd-lab", label: "ESD Lab", icon: "layout-dashboard" },
   { to: "/nano/attention", label: "Attention & Autonomic", icon: "activity" },
   { to: "/nano/lgcm-trajectories", label: "LGCM Trajectories", icon: "line-chart", flag: "NANO_LGCM_TRAJECTORIES" },
   { to: DOC_ROUTE, label: "Documentation", icon: "book-open" },
@@ -205,7 +196,7 @@ export function Sidebar({ study, sourceState, qaPending, executiveMode = false, 
       <NavLink
         key={key}
         to={to}
-        end={it.to === "/overview" || to === "/discovery/overview"}
+        end={it.to === "/esd-lab"}
         data-tour={
           it.label === "Documentation"
             ? "operator-docs"

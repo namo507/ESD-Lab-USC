@@ -83,7 +83,7 @@ The local `.env` contains the expected Cloudflare key names, including `CLOUDFLA
 - I kept the production Pages site working by deploying the Worker to a fresh quick tunnel origin.
 - I added safeguards so production builds do not ship sourcemaps.
 - I added Cloudflare Pages `_headers`.
-- I added Pages Worker redirects from legacy `/dashboard` paths to `/overview`.
+- I added Pages Worker redirects from legacy `/dashboard` paths to `/esd-lab`.
 - I fixed the Docker image cold build so the dashboard runtime can be rebuilt.
 - I added a production Compose file that avoids the whole-repo bind mount.
 - I added health-check timeouts and Python 3.10+ selection to the share script.
@@ -108,6 +108,6 @@ TTL 300. This points a single research-dashboard hostname at a Cloudflare Tunnel
 | `grep API_ORIGIN dist/pages-wrapper/_worker.js` | PASS, currently points at the live quick tunnel |
 | `curl https://esd-lab-namo.pages.dev/api/healthz` | PASS, `status: ok` |
 | `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/ --timeout 25 --min-bytes 8192` | PASS |
-| `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/overview --timeout 25 --min-bytes 8192` | PASS |
+| `python3 scripts/check_site_health.py --url https://esd-lab-namo.pages.dev/esd-lab --timeout 25 --min-bytes 8192` | PASS |
 
 I will not call the named tunnel cutover complete until DNS returns the `cfargotunnel.com` CNAME and the named hostname returns 200 on `/api/healthz`.

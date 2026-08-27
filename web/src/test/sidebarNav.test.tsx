@@ -37,7 +37,7 @@ const SOURCE: DashboardSourceState = {
   projectsTotal: 8,
 };
 
-function renderSidebar(initialEntry = "/overview") {
+function renderSidebar(initialEntry = "/esd-lab") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Sidebar study={STUDY} sourceState={SOURCE} qaPending={3} />
@@ -60,18 +60,18 @@ describe("Sidebar navigation", () => {
     expect(screen.getByRole("link", { name: /^nano study$/i })).toHaveAttribute("href", "/nano/dashboard");
   });
 
-  it("shows the feature-gated Discovery preview section", () => {
+  it("retires the brand-preview group now that ESD 2026 is canonical", () => {
     renderSidebar();
 
-    expect(screen.getByText(/brand preview/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /discovery landing/i })).toHaveAttribute("href", "/discovery");
-    expect(screen.getByRole("link", { name: /discovery overview/i })).toHaveAttribute("href", "/discovery/overview");
+    expect(screen.queryByText(/brand preview/i)).toBeNull();
+    expect(screen.queryByRole("link", { name: /discovery overview/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /^esd lab$/i })).toHaveAttribute("href", "/esd-lab");
   });
 
   it("keeps existing navigation inside the Discovery route subtree", () => {
-    renderSidebar("/discovery/overview");
+    renderSidebar("/discovery/results");
 
-    expect(screen.getByRole("link", { name: /^overview/i })).toHaveAttribute("href", "/discovery/overview");
+    expect(screen.getByRole("link", { name: /^esd lab$/i })).toHaveAttribute("href", "/discovery/esd-lab");
     expect(screen.getByRole("link", { name: /redcap sync/i })).toHaveAttribute("href", "/discovery/redcap");
     expect(screen.getByRole("link", { name: /home study/i })).toHaveAttribute("href", "/discovery/participants?study=home");
   });

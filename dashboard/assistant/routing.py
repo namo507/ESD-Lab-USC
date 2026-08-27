@@ -241,9 +241,212 @@ def plan_route(
     )
 
 
+# ---------------------------------------------------------------------------
+# Domain axis
+#
+# The class above answers "how hard is this question". This second axis answers
+# "what kind of question is it", which is what decides *which* model should see
+# it rather than how many tokens it gets. The two compose: a question is both a
+# complexity class and a domain, and the tier order is chosen from the pair.
+#
+# Classification here must never require a model call. Spinning up an LLM to
+# decide which LLM to use would defeat the entire purpose -- the deterministic
+# tier exists precisely so that the common case never loads a model at all.
+# ---------------------------------------------------------------------------
+
+QuestionDomain = Literal["deterministic", "clinical", "operational", "exploratory", "refused"]
+
+#: Assessment instruments, biomarkers, and clinical vocabulary. A question using
+#: these wants domain knowledge, so it prefers the biomedical specialist when one
+#: is loaded.
+CLINICAL_MARKERS: tuple[str, ...] = (
+    "ados", "bayley", "nnns", "m-chat", "mchat", "csbs", "asq-3", "asq3",
+    "prapare", "epds", "vineland", "mullen",
+    "rsa", "hrv", "rmssd", "vagal", "parasympathetic", "sympathetic",
+    "autonomic", "heart rate variability", "respiratory sinus",
+    "cptd", "skin temperature", "thermoregulation",
+    "gestational age", "corrected age", "preterm", "very preterm", "vpt",
+    "nicu", "morbidity", "apgar",
+    "autism", "asd", "adhd", "developmental delay", "diagnosis", "diagnostic",
+    "biomarker", "phenotype", "cascade",
+    "eye tracking", "gaze", "still-face", "stillface", "coregulation",
+    # Instruments and visits are asked about by these words far more often
+    # than by an assessment's name.
+    "instrument", "instruments", "assessment", "assessments", "visit", "visits",
+    "visit schedule", "cga", "month visit",
+    # Cohort codes from the lab context pack.
+    "asib", "vpt", "td group", "pt group", "cohort",
+)
+
+#: Pipeline, freshness, and platform questions. These want the generalist plus
+#: the operational context pack.
+OPERATIONAL_MARKERS: tuple[str, ...] = (
+    "pipeline", "redcap", "sync", "freshness", "stale", "healthz", "health check",
+    "deploy", "docker", "kubernetes", "helm", "container", "restart",
+    "index", "reindex", "embedding", "vector", "retrieval",
+    "how current", "how old", "last updated", "last run", "last sync",
+    "dashboard", "route", "endpoint", "api", "cron", "workflow",
+    "error", "failing", "failed", "down", "outage", "circuit breaker",
+)
+
+#: Questions the deterministic tier answers outright from a metric lookup, with
+#: no model in the loop at all. Target is under 100 ms.
+DETERMINISTIC_MARKERS: tuple[str, ...] = (
+    "how many", "how much", "count of", "total number",
+    "when did", "when was", "last sync", "last updated", "how current",
+    "what is the status", "status of", "is the", "are the",
+    "list the studies", "which studies", "how many studies", "how many projects",
+)
+
+
+#: One boundary-anchored pattern per marker, compiled once at import. Hyphens and
+#: other punctuation inside a marker are escaped, and \b is only meaningful next
+#: to a word character, so markers such as "asq-3" anchor on their outer edges.
+_MARKER_RE: dict[str, re.Pattern[str]] = {
+    marker: re.compile(rf"(?<!\w){re.escape(marker)}(?!\w)")
+    for marker in set(CLINICAL_MARKERS + OPERATIONAL_MARKERS + DETERMINISTIC_MARKERS)
+}
+
+
+#: A count question: answered from an artifact, never from a model.
+_COUNT_RE = re.compile(r"\bhow (?:many|much)\b|\b(?:count|total number) of\b", re.IGNORECASE)
+
+#: Wording that needs two or more facts held together rather than one looked up.
+_RELATIONAL_RE = re.compile(
+    r"\brelationship between\b|\bdifference between\b|\bcompare\b|\bversus\b|\bvs\.?\b"
+    r"|\bhow does .{0,40} relate\b|\brelate to\b",
+    re.IGNORECASE,
+)
+
+
+def _marker_hit(text: str, markers: tuple[str, ...]) -> bool:
+    """Whether any marker appears in ``text`` as whole words.
+
+    Bare substring matching is wrong here and quietly so: "are the" is a
+    lookup marker, and it also sits inside "comp\u200bare the ACTION and IPSA
+    designs" \u2014 an exploratory question that was being routed as a
+    deterministic lookup because of it. Anchoring on word boundaries is what
+    stops a marker from matching the middle of an unrelated word.
+    """
+    return any(_MARKER_RE[marker].search(text) for marker in markers)
+
+
+def classify_domain(question: str) -> QuestionDomain:
+    """Sort a question by what it is about, not by how hard it is.
+
+    The order of these tests is the whole policy, and it is deliberate. Earlier
+    versions checked topic before question-shape, which mis-routed twice: "how
+    many instruments does NANO have" went to the clinical specialist because it
+    said *instruments*, and "what is the relationship between NANO and NICO"
+    went to the deterministic tier because it opened with *what is the*. Shape
+    outranks topic, and both outrank the fallback.
+
+        1. PHI            -- absolute, wins outright
+        2. count          -- a lookup, whatever else it mentions
+        3. relational     -- never a lookup, however short
+        4. clinical topic -- domain vocabulary
+        5. operational    -- platform and freshness
+        6. lookup marker  -- short, plain question
+        7. exploratory    -- everything else
+    """
+    text = _normalize(question)
+    if not text:
+        return "deterministic"
+
+    # Imported lazily so this module stays cheap to import and free of the
+    # provider/assistant dependency chain.
+    from dashboard.assistant.nano_buddy import is_phi_or_raw_request
+
+    if is_phi_or_raw_request(question):
+        return "refused"
+
+    # A count is answered from an artifact even when it names a system or an
+    # instrument. Routing it to a model turns a sub-100 ms answer into a slow one.
+    if _COUNT_RE.search(text):
+        return "deterministic"
+
+    # Relational wording needs two facts held together, so it is never a lookup.
+    if _RELATIONAL_RE.search(text):
+        return "exploratory"
+
+    if _marker_hit(text, CLINICAL_MARKERS):
+        return "clinical"
+
+    operational = _marker_hit(text, OPERATIONAL_MARKERS)
+    deterministic = _marker_hit(text, DETERMINISTIC_MARKERS)
+
+    if operational:
+        return "operational"
+    if deterministic and len(text.split()) <= QUICK_WORD_CEILING:
+        return "deterministic"
+    if deterministic:
+        return "deterministic"
+    return "exploratory"
+
+
+#: Which provider tier each domain prefers, ahead of the availability ordering.
+DOMAIN_TIER_PREFERENCE: dict[str, tuple[str, ...]] = {
+    "deterministic": ("deterministic",),
+    "clinical": ("specialist", "local", "nvidia"),
+    "operational": ("local", "nvidia"),
+    "exploratory": ("local", "nvidia"),
+    "refused": ("deterministic",),
+}
+
+
+@dataclass(frozen=True)
+class DomainDecision:
+    """The domain half of a routing plan."""
+
+    domain: QuestionDomain
+    #: Tier families to prefer, before availability failover is applied.
+    preferred_tiers: tuple[str, ...]
+    #: True when no model should be consulted at all.
+    model_free: bool
+    #: True when retrieval should run wide, with the reranker.
+    full_retrieval: bool
+    reason: str
+
+    def as_log_fields(self) -> dict[str, object]:
+        return {
+            "domain": self.domain,
+            "preferred_tiers": list(self.preferred_tiers),
+            "model_free": self.model_free,
+            "full_retrieval": self.full_retrieval,
+            "reason": self.reason,
+        }
+
+
+def plan_domain(question: str) -> DomainDecision:
+    """Classify a question's domain and say how it should be served."""
+    domain = classify_domain(question)
+    reasons = {
+        "refused": "PHI or raw-signal request; guard fired before any retrieval",
+        "deterministic": "metric lookup; answered from artifacts with no model",
+        "clinical": "assessment or biomarker vocabulary; prefer the biomedical specialist",
+        "operational": "platform or freshness question; generalist plus context pack",
+        "exploratory": "open question; generalist with full hybrid retrieval",
+    }
+    return DomainDecision(
+        domain=domain,
+        preferred_tiers=DOMAIN_TIER_PREFERENCE[domain],
+        model_free=domain in ("deterministic", "refused"),
+        full_retrieval=domain == "exploratory",
+        reason=reasons[domain],
+    )
+
+
 __all__ = [
     "CAPABILITY_RANK",
+    "CLINICAL_MARKERS",
+    "DETERMINISTIC_MARKERS",
     "DEEP_MARKERS",
+    "DOMAIN_TIER_PREFERENCE",
+    "DomainDecision",
+    "OPERATIONAL_MARKERS",
+    "QuestionDomain",
+    "classify_domain",
+    "plan_domain",
     "QUICK_MARKERS",
     "SPEED_RANK",
     "QuestionClass",

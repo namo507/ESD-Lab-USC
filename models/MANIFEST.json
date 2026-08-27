@@ -1,0 +1,72 @@
+{
+  "schema": "esd.models.manifest.v1",
+  "generated_at": "2026-08-27T16:56:49+00:00",
+  "resolved_for_vram_gb": 12.0,
+  "registry": "https://registry.ollama.ai/v2/library",
+  "note": "Weights are gitignored. This manifest and models/LICENSES/ are the tracked record.",
+  "models": [
+    {
+      "role": "primary",
+      "ref": "qwen2.5:14b",
+      "digest": "sha256:2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+      "size_bytes": 8988110688,
+      "size_gb": 8.988,
+      "context": 131072,
+      "license": "apache-2.0",
+      "license_sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+      "source_url": "https://ollama.com/library/qwen2.5:14b",
+      "resolved_at": "2026-08-27T16:56:48+00:00",
+      "layers": [
+        {
+          "mediaType": "application/vnd.ollama.image.model",
+          "digest": "sha256:2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+          "size": 8988110688
+        },
+        {
+          "mediaType": "application/vnd.ollama.image.system",
+          "digest": "sha256:66b9ea09bd5b7099cbb4fc820f31b575c0366fa439b08245566692c6784e281e",
+          "size": 68
+        },
+        {
+          "mediaType": "application/vnd.ollama.image.template",
+          "digest": "sha256:eb4402837c7829a690fa845de4d7f3fd842c2adee476d5341da8a46ea9255175",
+          "size": 1482
+        },
+        {
+          "mediaType": "application/vnd.ollama.image.license",
+          "digest": "sha256:832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "size": 11343
+        }
+      ]
+    },
+    {
+      "role": "embedding",
+      "ref": "nomic-embed-text:latest",
+      "digest": "sha256:970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+      "size_bytes": 274290656,
+      "size_gb": 0.274,
+      "context": 8192,
+      "license": "apache-2.0",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "source_url": "https://ollama.com/library/nomic-embed-text:latest",
+      "resolved_at": "2026-08-27T16:56:49+00:00",
+      "layers": [
+        {
+          "mediaType": "application/vnd.ollama.image.model",
+          "digest": "sha256:970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+          "size": 274290656
+        },
+        {
+          "mediaType": "application/vnd.ollama.image.license",
+          "digest": "sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "size": 11357
+        },
+        {
+          "mediaType": "application/vnd.ollama.image.params",
+          "digest": "sha256:ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d",
+          "size": 17
+        }
+      ]
+    }
+  ]
+}

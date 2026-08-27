@@ -156,7 +156,7 @@ export function ExecutiveMode() {
     <div className={`${shared.page} ${styles.page}`}>
       <div className={styles.banner}>
         <span><strong>Executive Summary View</strong> - Showing key study metrics only</span>
-        <Link to="/overview">Exit</Link>
+        <Link to="/esd-lab">Exit</Link>
       </div>
 
       <header className={shared.hero}>

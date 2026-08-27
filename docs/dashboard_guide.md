@@ -7,7 +7,7 @@
 ## 1. What is the dashboard?
 
 The current website is a React SPA served locally at `/` with the
-operator-facing dashboard at `/overview`. It is backed by
+operator-facing dashboard at `/esd-lab`. It is backed by
 `dashboard/data/dashboard_data.json` and `dashboard/data/readings_data.json`,
 which the nightly pipeline rebuilds from REDCap, feature outputs, and the
 reading library.
@@ -36,7 +36,7 @@ Run the local server and open the canonical routes:
 docker compose -f docker/compose.dev.yml up --build dashboard
 ```
 
-Then open `http://localhost:8080/`, `http://localhost:8080/overview`, or the
+Then open `http://localhost:8080/`, `http://localhost:8080/esd-lab`, or the
 additive NANO Study dashboard at `http://localhost:8080/nano/dashboard`.
 
 ### Option B — Public Pages URL
@@ -92,7 +92,7 @@ every run.
 
 ### Option C — From a URL (if you host it)
 ```
-https://<lab-server>/overview
+https://<lab-server>/esd-lab
 ```
 
 If the charts look blank, make sure `dashboard/data/dashboard_data.json` exists.

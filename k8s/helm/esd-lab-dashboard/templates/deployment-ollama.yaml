@@ -1,0 +1,104 @@
+{{- if .Values.ollama.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-ollama
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  replicas: 1
+  strategy:
+    # One GPU, one pod. A rolling update would ask the scheduler for a second
+    # GPU that does not exist and the new pod would sit Pending forever.
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "esd-lab-dashboard.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ollama
+  template:
+    metadata:
+      labels:
+        {{- include "esd-lab-dashboard.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ollama
+    spec:
+      serviceAccountName: {{ include "esd-lab-dashboard.serviceAccountName" . }}
+      containers:
+        - name: ollama
+          image: "{{ .Values.ollama.image.repository }}:{{ .Values.ollama.image.tag }}"
+          imagePullPolicy: {{ .Values.ollama.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 11434
+          env:
+            - name: OLLAMA_MODELS
+              value: /models
+            - name: OLLAMA_KEEP_ALIVE
+              value: {{ .Values.ollama.keepAlive | quote }}
+            - name: OLLAMA_NUM_PARALLEL
+              value: {{ .Values.ollama.numParallel | quote }}
+            # One large model resident at a time. Two will not fit in the VRAM
+            # this chart targets, and letting Ollama try means both spill to CPU
+            # instead of one running properly.
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: {{ .Values.ollama.maxLoadedModels | quote }}
+          # ── Probe semantics. Do not "simplify" these into one probe. ──
+          # startupProbe  : still loading. A cold model load is minutes.
+          # livenessProbe : the process is wedged -> restart.
+          # readinessProbe: cannot serve right now -> pull from the Service.
+          #
+          # A slow or degraded model must fail READINESS, never LIVENESS.
+          # Restarting a pod because generation is slow throws away the warm
+          # model cache and turns a slow answer into a crash loop that looks
+          # exactly like an outage.
+          startupProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.ollama.resources | nindent 12 }}
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          {{- if .Values.ollama.persistence.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.ollama.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "esd-lab-dashboard.fullname" . }}-ollama
+  labels:
+    {{- include "esd-lab-dashboard.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+spec:
+  type: ClusterIP
+  ports:
+    - port: 11434
+      targetPort: http
+      name: http
+  selector:
+    {{- include "esd-lab-dashboard.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ollama
+{{- end }}

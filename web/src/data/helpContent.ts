@@ -264,16 +264,16 @@ export const LANDING_REFERENCES: ReferenceEntry[] = [
 ];
 
 export const OPERATOR_REFERENCES: OperatorReference[] = [
-  { group: "Top bar", title: "Ask the lab search", href: "/overview", summary: "Seeds ESD Buddy with the typed operational question and opens the assistant on focus or Enter.", interactions: ["Focus search", "Press Enter", "Use Cmd or Ctrl plus K"] },
-  { group: "Top bar", title: "Session timer", href: "/overview", summary: "Shows the HIPAA idle timer so operators can track session age.", interactions: ["Open run context from the timer"] },
+  { group: "Top bar", title: "Ask the lab search", href: "/esd-lab", summary: "Seeds ESD Buddy with the typed operational question and opens the assistant on focus or Enter.", interactions: ["Focus search", "Press Enter", "Use Cmd or Ctrl plus K"] },
+  { group: "Top bar", title: "Session timer", href: "/esd-lab", summary: "Shows the HIPAA idle timer so operators can track session age.", interactions: ["Open run context from the timer"] },
   { group: "Top bar", title: "Landing", href: "/", summary: "Returns from the operator console to the public narrative landing surface.", interactions: ["Open Landing"] },
-  { group: "Top bar", title: "System", href: "/overview", summary: "Theme and system controls live in the top chrome so display mode stays consistent across routes.", interactions: ["Cycle the theme"] },
-  { group: "Top bar", title: "Force Sync", href: "/overview", summary: "Invalidates dashboard queries, updates the last-sync timestamp, and accelerates visible sync feedback.", interactions: ["Run Force Sync", "Read sync status"] },
-  { group: "Compliance", title: "PHI processing banner", href: "/overview", summary: "Confirms HIPAA-compliant audit logging, REDCap proxy identifier stripping, assistant prompt scrubbing, IRB protocol, and session age.", interactions: ["Dismiss in development", "Read IRB protocol"] },
-  { group: "Lab Operations", title: "Overview", href: "/overview", summary: "The working lab cockpit with KPIs, live pipeline DAG, readings context, agent QA, and participant flow.", interactions: ["Open stage detail", "Inspect KPI Buddy tips"] },
+  { group: "Top bar", title: "System", href: "/esd-lab", summary: "Theme and system controls live in the top chrome so display mode stays consistent across routes.", interactions: ["Cycle the theme"] },
+  { group: "Top bar", title: "Force Sync", href: "/esd-lab", summary: "Invalidates dashboard queries, updates the last-sync timestamp, and accelerates visible sync feedback.", interactions: ["Run Force Sync", "Read sync status"] },
+  { group: "Compliance", title: "PHI processing banner", href: "/esd-lab", summary: "Confirms HIPAA-compliant audit logging, REDCap proxy identifier stripping, assistant prompt scrubbing, IRB protocol, and session age.", interactions: ["Dismiss in development", "Read IRB protocol"] },
+  { group: "Lab Operations", title: "ESD Lab", href: "/esd-lab", summary: "The quiet front door: the buddy, five study glyphs, and one freshness line. Every metric is one hover or one Tab away.", interactions: ["Open stage detail", "Inspect KPI Buddy tips"] },
   { group: "Lab Operations", title: "Intakes and Stories", href: "/participants", summary: "Participant table and intake narrative surface for de-identified NANO IDs.", interactions: ["Filter participants", "Open participant detail"] },
   { group: "Lab Operations", title: "Window QA", href: "/qa", summary: "Epoch-level signal quality review for accepting, rejecting, or reviewing ECG windows.", interactions: ["Inspect epoch tiles", "Apply QA decisions"] },
-  { group: "Active Studies", title: "NANO Study VPT", href: "/overview", summary: "Sidebar shortcut for the active VPT-focused NANO study count.", interactions: ["Open overview"] },
+  { group: "Active Studies", title: "NANO Study VPT", href: "/esd-lab", summary: "Sidebar shortcut for the active VPT-focused NANO study count.", interactions: ["Open the ESD Lab front door"] },
   { group: "Active Studies", title: "Home Study", href: "/participants?study=home", summary: "Study-specific intake filter for home-study operations.", interactions: ["Open filtered participants"] },
   { group: "Active Studies", title: "FiSCAL-ASD", href: "/participants?study=fiscal", summary: "Study-specific intake filter for FiSCAL-ASD operations.", interactions: ["Open filtered participants"] },
   { group: "Data Infrastructure", title: "Clinical Pipeline", href: "/runs", summary: "Run history and pipeline logs for current and prior processing work.", interactions: ["Open run history"] },
@@ -330,7 +330,7 @@ export const HOW_TO_CARDS: HowToCard[] = [
     figure: { label: "Hero, attention pulse, study card", kind: "landing-hero", pins: [{ n: 1, label: "Banner", x: 24, y: 24 }, { n: 2, label: "Pulse", x: 41, y: 55 }, { n: 3, label: "Study", x: 82, y: 55 }] },
     track: "public",
     route: "/",
-    links: [{ label: "Operator overview", to: "/overview" }, { label: "Documentation", to: DOC_ROUTE }],
+    links: [{ label: "Operator overview", to: "/esd-lab" }, { label: "Documentation", to: DOC_ROUTE }],
   },
   {
     id: "navigate",
@@ -340,7 +340,7 @@ export const HOW_TO_CARDS: HowToCard[] = [
     figure: { label: "Top nav and Buddy", kind: "nav", pins: [{ n: 1, label: "Nav", x: 55, y: 24 }, { n: 2, label: "Buddy", x: 17, y: 82 }] },
     track: "public",
     route: "/",
-    links: [{ label: "Operator overview", to: "/overview" }, { label: "Documentation", to: DOC_ROUTE }],
+    links: [{ label: "Operator overview", to: "/esd-lab" }, { label: "Documentation", to: DOC_ROUTE }],
   },
   {
     id: "pipeline",
@@ -350,7 +350,7 @@ export const HOW_TO_CARDS: HowToCard[] = [
     figure: { label: "Six stage cards", kind: "pipeline", pins: [{ n: 1, label: "Stage", x: 14, y: 56 }, { n: 2, label: "Done", x: 48, y: 40 }, { n: 3, label: "Fail", x: 85, y: 70 }] },
     track: "public",
     route: "/#pipeline",
-    links: [{ label: "Live pipeline DAG", to: "/overview" }, { label: "Run history", to: "/runs" }, { label: "Pipeline health", to: "/pipeline-health" }],
+    links: [{ label: "Live pipeline DAG", to: "/esd-lab" }, { label: "Run history", to: "/runs" }, { label: "Pipeline health", to: "/pipeline-health" }],
   },
   {
     id: "aims",
@@ -419,7 +419,7 @@ export const HOW_TO_CARDS: HowToCard[] = [
     steps: ["Use Operator view in the bottom session pill.", "Notice the sidebar and compliance banner.", "Use Landing to return to the public surface.", "Use Help / Tour if the console feels dense."],
     figure: { label: "Dock, sidebar, banner", kind: "operator-shell", pins: [{ n: 1, label: "Operator", x: 80, y: 85 }, { n: 2, label: "Sidebar", x: 13, y: 52 }, { n: 3, label: "Banner", x: 58, y: 26 }] },
     track: "operator",
-    route: "/overview",
+    route: "/esd-lab",
     links: [{ label: "Pipeline health", to: "/pipeline-health" }, { label: "Help and tour", to: HOW_TO_ROUTE }],
   },
   {
@@ -429,7 +429,7 @@ export const HOW_TO_CARDS: HowToCard[] = [
     steps: ["Use Force Sync when you need a fresh pull.", "Read the session timer.", "Open System to check display mode.", "Use Ask the lab for an operational question."],
     figure: { label: "Operator top bar", kind: "operator-topbar", pins: [{ n: 1, label: "Ask", x: 38, y: 44 }, { n: 2, label: "Timer", x: 62, y: 62 }, { n: 3, label: "Sync", x: 89, y: 44 }] },
     track: "operator",
-    route: "/overview",
+    route: "/esd-lab",
     links: [{ label: "Data explorer", to: "/data-explorer" }, { label: "REDCap sync", to: "/redcap" }],
   },
 ];
@@ -448,14 +448,14 @@ export const PUBLIC_TOUR_STEPS: TourStep[] = [
 ];
 
 export const OPERATOR_TOUR_STEPS: TourStep[] = [
-  { id: "operator-search", target: "operator-search", route: "/overview", title: "Ask the lab from the top bar", body: "The search box opens ESD Buddy with your operational question. Keep prompts de-identified." },
-  { id: "operator-session", target: "operator-session", route: "/overview", title: "Watch the HIPAA session", body: "The timer and compliance banner keep session age and audit posture visible while you work." },
-  { id: "operator-docs", target: "operator-docs", route: "/overview", title: "Open Documentation", body: "The sidebar now has a Documentation entry for reference-grade explanations of every major dashboard surface." },
-  { id: "operator-help", target: "operator-help", route: "/overview", title: "Open Help and Tour", body: "Help / Tour contains task cards, annotated figures, and launch buttons for the public and operator tours." },
-  { id: "operator-kpis", target: "operator-kpis", route: "/overview", title: "Read the KPI ribbon", body: "These cards summarize enrollment, pending evaluations, processed epochs, REDCap health, and indexed publications when enabled." },
-  { id: "operator-pipeline", target: "operator-pipeline", route: "/overview", title: "Use the live DAG", body: "Click any stage node to inspect pipeline detail. The graph reflects the same stage data documented in the docs route." },
-  { id: "operator-force-sync", target: "operator-force-sync", route: "/overview", title: "Force a refresh", body: "Force Sync invalidates dashboard queries and updates the visible sync status without storing clinical data in the tour." },
-  { id: "operator-landing", target: "operator-landing", route: "/overview", title: "Return to the public surface", body: "Landing takes you back to the narrative view when you no longer need operator controls." },
+  { id: "operator-search", target: "operator-search", route: "/esd-lab", title: "Ask the lab from the top bar", body: "The search box opens ESD Buddy with your operational question. Keep prompts de-identified." },
+  { id: "operator-session", target: "operator-session", route: "/esd-lab", title: "Watch the HIPAA session", body: "The timer and compliance banner keep session age and audit posture visible while you work." },
+  { id: "operator-docs", target: "operator-docs", route: "/esd-lab", title: "Open Documentation", body: "The sidebar now has a Documentation entry for reference-grade explanations of every major dashboard surface." },
+  { id: "operator-help", target: "operator-help", route: "/esd-lab", title: "Open Help and Tour", body: "Help / Tour contains task cards, annotated figures, and launch buttons for the public and operator tours." },
+  { id: "operator-kpis", target: "operator-kpis", route: "/esd-lab", title: "Read the KPI ribbon", body: "These cards summarize enrollment, pending evaluations, processed epochs, REDCap health, and indexed publications when enabled." },
+  { id: "operator-pipeline", target: "operator-pipeline", route: "/esd-lab", title: "Use the live DAG", body: "Click any stage node to inspect pipeline detail. The graph reflects the same stage data documented in the docs route." },
+  { id: "operator-force-sync", target: "operator-force-sync", route: "/esd-lab", title: "Force a refresh", body: "Force Sync invalidates dashboard queries and updates the visible sync status without storing clinical data in the tour." },
+  { id: "operator-landing", target: "operator-landing", route: "/esd-lab", title: "Return to the public surface", body: "Landing takes you back to the narrative view when you no longer need operator controls." },
 ];
 
 export const TOUR_STEPS: Record<TourTrack, TourStep[]> = {
