@@ -70,6 +70,10 @@ _RAW_SIGNAL_RE = re.compile(
 _COUNT_REQUEST_RE = re.compile(
     r"\bhow (?:many|much)\b|\b(?:count|total number|number) of\b", re.IGNORECASE
 )
+_TABLE_REQUEST_RE = re.compile(
+    r"\b(?:table|tabular|breakdown|compare|comparison|versus|vs\.?|by group|across)\b",
+    re.IGNORECASE,
+)
 _EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?1[-. (]*)?\d{3}[-. )]*\d{3}[-. ]*\d{4}(?!\d)")
 _DATE_RE = re.compile(
@@ -515,10 +519,30 @@ def sanitize_nano_metrics(payload: Any) -> dict[str, Any]:
 def is_phi_or_raw_request(message: str) -> bool:
     """Return true when answering would require identifiable or raw data."""
 
+    tokens = _tokens(message)
+    aggregate_safe = bool(
+        tokens
+        & {
+            "aggregate",
+            "aggregated",
+            "deidentified",
+            "de",
+            "identified",
+            "group",
+            "groups",
+            "cohort",
+            "enrollment",
+            "retention",
+            "counts",
+            "metrics",
+        }
+    )
+    participant_level = bool(_PARTICIPANT_LEVEL_RE.search(message)) and not aggregate_safe
+
     return bool(
         _DIRECT_PHI_RE.search(message)
         or _EXPLICIT_IDENTIFIER_RE.search(message)
-        or _PARTICIPANT_LEVEL_RE.search(message)
+        or participant_level
         or _RAW_SIGNAL_RE.search(message)
         or _EMAIL_RE.search(message)
         or _PHONE_RE.search(message)
@@ -566,7 +590,146 @@ def _scrub_prompt(value: str) -> str:
 
 def _clean_provider_answer(value: Any) -> str:
     text = sanitize_response_content(str(value or ""))
-    return _clean_snippet(text, limit=2400)
+    cleaned = _clean_snippet(text, limit=2400)
+    if "|" in cleaned and "\n" in cleaned:
+        return cleaned
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+    concise = " ".join(sentences[:4]).strip()
+    if concise:
+        return concise
+    return cleaned
+
+
+def _wants_table(question: str) -> bool:
+    tokens = _tokens(question)
+    if _TABLE_REQUEST_RE.search(question):
+        return True
+    quantitative = {
+        "metric",
+        "metrics",
+        "count",
+        "counts",
+        "number",
+        "numbers",
+        "rate",
+        "rates",
+        "percent",
+        "percentage",
+        "breakdown",
+    }
+    return bool(tokens & quantitative)
+
+
+def _escape_cell(value: Any) -> str:
+    return _format_value(value).replace("|", "\\|")
+
+
+def _markdown_table(headers: list[str], rows: list[list[Any]], *, max_rows: int = 8) -> str:
+    visible_rows = rows[:max_rows]
+    if not headers or not visible_rows:
+        return ""
+    header_line = "| " + " | ".join(headers) + " |"
+    divider_line = "| " + " | ".join("---" for _ in headers) + " |"
+    body_lines = [
+        "| " + " | ".join(_escape_cell(cell) for cell in row[: len(headers)]) + " |"
+        for row in visible_rows
+    ]
+    return "\n".join([header_line, divider_line, *body_lines])
+
+
+def _quant_table(question: str, nano: dict[str, Any]) -> str:
+    tokens = _tokens(question)
+
+    enrollment = nano.get("enrollment") or {}
+    groups = enrollment.get("by_group") if isinstance(enrollment, dict) else None
+    if isinstance(groups, list) and groups and tokens & {
+        "enrollment",
+        "enrolled",
+        "cohort",
+        "group",
+        "groups",
+        "asib",
+        "pt",
+        "td",
+    }:
+        rows = [
+            [row.get("group", "n/a"), row.get("target", "n/a"), row.get("enrolled", "n/a")]
+            for row in groups
+        ]
+        return _markdown_table(["Group", "Target", "Enrolled"], rows)
+
+    schedule = nano.get("schedule") or {}
+    timepoints = schedule.get("timepoints") if isinstance(schedule, dict) else None
+    if isinstance(timepoints, list) and timepoints and tokens & {
+        "visit",
+        "visits",
+        "schedule",
+        "due",
+        "overdue",
+        "upcoming",
+        "adherence",
+        "completion",
+    }:
+        rows = [
+            [
+                row.get("id", "n/a"),
+                row.get("due", "n/a"),
+                row.get("completed", "n/a"),
+                row.get("overdue", "n/a"),
+            ]
+            for row in timepoints
+        ]
+        return _markdown_table(["Timepoint", "Due", "Completed", "Overdue"], rows)
+
+    assessments = nano.get("assessments")
+    if isinstance(assessments, list) and assessments and tokens & {
+        "assessment",
+        "assessments",
+        "nnns",
+        "csbs",
+        "bayley",
+        "ados",
+        "mchat",
+        "asq",
+    }:
+        rows = [
+            [
+                row.get("instrument", "n/a"),
+                row.get("timepoint", "n/a"),
+                row.get("complete", "n/a"),
+                row.get("expected", "n/a"),
+            ]
+            for row in assessments
+        ]
+        return _markdown_table(["Instrument", "Timepoint", "Complete", "Expected"], rows)
+
+    models = nano.get("models")
+    if isinstance(models, dict) and models and tokens & {
+        "model",
+        "models",
+        "training",
+        "performance",
+        "accuracy",
+        "shap",
+        "aim3",
+    }:
+        rows = [
+            [key.replace("_", " "), value]
+            for key, value in models.items()
+            if _scalar(value)
+        ]
+        return _markdown_table(["Model metric", "Value"], rows)
+
+    return ""
+
+
+def _with_quant_table(answer: str, question: str, nano: dict[str, Any], *, enabled: bool) -> str:
+    if not enabled:
+        return answer
+    table = _quant_table(question, nano)
+    if not table:
+        return answer
+    return f"{answer}\n\n{table}"
 
 
 def _format_value(value: Any, path: str = "") -> str:
@@ -593,7 +756,9 @@ def _as_of(nano: dict[str, Any], requested: str | None) -> str:
 
 
 def _timepoint_match(question: str, rows: list[dict[str, Any]]) -> dict[str, Any] | None:
-    compact = question.casefold().replace("-", "_").replace(" ", "_")
+    lowered = question.casefold()
+    compact = lowered.replace("-", "_").replace(" ", "_")
+    query_tokens = _tokens(question)
     for row in rows:
         timepoint = str(row.get("id") or "").casefold()
         if not timepoint:
@@ -601,17 +766,48 @@ def _timepoint_match(question: str, rows: list[dict[str, Any]]) -> dict[str, Any
         aliases = {timepoint, timepoint.replace("month_", "") + "m"}
         if timepoint.startswith("month_"):
             month = timepoint.split("_", 1)[1]
-            aliases.update({f"month_{month}", f"{month}_month", f"{month}m"})
+            aliases.update(
+                {
+                    f"month_{month}",
+                    f"{month}_month",
+                    f"{month}m",
+                    f"month{month}",
+                    f"{month}month",
+                }
+            )
         if timepoint == "nicu_admission":
             aliases.update({"nicu", "admission"})
-        if any(alias in compact for alias in aliases):
+        if aliases & query_tokens:
+            return row
+        if any(alias in compact for alias in aliases if len(alias) >= 6):
+            return row
+        if timepoint.startswith("month_"):
+            month = timepoint.split("_", 1)[1]
+            if re.search(rf"\b{re.escape(month)}\s*-?\s*month\b", lowered):
+                return row
+            if re.search(rf"\bmonth\s*-?\s*{re.escape(month)}\b", lowered):
+                return row
+        if timepoint == "nicu_admission" and re.search(r"\bnicu\b", lowered):
             return row
     return None
 
 
 def _schedule_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
     rows = (nano.get("schedule") or {}).get("timepoints") or []
-    if not rows or not (_tokens(question) & {"visit", "visits", "schedule", "due", "overdue", "upcoming", "completed", "adherence", "window"}):
+    tokens = _tokens(question)
+    schedule_tokens = {
+        "schedule",
+        "due",
+        "overdue",
+        "upcoming",
+        "completed",
+        "completion",
+        "adherence",
+        "window",
+        "forecast",
+        "calendar",
+    }
+    if not rows or not (tokens & schedule_tokens):
         return None
     row = _timepoint_match(question, rows)
     if row is None:
@@ -701,7 +897,11 @@ def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[
     if not enrollment or not tokens & {
         "enrollment",
         "enrolled",
+        "participant",
+        "participants",
         "cohort",
+        "group",
+        "groups",
         "recruitment",
         "retention",
         "active",
@@ -730,7 +930,7 @@ def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[
             if group in enrollment and (not group_tokens or group in group_tokens):
                 details.append(f"{group.upper()} {enrollment[group]}")
                 paths.append(f"nano.enrollment.{group}")
-    if details and (group_tokens or "group" in tokens or "cohort" in tokens):
+    if details and (group_tokens or "group" in tokens or "groups" in tokens or "cohort" in tokens or "participants" in tokens):
         return f"NANO enrollment by group as of {when}: " + "; ".join(details) + ".", paths
     enrolled_key = "enrolled" if "enrolled" in enrollment else "total"
     enrolled = enrollment.get(enrolled_key)
@@ -975,8 +1175,28 @@ def _model_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, 
 def _assessment_or_checklist_answer(question: str, nano: dict[str, Any], when: str) -> tuple[str, list[str]] | None:
     tokens = _tokens(question)
     rows = nano.get("assessments") or []
-    if rows and tokens & {"assessment", "assessments", "nnns", "csbs", "bayley", "ados", "mchat", "asq", "complete", "completion"}:
-        ranked = sorted(rows, key=lambda row: len(tokens & (_tokens(row.get("instrument")) | _tokens(row.get("timepoint")))), reverse=True)
+    if rows and tokens & {"assessment", "assessments", "instrument", "instruments", "administered", "nnns", "csbs", "bayley", "ados", "mchat", "asq", "complete", "completion"}:
+        candidates = list(rows)
+        month_match = re.search(r"\b(1|2|3|6|9|12|24|36)\s*-?\s*month\b", question.casefold())
+        if month_match:
+            month = month_match.group(1)
+            narrowed = [
+                row
+                for row in candidates
+                if month in str(row.get("timepoint") or "").casefold()
+            ]
+            if narrowed:
+                candidates = narrowed
+        elif "nicu" in tokens or "admission" in tokens:
+            narrowed = [
+                row
+                for row in candidates
+                if "nicu" in str(row.get("timepoint") or "").casefold()
+            ]
+            if narrowed:
+                candidates = narrowed
+
+        ranked = sorted(candidates, key=lambda row: len(tokens & (_tokens(row.get("instrument")) | _tokens(row.get("timepoint")))), reverse=True)
         row = ranked[0]
         name = str(row.get("instrument") or "assessment")
         timepoint = str(row.get("timepoint") or "configured timepoint")
@@ -1125,6 +1345,12 @@ class NanoBuddyAssistant:
         )
         if metric_answer is not None:
             answer, used_metrics = metric_answer
+            answer = _with_quant_table(
+                answer,
+                prompt,
+                nano,
+                enabled=_wants_table(prompt) or numeric_request,
+            )
             return {
                 "answer": answer,
                 "citations": [],
@@ -1235,14 +1461,12 @@ class NanoBuddyAssistant:
             first = documents[0]
             if numeric_request:
                 answer = (
-                    f"I do not have that as a published figure. The closest source I have is "
-                    f"{first.title}: {first.snippet} "
-                    "The linked citation is the approved source."
+                    "I do not have that as a published aggregate figure yet. "
+                    f"The closest documented guidance says: {first.snippet}"
                 )
             else:
                 answer = (
-                    f"According to {first.title}, {first.snippet} "
-                    "The linked citation is the approved source for the full procedure."
+                    f"Here is the short answer: {first.snippet}"
                 )
         return {
             "answer": answer,
@@ -1306,8 +1530,12 @@ class NanoBuddyAssistant:
                     "Never infer, request, or reveal participant-level data, identifiers, "
                     "raw signals, names, dates of birth, MRNs, contact details, or free-text "
                     "notes. If evidence is missing, say so. Be concise and distinguish live "
-                    "metrics from document guidance. Do not invent citations or paths; the "
-                    "API attaches its own allowlisted citations."
+                    "metrics from document guidance. Start with the answer directly in a "
+                    "natural conversational tone. Avoid lead-ins like 'According to' or "
+                    "repeating document titles in prose. Do not invent citations or paths; "
+                    "the API attaches its own allowlisted citations. For quantitative "
+                    "questions, include a compact markdown table when the context provides "
+                    "comparable values."
                 ),
                 context_block=context_block[:12000],
                 # Nemotron is a reasoning model, so leave enough budget for a
