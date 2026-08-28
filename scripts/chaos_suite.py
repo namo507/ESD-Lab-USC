@@ -107,7 +107,14 @@ def scenario_corrupt_index() -> Result:
 
 def scenario_stale_redcap() -> Result:
     """Frozen portfolio artifact -> freshness breach detected, not a crash."""
-    findings = self_heal.detect(base_url="http://127.0.0.1:1")  # nothing listening
+    # Force an always-stale budget for one known artifact so this scenario tests
+    # the freshness detector itself, not the current wall-clock age of files.
+    previous = dict(self_heal.FRESHNESS_SLA)
+    self_heal.FRESHNESS_SLA = {"dashboard/data/dashboard_data.json": -1}
+    try:
+        findings = self_heal.detect(base_url="http://127.0.0.1:1")  # nothing listening
+    finally:
+        self_heal.FRESHNESS_SLA = previous
     freshness = [f for f in findings if f.check == "freshness"]
     if not freshness:
         return Result("stale-redcap", "fail", "no freshness finding produced")

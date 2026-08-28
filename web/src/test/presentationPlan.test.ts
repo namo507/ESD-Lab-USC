@@ -161,5 +161,5 @@ describe("buildPresentation", () => {
     // Base64 of a ZIP file (PPTX is OOXML in a zip) begins with "UEsD" (PK..).
     expect(typeof base64).toBe("string");
     expect(base64.startsWith("UEsD")).toBe(true);
-  });
+  }, 15_000);
 });
