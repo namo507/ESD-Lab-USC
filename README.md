@@ -282,7 +282,7 @@ the browser never receives a provider credential.
 | --- | --- | --- | --- |
 | 1 | Gemini (`gemini-3.5-flash`) | `DASHBOARD_ASSISTANT_GEMINI_API_KEY` | Fast primary; grounded answers in ~1s |
 | 2 | NVIDIA Nemotron hosted | `DASHBOARD_ASSISTANT_API_KEY` | Stronger, slower |
-| 3 | Docker Model Runner (`ai/nemotron-3-nano`) | `DASHBOARD_ASSISTANT_LOCAL_ENABLED=true` | Local backup; no credential, no network |
+| 3 | Docker Model Runner (`ai/qwen2.5:7b`) | `DASHBOARD_ASSISTANT_LOCAL_ENABLED=true` | Local backup; no credential, no network |
 
 ```bash
 make assistant-chain      # show the resolved order (no tokens generated)

@@ -54,7 +54,7 @@ GEMINI_RUNTIME = "gemini-openai-compat"
 # Docker Model Runner exposes an OpenAI-compatible endpoint on the host. The
 # published default port is stable across Docker Desktop releases.
 LOCAL_API_BASE = "http://localhost:12434/engines/v1"
-LOCAL_DEFAULT_MODEL = "ai/nemotron-3-nano"
+LOCAL_DEFAULT_MODEL = "ai/qwen2.5:7b"
 LOCAL_RUNTIME = "docker-model-runner"
 
 PROVIDER_ALIASES = {
