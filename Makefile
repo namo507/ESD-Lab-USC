@@ -26,7 +26,7 @@ K8S_DATA_CLAIM ?= esd-dashboard-data-rwx
 K8S_IMAGE_REPOSITORY ?= esd-lab-dashboard
 K8S_IMAGE_TAG ?= local
 
-.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune models-resolve models-pull models-verify assistant-reindex assistant-reindex-sparse assistant-eval index-freshness similar-studies stack-up stack-stats self-heal self-heal-watch self-heal-test buddy-preview buddy-capture gpu-check gpu-env models-benchmark model-sync model-warm model-residency check-automations check-automations-quick
+.PHONY: help venv-ready install test lint clean clean-python clean-space docker-clean up down logs shell rebuild redcap-sync redcap-portfolio redcap-publish redcap-sync-watch run-pipeline format check-env compose-validate dashboard-build dashboard-up dashboard-down dashboard-logs dashboard-refresh dashboard-demo-inputs dashboard-smoke dashboard-share share-named share-quick assistant-status assistant-prepare assistant-bootstrap assistant-probe pages-build pages-deploy pages-watch pages-watch-once pages-runtime-deploy pages-runtime-watch pages-runtime-watch-once share-live k8s-secrets-apply k8s-helm-lint k8s-helm-up k8s-helm-down k8s-smoke docker-preflight docker-health docker-share-health ops-check logs-prune models-resolve models-pull models-verify assistant-reindex assistant-reindex-sparse assistant-eval index-freshness similar-studies stack-up stack-stats self-heal self-heal-watch self-heal-test buddy-preview buddy-capture gpu-check gpu-env models-benchmark model-sync model-warm model-residency check-automations check-automations-quick
 
 help:  ## Show this help message
 	@echo "NANO Study — Available Makefile targets:"
@@ -147,6 +147,9 @@ redcap-publish:  ## Pull REDCap, rebuild payload/context, reindex assistant, and
 	@$(MAKE) docker-health || true
 	@$(MAKE) k8s-helm-lint
 	@echo "✓ REDCap publish fan-out complete."
+
+redcap-sync-watch:  ## Continuously sync REDCap projects and refresh assistant grounding (Ctrl+C to stop)
+	$(PYTHON) scripts/redcap_sync_watch.py --interval $${REDCAP_SYNC_INTERVAL_SECONDS:-900} --continue-on-error
 
 dashboard-demo-inputs:  ## Materialize repo-local dashboard demo inputs
 	$(PYTHON) dashboard/pipelines/bootstrap_dashboard_demo_inputs.py
