@@ -21,6 +21,9 @@ http:
   timeout_seconds: 30
   retries: 3
   backoff_seconds: 0.5
+  # Small pacing gap between requests per project client. Keeps burst traffic
+  # smooth across metadata + records exports and helps avoid 429s.
+  min_interval_seconds: 0.35
   record_batch_size: 100
 
 studies:

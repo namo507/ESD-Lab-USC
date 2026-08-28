@@ -148,6 +148,7 @@ class PortfolioConfig:
     record_batch_size: int
     studies: tuple[StudySpec, ...]
     projects: tuple[ProjectSpec, ...]
+    min_interval_seconds: float = 0.0
 
 
 @dataclass
@@ -280,6 +281,9 @@ def load_portfolio_config(path: str | Path) -> PortfolioConfig:
         backoff_seconds=_nonnegative_float(
             http.get("backoff_seconds"), "backoff_seconds"
         ),
+        min_interval_seconds=_nonnegative_float(
+            http.get("min_interval_seconds", 0.0), "min_interval_seconds"
+        ),
         record_batch_size=_positive_int(
             http.get("record_batch_size"), "record_batch_size"
         ),
@@ -300,6 +304,7 @@ class RedcapApiClient:
         timeout_seconds: float = 30.0,
         retries: int = 3,
         backoff_seconds: float = 0.5,
+        min_interval_seconds: float = 0.0,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._api_url = api_url
@@ -308,7 +313,9 @@ class RedcapApiClient:
         self._timeout_seconds = timeout_seconds
         self._retries = max(1, retries)
         self._backoff_seconds = max(0.0, backoff_seconds)
+        self._min_interval_seconds = max(0.0, min_interval_seconds)
         self._sleep = sleep
+        self._last_request_started_at = 0.0
 
     def _post(self, request_data: Mapping[str, Any]) -> Any:
         data: MutableMapping[str, Any] = {
@@ -320,6 +327,11 @@ class RedcapApiClient:
 
         last_code = "network_error"
         for attempt in range(self._retries):
+            if self._min_interval_seconds > 0 and self._last_request_started_at > 0:
+                elapsed = time.monotonic() - self._last_request_started_at
+                if elapsed < self._min_interval_seconds:
+                    self._sleep(self._min_interval_seconds - elapsed)
+            self._last_request_started_at = time.monotonic()
             try:
                 response = self._session.post(
                     self._api_url,
@@ -833,6 +845,7 @@ def sync_portfolio(
             timeout_seconds=config.timeout_seconds,
             retries=config.retries,
             backoff_seconds=config.backoff_seconds,
+            min_interval_seconds=config.min_interval_seconds,
             sleep=sleep,
         )
         try:

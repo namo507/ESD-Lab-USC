@@ -900,8 +900,6 @@ def _enrollment_answer(question: str, nano: dict[str, Any], when: str) -> tuple[
         "participant",
         "participants",
         "cohort",
-        "group",
-        "groups",
         "recruitment",
         "retention",
         "active",
@@ -1195,6 +1193,23 @@ def _assessment_or_checklist_answer(question: str, nano: dict[str, Any], when: s
             ]
             if narrowed:
                 candidates = narrowed
+
+        asks_for_instruments = bool(tokens & {"instrument", "instruments", "administered", "run"})
+        if asks_for_instruments and candidates:
+            instruments = [str(row.get("instrument") or "").strip() for row in candidates]
+            instruments = [name for name in instruments if name]
+            if instruments:
+                unique = sorted(dict.fromkeys(instruments))
+                # Prefer the month in the question when present so the response
+                # mirrors what the user asked for.
+                label = f"month_{month_match.group(1)}" if month_match else str(candidates[0].get("timepoint") or "the requested timepoint")
+                preview = ", ".join(unique[:8])
+                suffix = "" if len(unique) <= 8 else f", and {len(unique) - 8} more"
+                paths = [f"nano.assessments[{name}-{label}]" for name in unique[:8]]
+                return (
+                    f"At {label}, the aggregate instruments in this snapshot are: {preview}{suffix}.",
+                    paths,
+                )
 
         ranked = sorted(candidates, key=lambda row: len(tokens & (_tokens(row.get("instrument")) | _tokens(row.get("timepoint")))), reverse=True)
         row = ranked[0]

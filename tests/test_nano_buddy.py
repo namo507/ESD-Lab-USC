@@ -294,6 +294,36 @@ def test_buddy_answers_hda_by_group_and_qa_summary(tmp_path):
     assert "nano.pipeline_summary.qa_passed_sessions" in qa["used_metrics"]
 
 
+def test_buddy_enrollment_question_can_render_markdown_table(tmp_path):
+    buddy = _buddy(tmp_path)
+
+    result = buddy.answer("Show NANO enrollment by group in a concise table.")
+
+    assert result["refused"] is False
+    assert "NANO enrollment by group" in result["answer"]
+    assert "| Group | Target | Enrolled |" in result["answer"]
+    assert "| ASIB | 65 | 20 |" in result["answer"]
+    assert "nano.enrollment.by_group[ASIB].enrolled" in result["used_metrics"]
+
+
+def test_buddy_instrument_question_prefers_requested_month(tmp_path):
+    buddy = _buddy(tmp_path)
+    buddy._load_nano_metrics = lambda: {
+        "meta": {"study": "NANO", "as_of": "2026-07-14"},
+        "assessments": [
+            {"instrument": "NNNS-II", "timepoint": "month_2", "complete": 8, "expected": 10},
+            {"instrument": "Bayley-4", "timepoint": "month_12", "complete": 14, "expected": 21},
+            {"instrument": "ADOS-2", "timepoint": "month_12", "complete": 11, "expected": 21},
+        ],
+    }
+
+    result = buddy.answer("Which instruments are administered at the 12 month visit?")
+
+    assert result["refused"] is False
+    assert "month_12" in result["answer"]
+    assert any(name in result["answer"] for name in ("Bayley-4", "ADOS-2"))
+
+
 def test_buddy_document_lookup_cites_only_allowlisted_repo_path(tmp_path):
     buddy = _buddy(tmp_path)
     docs_dir = tmp_path / "docs"
@@ -404,7 +434,7 @@ def test_buddy_suppresses_provider_planning_and_falls_back_to_document_snippet(
 
     assert result["refused"] is False
     assert "We need to answer" not in result["answer"]
-    assert result["answer"].startswith("According to ECG Processing SOP")
+    assert result["answer"].startswith("Here is the short answer:")
     assert result["citations"] == [
         {
             "title": "ECG Processing SOP",
