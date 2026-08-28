@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sqlite3
+
 from dashboard.server import data_features
 
 PUBMED_XML = """<?xml version="1.0"?>
@@ -174,3 +176,28 @@ def test_sync_publications_merges_orcid_and_crossref(tmp_path):
     assert "Developmental Psychology" in pubmed_record["keywords"]
     assert orcid_record is not None
     assert orcid_record["source"] == "orcid"
+
+
+def test_connect_tolerates_locked_journal_mode(monkeypatch, tmp_path):
+    class FakeConn:
+        def __init__(self):
+            self.calls = []
+            self.row_factory = None
+
+        def execute(self, sql):
+            self.calls.append(sql)
+            if sql == "PRAGMA journal_mode=WAL":
+                raise sqlite3.OperationalError("database is locked")
+            return None
+
+    fake = FakeConn()
+
+    def fake_connect(*args, **kwargs):
+        return fake
+
+    monkeypatch.setattr(data_features.sqlite3, "connect", fake_connect)
+    conn = data_features._connect(tmp_path / "features.sqlite3")
+
+    assert conn is fake
+    assert "PRAGMA journal_mode=WAL" in fake.calls
+    assert "PRAGMA busy_timeout = 30000" in fake.calls

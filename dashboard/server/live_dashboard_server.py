@@ -161,6 +161,9 @@ PUBLIC_RUNTIME_DATA_ROUTES = {
         "nano_dashboard_data.json",
         "readings_data.json",
         "runtime_status.json",
+        "dashboard_metrics.json",
+        "redcap_dictionary.json",
+        "redcap_portfolio.json",
     )
 }
 PUBLIC_READING_SUFFIXES = {".pdf"}

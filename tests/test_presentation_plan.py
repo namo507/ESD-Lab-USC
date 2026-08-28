@@ -267,6 +267,12 @@ def _configure_public_path_test_tree(monkeypatch, tmp_path):
     readings_data.write_text("readings")
     runtime_status = data_dir / "runtime_status.json"
     runtime_status.write_text("runtime")
+    dashboard_metrics = data_dir / "dashboard_metrics.json"
+    dashboard_metrics.write_text("metrics")
+    redcap_dictionary = data_dir / "redcap_dictionary.json"
+    redcap_dictionary.write_text("dictionary")
+    redcap_portfolio = data_dir / "redcap_portfolio.json"
+    redcap_portfolio.write_text("portfolio")
     secret = project_root / ".env"
     secret.write_text("secret")
     audit_log = data_dir / "hipaa_access.log"
@@ -291,6 +297,9 @@ def _configure_public_path_test_tree(monkeypatch, tmp_path):
             "/dashboard/data/dashboard_data.json": live_data,
             "/dashboard/data/readings_data.json": readings_data,
             "/dashboard/data/runtime_status.json": runtime_status,
+            "/dashboard/data/dashboard_metrics.json": dashboard_metrics,
+            "/dashboard/data/redcap_dictionary.json": redcap_dictionary,
+            "/dashboard/data/redcap_portfolio.json": redcap_portfolio,
         },
     )
 
@@ -304,6 +313,9 @@ def _configure_public_path_test_tree(monkeypatch, tmp_path):
         "live_data": live_data,
         "readings_data": readings_data,
         "runtime_status": runtime_status,
+        "dashboard_metrics": dashboard_metrics,
+        "redcap_dictionary": redcap_dictionary,
+        "redcap_portfolio": redcap_portfolio,
         "secret": secret,
         "audit_log": audit_log,
         "reading": reading,
@@ -320,6 +332,15 @@ def test_public_path_resolution_prefers_live_data_and_spa_assets(monkeypatch, tm
     assert resolve("/dashboard/data/readings_data.json") == str(paths["readings_data"])
     assert resolve("/dashboard/data/runtime_status.json") == str(
         paths["runtime_status"]
+    )
+    assert resolve("/dashboard/data/dashboard_metrics.json") == str(
+        paths["dashboard_metrics"]
+    )
+    assert resolve("/dashboard/data/redcap_dictionary.json") == str(
+        paths["redcap_dictionary"]
+    )
+    assert resolve("/dashboard/data/redcap_portfolio.json") == str(
+        paths["redcap_portfolio"]
     )
     assert resolve("/assets/app.js") == str(paths["spa_asset"])
 

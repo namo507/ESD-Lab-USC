@@ -100,7 +100,14 @@ def _connect(db_path: Path = DEFAULT_DB_PATH) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path, timeout=30, isolation_level=None)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+    except sqlite3.OperationalError as exc:
+        # Under concurrent access, toggling/confirming journal mode can briefly
+        # collide with another writer. The connection remains valid, and the
+        # busy timeout below still protects subsequent statements.
+        if "locked" not in str(exc).lower():
+            raise
     conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
