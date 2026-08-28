@@ -18,6 +18,12 @@ describe("RouteErrorBoundary", () => {
 
   it("shows a fallback instead of crashing the tree when a child throws", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const suppressExpectedThrow = (event: ErrorEvent) => {
+      if (event.error instanceof Error && event.error.message === "boom-xyz") {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("error", suppressExpectedThrow);
     render(
       <RouteErrorBoundary>
         <Boom />
@@ -28,6 +34,7 @@ describe("RouteErrorBoundary", () => {
     // recovery affordances are present
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /go to esd lab/i })).toHaveAttribute("href", "/esd-lab");
+    window.removeEventListener("error", suppressExpectedThrow);
     spy.mockRestore();
   });
 });
