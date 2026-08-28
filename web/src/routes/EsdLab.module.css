@@ -338,6 +338,45 @@
   white-space: pre-wrap;
 }
 
+.answerBlocks {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.answerTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-2, 8px);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
+.answerTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 24rem;
+  font-size: 0.88rem;
+}
+
+.answerTable th,
+.answerTable td {
+  padding: 0.42rem 0.56rem;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  vertical-align: top;
+}
+
+.answerTable thead th {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg3);
+  background: color-mix(in srgb, var(--esd-discovery-blue) 8%, transparent);
+}
+
+.answerTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* A refusal is marked, not styled as an error. It is a correct answer to a
    question that cannot be answered. */
 .answerText[data-refused="true"] {

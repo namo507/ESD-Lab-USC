@@ -62,6 +62,66 @@ function useNow(intervalMs: number): number {
   return now;
 }
 
+type AnswerBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "table"; headers: string[]; rows: string[][] };
+
+function parsePipeRow(line: string): string[] | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
+  const cells = trimmed
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.trim());
+  return cells.length >= 2 ? cells : null;
+}
+
+function isDividerRow(cells: string[]): boolean {
+  return cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function parseAnswerBlocks(text: string): AnswerBlock[] {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const blocks: AnswerBlock[] = [];
+  const paragraph: string[] = [];
+
+  const flushParagraph = () => {
+    const compact = paragraph.join("\n").trim();
+    if (compact) blocks.push({ kind: "paragraph", text: compact });
+    paragraph.length = 0;
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const head = parsePipeRow(lines[i] ?? "");
+    const divider = parsePipeRow(lines[i + 1] ?? "");
+    if (head && divider && head.length === divider.length && isDividerRow(divider)) {
+      flushParagraph();
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length) {
+        const row = parsePipeRow(lines[i] ?? "");
+        if (!row || row.length !== head.length) break;
+        rows.push(row);
+        i += 1;
+      }
+      if (rows.length > 0) blocks.push({ kind: "table", headers: head, rows });
+      continue;
+    }
+
+    const line = lines[i] ?? "";
+    if (line.trim().length === 0) {
+      flushParagraph();
+    } else {
+      paragraph.push(line);
+    }
+    i += 1;
+  }
+
+  flushParagraph();
+  return blocks;
+}
+
 
 export function EsdLab() {
   const portfolio = useRedcapPortfolio();
@@ -81,6 +141,10 @@ export function EsdLab() {
   const now = useNow(30_000);
 
   const status = useMemo(() => ambientStatus(portfolio.data, now), [portfolio.data, now]);
+  const answerBlocks = useMemo(
+    () => parseAnswerBlocks(conversation.revealed || ""),
+    [conversation.revealed],
+  );
 
   const codex = useMemo(
     () => (intent.active ? buildStudyCodex(intent.active, portfolio.data, now) : null),
@@ -269,9 +333,40 @@ export function EsdLab() {
             <p className={styles.answerError}>{conversation.error}</p>
           ) : (
             <>
-              <p className={styles.answerText} data-refused={conversation.turn?.refused ? "true" : "false"}>
-                {conversation.revealed}
-              </p>
+              <div className={styles.answerBlocks}>
+                {answerBlocks.map((block, index) =>
+                  block.kind === "paragraph" ? (
+                    <p
+                      key={`p-${index}`}
+                      className={styles.answerText}
+                      data-refused={conversation.turn?.refused ? "true" : "false"}
+                    >
+                      {block.text}
+                    </p>
+                  ) : (
+                    <div key={`t-${index}`} className={styles.answerTableWrap}>
+                      <table className={styles.answerTable}>
+                        <thead>
+                          <tr>
+                            {block.headers.map((header, cellIndex) => (
+                              <th key={`${index}-h-${cellIndex}`} scope="col">{header}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {block.rows.map((row, rowIndex) => (
+                            <tr key={`${index}-r-${rowIndex}`}>
+                              {row.map((cell, cellIndex) => (
+                                <td key={`${index}-r-${rowIndex}-c-${cellIndex}`}>{cell}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ),
+                )}
+              </div>
               {conversation.turn && conversation.turn.citations.length > 0 && (
                 <ul className={styles.citations}>
                   {conversation.turn.citations.map((citation) => {
