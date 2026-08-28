@@ -1,6 +1,6 @@
 {
   "meta": {
-    "generated_at": "2026-08-27T22:18:22",
+    "generated_at": "2026-08-28T14:09:26",
     "data_source": "repo_demo_inputs",
     "pipeline_commit": "unknown",
     "study": {
@@ -71,11 +71,11 @@
           34,
           36,
           40,
+          41,
           43,
-          45,
           46,
           49,
-          50,
+          49,
           50,
           50,
           52,
@@ -110,11 +110,11 @@
           68,
           74,
           79,
+          84,
           88,
-          89,
           93,
           96,
-          98,
+          96,
           98,
           101,
           101,
@@ -149,8 +149,8 @@
           33,
           36,
           39,
+          42,
           44,
-          45,
           46,
           49,
           49,
@@ -199,18 +199,18 @@
       "ASIB": [
         100.0,
         100.0,
+        84.6,
+        90.4,
         82.7,
-        88.5,
-        86.5,
-        71.2,
+        67.3,
         53.8,
         11.5,
         0.0
       ],
       "PT": [
         100.0,
-        94.3,
-        83.8,
+        92.4,
+        84.8,
         85.7,
         81.0,
         71.4,
@@ -220,10 +220,10 @@
       ],
       "TD": [
         100.0,
-        94.3,
-        88.7,
+        98.1,
         92.5,
-        90.6,
+        92.5,
+        88.7,
         73.6,
         50.9,
         1.9,
@@ -235,17 +235,17 @@
     "missingness": [
       {
         "instrument": "ados2_scores",
-        "pct_missing": 19.3,
+        "pct_missing": 19.1,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "asq3_milestones",
-        "pct_missing": 20.7,
+        "pct_missing": 20.1,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "bayley4_scores",
-        "pct_missing": 19.0,
+        "pct_missing": 18.7,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
@@ -255,22 +255,22 @@
       },
       {
         "instrument": "csbs_social_communication",
-        "pct_missing": 20.2,
+        "pct_missing": 21.0,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "demographics",
-        "pct_missing": 18.8,
+        "pct_missing": 18.3,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "ecg_recording_log",
-        "pct_missing": 19.8,
+        "pct_missing": 19.1,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "epds_maternal_depression",
-        "pct_missing": 26.7,
+        "pct_missing": 26.8,
         "status": "High \u2014 MNAR risk"
       },
       {
@@ -280,12 +280,12 @@
       },
       {
         "instrument": "nicu_morbidity",
-        "pct_missing": 19.8,
+        "pct_missing": 19.4,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
         "instrument": "nnns_attention_1_3m",
-        "pct_missing": 20.7,
+        "pct_missing": 20.1,
         "status": "Moderate \u2014 MAR candidate"
       },
       {
@@ -295,17 +295,17 @@
       },
       {
         "instrument": "temperature_recording_log",
-        "pct_missing": 21.1,
+        "pct_missing": 20.5,
         "status": "Moderate \u2014 MAR candidate"
       }
     ],
     "qc_flags": {
-      "total_records": 1380,
-      "double_entry_discrepancies": 19,
-      "out_of_range_values": 31,
+      "total_records": 1373,
+      "double_entry_discrepancies": 22,
+      "out_of_range_values": 29,
       "missing_required_fields": 0,
       "ecg_transfer_late": 45,
-      "temp_quality_rejected": 22
+      "temp_quality_rejected": 23
     }
   },
   "ml_performance": {
@@ -1143,144 +1143,144 @@
       "ASIB": {
         "mean": {
           "RSA": [
-            3.152,
-            3.184,
-            3.223,
-            3.281,
-            3.365,
-            3.469,
-            3.587,
-            4.024,
+            3.16,
+            3.19,
+            3.222,
+            3.258,
+            3.391,
+            3.504,
+            3.614,
+            4.02,
             null
           ],
           "RMSSD": [
-            27.955,
-            28.607,
-            29.156,
-            30.044,
-            31.484,
-            33.626,
-            34.837,
-            42.901,
+            27.951,
+            28.427,
+            29.395,
+            30.304,
+            31.779,
+            33.353,
+            34.913,
+            42.028,
             null
           ],
           "SDNN": [
-            36.217,
-            36.468,
-            37.838,
-            37.978,
-            39.877,
-            42.059,
-            44.601,
-            50.231,
+            35.624,
+            36.406,
+            36.783,
+            37.788,
+            39.986,
+            41.576,
+            42.657,
+            52.598,
             null
           ],
           "HDA_SA": [
-            456.257,
-            450.354,
-            447.632,
-            446.648,
-            444.011,
-            437.619,
-            433.938,
-            404.922,
+            449.342,
+            450.366,
+            449.051,
+            440.346,
+            438.384,
+            439.52,
+            437.908,
+            401.63,
             null
           ]
         },
         "ci": {
           "RSA": {
             "low": [
-              3.115,
-              3.15,
-              3.185,
-              3.235,
-              3.321,
-              3.422,
-              3.536,
-              3.913,
+              3.121,
+              3.158,
+              3.183,
+              3.228,
+              3.349,
+              3.468,
+              3.558,
+              3.979,
               null
             ],
             "high": [
-              3.189,
-              3.218,
+              3.198,
+              3.223,
               3.261,
-              3.326,
-              3.408,
-              3.515,
-              3.639,
-              4.135,
+              3.289,
+              3.432,
+              3.54,
+              3.67,
+              4.061,
               null
             ]
           },
           "RMSSD": {
             "low": [
-              27.295,
-              27.951,
-              28.546,
-              29.268,
-              30.785,
-              32.898,
-              34.028,
-              40.857,
+              27.254,
+              27.709,
+              28.621,
+              29.55,
+              31.039,
+              32.539,
+              34.04,
+              38.652,
               null
             ],
             "high": [
-              28.616,
-              29.263,
-              29.766,
-              30.82,
-              32.182,
-              34.354,
-              35.646,
-              44.944,
+              28.648,
+              29.145,
+              30.168,
+              31.058,
+              32.518,
+              34.167,
+              35.786,
+              45.405,
               null
             ]
           },
           "SDNN": {
             "low": [
-              35.281,
-              35.469,
-              36.832,
-              37.042,
-              38.842,
-              40.994,
-              43.343,
-              47.798,
+              34.616,
+              35.474,
+              35.824,
+              36.881,
+              38.989,
+              40.513,
+              41.537,
+              49.954,
               null
             ],
             "high": [
-              37.154,
-              37.467,
-              38.844,
-              38.913,
-              40.913,
-              43.124,
-              45.86,
-              52.665,
+              36.631,
+              37.337,
+              37.742,
+              38.695,
+              40.983,
+              42.639,
+              43.777,
+              55.242,
               null
             ]
           },
           "HDA_SA": {
             "low": [
-              448.138,
-              442.665,
-              439.022,
-              437.733,
-              435.87,
-              427.684,
-              424.403,
-              379.137,
+              442.159,
+              440.942,
+              438.454,
+              432.73,
+              429.446,
+              429.778,
+              428.068,
+              380.176,
               null
             ],
             "high": [
-              464.377,
-              458.042,
-              456.242,
-              455.563,
-              452.152,
-              447.554,
-              443.473,
-              430.706,
+              456.526,
+              459.79,
+              459.649,
+              447.962,
+              447.323,
+              449.262,
+              447.747,
+              423.084,
               null
             ]
           }
@@ -1290,144 +1290,144 @@
       "PT": {
         "mean": {
           "RSA": [
-            3.144,
-            3.234,
-            3.298,
-            3.391,
-            3.641,
-            3.895,
-            4.117,
-            5.121,
+            3.155,
+            3.226,
+            3.306,
+            3.378,
+            3.634,
+            3.861,
+            4.107,
+            5.075,
             null
           ],
           "RMSSD": [
-            28.004,
-            29.069,
-            30.273,
-            31.359,
-            34.315,
-            38.151,
-            40.893,
-            53.364,
+            28.085,
+            29.319,
+            30.067,
+            31.405,
+            34.503,
+            37.852,
+            41.499,
+            53.042,
             null
           ],
           "SDNN": [
-            35.713,
-            36.804,
-            37.865,
-            39.302,
-            42.779,
-            45.821,
-            49.527,
-            63.333,
+            35.618,
+            36.669,
+            38.341,
+            39.296,
+            42.762,
+            46.479,
+            49.674,
+            63.595,
             null
           ],
           "HDA_SA": [
-            453.651,
-            448.488,
-            446.366,
-            442.036,
-            433.931,
-            420.027,
-            408.015,
-            359.116,
+            461.043,
+            454.691,
+            453.117,
+            446.583,
+            432.441,
+            423.376,
+            411.279,
+            408.371,
             null
           ]
         },
         "ci": {
           "RSA": {
             "low": [
-              3.116,
-              3.207,
-              3.27,
-              3.364,
-              3.61,
-              3.869,
-              4.082,
-              5.038,
+              3.128,
+              3.202,
+              3.279,
+              3.35,
+              3.608,
+              3.827,
+              4.076,
+              4.964,
               null
             ],
             "high": [
-              3.172,
-              3.261,
-              3.325,
-              3.419,
-              3.673,
-              3.921,
-              4.153,
-              5.204,
+              3.182,
+              3.251,
+              3.334,
+              3.406,
+              3.66,
+              3.894,
+              4.138,
+              5.186,
               null
             ]
           },
           "RMSSD": {
             "low": [
-              27.532,
-              28.597,
-              29.75,
-              30.84,
-              33.793,
-              37.602,
-              40.345,
-              51.32,
+              27.642,
+              28.856,
+              29.581,
+              30.937,
+              34.015,
+              37.363,
+              40.922,
+              51.342,
               null
             ],
             "high": [
-              28.477,
-              29.54,
-              30.796,
-              31.879,
-              34.837,
-              38.7,
-              41.441,
-              55.407,
+              28.529,
+              29.782,
+              30.554,
+              31.872,
+              34.991,
+              38.341,
+              42.076,
+              54.741,
               null
             ]
           },
           "SDNN": {
             "low": [
-              35.018,
-              36.135,
-              37.184,
-              38.596,
-              42.072,
-              44.998,
-              48.681,
-              60.093,
+              35.004,
+              35.991,
+              37.626,
+              38.625,
+              42.121,
+              45.719,
+              48.866,
+              61.027,
               null
             ],
             "high": [
-              36.407,
-              37.473,
-              38.546,
-              40.008,
-              43.485,
-              46.644,
-              50.372,
-              66.573,
+              36.231,
+              37.348,
+              39.056,
+              39.966,
+              43.403,
+              47.239,
+              50.481,
+              66.163,
               null
             ]
           },
           "HDA_SA": {
             "low": [
-              447.532,
-              442.528,
-              440.52,
-              435.988,
-              427.013,
-              413.443,
-              400.946,
-              345.836,
+              454.855,
+              449.117,
+              447.332,
+              440.358,
+              426.69,
+              416.788,
+              403.302,
+              381.585,
               null
             ],
             "high": [
-              459.771,
-              454.448,
-              452.213,
-              448.083,
-              440.85,
-              426.612,
-              415.084,
-              372.395,
+              467.232,
+              460.266,
+              458.902,
+              452.808,
+              438.192,
+              429.965,
+              419.257,
+              435.157,
               null
             ]
           }
@@ -1437,46 +1437,46 @@
       "TD": {
         "mean": {
           "RSA": [
-            3.12,
-            3.215,
-            3.335,
-            3.436,
-            3.767,
-            4.1,
-            4.456,
+            3.142,
+            3.265,
+            3.384,
+            3.49,
+            3.797,
+            4.135,
+            4.45,
             null,
             null
           ],
           "RMSSD": [
-            27.73,
-            29.478,
-            30.594,
-            31.821,
-            36.396,
-            40.027,
-            44.125,
+            28.488,
+            29.821,
+            31.011,
+            32.85,
+            36.688,
+            40.825,
+            44.418,
             null,
             null
           ],
           "SDNN": [
-            35.794,
-            37.389,
-            38.636,
-            40.067,
-            44.619,
-            48.722,
-            52.466,
+            35.178,
+            36.282,
+            38.036,
+            39.205,
+            43.58,
+            48.063,
+            52.487,
             null,
             null
           ],
           "HDA_SA": [
-            460.338,
-            456.033,
-            445.578,
-            442.267,
-            426.358,
-            408.58,
-            386.952,
+            449.886,
+            443.533,
+            439.472,
+            429.449,
+            423.959,
+            394.338,
+            380.869,
             null,
             null
           ]
@@ -1484,96 +1484,96 @@
         "ci": {
           "RSA": {
             "low": [
-              3.088,
-              3.178,
-              3.298,
-              3.396,
-              3.738,
-              4.06,
-              4.399,
+              3.109,
+              3.23,
+              3.345,
+              3.451,
+              3.763,
+              4.095,
+              4.412,
               null,
               null
             ],
             "high": [
-              3.152,
-              3.252,
-              3.372,
-              3.477,
-              3.796,
-              4.139,
-              4.512,
+              3.175,
+              3.3,
+              3.422,
+              3.528,
+              3.831,
+              4.175,
+              4.488,
               null,
               null
             ]
           },
           "RMSSD": {
             "low": [
-              26.945,
-              28.632,
-              29.9,
-              31.092,
-              35.57,
-              39.21,
-              43.17,
+              27.831,
+              29.134,
+              30.301,
+              32.181,
+              35.902,
+              40.095,
+              43.385,
               null,
               null
             ],
             "high": [
-              28.514,
-              30.324,
-              31.288,
-              32.549,
-              37.222,
-              40.843,
-              45.08,
+              29.145,
+              30.508,
+              31.72,
+              33.519,
+              37.474,
+              41.556,
+              45.451,
               null,
               null
             ]
           },
           "SDNN": {
             "low": [
-              34.896,
-              36.545,
-              37.616,
-              39.031,
-              43.593,
-              47.552,
-              51.025,
+              34.296,
+              35.48,
+              37.206,
+              38.348,
+              42.674,
+              47.004,
+              51.223,
               null,
               null
             ],
             "high": [
-              36.691,
-              38.232,
-              39.655,
-              41.103,
-              45.644,
-              49.893,
-              53.907,
+              36.059,
+              37.083,
+              38.865,
+              40.062,
+              44.485,
+              49.122,
+              53.75,
               null,
               null
             ]
           },
           "HDA_SA": {
             "low": [
-              452.679,
-              447.634,
-              437.758,
-              435.7,
-              419.197,
-              399.738,
-              377.779,
+              441.146,
+              435.072,
+              430.947,
+              420.971,
+              415.42,
+              385.089,
+              367.672,
               null,
               null
             ],
             "high": [
-              467.998,
-              464.432,
-              453.397,
-              448.834,
-              433.519,
-              417.422,
-              396.125,
+              458.627,
+              451.993,
+              447.997,
+              437.927,
+              432.499,
+              403.587,
+              394.065,
               null,
               null
             ]
@@ -1594,9 +1594,9 @@
       "total_participants_enrolled": 210,
       "active_participants": 195,
       "withdrawn": 15,
-      "open_queries": 87,
-      "records_pending_pi_review": 47,
-      "double_entry_pending": 25
+      "open_queries": 84,
+      "records_pending_pi_review": 39,
+      "double_entry_pending": 27
     },
     "queries_by_event": [
       {
@@ -2242,7 +2242,7 @@
   ],
   "participant_operations": {
     "meta": {
-      "generated_at": "2026-08-27T22:18:22",
+      "generated_at": "2026-08-28T14:09:26",
       "source_doc": "docs/participant_operations_workflow.md",
       "participant_count": 60
     },
@@ -8823,7 +8823,7 @@
   },
   "organization_site": {
     "meta": {
-      "generated_at": "2026-08-27T22:18:19",
+      "generated_at": "2026-08-28T14:09:23",
       "source_mode": "live_fetch",
       "source_url": "https://www.esdlabsc.com",
       "pages_crawled": 10,
@@ -9789,7 +9789,7 @@
   },
   "matlab_integration": {
     "manifest": {
-      "generated_at": "2026-08-27T22:18:22",
+      "generated_at": "2026-08-28T14:09:26",
       "matlab_version": "R2024a",
       "salt": "nano_demo",
       "epoch_sec": 60,
@@ -9820,7 +9820,7 @@
       {
         "name": "export_hrv_features.m",
         "feature": "hrv",
-        "last_run": "2026-08-27T21:53:22",
+        "last_run": "2026-08-28T13:44:26",
         "status": "ok",
         "duration_s": 12.8,
         "lines": 96
@@ -9828,7 +9828,7 @@
       {
         "name": "export_temperature_features.m",
         "feature": "temp",
-        "last_run": "2026-08-27T21:53:22",
+        "last_run": "2026-08-28T13:44:26",
         "status": "ok",
         "duration_s": 7.9,
         "lines": 64
@@ -9836,7 +9836,7 @@
       {
         "name": "export_hda_phases.m",
         "feature": "hda",
-        "last_run": "2026-08-27T22:08:22",
+        "last_run": "2026-08-28T13:59:26",
         "status": "ok",
         "duration_s": 2.2,
         "lines": 48
@@ -9844,7 +9844,7 @@
       {
         "name": "run_all.m",
         "feature": "orchestrator",
-        "last_run": "2026-08-27T21:58:22",
+        "last_run": "2026-08-28T13:49:26",
         "status": "ok",
         "duration_s": 31.3,
         "lines": 22
@@ -9852,6 +9852,14 @@
     ],
     "throughput_24h": {
       "hours": [
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
         "23:00",
         "00:00",
         "01:00",
@@ -9867,15 +9875,7 @@
         "11:00",
         "12:00",
         "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00",
-        "22:00"
+        "14:00"
       ],
       "rows": [
         526,
@@ -10600,32 +10600,32 @@
     }
   ],
   "redcap_meta": {
-    "generated_at": "2026-08-27T22:18:21Z",
+    "generated_at": "2026-08-28T14:09:25Z",
     "pid": 5955,
     "record_count": 210,
     "anomaly_count": 0,
     "source": "synthetic-fallback",
     "contract_version": "2.0",
-    "payload_version": "2026-08-27T22:18:21Z"
+    "payload_version": "2026-08-28T14:09:25Z"
   },
   "redcap_completion_stats": {
     "6_months_arm_1": {
       "label": "6m",
-      "complete": 158,
-      "unverified": 20,
+      "complete": 151,
+      "unverified": 24,
       "incomplete": 19,
       "not_started": 0,
       "skipped": 0,
-      "total": 197
+      "total": 194
     },
     "9_months_arm_1": {
       "label": "9m",
       "complete": 136,
-      "unverified": 15,
-      "incomplete": 28,
+      "unverified": 13,
+      "incomplete": 26,
       "not_started": 0,
       "skipped": 0,
-      "total": 179
+      "total": 175
     },
     "12_months_arm_1": {
       "label": "12m",
@@ -16783,27 +16783,27 @@
         "label": "2 Months",
         "expected": 210,
         "scheduled": 208,
-        "completed": 178
+        "completed": 182
       },
       {
         "event": "3_months_arm_1",
         "label": "3 Months",
         "expected": 210,
         "scheduled": 204,
-        "completed": 185
+        "completed": 186
       },
       {
         "event": "6_months_arm_1",
         "label": "6m",
         "expected": 210,
-        "scheduled": 197,
-        "completed": 158
+        "scheduled": 194,
+        "completed": 151
       },
       {
         "event": "9_months_arm_1",
         "label": "9m",
         "expected": 210,
-        "scheduled": 179,
+        "scheduled": 175,
         "completed": 136
       },
       {
@@ -16834,7 +16834,7 @@
         "label": "Csbs Caregiver",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 190,
+            "complete": 183,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -16850,24 +16850,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 182,
+            "complete": 177,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 161,
+            "complete": 165,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 163,
+            "complete": 162,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 158,
-            "total": 197
+            "complete": 151,
+            "total": 194
           },
           "9_months_arm_1": {
             "complete": 136,
-            "total": 179
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 99,
@@ -16888,7 +16888,7 @@
         "label": "Epds Maternal Depression",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 170,
+            "complete": 167,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -16904,11 +16904,11 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 168,
+            "complete": 167,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 144,
+            "complete": 145,
             "total": 208
           },
           "3_months_arm_1": {
@@ -16916,12 +16916,12 @@
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 146,
-            "total": 197
+            "complete": 145,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 125,
-            "total": 179
+            "complete": 123,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 98,
@@ -16942,7 +16942,7 @@
         "label": "Asq3 Milestones",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 187,
+            "complete": 184,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -16958,24 +16958,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 184,
+            "complete": 180,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 157,
+            "complete": 166,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 171,
+            "complete": 173,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 152,
-            "total": 197
+            "complete": 151,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 132,
-            "total": 179
+            "complete": 131,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 100,
@@ -16996,7 +16996,7 @@
         "label": "Demographics",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 181,
+            "complete": 185,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17012,24 +17012,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 188,
+            "complete": 189,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 157,
+            "complete": 160,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 170,
+            "complete": 169,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 168,
-            "total": 197
+            "complete": 165,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 145,
-            "total": 179
+            "complete": 142,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 99,
@@ -17070,20 +17070,20 @@
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 157,
+            "complete": 159,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 171,
+            "complete": 174,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 161,
-            "total": 197
+            "complete": 158,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 142,
-            "total": 179
+            "complete": 140,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 104,
@@ -17104,7 +17104,7 @@
         "label": "Nnns Attention 1 3M",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 195,
+            "complete": 190,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17120,24 +17120,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 174,
+            "complete": 176,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 165,
+            "complete": 167,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 164,
+            "complete": 167,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 153,
-            "total": 197
+            "complete": 155,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 131,
-            "total": 179
+            "complete": 129,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 101,
@@ -17158,7 +17158,7 @@
         "label": "Ecg Recording Log",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 184,
+            "complete": 185,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17174,24 +17174,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 184,
+            "complete": 183,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 160,
+            "complete": 166,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 171,
+            "complete": 174,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 160,
-            "total": 197
+            "complete": 157,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 129,
-            "total": 179
+            "complete": 127,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 105,
@@ -17212,7 +17212,7 @@
         "label": "Temperature Recording Log",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 184,
+            "complete": 185,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17228,24 +17228,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 176,
+            "complete": 175,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 157,
+            "complete": 162,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 160,
+            "complete": 163,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 162,
-            "total": 197
+            "complete": 159,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 139,
-            "total": 179
+            "complete": 137,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 98,
@@ -17266,7 +17266,7 @@
         "label": "Behavioral Coding Log",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 159,
+            "complete": 163,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17282,24 +17282,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 148,
+            "complete": 146,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 148,
+            "complete": 153,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 151,
+            "complete": 145,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 138,
-            "total": 197
+            "complete": 134,
+            "total": 194
           },
           "9_months_arm_1": {
-            "complete": 116,
-            "total": 179
+            "complete": 114,
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 89,
@@ -17320,7 +17320,7 @@
         "label": "Csbs Social Communication",
         "byEvent": {
           "consent_arm_1": {
-            "complete": 190,
+            "complete": 183,
             "total": 210
           },
           "caregiver_1_arm_1": {
@@ -17336,24 +17336,24 @@
             "total": 0
           },
           "1_month_arm_1": {
-            "complete": 182,
+            "complete": 177,
             "total": 210
           },
           "2_months_arm_1": {
-            "complete": 161,
+            "complete": 165,
             "total": 208
           },
           "3_months_arm_1": {
-            "complete": 163,
+            "complete": 162,
             "total": 204
           },
           "6_months_arm_1": {
-            "complete": 158,
-            "total": 197
+            "complete": 151,
+            "total": 194
           },
           "9_months_arm_1": {
             "complete": 136,
-            "total": 179
+            "total": 175
           },
           "12_months_arm_1": {
             "complete": 99,
@@ -17377,15 +17377,15 @@
       },
       {
         "stage": "scheduled",
-        "count": 548
+        "count": 541
       },
       {
         "stage": "started",
-        "count": 548
+        "count": 541
       },
       {
         "stage": "complete",
-        "count": 405
+        "count": 398
       }
     ],
     "thresholds": {
@@ -25175,11 +25175,11 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 170,
-        "mean_total": 7.31,
-        "screen_positive": 49,
-        "high_concern": 22,
-        "self_harm_flags": 7,
+        "n": 167,
+        "mean_total": 7.13,
+        "screen_positive": 47,
+        "high_concern": 19,
+        "self_harm_flags": 12,
         "total_field": "epds_total",
         "total_field_verified": true,
         "self_harm_field": "epds_si_item",
@@ -25189,11 +25189,11 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 168,
-        "mean_total": 7.41,
-        "screen_positive": 56,
-        "high_concern": 23,
-        "self_harm_flags": 8,
+        "n": 167,
+        "mean_total": 7.19,
+        "screen_positive": 52,
+        "high_concern": 17,
+        "self_harm_flags": 9,
         "total_field": "epds_total",
         "total_field_verified": true,
         "self_harm_field": "epds_si_item",
@@ -25203,11 +25203,11 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 144,
-        "mean_total": 7.26,
-        "screen_positive": 42,
-        "high_concern": 12,
-        "self_harm_flags": 6,
+        "n": 145,
+        "mean_total": 7.15,
+        "screen_positive": 41,
+        "high_concern": 13,
+        "self_harm_flags": 8,
         "total_field": "epds_total",
         "total_field_verified": true,
         "self_harm_field": "epds_si_item",
@@ -25218,8 +25218,8 @@
         "label": "3 Months",
         "month": 3,
         "n": 148,
-        "mean_total": 6.89,
-        "screen_positive": 38,
+        "mean_total": 6.82,
+        "screen_positive": 36,
         "high_concern": 17,
         "self_harm_flags": 5,
         "total_field": "epds_total",
@@ -25231,10 +25231,10 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 146,
-        "mean_total": 7.15,
-        "screen_positive": 40,
-        "high_concern": 12,
+        "n": 145,
+        "mean_total": 7.35,
+        "screen_positive": 44,
+        "high_concern": 15,
         "self_harm_flags": 9,
         "total_field": "epds_total",
         "total_field_verified": true,
@@ -25245,11 +25245,11 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 125,
-        "mean_total": 6.82,
-        "screen_positive": 38,
-        "high_concern": 15,
-        "self_harm_flags": 3,
+        "n": 123,
+        "mean_total": 6.86,
+        "screen_positive": 37,
+        "high_concern": 13,
+        "self_harm_flags": 2,
         "total_field": "epds_total",
         "total_field_verified": true,
         "self_harm_field": "epds_si_item",
@@ -25293,8 +25293,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 187,
-        "mean_score": 39.26,
+        "n": 184,
+        "mean_score": 39.91,
         "zone": "pass"
       },
       {
@@ -25305,8 +25305,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 184,
-        "mean_score": 40.05,
+        "n": 180,
+        "mean_score": 40.86,
         "zone": "pass"
       },
       {
@@ -25317,8 +25317,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 157,
-        "mean_score": 40.77,
+        "n": 166,
+        "mean_score": 40.62,
         "zone": "pass"
       },
       {
@@ -25329,8 +25329,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 171,
-        "mean_score": 40.2,
+        "n": 173,
+        "mean_score": 39.87,
         "zone": "pass"
       },
       {
@@ -25341,8 +25341,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 152,
-        "mean_score": 42.13,
+        "n": 151,
+        "mean_score": 41.7,
         "zone": "pass"
       },
       {
@@ -25353,8 +25353,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 132,
-        "mean_score": 39.37,
+        "n": 131,
+        "mean_score": 39.34,
         "zone": "pass"
       },
       {
@@ -25389,8 +25389,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 187,
-        "mean_score": 36.13,
+        "n": 184,
+        "mean_score": 36.34,
         "zone": "pass"
       },
       {
@@ -25401,8 +25401,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 184,
-        "mean_score": 36.27,
+        "n": 180,
+        "mean_score": 36.92,
         "zone": "pass"
       },
       {
@@ -25413,8 +25413,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 157,
-        "mean_score": 37.22,
+        "n": 166,
+        "mean_score": 37.78,
         "zone": "pass"
       },
       {
@@ -25425,8 +25425,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 171,
-        "mean_score": 36.27,
+        "n": 173,
+        "mean_score": 35.81,
         "zone": "pass"
       },
       {
@@ -25437,8 +25437,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 152,
-        "mean_score": 36.4,
+        "n": 151,
+        "mean_score": 36.46,
         "zone": "pass"
       },
       {
@@ -25449,8 +25449,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 132,
-        "mean_score": 36.56,
+        "n": 131,
+        "mean_score": 36.5,
         "zone": "pass"
       },
       {
@@ -25485,8 +25485,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 187,
-        "mean_score": 39.0,
+        "n": 184,
+        "mean_score": 38.08,
         "zone": "pass"
       },
       {
@@ -25497,8 +25497,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 184,
-        "mean_score": 39.36,
+        "n": 180,
+        "mean_score": 39.94,
         "zone": "pass"
       },
       {
@@ -25509,8 +25509,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 157,
-        "mean_score": 38.77,
+        "n": 166,
+        "mean_score": 38.53,
         "zone": "pass"
       },
       {
@@ -25521,8 +25521,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 171,
-        "mean_score": 39.62,
+        "n": 173,
+        "mean_score": 39.25,
         "zone": "pass"
       },
       {
@@ -25533,8 +25533,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 152,
-        "mean_score": 40.29,
+        "n": 151,
+        "mean_score": 40.23,
         "zone": "pass"
       },
       {
@@ -25545,8 +25545,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 132,
-        "mean_score": 39.13,
+        "n": 131,
+        "mean_score": 38.96,
         "zone": "pass"
       },
       {
@@ -25581,8 +25581,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 187,
-        "mean_score": 39.36,
+        "n": 184,
+        "mean_score": 39.82,
         "zone": "pass"
       },
       {
@@ -25593,8 +25593,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 184,
-        "mean_score": 41.2,
+        "n": 180,
+        "mean_score": 40.74,
         "zone": "pass"
       },
       {
@@ -25605,8 +25605,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 157,
-        "mean_score": 40.72,
+        "n": 166,
+        "mean_score": 41.04,
         "zone": "pass"
       },
       {
@@ -25617,8 +25617,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 171,
-        "mean_score": 40.17,
+        "n": 173,
+        "mean_score": 40.63,
         "zone": "pass"
       },
       {
@@ -25629,7 +25629,7 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 152,
+        "n": 151,
         "mean_score": 39.97,
         "zone": "pass"
       },
@@ -25641,8 +25641,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 132,
-        "mean_score": 38.82,
+        "n": 131,
+        "mean_score": 38.53,
         "zone": "pass"
       },
       {
@@ -25677,8 +25677,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 187,
-        "mean_score": 36.84,
+        "n": 184,
+        "mean_score": 37.11,
         "zone": "pass"
       },
       {
@@ -25689,7 +25689,7 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 184,
+        "n": 180,
         "mean_score": 37.94,
         "zone": "pass"
       },
@@ -25701,8 +25701,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 157,
-        "mean_score": 37.87,
+        "n": 166,
+        "mean_score": 38.2,
         "zone": "pass"
       },
       {
@@ -25713,8 +25713,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 171,
-        "mean_score": 38.02,
+        "n": 173,
+        "mean_score": 37.9,
         "zone": "pass"
       },
       {
@@ -25725,8 +25725,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 152,
-        "mean_score": 37.14,
+        "n": 151,
+        "mean_score": 37.07,
         "zone": "pass"
       },
       {
@@ -25737,8 +25737,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 132,
-        "mean_score": 36.85,
+        "n": 131,
+        "mean_score": 37.06,
         "zone": "pass"
       },
       {
@@ -25773,8 +25773,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 190,
-        "mean_score": 65.99,
+        "n": 183,
+        "mean_score": 65.86,
         "zone": "pass"
       },
       {
@@ -25785,8 +25785,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 182,
-        "mean_score": 64.84,
+        "n": 177,
+        "mean_score": 65.42,
         "zone": "pass"
       },
       {
@@ -25797,8 +25797,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 161,
-        "mean_score": 66.36,
+        "n": 165,
+        "mean_score": 67.24,
         "zone": "pass"
       },
       {
@@ -25809,8 +25809,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 163,
-        "mean_score": 66.75,
+        "n": 162,
+        "mean_score": 66.3,
         "zone": "pass"
       },
       {
@@ -25821,8 +25821,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 158,
-        "mean_score": 65.68,
+        "n": 151,
+        "mean_score": 66.23,
         "zone": "pass"
       },
       {
@@ -25834,7 +25834,7 @@
         "label": "9 Months",
         "month": 9,
         "n": 136,
-        "mean_score": 65.82,
+        "mean_score": 65.87,
         "zone": "pass"
       },
       {
@@ -25869,8 +25869,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 190,
-        "mean_score": 61.47,
+        "n": 183,
+        "mean_score": 61.17,
         "zone": "pass"
       },
       {
@@ -25881,8 +25881,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 182,
-        "mean_score": 61.81,
+        "n": 177,
+        "mean_score": 62.88,
         "zone": "pass"
       },
       {
@@ -25893,8 +25893,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 161,
-        "mean_score": 61.53,
+        "n": 165,
+        "mean_score": 61.07,
         "zone": "pass"
       },
       {
@@ -25905,8 +25905,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 163,
-        "mean_score": 61.33,
+        "n": 162,
+        "mean_score": 61.43,
         "zone": "pass"
       },
       {
@@ -25917,8 +25917,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 158,
-        "mean_score": 62.23,
+        "n": 151,
+        "mean_score": 63.12,
         "zone": "pass"
       },
       {
@@ -25930,7 +25930,7 @@
         "label": "9 Months",
         "month": 9,
         "n": 136,
-        "mean_score": 60.93,
+        "mean_score": 60.82,
         "zone": "pass"
       },
       {
@@ -25965,8 +25965,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 190,
-        "mean_score": 61.42,
+        "n": 183,
+        "mean_score": 62.44,
         "zone": "pass"
       },
       {
@@ -25977,8 +25977,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 182,
-        "mean_score": 61.77,
+        "n": 177,
+        "mean_score": 61.03,
         "zone": "pass"
       },
       {
@@ -25989,8 +25989,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 161,
-        "mean_score": 63.55,
+        "n": 165,
+        "mean_score": 64.04,
         "zone": "pass"
       },
       {
@@ -26001,8 +26001,8 @@
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
-        "n": 163,
-        "mean_score": 62.59,
+        "n": 162,
+        "mean_score": 61.95,
         "zone": "pass"
       },
       {
@@ -26013,8 +26013,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 158,
-        "mean_score": 63.25,
+        "n": 151,
+        "mean_score": 63.79,
         "zone": "pass"
       },
       {
@@ -26026,7 +26026,7 @@
         "label": "9 Months",
         "month": 9,
         "n": 136,
-        "mean_score": 63.47,
+        "mean_score": 64.32,
         "zone": "pass"
       },
       {
@@ -26061,8 +26061,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 189,
-        "mean_score": 94.93,
+        "n": 190,
+        "mean_score": 95.88,
         "zone": "context"
       },
       {
@@ -26073,8 +26073,8 @@
         "event": "1_month_arm_1",
         "label": "1 Month",
         "month": 1,
-        "n": 193,
-        "mean_score": 94.85,
+        "n": 190,
+        "mean_score": 94.58,
         "zone": "context"
       },
       {
@@ -26085,8 +26085,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 158,
-        "mean_score": 95.63,
+        "n": 163,
+        "mean_score": 95.07,
         "zone": "context"
       },
       {
@@ -26098,7 +26098,7 @@
         "label": "3 Months",
         "month": 3,
         "n": 174,
-        "mean_score": 95.11,
+        "mean_score": 95.67,
         "zone": "context"
       },
       {
@@ -26109,8 +26109,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 157,
-        "mean_score": 96.51,
+        "n": 154,
+        "mean_score": 95.97,
         "zone": "context"
       },
       {
@@ -26121,8 +26121,8 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 135,
-        "mean_score": 95.55,
+        "n": 133,
+        "mean_score": 95.99,
         "zone": "context"
       },
       {
@@ -26157,8 +26157,8 @@
         "event": "consent_arm_1",
         "label": "Consent",
         "month": 1,
-        "n": 188,
-        "mean_score": 1.46,
+        "n": 185,
+        "mean_score": 1.44,
         "zone": "context"
       },
       {
@@ -26170,7 +26170,7 @@
         "label": "1 Month",
         "month": 1,
         "n": 176,
-        "mean_score": 1.34,
+        "mean_score": 1.35,
         "zone": "context"
       },
       {
@@ -26181,8 +26181,8 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "month": 2,
-        "n": 156,
-        "mean_score": 1.49,
+        "n": 163,
+        "mean_score": 1.52,
         "zone": "context"
       },
       {
@@ -26194,7 +26194,7 @@
         "label": "3 Months",
         "month": 3,
         "n": 174,
-        "mean_score": 1.47,
+        "mean_score": 1.44,
         "zone": "context"
       },
       {
@@ -26205,8 +26205,8 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "n": 165,
-        "mean_score": 1.36,
+        "n": 159,
+        "mean_score": 1.38,
         "zone": "context"
       },
       {
@@ -26217,7 +26217,7 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "n": 138,
+        "n": 135,
         "mean_score": 1.35,
         "zone": "context"
       },
@@ -26346,15 +26346,15 @@
         "source": "nnns_attention",
         "target": "bayley_cog",
         "label": "Attention to Bayley cognition",
-        "weight": 0.062,
-        "direction": "positive",
+        "weight": 0.012,
+        "direction": "negative",
         "n": 1231
       },
       {
         "source": "rmssd",
         "target": "mchat_total",
         "label": "Autonomic regulation to M-CHAT",
-        "weight": 0.09,
+        "weight": 0.115,
         "direction": "negative",
         "n": 1231
       },
@@ -26362,7 +26362,7 @@
         "source": "hda_sa_pct",
         "target": "bayley_cog",
         "label": "HDA sustained attention to Bayley",
-        "weight": 0.052,
+        "weight": 0.039,
         "direction": "negative",
         "n": 1231
       },
@@ -26370,7 +26370,7 @@
         "source": "sample_entropy",
         "target": "mchat_total",
         "label": "Entropy to M-CHAT",
-        "weight": 0.028,
+        "weight": 0.001,
         "direction": "positive",
         "n": 1231
       }
@@ -26382,11 +26382,11 @@
         "month": 1,
         "screened": 210,
         "assessed": 189,
-        "classified": 13,
+        "classified": 14,
         "module_counts": {
           "1": 90,
-          "T": 80,
-          "2": 19
+          "T": 85,
+          "2": 14
         },
         "score_field": "ados2_css_total",
         "score_field_verified": true
@@ -26397,11 +26397,11 @@
         "month": 1,
         "screened": 210,
         "assessed": 176,
-        "classified": 17,
+        "classified": 20,
         "module_counts": {
-          "1": 86,
-          "T": 76,
-          "2": 14
+          "T": 82,
+          "1": 79,
+          "2": 15
         },
         "score_field": "ados2_css_total",
         "score_field_verified": true
@@ -26411,12 +26411,12 @@
         "label": "2 Months",
         "month": 2,
         "screened": 208,
-        "assessed": 165,
-        "classified": 8,
+        "assessed": 169,
+        "classified": 11,
         "module_counts": {
-          "1": 76,
-          "T": 69,
-          "2": 20
+          "1": 80,
+          "T": 73,
+          "2": 16
         },
         "score_field": "ados2_css_total",
         "score_field_verified": true
@@ -26426,12 +26426,12 @@
         "label": "3 Months",
         "month": 3,
         "screened": 204,
-        "assessed": 173,
+        "assessed": 169,
         "classified": 13,
         "module_counts": {
-          "T": 83,
-          "1": 79,
-          "2": 11
+          "1": 81,
+          "T": 76,
+          "2": 12
         },
         "score_field": "ados2_css_total",
         "score_field_verified": true
@@ -26440,12 +26440,12 @@
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
-        "screened": 197,
+        "screened": 194,
         "assessed": 159,
-        "classified": 14,
+        "classified": 13,
         "module_counts": {
-          "1": 73,
-          "T": 72,
+          "1": 75,
+          "T": 70,
           "2": 14
         },
         "score_field": "ados2_css_total",
@@ -26455,13 +26455,13 @@
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
-        "screened": 179,
-        "assessed": 133,
+        "screened": 175,
+        "assessed": 131,
         "classified": 7,
         "module_counts": {
-          "T": 67,
-          "1": 52,
-          "2": 14
+          "T": 68,
+          "1": 48,
+          "2": 15
         },
         "score_field": "ados2_css_total",
         "score_field_verified": true
@@ -26519,7 +26519,7 @@
         "instrument": "ados2_scores",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.207,
+        "missing_fraction": 0.188,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -26527,7 +26527,7 @@
         "instrument": "ados2_scores",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.152,
+        "missing_fraction": 0.172,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -26535,7 +26535,7 @@
         "instrument": "ados2_scores",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.193,
+        "missing_fraction": 0.18,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -26543,7 +26543,7 @@
         "instrument": "ados2_scores",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.257,
+        "missing_fraction": 0.251,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -26631,7 +26631,7 @@
         "instrument": "asq3_milestones",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.11,
+        "missing_fraction": 0.124,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26639,7 +26639,7 @@
         "instrument": "asq3_milestones",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.124,
+        "missing_fraction": 0.143,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26647,7 +26647,7 @@
         "instrument": "asq3_milestones",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.245,
+        "missing_fraction": 0.202,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26655,7 +26655,7 @@
         "instrument": "asq3_milestones",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.162,
+        "missing_fraction": 0.152,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26663,7 +26663,7 @@
         "instrument": "asq3_milestones",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.228,
+        "missing_fraction": 0.222,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26671,7 +26671,7 @@
         "instrument": "asq3_milestones",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.263,
+        "missing_fraction": 0.251,
         "expected_fields": 5,
         "present_fields": 5
       },
@@ -26695,7 +26695,7 @@
         "instrument": "bayley4_scores",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.1,
+        "missing_fraction": 0.095,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -26703,7 +26703,7 @@
         "instrument": "bayley4_scores",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.081,
+        "missing_fraction": 0.095,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -26711,7 +26711,7 @@
         "instrument": "bayley4_scores",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.24,
+        "missing_fraction": 0.216,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -26727,7 +26727,7 @@
         "instrument": "bayley4_scores",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.203,
+        "missing_fraction": 0.206,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -26735,7 +26735,7 @@
         "instrument": "bayley4_scores",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.246,
+        "missing_fraction": 0.24,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -26759,7 +26759,7 @@
         "instrument": "behavioral_coding_log",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.243,
+        "missing_fraction": 0.224,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26767,7 +26767,7 @@
         "instrument": "behavioral_coding_log",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.295,
+        "missing_fraction": 0.305,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26775,7 +26775,7 @@
         "instrument": "behavioral_coding_log",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.288,
+        "missing_fraction": 0.264,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26783,7 +26783,7 @@
         "instrument": "behavioral_coding_log",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.26,
+        "missing_fraction": 0.289,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26791,7 +26791,7 @@
         "instrument": "behavioral_coding_log",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.299,
+        "missing_fraction": 0.309,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26799,7 +26799,7 @@
         "instrument": "behavioral_coding_log",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.352,
+        "missing_fraction": 0.349,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26823,7 +26823,7 @@
         "instrument": "csbs_social_communication",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.095,
+        "missing_fraction": 0.129,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26831,7 +26831,7 @@
         "instrument": "csbs_social_communication",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.133,
+        "missing_fraction": 0.157,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26839,7 +26839,7 @@
         "instrument": "csbs_social_communication",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.226,
+        "missing_fraction": 0.207,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26847,7 +26847,7 @@
         "instrument": "csbs_social_communication",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.201,
+        "missing_fraction": 0.206,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26855,7 +26855,7 @@
         "instrument": "csbs_social_communication",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.198,
+        "missing_fraction": 0.222,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26863,7 +26863,7 @@
         "instrument": "csbs_social_communication",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.24,
+        "missing_fraction": 0.223,
         "expected_fields": 3,
         "present_fields": 3
       },
@@ -26951,7 +26951,7 @@
         "instrument": "ecg_recording_log",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.124,
+        "missing_fraction": 0.119,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26959,7 +26959,7 @@
         "instrument": "ecg_recording_log",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.124,
+        "missing_fraction": 0.129,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26967,7 +26967,7 @@
         "instrument": "ecg_recording_log",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.231,
+        "missing_fraction": 0.202,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26975,7 +26975,7 @@
         "instrument": "ecg_recording_log",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.162,
+        "missing_fraction": 0.147,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26983,7 +26983,7 @@
         "instrument": "ecg_recording_log",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.188,
+        "missing_fraction": 0.191,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -26991,7 +26991,7 @@
         "instrument": "ecg_recording_log",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.279,
+        "missing_fraction": 0.274,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27015,7 +27015,7 @@
         "instrument": "epds_maternal_depression",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.19,
+        "missing_fraction": 0.205,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -27023,7 +27023,7 @@
         "instrument": "epds_maternal_depression",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.2,
+        "missing_fraction": 0.205,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -27031,7 +27031,7 @@
         "instrument": "epds_maternal_depression",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.308,
+        "missing_fraction": 0.303,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -27047,7 +27047,7 @@
         "instrument": "epds_maternal_depression",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.259,
+        "missing_fraction": 0.253,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -27055,7 +27055,7 @@
         "instrument": "epds_maternal_depression",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.302,
+        "missing_fraction": 0.297,
         "expected_fields": 2,
         "present_fields": 2
       },
@@ -27079,7 +27079,7 @@
         "instrument": "mchat_r_tf",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.105,
+        "missing_fraction": 0.119,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -27095,7 +27095,7 @@
         "instrument": "mchat_r_tf",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.25,
+        "missing_fraction": 0.216,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -27111,7 +27111,7 @@
         "instrument": "mchat_r_tf",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.162,
+        "missing_fraction": 0.18,
         "expected_fields": 1,
         "present_fields": 1
       },
@@ -27159,7 +27159,7 @@
         "instrument": "nicu_morbidity",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.245,
+        "missing_fraction": 0.236,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27167,7 +27167,7 @@
         "instrument": "nicu_morbidity",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.162,
+        "missing_fraction": 0.147,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27175,7 +27175,7 @@
         "instrument": "nicu_morbidity",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.183,
+        "missing_fraction": 0.186,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27183,7 +27183,7 @@
         "instrument": "nicu_morbidity",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.207,
+        "missing_fraction": 0.2,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27207,7 +27207,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.071,
+        "missing_fraction": 0.095,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27215,7 +27215,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.171,
+        "missing_fraction": 0.162,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27223,7 +27223,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.207,
+        "missing_fraction": 0.197,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27231,7 +27231,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.196,
+        "missing_fraction": 0.181,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27239,7 +27239,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.223,
+        "missing_fraction": 0.201,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27247,7 +27247,7 @@
         "instrument": "nnns_attention_1_3m",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.268,
+        "missing_fraction": 0.263,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27271,7 +27271,7 @@
         "instrument": "prapare_sdoh",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.171,
+        "missing_fraction": 0.19,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27279,7 +27279,7 @@
         "instrument": "prapare_sdoh",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.195,
+        "missing_fraction": 0.19,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27287,7 +27287,7 @@
         "instrument": "prapare_sdoh",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.327,
+        "missing_fraction": 0.317,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27303,7 +27303,7 @@
         "instrument": "prapare_sdoh",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.264,
+        "missing_fraction": 0.278,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27311,7 +27311,7 @@
         "instrument": "prapare_sdoh",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.38,
+        "missing_fraction": 0.36,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27335,7 +27335,7 @@
         "instrument": "temperature_recording_log",
         "event": "consent_arm_1",
         "label": "Consent",
-        "missing_fraction": 0.124,
+        "missing_fraction": 0.119,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27343,7 +27343,7 @@
         "instrument": "temperature_recording_log",
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "missing_fraction": 0.162,
+        "missing_fraction": 0.167,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27351,7 +27351,7 @@
         "instrument": "temperature_recording_log",
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "missing_fraction": 0.245,
+        "missing_fraction": 0.221,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27359,7 +27359,7 @@
         "instrument": "temperature_recording_log",
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "missing_fraction": 0.216,
+        "missing_fraction": 0.201,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27367,7 +27367,7 @@
         "instrument": "temperature_recording_log",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "missing_fraction": 0.178,
+        "missing_fraction": 0.18,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27375,7 +27375,7 @@
         "instrument": "temperature_recording_log",
         "event": "9_months_arm_1",
         "label": "9 Months",
-        "missing_fraction": 0.223,
+        "missing_fraction": 0.217,
         "expected_fields": 1,
         "present_fields": 0
       },
@@ -27623,7 +27623,7 @@
         "severity": "review"
       },
       {
-        "recordId": "NANO-4021",
+        "recordId": "NANO-0158",
         "event": "month_6",
         "instrument": "9 Months",
         "field": "double_entry_mismatch",
@@ -27632,9 +27632,36 @@
         "severity": "review"
       },
       {
-        "recordId": "NANO-2985",
-        "event": "month_1",
+        "recordId": "NANO-9582",
+        "event": "month_2",
         "instrument": "6 Months",
+        "field": "double_entry_mismatch",
+        "firstEntry": "present",
+        "secondEntry": "review",
+        "severity": "review"
+      },
+      {
+        "recordId": "NANO-3661",
+        "event": "month_3",
+        "instrument": "6 Months",
+        "field": "double_entry_mismatch",
+        "firstEntry": "present",
+        "secondEntry": "review",
+        "severity": "review"
+      },
+      {
+        "recordId": "NANO-2284",
+        "event": "nicu_admission",
+        "instrument": "6 Months",
+        "field": "double_entry_mismatch",
+        "firstEntry": "present",
+        "secondEntry": "review",
+        "severity": "review"
+      },
+      {
+        "recordId": "NANO-4802",
+        "event": "month_1",
+        "instrument": "2 Months CGA",
         "field": "double_entry_mismatch",
         "firstEntry": "present",
         "secondEntry": "review",
@@ -27645,7 +27672,7 @@
       {
         "event": "consent_arm_1",
         "label": "Consent",
-        "mismatch_rate": 0.01
+        "mismatch_rate": 0.014
       },
       {
         "event": "1_month_arm_1",
@@ -27655,17 +27682,17 @@
       {
         "event": "2_months_arm_1",
         "label": "2 Months",
-        "mismatch_rate": 0.0
+        "mismatch_rate": 0.005
       },
       {
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "mismatch_rate": 0.015
+        "mismatch_rate": 0.02
       },
       {
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "mismatch_rate": 0.03
+        "mismatch_rate": 0.031
       },
       {
         "event": "9_months_arm_1",
@@ -27707,16 +27734,16 @@
       },
       {
         "instrument": "epds_maternal_depression",
-        "submissions": 1011,
-        "flagged": 31,
-        "mean_quality_score": 0.978,
+        "submissions": 1005,
+        "flagged": 29,
+        "mean_quality_score": 0.979,
         "note": "server-side sentinel ready; straight-line/fast flags appear when timestamped item fields exist"
       },
       {
         "instrument": "asq3_milestones",
-        "submissions": 1095,
-        "flagged": 31,
-        "mean_quality_score": 0.978,
+        "submissions": 1097,
+        "flagged": 29,
+        "mean_quality_score": 0.979,
         "note": "server-side sentinel ready; straight-line/fast flags appear when timestamped item fields exist"
       }
     ],
@@ -27812,9 +27839,9 @@
         "target_days": 30.4,
         "window_days": 30,
         "n": 210,
-        "mean_delta_days": -29.9,
+        "mean_delta_days": -30.3,
         "late": 0,
-        "early": 113,
+        "early": 115,
         "points": [
           {
             "recordId": "NANO-7827",
@@ -28305,9 +28332,9 @@
         "target_days": 30.4,
         "window_days": 30,
         "n": 210,
-        "mean_delta_days": -1.5,
+        "mean_delta_days": -1.2,
         "late": 0,
-        "early": 0,
+        "early": 1,
         "points": [
           {
             "recordId": "NANO-7827",
@@ -28798,7 +28825,7 @@
         "target_days": 60.9,
         "window_days": 30,
         "n": 208,
-        "mean_delta_days": -2.3,
+        "mean_delta_days": -2.1,
         "late": 0,
         "early": 0,
         "points": [
@@ -29291,7 +29318,7 @@
         "target_days": 91.3,
         "window_days": 30,
         "n": 204,
-        "mean_delta_days": -0.3,
+        "mean_delta_days": -0.6,
         "late": 0,
         "early": 0,
         "points": [
@@ -29783,8 +29810,8 @@
         "month": 6,
         "target_days": 182.6,
         "window_days": 30,
-        "n": 197,
-        "mean_delta_days": -0.5,
+        "n": 194,
+        "mean_delta_days": -0.7,
         "late": 0,
         "early": 0,
         "points": [
@@ -30276,8 +30303,8 @@
         "month": 9,
         "target_days": 273.9,
         "window_days": 30,
-        "n": 179,
-        "mean_delta_days": -0.4,
+        "n": 175,
+        "mean_delta_days": -0.5,
         "late": 0,
         "early": 0,
         "points": [
@@ -31425,36 +31452,36 @@
         "label": "2 Months",
         "month": 2,
         "at_risk": 210,
-        "completed": 178,
+        "completed": 182,
         "censored": 0,
-        "retained_pct": 84.8
+        "retained_pct": 86.7
       },
       {
         "event": "3_months_arm_1",
         "label": "3 Months",
         "month": 3,
         "at_risk": 210,
-        "completed": 185,
+        "completed": 186,
         "censored": 0,
-        "retained_pct": 88.1
+        "retained_pct": 88.6
       },
       {
         "event": "6_months_arm_1",
         "label": "6 Months",
         "month": 6,
         "at_risk": 210,
-        "completed": 178,
+        "completed": 175,
         "censored": 0,
-        "retained_pct": 84.8
+        "retained_pct": 83.3
       },
       {
         "event": "9_months_arm_1",
         "label": "9 Months",
         "month": 9,
         "at_risk": 210,
-        "completed": 151,
+        "completed": 149,
         "censored": 0,
-        "retained_pct": 71.9
+        "retained_pct": 71.0
       },
       {
         "event": "12_months_arm_1",
@@ -31486,47 +31513,75 @@
     ],
     "collection_calendar": [
       {
-        "date": "2026-03-28",
+        "date": "2026-03-21",
+        "count": 3
+      },
+      {
+        "date": "2026-03-23",
+        "count": 5
+      },
+      {
+        "date": "2026-03-24",
         "count": 2
+      },
+      {
+        "date": "2026-03-25",
+        "count": 4
+      },
+      {
+        "date": "2026-03-26",
+        "count": 2
+      },
+      {
+        "date": "2026-03-27",
+        "count": 1
+      },
+      {
+        "date": "2026-03-28",
+        "count": 1
       },
       {
         "date": "2026-03-29",
         "count": 1
       },
       {
+        "date": "2026-03-31",
+        "count": 1
+      },
+      {
+        "date": "2026-04-01",
+        "count": 1
+      },
+      {
         "date": "2026-04-02",
-        "count": 3
+        "count": 2
       },
       {
         "date": "2026-04-04",
         "count": 1
       },
       {
-        "date": "2026-04-05",
-        "count": 1
-      },
-      {
-        "date": "2026-04-06",
-        "count": 1
-      },
-      {
         "date": "2026-04-07",
-        "count": 5
-      },
-      {
-        "date": "2026-04-08",
-        "count": 1
-      },
-      {
-        "date": "2026-04-09",
         "count": 3
       },
       {
+        "date": "2026-04-08",
+        "count": 2
+      },
+      {
+        "date": "2026-04-09",
+        "count": 5
+      },
+      {
         "date": "2026-04-10",
-        "count": 4
+        "count": 3
       },
       {
         "date": "2026-04-11",
+        "count": 2
+      },
+      {
+        "date": "2026-04-12",
         "count": 1
       },
       {
@@ -31555,15 +31610,15 @@
       },
       {
         "date": "2026-04-19",
-        "count": 4
+        "count": 3
       },
       {
         "date": "2026-04-20",
-        "count": 4
+        "count": 3
       },
       {
         "date": "2026-04-21",
-        "count": 3
+        "count": 1
       },
       {
         "date": "2026-04-22",
@@ -31571,19 +31626,15 @@
       },
       {
         "date": "2026-04-23",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-04-24",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-04-25",
         "count": 2
-      },
-      {
-        "date": "2026-04-26",
-        "count": 1
       },
       {
         "date": "2026-04-27",
@@ -31595,31 +31646,27 @@
       },
       {
         "date": "2026-04-29",
-        "count": 2
-      },
-      {
-        "date": "2026-04-30",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-05-01",
         "count": 2
       },
       {
-        "date": "2026-05-02",
-        "count": 1
+        "date": "2026-05-03",
+        "count": 3
       },
       {
-        "date": "2026-05-03",
-        "count": 2
+        "date": "2026-05-04",
+        "count": 1
       },
       {
         "date": "2026-05-05",
-        "count": 1
+        "count": 3
       },
       {
         "date": "2026-05-07",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-05-08",
@@ -31631,23 +31678,19 @@
       },
       {
         "date": "2026-05-11",
-        "count": 2
-      },
-      {
-        "date": "2026-05-12",
-        "count": 1
+        "count": 5
       },
       {
         "date": "2026-05-13",
-        "count": 1
+        "count": 3
       },
       {
         "date": "2026-05-14",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-05-16",
-        "count": 2
+        "count": 4
       },
       {
         "date": "2026-05-17",
@@ -31655,11 +31698,11 @@
       },
       {
         "date": "2026-05-18",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-05-20",
-        "count": 3
+        "count": 2
       },
       {
         "date": "2026-05-21",
@@ -31671,19 +31714,11 @@
       },
       {
         "date": "2026-05-23",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-05-24",
         "count": 1
-      },
-      {
-        "date": "2026-05-25",
-        "count": 1
-      },
-      {
-        "date": "2026-05-26",
-        "count": 2
       },
       {
         "date": "2026-05-28",
@@ -31691,23 +31726,19 @@
       },
       {
         "date": "2026-05-30",
-        "count": 2
+        "count": 3
       },
       {
         "date": "2026-05-31",
-        "count": 2
+        "count": 3
       },
       {
-        "date": "2026-06-01",
-        "count": 1
-      },
-      {
-        "date": "2026-06-03",
+        "date": "2026-06-02",
         "count": 1
       },
       {
         "date": "2026-06-04",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-06-05",
@@ -31718,12 +31749,12 @@
         "count": 2
       },
       {
-        "date": "2026-06-07",
+        "date": "2026-06-08",
         "count": 2
       },
       {
         "date": "2026-06-09",
-        "count": 2
+        "count": 3
       },
       {
         "date": "2026-06-10",
@@ -31735,39 +31766,35 @@
       },
       {
         "date": "2026-06-12",
-        "count": 4
+        "count": 3
       },
       {
         "date": "2026-06-13",
-        "count": 1
-      },
-      {
-        "date": "2026-06-14",
-        "count": 1
+        "count": 3
       },
       {
         "date": "2026-06-15",
         "count": 2
       },
       {
-        "date": "2026-06-16",
+        "date": "2026-06-17",
         "count": 1
       },
       {
         "date": "2026-06-18",
-        "count": 3
+        "count": 6
       },
       {
-        "date": "2026-06-20",
+        "date": "2026-06-19",
         "count": 1
       },
       {
-        "date": "2026-06-21",
+        "date": "2026-06-20",
         "count": 3
       },
       {
         "date": "2026-06-22",
-        "count": 3
+        "count": 4
       },
       {
         "date": "2026-06-24",
@@ -31775,7 +31802,7 @@
       },
       {
         "date": "2026-06-25",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-06-26",
@@ -31783,47 +31810,43 @@
       },
       {
         "date": "2026-06-27",
-        "count": 4
+        "count": 6
       },
       {
         "date": "2026-06-28",
-        "count": 1
-      },
-      {
-        "date": "2026-06-29",
         "count": 2
       },
       {
-        "date": "2026-06-30",
-        "count": 1
-      },
-      {
         "date": "2026-07-01",
+        "count": 2
+      },
+      {
+        "date": "2026-07-02",
         "count": 1
       },
       {
-        "date": "2026-07-03",
+        "date": "2026-07-04",
         "count": 1
       },
       {
         "date": "2026-07-06",
-        "count": 5
+        "count": 1
       },
       {
         "date": "2026-07-07",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-07-08",
         "count": 2
       },
       {
-        "date": "2026-07-09",
-        "count": 3
+        "date": "2026-07-10",
+        "count": 2
       },
       {
         "date": "2026-07-11",
-        "count": 2
+        "count": 3
       },
       {
         "date": "2026-07-12",
@@ -31831,46 +31854,46 @@
       },
       {
         "date": "2026-07-13",
-        "count": 4
+        "count": 3
       },
       {
         "date": "2026-07-14",
-        "count": 2
+        "count": 3
       },
       {
         "date": "2026-07-15",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-07-16",
-        "count": 2
-      },
-      {
-        "date": "2026-07-17",
-        "count": 2
-      },
-      {
-        "date": "2026-07-18",
-        "count": 3
-      },
-      {
-        "date": "2026-07-19",
         "count": 1
       },
       {
-        "date": "2026-07-20",
-        "count": 3
+        "date": "2026-07-17",
+        "count": 1
+      },
+      {
+        "date": "2026-07-18",
+        "count": 1
+      },
+      {
+        "date": "2026-07-19",
+        "count": 2
       },
       {
         "date": "2026-07-21",
-        "count": 4
+        "count": 1
+      },
+      {
+        "date": "2026-07-22",
+        "count": 3
       },
       {
         "date": "2026-07-23",
         "count": 2
       },
       {
-        "date": "2026-07-25",
+        "date": "2026-07-24",
         "count": 1
       },
       {
@@ -31879,11 +31902,11 @@
       },
       {
         "date": "2026-07-27",
-        "count": 1
+        "count": 2
       },
       {
         "date": "2026-07-28",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-07-29",
@@ -31891,14 +31914,18 @@
       },
       {
         "date": "2026-07-30",
-        "count": 2
-      },
-      {
-        "date": "2026-08-01",
         "count": 1
       },
       {
+        "date": "2026-08-01",
+        "count": 2
+      },
+      {
         "date": "2026-08-03",
+        "count": 2
+      },
+      {
+        "date": "2026-08-04",
         "count": 1
       },
       {
@@ -31911,11 +31938,11 @@
       },
       {
         "date": "2026-08-09",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-08-10",
-        "count": 2
+        "count": 1
       },
       {
         "date": "2026-08-12",
@@ -31938,19 +31965,15 @@
         "count": 1
       },
       {
-        "date": "2026-08-18",
+        "date": "2026-08-19",
         "count": 1
       },
       {
         "date": "2026-08-20",
-        "count": 2
+        "count": 3
       },
       {
         "date": "2026-08-22",
-        "count": 2
-      },
-      {
-        "date": "2026-08-23",
         "count": 1
       },
       {
@@ -31962,30 +31985,76 @@
         "count": 2
       },
       {
+        "date": "2026-08-27",
+        "count": 1
+      },
+      {
         "date": "2026-08-28",
         "count": 1
       }
     ],
     "upcoming_visits": [
       {
+        "recordId": "NANO-8602",
+        "event": "consent_arm_1",
+        "label": "Consent",
+        "due_in_days": -30,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-9737",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -29,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-2841",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -29,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-5993",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -27,
+        "urgency": "overdue"
+      },
+      {
         "recordId": "NANO-6943",
         "event": "caregiver_2_arm_1",
         "label": "Caregiver 2",
-        "due_in_days": -26,
+        "due_in_days": -25,
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-8188",
+        "recordId": "NANO-1713",
         "event": "consent_arm_1",
         "label": "Consent",
-        "due_in_days": -26,
+        "due_in_days": -24,
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-9907",
+        "recordId": "NANO-4644",
         "event": "caregiver_2_arm_1",
         "label": "Caregiver 2",
         "due_in_days": -23,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-3511",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -22,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-7167",
+        "event": "3_months_arm_1",
+        "label": "3 Months",
+        "due_in_days": -20,
         "urgency": "overdue"
       },
       {
@@ -31996,10 +32065,10 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-8602",
-        "event": "consent_arm_1",
-        "label": "Consent",
-        "due_in_days": -19,
+        "recordId": "NANO-9605",
+        "event": "9_months_arm_1",
+        "label": "9 Months",
+        "due_in_days": -18,
         "urgency": "overdue"
       },
       {
@@ -32010,30 +32079,9 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-0818",
-        "event": "9_months_arm_1",
-        "label": "9 Months",
-        "due_in_days": -18,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-4644",
-        "event": "3_months_arm_1",
-        "label": "3 Months",
-        "due_in_days": -18,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-9230",
+        "recordId": "NANO-6513",
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "due_in_days": -16,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-6513",
-        "event": "9_months_arm_1",
-        "label": "9 Months",
         "due_in_days": -16,
         "urgency": "overdue"
       },
@@ -32073,10 +32121,10 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-5923",
-        "event": "9_months_arm_1",
-        "label": "9 Months",
-        "due_in_days": -14,
+        "recordId": "NANO-8187",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -13,
         "urgency": "overdue"
       },
       {
@@ -32097,20 +32145,6 @@
         "recordId": "NANO-4180",
         "event": "12_months_arm_1",
         "label": "12 Months",
-        "due_in_days": -12,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-8187",
-        "event": "consent_arm_1",
-        "label": "Consent",
-        "due_in_days": -12,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-8185",
-        "event": "consent_arm_1",
-        "label": "Consent",
         "due_in_days": -12,
         "urgency": "overdue"
       },
@@ -32178,17 +32212,31 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-9737",
-        "event": "3_months_arm_1",
-        "label": "3 Months",
-        "due_in_days": -10,
-        "urgency": "overdue"
-      },
-      {
         "recordId": "NANO-5229",
         "event": "9_months_arm_1",
         "label": "9 Months",
         "due_in_days": -10,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-8185",
+        "event": "consent_arm_1",
+        "label": "Consent",
+        "due_in_days": -10,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-9230",
+        "event": "6_months_arm_1",
+        "label": "6 Months",
+        "due_in_days": -9,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-6377",
+        "event": "caregiver_2_arm_1",
+        "label": "Caregiver 2",
+        "due_in_days": -9,
         "urgency": "overdue"
       },
       {
@@ -32209,6 +32257,13 @@
         "recordId": "NANO-6287",
         "event": "9_months_arm_1",
         "label": "9 Months",
+        "due_in_days": -9,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-5975",
+        "event": "3_months_arm_1",
+        "label": "3 Months",
         "due_in_days": -9,
         "urgency": "overdue"
       },
@@ -32241,9 +32296,16 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-4851",
-        "event": "9_months_arm_1",
-        "label": "9 Months",
+        "recordId": "NANO-2858",
+        "event": "6_months_arm_1",
+        "label": "6 Months",
+        "due_in_days": -8,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-0050",
+        "event": "6_months_arm_1",
+        "label": "6 Months",
         "due_in_days": -8,
         "urgency": "overdue"
       },
@@ -32262,9 +32324,9 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-6377",
-        "event": "caregiver_2_arm_1",
-        "label": "Caregiver 2",
+        "recordId": "NANO-4996",
+        "event": "6_months_arm_1",
+        "label": "6 Months",
         "due_in_days": -7,
         "urgency": "overdue"
       },
@@ -32283,23 +32345,16 @@
         "urgency": "overdue"
       },
       {
-        "recordId": "NANO-7680",
-        "event": "6_months_arm_1",
-        "label": "6 Months",
-        "due_in_days": -7,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-5975",
-        "event": "6_months_arm_1",
-        "label": "6 Months",
-        "due_in_days": -7,
-        "urgency": "overdue"
-      },
-      {
         "recordId": "NANO-4944",
         "event": "12_months_arm_1",
         "label": "12 Months",
+        "due_in_days": -7,
+        "urgency": "overdue"
+      },
+      {
+        "recordId": "NANO-4610",
+        "event": "6_months_arm_1",
+        "label": "6 Months",
         "due_in_days": -7,
         "urgency": "overdue"
       },
@@ -32321,20 +32376,6 @@
         "recordId": "NANO-3798",
         "event": "12_months_arm_1",
         "label": "12 Months",
-        "due_in_days": -6,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-6506",
-        "event": "9_months_arm_1",
-        "label": "9 Months",
-        "due_in_days": -6,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-7167",
-        "event": "6_months_arm_1",
-        "label": "6 Months",
         "due_in_days": -6,
         "urgency": "overdue"
       },
@@ -32372,27 +32413,13 @@
         "label": "12 Months",
         "due_in_days": -6,
         "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-8715",
-        "event": "6_months_arm_1",
-        "label": "6 Months",
-        "due_in_days": -6,
-        "urgency": "overdue"
-      },
-      {
-        "recordId": "NANO-0050",
-        "event": "6_months_arm_1",
-        "label": "6 Months",
-        "due_in_days": -6,
-        "urgency": "overdue"
       }
     ],
     "entry_lag": [
       {
         "event": "consent_arm_1",
         "label": "Consent",
-        "mean_lag_days": 1.7,
+        "mean_lag_days": 1.8,
         "ucl": 6.8,
         "lcl": 0,
         "n": 210
@@ -32400,8 +32427,8 @@
       {
         "event": "1_month_arm_1",
         "label": "1 Month",
-        "mean_lag_days": 1.9,
-        "ucl": 6.8,
+        "mean_lag_days": 1.7,
+        "ucl": 6.5,
         "lcl": 0,
         "n": 210
       },
@@ -32409,25 +32436,25 @@
         "event": "2_months_arm_1",
         "label": "2 Months",
         "mean_lag_days": 2.0,
-        "ucl": 7.0,
+        "ucl": 7.2,
         "lcl": 0,
         "n": 208
       },
       {
         "event": "3_months_arm_1",
         "label": "3 Months",
-        "mean_lag_days": 2.0,
-        "ucl": 6.9,
+        "mean_lag_days": 1.8,
+        "ucl": 6.8,
         "lcl": 0,
         "n": 204
       },
       {
         "event": "6_months_arm_1",
         "label": "6 Months",
-        "mean_lag_days": 2.4,
-        "ucl": 7.7,
+        "mean_lag_days": 2.3,
+        "ucl": 7.8,
         "lcl": 0,
-        "n": 197
+        "n": 194
       },
       {
         "event": "9_months_arm_1",
@@ -32435,7 +32462,7 @@
         "mean_lag_days": 2.3,
         "ucl": 7.8,
         "lcl": 0,
-        "n": 179
+        "n": 175
       },
       {
         "event": "12_months_arm_1",
@@ -32460,18 +32487,18 @@
       {
         "respondent": "caregiver_1",
         "label": "Caregiver 1",
-        "assigned": 20700,
-        "started": 20700,
-        "completed": 16091,
-        "fatigue_index": 0.223
+        "assigned": 20595,
+        "started": 20595,
+        "completed": 16055,
+        "fatigue_index": 0.22
       },
       {
         "respondent": "caregiver_2",
         "label": "Caregiver 2",
-        "assigned": 20700,
-        "started": 20700,
-        "completed": 16091,
-        "fatigue_index": 0.223
+        "assigned": 20595,
+        "started": 20595,
+        "completed": 16055,
+        "fatigue_index": 0.22
       }
     ],
     "respondent_concordance": [
@@ -32725,6 +32752,15 @@
         ]
       },
       {
+        "recordId": "NANO-2190",
+        "risk_score": 0.456,
+        "risk_band": "medium",
+        "drivers": [
+          "questionnaire backlog",
+          "missed visits"
+        ]
+      },
+      {
         "recordId": "NANO-1938",
         "risk_score": 0.454,
         "risk_band": "medium",
@@ -32872,25 +32908,6 @@
         ]
       },
       {
-        "recordId": "NANO-6377",
-        "risk_score": 0.404,
-        "risk_band": "medium",
-        "drivers": [
-          "questionnaire backlog",
-          "missed visits"
-        ]
-      },
-      {
-        "recordId": "NANO-8715",
-        "risk_score": 0.391,
-        "risk_band": "medium",
-        "drivers": [
-          "questionnaire backlog",
-          "missed visits",
-          "open REDCap queries"
-        ]
-      },
-      {
         "recordId": "NANO-4424",
         "risk_score": 0.39,
         "risk_band": "medium",
@@ -32901,8 +32918,18 @@
         ]
       },
       {
-        "recordId": "NANO-5993",
-        "risk_score": 0.389,
+        "recordId": "NANO-6506",
+        "risk_score": 0.383,
+        "risk_band": "medium",
+        "drivers": [
+          "questionnaire backlog",
+          "missed visits",
+          "open REDCap queries"
+        ]
+      },
+      {
+        "recordId": "NANO-9737",
+        "risk_score": 0.381,
         "risk_band": "medium",
         "drivers": [
           "questionnaire backlog",
@@ -32969,13 +32996,22 @@
         ]
       },
       {
-        "recordId": "NANO-0176",
+        "recordId": "NANO-2733",
         "risk_score": 0.373,
         "risk_band": "medium",
         "drivers": [
           "questionnaire backlog",
           "missed visits",
           "open REDCap queries"
+        ]
+      },
+      {
+        "recordId": "NANO-4881",
+        "risk_score": 0.373,
+        "risk_band": "medium",
+        "drivers": [
+          "questionnaire backlog",
+          "missed visits"
         ]
       },
       {
@@ -33017,15 +33053,6 @@
         ]
       },
       {
-        "recordId": "NANO-6506",
-        "risk_score": 0.368,
-        "risk_band": "medium",
-        "drivers": [
-          "questionnaire backlog",
-          "missed visits"
-        ]
-      },
-      {
         "recordId": "NANO-4300",
         "risk_score": 0.368,
         "risk_band": "medium",
@@ -33046,7 +33073,7 @@
         ]
       },
       {
-        "recordId": "NANO-3829",
+        "recordId": "NANO-2179",
         "risk_score": 0.368,
         "risk_band": "medium",
         "drivers": [
@@ -33057,15 +33084,6 @@
       {
         "recordId": "NANO-7667",
         "risk_score": 0.368,
-        "risk_band": "medium",
-        "drivers": [
-          "questionnaire backlog",
-          "missed visits"
-        ]
-      },
-      {
-        "recordId": "NANO-4644",
-        "risk_score": 0.366,
         "risk_band": "medium",
         "drivers": [
           "questionnaire backlog",
@@ -33091,6 +33109,15 @@
         ]
       },
       {
+        "recordId": "NANO-9908",
+        "risk_score": 0.363,
+        "risk_band": "medium",
+        "drivers": [
+          "questionnaire backlog",
+          "missed visits"
+        ]
+      },
+      {
         "recordId": "NANO-3073",
         "risk_score": 0.361,
         "risk_band": "medium",
@@ -33109,15 +33136,6 @@
         ]
       },
       {
-        "recordId": "NANO-4881",
-        "risk_score": 0.361,
-        "risk_band": "medium",
-        "drivers": [
-          "questionnaire backlog",
-          "missed visits"
-        ]
-      },
-      {
         "recordId": "NANO-2507",
         "risk_score": 0.361,
         "risk_band": "medium",
@@ -33127,8 +33145,17 @@
         ]
       },
       {
-        "recordId": "NANO-8130",
-        "risk_score": 0.358,
+        "recordId": "NANO-4251",
+        "risk_score": 0.357,
+        "risk_band": "medium",
+        "drivers": [
+          "missed visits",
+          "open REDCap queries"
+        ]
+      },
+      {
+        "recordId": "NANO-4195",
+        "risk_score": 0.356,
         "risk_band": "medium",
         "drivers": [
           "questionnaire backlog",
@@ -33136,12 +33163,12 @@
         ]
       },
       {
-        "recordId": "NANO-9737",
-        "risk_score": 0.358,
+        "recordId": "NANO-1779",
+        "risk_score": 0.355,
         "risk_band": "medium",
         "drivers": [
-          "questionnaire backlog",
-          "missed visits"
+          "missed visits",
+          "open REDCap queries"
         ]
       }
     ],
@@ -33172,21 +33199,21 @@
   },
   "redcap_ops": {
     "freshness": {
-      "generated_at": "2026-08-27T22:18:21Z",
+      "generated_at": "2026-08-28T14:09:25Z",
       "age_hours": 0.0,
       "source": "synthetic-fallback",
       "status": "fresh",
       "sla_hours": 48.0
     },
     "runtime_parity": {
-      "pages": "adb937ae5d20",
-      "docker": "adb937ae5d20",
-      "k8s": "adb937ae5d20"
+      "pages": "f5f416f8a2f3",
+      "docker": "f5f416f8a2f3",
+      "k8s": "f5f416f8a2f3"
     },
     "run_ledger": [
       {
-        "run_id": "redcap-adb937ae5d20",
-        "started_at": "2026-08-27T22:18:21Z",
+        "run_id": "redcap-f5f416f8a2f3",
+        "started_at": "2026-08-28T14:09:25Z",
         "status": "ok",
         "records": 210,
         "anomalies": 0,
@@ -33226,7 +33253,7 @@
     }
   },
   "lab_operations": {
-    "generated_at": "2026-08-27T22:18:21Z",
+    "generated_at": "2026-08-28T14:09:25Z",
     "source_documents": [
       {
         "study": "NANO",
@@ -33751,7 +33778,7 @@
       "study": "NANO",
       "long_name": "Neurodevelopment of Autonomic and Neural Organization",
       "state": "Actively Enrolling",
-      "as_of": "2026-08-27",
+      "as_of": "2026-08-28",
       "n_target": 260,
       "source": "synthetic",
       "aggregate_only": true
@@ -33838,7 +33865,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-08-27T22:18:21Z"
+      "last_updated": "2026-08-28T14:09:25Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -33991,17 +34018,17 @@
       ]
     },
     "autonomic": {
-      "rsa_baseline_ms2": 3.293,
+      "rsa_baseline_ms2": 3.302,
       "cptd_mean_c": 1.98,
       "by_window": [
         {
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.293,
+          "rsa_baseline_ms2": 3.302,
           "cptd_mean_c": 1.63
         },
         {
           "window": "6m",
-          "rsa_baseline_ms2": 3.604,
+          "rsa_baseline_ms2": 3.614,
           "cptd_mean_c": 1.59
         },
         {
@@ -34011,7 +34038,7 @@
         },
         {
           "window": "12m",
-          "rsa_baseline_ms2": 4.069,
+          "rsa_baseline_ms2": 4.07,
           "cptd_mean_c": 1.48
         }
       ],
@@ -34019,73 +34046,73 @@
         {
           "group": "ASIB",
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.229,
+          "rsa_baseline_ms2": 3.223,
           "cptd_mean_c": 1.82
         },
         {
           "group": "ASIB",
           "window": "6m",
-          "rsa_baseline_ms2": 3.365,
+          "rsa_baseline_ms2": 3.391,
           "cptd_mean_c": 1.77
         },
         {
           "group": "ASIB",
           "window": "9m",
-          "rsa_baseline_ms2": 3.469,
+          "rsa_baseline_ms2": 3.504,
           "cptd_mean_c": 1.72
         },
         {
           "group": "ASIB",
           "window": "12m",
-          "rsa_baseline_ms2": 3.587,
+          "rsa_baseline_ms2": 3.614,
           "cptd_mean_c": 1.67
         },
         {
           "group": "PT",
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.308,
+          "rsa_baseline_ms2": 3.303,
           "cptd_mean_c": 1.67
         },
         {
           "group": "PT",
           "window": "6m",
-          "rsa_baseline_ms2": 3.641,
+          "rsa_baseline_ms2": 3.634,
           "cptd_mean_c": 1.62
         },
         {
           "group": "PT",
           "window": "9m",
-          "rsa_baseline_ms2": 3.895,
+          "rsa_baseline_ms2": 3.861,
           "cptd_mean_c": 1.57
         },
         {
           "group": "PT",
           "window": "12m",
-          "rsa_baseline_ms2": 4.117,
+          "rsa_baseline_ms2": 4.107,
           "cptd_mean_c": 1.52
         },
         {
           "group": "TD",
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.329,
+          "rsa_baseline_ms2": 3.38,
           "cptd_mean_c": 1.38
         },
         {
           "group": "TD",
           "window": "6m",
-          "rsa_baseline_ms2": 3.767,
+          "rsa_baseline_ms2": 3.797,
           "cptd_mean_c": 1.33
         },
         {
           "group": "TD",
           "window": "9m",
-          "rsa_baseline_ms2": 4.1,
+          "rsa_baseline_ms2": 4.135,
           "cptd_mean_c": 1.28
         },
         {
           "group": "TD",
           "window": "12m",
-          "rsa_baseline_ms2": 4.456,
+          "rsa_baseline_ms2": 4.45,
           "cptd_mean_c": 1.23
         }
       ]
@@ -34103,19 +34130,19 @@
         },
         {
           "id": "month_1",
-          "due": 4,
-          "upcoming_14d": 0,
-          "overdue": 4,
-          "completed": 201,
-          "expected": 210,
-          "window_adherence_pct": 100.0
-        },
-        {
-          "id": "month_2",
           "due": 3,
           "upcoming_14d": 0,
           "overdue": 3,
-          "completed": 178,
+          "completed": 201,
+          "expected": 210,
+          "window_adherence_pct": 99.5
+        },
+        {
+          "id": "month_2",
+          "due": 8,
+          "upcoming_14d": 0,
+          "overdue": 8,
+          "completed": 182,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
@@ -34124,7 +34151,7 @@
           "due": 2,
           "upcoming_14d": 0,
           "overdue": 2,
-          "completed": 185,
+          "completed": 186,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
@@ -34133,15 +34160,15 @@
           "due": 6,
           "upcoming_14d": 0,
           "overdue": 6,
-          "completed": 158,
+          "completed": 151,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
         {
           "id": "month_9",
-          "due": 9,
+          "due": 5,
           "upcoming_14d": 0,
-          "overdue": 9,
+          "overdue": 5,
           "completed": 136,
           "expected": 210,
           "window_adherence_pct": 100.0
@@ -34178,58 +34205,58 @@
     "pipeline": [
       {
         "stage": "Ingested",
-        "count": 1380,
+        "count": 1373,
         "delta_7d": 42,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1263
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1254
       },
       {
         "stage": "ECG preproc",
-        "count": 1335,
+        "count": 1328,
         "delta_7d": 38,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1222
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1212
       },
       {
         "stage": "Temp preproc",
-        "count": 1335,
+        "count": 1328,
         "delta_7d": 35,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1222
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1212
       },
       {
         "stage": "Behavioral coding",
-        "count": 1335,
+        "count": 1328,
         "delta_7d": 31,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1222
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1212
       },
       {
         "stage": "Feature matrix",
         "count": 1231,
         "delta_7d": 29,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1126
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1124
       },
       {
         "stage": "Imputation (MICE m=20)",
         "count": 1231,
         "delta_7d": 26,
-        "qc_pass_pct": 91.5,
-        "qa_passed": 1126
+        "qc_pass_pct": 91.3,
+        "qa_passed": 1124
       },
       {
         "stage": "Model-ready",
         "count": 140,
         "delta_7d": 8,
-        "qc_pass_pct": 91.5,
+        "qc_pass_pct": 91.3,
         "qa_passed": 128
       }
     ],
     "pipeline_summary": {
-      "qa_passed_sessions": 1263,
-      "qa_pass_pct": 91.5,
-      "open_qc_actions": 117,
+      "qa_passed_sessions": 1254,
+      "qa_pass_pct": 91.3,
+      "open_qc_actions": 119,
       "unit": "aggregate sessions"
     },
     "assessments": [
@@ -34244,9 +34271,9 @@
       {
         "instrument": "NNNS-II",
         "timepoint": "month_1",
-        "complete": 195,
+        "complete": 190,
         "expected": 210,
-        "pct_complete": 92.9,
+        "pct_complete": 90.5,
         "applicable": true
       },
       {
@@ -34260,9 +34287,9 @@
       {
         "instrument": "NNNS-II",
         "timepoint": "month_3",
-        "complete": 164,
+        "complete": 167,
         "expected": 204,
-        "pct_complete": 80.4,
+        "pct_complete": 81.9,
         "applicable": true
       },
       {
@@ -34340,17 +34367,17 @@
       {
         "instrument": "CSBS",
         "timepoint": "month_6",
-        "complete": 158,
-        "expected": 197,
-        "pct_complete": 80.2,
+        "complete": 151,
+        "expected": 194,
+        "pct_complete": 77.8,
         "applicable": true
       },
       {
         "instrument": "CSBS",
         "timepoint": "month_9",
         "complete": 136,
-        "expected": 179,
-        "pct_complete": 76.0,
+        "expected": 175,
+        "pct_complete": 77.7,
         "applicable": true
       },
       {
@@ -34628,17 +34655,17 @@
       {
         "instrument": "ASQ-3",
         "timepoint": "month_6",
-        "complete": 152,
-        "expected": 197,
-        "pct_complete": 77.2,
+        "complete": 151,
+        "expected": 194,
+        "pct_complete": 77.8,
         "applicable": true
       },
       {
         "instrument": "ASQ-3",
         "timepoint": "month_9",
-        "complete": 132,
-        "expected": 179,
-        "pct_complete": 73.7,
+        "complete": 131,
+        "expected": 175,
+        "pct_complete": 74.9,
         "applicable": true
       },
       {
@@ -34833,33 +34860,33 @@
         {
           "key": "ecg_signal",
           "label": "ECG signal QA",
-          "done": 1263,
-          "total": 1263,
+          "done": 1254,
+          "total": 1254,
           "status": "ready"
         },
         {
           "key": "temperature",
           "label": "Temperature validity QA",
-          "done": 1262,
-          "total": 1263,
+          "done": 1253,
+          "total": 1254,
           "status": "ready"
         },
         {
           "key": "behavior_sync",
           "label": "Behavior and physiology sync QA",
-          "done": 1261,
-          "total": 1263,
+          "done": 1252,
+          "total": 1254,
           "status": "ready"
         }
       ],
-      "open_qc_actions": 117,
+      "open_qc_actions": 119,
       "sop_ack_pct": 94.7
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-08-27T22:18:21Z",
+      "last_sync": "2026-08-28T14:09:25Z",
       "records_locked": 0,
-      "double_entry_discrepancies": 19,
+      "double_entry_discrepancies": 22,
       "instruments_defined": 14,
       "dags": 0,
       "sync_health": "ok",
@@ -34911,7 +34938,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-08-27T22:17:52"
+      "last_indexed": "2026-08-28T14:08:56"
     },
     "study_meta": {
       "award": "R01MH132925",
@@ -34924,7 +34951,7 @@
       "pi": "Jessica Bradshaw, PhD"
     },
     "active_followup": {
-      "1_3m": 185,
+      "1_3m": 186,
       "6_12m": 99,
       "24_36m": 0
     },
@@ -35102,11 +35129,11 @@
         ]
       },
       "rsa": {
-        "asib_intercept_mean": 3.23,
+        "asib_intercept_mean": 3.22,
         "asib_slope_mean": 0.04,
-        "pt_intercept_mean": 3.31,
+        "pt_intercept_mean": 3.3,
         "pt_slope_mean": 0.06,
-        "td_intercept_mean": 3.33,
+        "td_intercept_mean": 3.38,
         "td_slope_mean": 0.08,
         "asib_vs_td_intercept_p": null,
         "asib_vs_td_slope_p": null,
@@ -35116,65 +35143,65 @@
           {
             "group": "asib",
             "timepoint_m": 1,
-            "mean": 3.23,
-            "ci_low": 2.78,
-            "ci_high": 3.68
+            "mean": 3.22,
+            "ci_low": 2.77,
+            "ci_high": 3.67
           },
           {
             "group": "asib",
             "timepoint_m": 2,
-            "mean": 3.27,
-            "ci_low": 2.81,
-            "ci_high": 3.73
+            "mean": 3.26,
+            "ci_low": 2.8,
+            "ci_high": 3.72
           },
           {
             "group": "asib",
             "timepoint_m": 3,
-            "mean": 3.31,
-            "ci_low": 2.85,
-            "ci_high": 3.77
+            "mean": 3.3,
+            "ci_low": 2.84,
+            "ci_high": 3.76
           },
           {
             "group": "pt",
             "timepoint_m": 1,
-            "mean": 3.31,
-            "ci_low": 2.85,
-            "ci_high": 3.77
+            "mean": 3.3,
+            "ci_low": 2.84,
+            "ci_high": 3.76
           },
           {
             "group": "pt",
             "timepoint_m": 2,
-            "mean": 3.37,
-            "ci_low": 2.9,
-            "ci_high": 3.84
+            "mean": 3.36,
+            "ci_low": 2.89,
+            "ci_high": 3.83
           },
           {
             "group": "pt",
             "timepoint_m": 3,
-            "mean": 3.43,
-            "ci_low": 2.95,
-            "ci_high": 3.91
+            "mean": 3.42,
+            "ci_low": 2.94,
+            "ci_high": 3.9
           },
           {
             "group": "td",
             "timepoint_m": 1,
-            "mean": 3.33,
-            "ci_low": 2.86,
-            "ci_high": 3.8
+            "mean": 3.38,
+            "ci_low": 2.91,
+            "ci_high": 3.85
           },
           {
             "group": "td",
             "timepoint_m": 2,
-            "mean": 3.41,
-            "ci_low": 2.93,
-            "ci_high": 3.89
+            "mean": 3.46,
+            "ci_low": 2.98,
+            "ci_high": 3.94
           },
           {
             "group": "td",
             "timepoint_m": 3,
-            "mean": 3.49,
-            "ci_low": 3.0,
-            "ci_high": 3.98
+            "mean": 3.54,
+            "ci_low": 3.04,
+            "ci_high": 4.04
           }
         ]
       }
@@ -35246,7 +35273,7 @@
       "completed_12m": 8,
       "completed_24m": 3,
       "completed_36m": 0,
-      "last_updated": "2026-08-27T22:18:21Z"
+      "last_updated": "2026-08-28T14:09:25Z"
     },
     "participants": [
       {
@@ -35610,7 +35637,7 @@
   },
   "shared": {
     "data_pipeline_run": {
-      "last_success": "2026-08-27T22:18:21Z",
+      "last_success": "2026-08-28T14:09:25Z",
       "last_error": "",
       "stages_passed": [
         "redcap_nano",
@@ -35698,7 +35725,7 @@
     },
     "changelog": [
       {
-        "timestamp": "2026-08-27T22:18:21Z",
+        "timestamp": "2026-08-28T14:09:25Z",
         "build": "seed0000",
         "summary": "+3 NANO participants, +2 NICO participants, +1440 ECG windows, 0 QA flags"
       }

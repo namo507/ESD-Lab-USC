@@ -171,7 +171,52 @@ def scenario_repeated_failure() -> Result:
     return Result("repeated-failure", "pass", "holds after 3 failures, scoped per rung, expires with the window")
 
 
+def scenario_model_ladder() -> Result:
+    """One local model failing must not take the assistant down.
+
+    A single runtime serves several models, so "the local tier is down" is
+    rarely the real failure -- one *model* is cold, wedged, or missing. The
+    chain must expand into a rung per model, each with its own breaker, so the
+    next one answers.
+    """
+    import os
+
+    from dashboard.assistant.local_chat_assistant import AssistantConfig
+
+    previous = {k: os.environ.get(k) for k in (
+        "DASHBOARD_ASSISTANT_LOCAL_ENABLED", "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+        "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS", "DASHBOARD_ASSISTANT_PROVIDER",
+    )}
+    os.environ.update({
+        "DASHBOARD_ASSISTANT_LOCAL_ENABLED": "true",
+        "DASHBOARD_ASSISTANT_PROVIDER": "ollama",
+        "DASHBOARD_ASSISTANT_LOCAL_MODEL": "primary-model",
+        "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS": "second-model, third-model",
+    })
+    try:
+        configs = AssistantConfig.from_env().provider_configs()
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    local = [c for c in configs if c.normalized_provider == "local"]
+    models = [c.model for c in local]
+    if models[:3] != ["primary-model", "second-model", "third-model"]:
+        return Result("model-ladder", "fail", f"ladder did not expand in order: {models}")
+    # Independent breakers are what make a failed rung skippable rather than fatal.
+    if len({id(c) for c in local}) != len(local):
+        return Result("model-ladder", "fail", "rungs share a config object, so they share a breaker")
+    return Result(
+        "model-ladder", "pass",
+        f"{len(local)} local rungs in order ({', '.join(models)}), each with its own breaker",
+    )
+
+
 SCENARIOS: dict[str, Callable[[], Result]] = {
+    "model-ladder": scenario_model_ladder,
     "model-down": scenario_model_down,
     "model-slow": scenario_model_slow,
     "corrupt-index": scenario_corrupt_index,

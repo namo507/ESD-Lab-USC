@@ -13,7 +13,12 @@ x-dashboard-assistant-environment: &dashboard-assistant-environment
   # From inside a container, Docker Model Runner is reached through the host
   # gateway rather than localhost.
   DASHBOARD_ASSISTANT_LOCAL_API_BASE: ${DASHBOARD_ASSISTANT_LOCAL_API_BASE:-http://host.docker.internal:12434/engines/v1}
-  DASHBOARD_ASSISTANT_LOCAL_MODEL: ${DASHBOARD_ASSISTANT_LOCAL_MODEL:-ai/nemotron-3-nano}
+  DASHBOARD_ASSISTANT_LOCAL_MODEL: ${DASHBOARD_ASSISTANT_LOCAL_MODEL:-esd-buddy}
+  # One runtime serves several models, so "the local tier is down" is rarely the
+  # real failure -- one model is cold, wedged, or missing. Each entry becomes its
+  # own failover rung with its own circuit breaker. Order is from
+  # scripts/benchmark_local_models.py, best first.
+  DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS: ${DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS:-phi4-mini:latest,qwen2.5:1.5b}
   DASHBOARD_ASSISTANT_RUNTIME: ${DASHBOARD_ASSISTANT_RUNTIME:-nvidia-build-api}
   DASHBOARD_ASSISTANT_API_BASE: ${DASHBOARD_ASSISTANT_API_BASE:-https://integrate.api.nvidia.com/v1}
   DASHBOARD_ASSISTANT_API_KEY: ${DASHBOARD_ASSISTANT_API_KEY:-${OPENAI_API_KEY:-}}

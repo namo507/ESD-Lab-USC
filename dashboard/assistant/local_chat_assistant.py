@@ -757,6 +757,14 @@ class AssistantConfig:
     local_enabled: bool = False
     local_api_base: str = LOCAL_API_BASE
     local_model: str = LOCAL_DEFAULT_MODEL
+    #: Additional local models to fall back through, best first.
+    #:
+    #: One runtime can serve several models, so "the local tier is down" is
+    #: rarely true -- what actually happens is that one *model* fails: it is
+    #: still loading, it returns an empty answer, or it trips its breaker. A
+    #: ladder of models on the same runtime turns that into a degradation
+    #: rather than an outage, and each rung keeps its own circuit breaker.
+    local_fallback_models: tuple[str, ...] = ()
     context_char_budget: int = 12000
     # Deprecated local-runtime knobs remain constructor-compatible only.
     min_available_memory_gib: float = 0.0
@@ -887,6 +895,9 @@ class AssistantConfig:
             ),
             local_api_base=(
                 _env_first("DASHBOARD_ASSISTANT_LOCAL_API_BASE") or LOCAL_API_BASE
+            ),
+            local_fallback_models=_parse_chain(
+                os.getenv("DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS")
             ),
             local_model=(
                 _env_first("DASHBOARD_ASSISTANT_LOCAL_MODEL") or LOCAL_DEFAULT_MODEL
@@ -1056,6 +1067,36 @@ class AssistantConfig:
         rest = [tier for tier in self.DEFAULT_FALLBACK_CHAIN if tier != primary]
         return (primary, *rest)
 
+    def _local_tier_configs(self) -> list[ProviderConfig]:
+        """Every local model, best first, as its own failover rung.
+
+        The primary local model comes first, then each entry of
+        ``local_fallback_models``. They share a runtime and an API base but not a
+        circuit breaker: provider.py keys breakers per config, so a model that is
+        cold, wedged, or returning empty answers opens only its own and the next
+        rung is tried immediately.
+        """
+        primary = self._tier_config("local")
+        if primary is None:
+            return []
+
+        configs = [primary]
+        for model in self.local_fallback_models:
+            name = model.strip()
+            if not name or name == primary.model:
+                continue
+            configs.append(
+                self._with_shared_limits(
+                    provider="local",
+                    runtime=LOCAL_RUNTIME,
+                    api_base=primary.api_base,
+                    api_key=None,
+                    model=name,
+                    label=f"local:{name}",
+                )
+            )
+        return configs
+
     def provider_configs(self) -> list[ProviderConfig]:
         """Build the ordered failover chain.
 
@@ -1068,14 +1109,19 @@ class AssistantConfig:
         seen: set[tuple[str, str]] = set()
 
         for tier in self.resolved_chain():
-            config = self._tier_config(tier)
-            if config is None:
-                continue
-            identity = (config.normalized_provider, config.model)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            configs.append(config)
+            # The local tier expands into a ladder; every other tier is one rung.
+            if tier.strip().lower() in {"local", "docker", "docker-model-runner"}:
+                tier_configs = self._local_tier_configs()
+            else:
+                single = self._tier_config(tier)
+                tier_configs = [single] if single is not None else []
+
+            for config in tier_configs:
+                identity = (config.normalized_provider, config.model)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                configs.append(config)
 
         return configs or [self.provider_config()]
 

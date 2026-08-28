@@ -167,6 +167,26 @@ def installed_models(base_url: str = "http://127.0.0.1:11434") -> list[dict[str,
 
 
 
+def _configured_fallback_models(present: list[dict[str, Any]]) -> list[str]:
+    """The ladder from config, filtered to models this host actually has.
+
+    Listing a model that was never pulled would add a rung that always fails,
+    which costs a timeout on every request before the next one is tried.
+    """
+    config = PROJECT_ROOT / "config" / "llm_model.json"
+    if not config.exists():
+        return []
+    try:
+        declared = (json.loads(config.read_text(encoding="utf-8")).get("local") or {}).get(
+            "fallback_models"
+        ) or []
+    except (OSError, json.JSONDecodeError):
+        return []
+    names = {m.get("name", "") for m in present}
+    bare = {n.split(":")[0] for n in names}
+    return [m for m in declared if m in names or m.split(":")[0] in bare]
+
+
 def _configured_serving_model() -> str | None:
     """The model config/llm_model.json says is serving, if any."""
     config = PROJECT_ROOT / "config" / "llm_model.json"
@@ -201,6 +221,7 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
             "keep_alive": "30m",
             "max_loaded_models": 2,
             "num_gpu_layers": -1,           # offload everything
+            "fallback_models": _configured_fallback_models(present),
             "reason": (
                 f"{primary['ref']} needs {primary['size_gb']:.2f} GB and the card offers "
                 f"{budget_gb:.2f} GB of usable VRAM"
@@ -264,6 +285,7 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
         "max_new_tokens": 220,
         "request_timeout_seconds": 120,
         "num_thread": cpu_threads(),
+        "fallback_models": _configured_fallback_models(present),
     }
 
 
@@ -299,6 +321,7 @@ DASHBOARD_ASSISTANT_LOCAL_RUNTIME=ollama
 DASHBOARD_ASSISTANT_PROVIDER=ollama
 DASHBOARD_ASSISTANT_LOCAL_API_BASE={api_base}
 DASHBOARD_ASSISTANT_LOCAL_MODEL={generalist}
+DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS={fallback_models}
 ESD_INDEX_EMBED_BASE={embed_base}
 OLLAMA_KEEP_ALIVE={keep_alive}
 OLLAMA_MAX_LOADED_MODELS={max_loaded}
@@ -327,6 +350,7 @@ def main(argv: list[str] | None = None) -> int:
         print(ENV_TEMPLATE.format(
             api_base=f"{args.ollama_url}/v1",
             generalist=plan["generalist"] or "",
+            fallback_models=",".join(plan.get("fallback_models") or []),
             embed_base=args.ollama_url,
             keep_alive=plan["keep_alive"],
             max_loaded=plan["max_loaded_models"],

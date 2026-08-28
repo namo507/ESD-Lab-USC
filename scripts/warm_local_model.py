@@ -78,6 +78,20 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     elapsed = time.perf_counter() - started
     load = out.get("load_duration", 0) / 1e9
+
+    # Verify, do not assume. A successful call is not proof of residency: with
+    # OLLAMA_MAX_LOADED_MODELS at its limit the runtime can accept the request,
+    # serve it, and evict the model again, which is exactly what happened when
+    # benchmarking left other models loaded.
+    held = {m.get("name", "").split(":")[0] for m in resident_models()}
+    if wanted not in held:
+        print(
+            f"  {args.model} did not stay resident (currently: {', '.join(sorted(held)) or 'nothing'}).\n"
+            f"  Raise OLLAMA_MAX_LOADED_MODELS or unload the models crowding it out.",
+            file=sys.stderr,
+        )
+        return 1
+
     print(f"  warmed {args.model} in {elapsed:.1f}s (load {load:.1f}s), held for {KEEP_ALIVE}")
     return 0
 

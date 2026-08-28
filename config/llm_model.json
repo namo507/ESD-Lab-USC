@@ -49,6 +49,11 @@
     "serving_base": "qwen2.5:7b",
     "serving_tier": "cpu",
     "num_thread": 14,
-    "modelfile": "config/esd-buddy.Modelfile"
+    "modelfile": "config/esd-buddy.Modelfile",
+    "fallback_models": [
+      "phi4-mini:latest",
+      "qwen2.5:1.5b"
+    ],
+    "fallback_rationale": "Ranked by scripts/benchmark_local_models.py on this lab's grounded-answer task. esd-buddy (qwen2.5:7b, Apache 2.0) leads on faithfulness; phi4-mini (MIT) is the fastest well-grounded rung at 12.8s and 0.84 groundedness; qwen2.5:1.5b is the last resort. gemma3:4b scored best overall (1.00 faithfulness) but ships under Gemma Terms of Use and is excluded until the lab reviews them."
   }
 }

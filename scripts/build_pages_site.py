@@ -1701,9 +1701,15 @@ async function proxyApi(request, url, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const legacyDashboardPaths = new Set(["/dashboard", "/dashboard/", "/dashboard/index.html"]);
+    // Retired routes, redirected at the edge. /overview is here because it was
+    // replaced by /esd-lab; pointing the legacy paths at it would have sent
+    // visitors through two redirects to reach the same place.
+    const legacyDashboardPaths = new Set([
+      "/dashboard", "/dashboard/", "/dashboard/index.html",
+      "/overview", "/overview/", "/discovery/overview",
+    ]);
     if (legacyDashboardPaths.has(url.pathname)) {
-      const target = new URL("/overview", url);
+      const target = new URL("/esd-lab", url);
       return Response.redirect(target.toString(), 308);
     }
 
@@ -1838,6 +1844,17 @@ def build(
     if out_dir.exists():
         shutil.rmtree(out_dir)
     shutil.copytree(build_dir, out_dir)
+
+    # Pages Functions ship inside the deploy directory.
+    #
+    # `wrangler pages deploy dist/pages-wrapper` only picks up a functions/
+    # directory *within* what it is given, so the repository-root functions/
+    # were never deployed at all. They are copied for completeness, but note
+    # that the _worker.js written below is advanced mode, which supersedes
+    # functions/ entirely -- the API fallback lives there, not here.
+    functions_src = REPO_ROOT / "functions"
+    if functions_src.is_dir():
+        shutil.copytree(functions_src, out_dir / "functions", dirs_exist_ok=True)
     dashboard_data_out = out_dir / "dashboard" / "data"
     dashboard_data_out.mkdir(parents=True, exist_ok=True)
 

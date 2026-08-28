@@ -224,7 +224,11 @@ pages-build:  ## Build the canonical Cloudflare Pages dashboard SPA artifact loc
 	$(PYTHON) scripts/build_pages_site.py
 
 pages-deploy: pages-build  ## Build + deploy the canonical Cloudflare Pages dashboard SPA
-	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --branch $${CLOUDFLARE_PAGES_BRANCH:-main} --commit-dirty=true
+	@# No --branch: passing it on a direct upload produces a *preview* deployment
+	@# even when the value matches the project's production branch, so the apex
+	@# domain kept serving the previous build while main.<project>.pages.dev had
+	@# the new one. Omitting it targets production, which is what deploying means.
+	npx --yes wrangler@3.112.0 pages deploy dist/pages-wrapper --project-name $${CLOUDFLARE_PAGES_PROJECT:-esd-lab-namo} --commit-dirty=true
 
 pages-watch:  ## Watch the canonical Pages dashboard inputs and redeploy on change
 	$(PYTHON) scripts/watch_pages_site.py

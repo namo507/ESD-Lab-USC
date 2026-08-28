@@ -62,7 +62,10 @@ assistant:
   # Resolved into the release name by the templates.
   localApiBase: http://esd-lab-dashboard-ollama:11434/v1
   # Pinned by scripts/resolve_local_models.py; see models/MANIFEST.json.
-  localModel: qwen2.5:14b
+  localModel: esd-buddy
+  # Failover rungs within the local tier, best first. Each gets its own circuit
+  # breaker, so one model being cold or wedged degrades rather than fails.
+  localFallbackModels: "phi4-mini:latest,qwen2.5:1.5b"
   runtime: nvidia-build-api
   apiBase: https://integrate.api.nvidia.com/v1
   apiKeySecretKey: dashboardAssistantApiKey
