@@ -32,9 +32,13 @@ from src.utils.logging_utils import get_pipeline_logger
 logger = get_pipeline_logger(__name__)
 
 _ESTIMATORS: dict[str, Any] = {
-    "random_forest": RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1),
+    "random_forest": RandomForestClassifier(
+        n_estimators=300, random_state=42, n_jobs=-1
+    ),
     "gradient_boosting": GradientBoostingClassifier(n_estimators=200, random_state=42),
-    "logistic_regression": LogisticRegression(max_iter=1000, random_state=42, solver="lbfgs"),
+    "logistic_regression": LogisticRegression(
+        max_iter=1000, random_state=42, solver="lbfgs"
+    ),
     "svm": SVC(probability=True, random_state=42, kernel="rbf"),
 }
 
@@ -58,9 +62,12 @@ def build_pipeline(
         ValueError: If ``model_name`` is not recognized.
     """
     if model_name not in _ESTIMATORS:
-        raise ValueError(f"Unknown model '{model_name}'. Choose from: {list(_ESTIMATORS)}")
+        raise ValueError(
+            f"Unknown model '{model_name}'. Choose from: {list(_ESTIMATORS)}"
+        )
 
     import copy
+
     estimator = copy.deepcopy(_ESTIMATORS[model_name])
     if config:
         estimator.set_params(**config)
@@ -73,11 +80,13 @@ def build_pipeline(
         n_jobs=-1,
     )
 
-    pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("feature_selection", rfecv),
-        ("classifier", estimator),
-    ])
+    pipeline = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("feature_selection", rfecv),
+            ("classifier", estimator),
+        ]
+    )
     logger.info("build_pipeline: built '%s' pipeline.", model_name)
     return pipeline
 
@@ -110,7 +119,10 @@ def train_and_evaluate(
     scores = cv_results["test_score"]
     logger.info(
         "train_and_evaluate: %s = %.4f ± %.4f over %d folds.",
-        scoring, scores.mean(), scores.std(), cv_folds,
+        scoring,
+        scores.mean(),
+        scores.std(),
+        cv_folds,
     )
 
     # Refit on full dataset
@@ -149,13 +161,23 @@ def run_subgroup_analysis(
         X_sub = X[mask].drop(columns=[subgroup_col])
         y_sub = np.asarray(y)[mask]
         if len(np.unique(y_sub)) < 2 or len(y_sub) < 5:
-            logger.warning("run_subgroup_analysis: skipping subgroup '%s' (n=%d).", val, mask.sum())
+            logger.warning(
+                "run_subgroup_analysis: skipping subgroup '%s' (n=%d).", val, mask.sum()
+            )
             continue
-        cv = StratifiedKFold(n_splits=min(5, int(mask.sum() // 2)), shuffle=True, random_state=42)
+        cv = StratifiedKFold(
+            n_splits=min(5, int(mask.sum() // 2)), shuffle=True, random_state=42
+        )
         cv_results = cross_validate(pipeline, X_sub, y_sub, cv=cv, scoring="roc_auc")
         scores = cv_results["test_score"]
-        rows.append({"subgroup": val, "n": int(mask.sum()),
-                     "mean_roc_auc": float(scores.mean()), "std_roc_auc": float(scores.std())})
+        rows.append(
+            {
+                "subgroup": val,
+                "n": int(mask.sum()),
+                "mean_roc_auc": float(scores.mean()),
+                "std_roc_auc": float(scores.std()),
+            }
+        )
 
     return pd.DataFrame(rows)
 

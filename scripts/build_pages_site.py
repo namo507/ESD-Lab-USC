@@ -1975,9 +1975,16 @@ def build(
 
     redirects_path = out_dir / "_redirects"
     redirects_path.write_text(
-        "/dashboard /overview 308\n"
-        "/dashboard/ /overview 308\n"
-        "/dashboard/index.html /overview 308\n"
+        # Same targets as the retired-route table in _worker.js above.
+        # These pointed at /overview, which the worker then redirects to
+        # /esd-lab -- two hops to reach one page, and a hop through a route
+        # the SPA no longer renders.
+        "/dashboard /esd-lab 308\n"
+        "/dashboard/ /esd-lab 308\n"
+        "/dashboard/index.html /esd-lab 308\n"
+        "/overview /esd-lab 308\n"
+        "/overview/ /esd-lab 308\n"
+        "/discovery/overview /esd-lab 308\n"
         "/* /index.html 200\n",
         encoding="utf-8",
     )

@@ -36,8 +36,12 @@ FIXTURES = PROJECT_ROOT / "tests" / "fixtures" / "assistant_eval.json"
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--no-retrieval", action="store_true", help="skip citation checks")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--no-retrieval", action="store_true", help="skip citation checks"
+    )
     parser.add_argument(
         "--embed-base-url",
         default="http://127.0.0.1:11434",
@@ -59,7 +63,9 @@ def main(argv: list[str] | None = None) -> int:
         ok = decision.domain == expected
         routing_pass += ok
         if not ok:
-            failures.append(f"{case['id']}: routed {decision.domain!r}, expected {expected!r} — {case['q'][:60]}")
+            failures.append(
+                f"{case['id']}: routed {decision.domain!r}, expected {expected!r} — {case['q'][:60]}"
+            )
 
         if case.get("phi"):
             phi_total += 1
@@ -67,17 +73,27 @@ def main(argv: list[str] | None = None) -> int:
             if decision.domain == "refused":
                 phi_pass += 1
             else:
-                failures.append(f"{case['id']}: PHI REFUSAL FAILED — routed {decision.domain!r}")
+                failures.append(
+                    f"{case['id']}: PHI REFUSAL FAILED — routed {decision.domain!r}"
+                )
 
         expect_source = case.get("expect_source")
         if expect_source and not args.no_retrieval:
             # A fixture may list several acceptable sources: the assertion is
             # that the answer is grounded in a document that genuinely covers
             # the question, not that one particular file ranked first.
-            accepted = [expect_source] if isinstance(expect_source, str) else list(expect_source)
+            accepted = (
+                [expect_source]
+                if isinstance(expect_source, str)
+                else list(expect_source)
+            )
             citation_total += 1
-            hits = search(case["q"], limit=8, embed_base_url=args.embed_base_url or None)
-            if any(any(source in hit.source_path for source in accepted) for hit in hits):
+            hits = search(
+                case["q"], limit=8, embed_base_url=args.embed_base_url or None
+            )
+            if any(
+                any(source in hit.source_path for source in accepted) for hit in hits
+            ):
                 citation_pass += 1
             else:
                 got = ", ".join(h.source_path for h in hits[:3]) or "(nothing)"
@@ -109,8 +125,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps({**summary, "failures": failures}, indent=2))
     else:
-        print(f"routing   {routing_pass}/{len(cases)}  ({routing_rate:.1%}, floor {spec['pass_floor']:.0%})")
-        print(f"PHI       {phi_pass}/{phi_total}  ({phi_rate:.1%}, floor {spec['phi_pass_floor']:.0%})")
+        print(
+            f"routing   {routing_pass}/{len(cases)}  ({routing_rate:.1%}, floor {spec['pass_floor']:.0%})"
+        )
+        print(
+            f"PHI       {phi_pass}/{phi_total}  ({phi_rate:.1%}, floor {spec['phi_pass_floor']:.0%})"
+        )
         if citation_total:
             print(f"citations {citation_pass}/{citation_total}  ({citation_rate:.1%})")
         if failures:
@@ -120,13 +140,22 @@ def main(argv: list[str] | None = None) -> int:
 
     # PHI is an absolute gate; the others use the configured floor.
     if phi_rate < spec["phi_pass_floor"]:
-        print("\nBLOCKED: a PHI refusal fixture failed. This gate has no tolerance.", file=sys.stderr)
+        print(
+            "\nBLOCKED: a PHI refusal fixture failed. This gate has no tolerance.",
+            file=sys.stderr,
+        )
         return 1
     if routing_rate < spec["pass_floor"]:
-        print(f"\nBLOCKED: routing {routing_rate:.1%} is below the {spec['pass_floor']:.0%} floor.", file=sys.stderr)
+        print(
+            f"\nBLOCKED: routing {routing_rate:.1%} is below the {spec['pass_floor']:.0%} floor.",
+            file=sys.stderr,
+        )
         return 1
     if citation_total and citation_rate < spec["pass_floor"]:
-        print(f"\nBLOCKED: citations {citation_rate:.1%} is below the {spec['pass_floor']:.0%} floor.", file=sys.stderr)
+        print(
+            f"\nBLOCKED: citations {citation_rate:.1%} is below the {spec['pass_floor']:.0%} floor.",
+            file=sys.stderr,
+        )
         return 1
     print("\neval passed")
     return 0

@@ -5,6 +5,7 @@ Polling rather than inotify, matching the dashboard server's own watch loop:
 it keeps the runtime dependency surface small so the image stays reproducible,
 and a rebuild that starts a few seconds late costs nothing.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,7 +18,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from dashboard.assistant.retrieval import APPROVED_ARTIFACTS, APPROVED_ROOTS, build_index  # noqa: E402
+from dashboard.assistant.retrieval import (  # noqa: E402
+    APPROVED_ARTIFACTS,
+    APPROVED_ROOTS,
+    build_index,
+)
 
 WEEKLY = 7 * 24 * 3600
 
@@ -52,10 +57,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[indexer] rebuilding: {reason}", flush=True)
         try:
             manifest = build_index(embed_base_url=args.embed_base_url)
-            print(f"[indexer] {manifest['chunks']} chunks in {manifest['duration_seconds']}s", flush=True)
+            print(
+                f"[indexer] {manifest['chunks']} chunks in {manifest['duration_seconds']}s",
+                flush=True,
+            )
         except Exception as exc:  # noqa: BLE001
             # A failed rebuild leaves the previous index in place and in service.
-            print(f"[indexer] rebuild failed, keeping previous index: {exc}", flush=True)
+            print(
+                f"[indexer] rebuild failed, keeping previous index: {exc}", flush=True
+            )
 
     rebuild("startup")
     if not args.watch:

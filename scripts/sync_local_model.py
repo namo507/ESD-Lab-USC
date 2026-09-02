@@ -73,13 +73,17 @@ def ollama_bin() -> str:
 
 def installed_models() -> list[str]:
     try:
-        with urllib.request.urlopen(f"{OLLAMA_URL}/api/tags", timeout=10) as r:  # noqa: S310
+        with urllib.request.urlopen(
+            f"{OLLAMA_URL}/api/tags", timeout=10
+        ) as r:  # noqa: S310
             return [m["name"] for m in json.load(r).get("models", [])]
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
         return []
 
 
-def choose_base(explicit: str | None, plan: dict[str, Any], present: list[str]) -> str | None:
+def choose_base(
+    explicit: str | None, plan: dict[str, Any], present: list[str]
+) -> str | None:
     """Pick the base model to derive from.
 
     An explicit choice wins. Otherwise take the benchmark's winner if one has
@@ -128,40 +132,59 @@ def build_model(modelfile: Path) -> tuple[bool, str]:
     try:
         proc = subprocess.run(  # noqa: S603
             [ollama_bin(), "create", MODEL_NAME, "-f", str(modelfile)],
-            cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=900, check=False,
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=900,
+            check=False,
             env={**os.environ, "OLLAMA_HOST": OLLAMA_URL.replace("http://", "")},
         )
-        return proc.returncode == 0, ((proc.stdout or "") + (proc.stderr or "")).strip()[-400:]
+        return (
+            proc.returncode == 0,
+            ((proc.stdout or "") + (proc.stderr or "")).strip()[-400:],
+        )
     except (subprocess.TimeoutExpired, OSError) as exc:
         return False, str(exc)
 
 
 def smoke_test() -> tuple[bool, str]:
     """One real grounded question through the derived model."""
-    body = json.dumps({
-        "model": MODEL_NAME,
-        "messages": [{
-            "role": "user",
-            "content": "CONTEXT:\n[entities.md]\nTarget N: 260 infants. Short name: NANO.\n\n"
-                       "QUESTION: What is the NANO target sample size?",
-        }],
-        "stream": False,
-        "options": {"num_predict": 60},
-        "think": False,
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "model": MODEL_NAME,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "CONTEXT:\n[entities.md]\nTarget N: 260 infants. Short name: NANO.\n\n"
+                    "QUESTION: What is the NANO target sample size?",
+                }
+            ],
+            "stream": False,
+            "options": {"num_predict": 60},
+            "think": False,
+        }
+    ).encode("utf-8")
     request = urllib.request.Request(
-        f"{OLLAMA_URL}/api/chat", data=body, headers={"Content-Type": "application/json"}
+        f"{OLLAMA_URL}/api/chat",
+        data=body,
+        headers={"Content-Type": "application/json"},
     )
     try:
         with urllib.request.urlopen(request, timeout=300) as response:  # noqa: S310
-            answer = (json.load(response).get("message") or {}).get("content", "").strip()
+            answer = (
+                (json.load(response).get("message") or {}).get("content", "").strip()
+            )
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
         return False, f"{type(exc).__name__}: {exc}"
     return ("260" in answer), answer[:160].replace("\n", " ")
 
 
 def update_config(base: str, plan: dict[str, Any]) -> None:
-    config = json.loads(CONFIG_PATH.read_text(encoding="utf-8")) if CONFIG_PATH.exists() else {}
+    config = (
+        json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        if CONFIG_PATH.exists()
+        else {}
+    )
     local = config.setdefault("local", {})
     local["serving_model"] = MODEL_NAME
     local["serving_base"] = base
@@ -172,9 +195,13 @@ def update_config(base: str, plan: dict[str, Any]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--base", default=None, help="base model to derive from")
-    parser.add_argument("--apply", action="store_true", help="build and register the model")
+    parser.add_argument(
+        "--apply", action="store_true", help="build and register the model"
+    )
     args = parser.parse_args(argv)
 
     plan = build_report()["plan"]
@@ -183,7 +210,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Ollama is not reachable at {OLLAMA_URL}.", file=sys.stderr)
         return 1
 
-    base = choose_base(args.base, plan, [m for m in present if "embed" not in m and m != f"{MODEL_NAME}:latest"])
+    base = choose_base(
+        args.base,
+        plan,
+        [m for m in present if "embed" not in m and m != f"{MODEL_NAME}:latest"],
+    )
     if not base:
         print("No base model installed. Run `make models-pull` first.", file=sys.stderr)
         return 1
@@ -216,7 +247,9 @@ def main(argv: list[str] | None = None) -> int:
 
     update_config(base, plan)
     print(f"  updated {CONFIG_PATH.relative_to(PROJECT_ROOT)}")
-    print(f"\n  Point the runtime at it with DASHBOARD_ASSISTANT_LOCAL_MODEL={MODEL_NAME}")
+    print(
+        f"\n  Point the runtime at it with DASHBOARD_ASSISTANT_LOCAL_MODEL={MODEL_NAME}"
+    )
     return 0
 
 

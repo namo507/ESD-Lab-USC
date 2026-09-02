@@ -40,7 +40,7 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 @dataclass
 class Check:
     name: str
-    status: str      # pass | fail | skip
+    status: str  # pass | fail | skip
     detail: str
     seconds: float = 0.0
 
@@ -48,7 +48,12 @@ class Check:
 def run(cmd: list[str], *, timeout: int = 600) -> tuple[int, str]:
     try:
         proc = subprocess.run(  # noqa: S603
-            cmd, cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=timeout, check=False
+            cmd,
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
         )
         return proc.returncode, ((proc.stdout or "") + (proc.stderr or "")).strip()
     except subprocess.TimeoutExpired:
@@ -57,10 +62,14 @@ def run(cmd: list[str], *, timeout: int = 600) -> tuple[int, str]:
         return 127, str(exc)
 
 
-def http_json(url: str, *, timeout: int = 10, payload: dict | None = None) -> Any | None:
+def http_json(
+    url: str, *, timeout: int = 10, payload: dict | None = None
+) -> Any | None:
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     request = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json", "Accept": "application/json"}
+        url,
+        data=data,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
@@ -78,6 +87,7 @@ def last_line(text: str) -> str:
 # Checks
 # ---------------------------------------------------------------------------
 
+
 def check_gpu_runtime() -> Check:
     code, out = run([PY_BIN, "scripts/check_gpu_runtime.py", "--json"], timeout=90)
     if code != 0:
@@ -86,7 +96,8 @@ def check_gpu_runtime() -> Check:
     plan = report["plan"]
     tier = plan["tier"]
     return Check(
-        "gpu-runtime", "pass",
+        "gpu-runtime",
+        "pass",
         f"tier={tier} generalist={plan['generalist']} ({plan['reason']})",
     )
 
@@ -101,21 +112,29 @@ def check_ollama() -> Check:
     if tags is None:
         return Check("ollama", "skip", "model server not reachable on this host")
     names = [m["name"] for m in tags.get("models", [])]
-    return Check("ollama", "pass", f"{len(names)} models resident: {', '.join(names[:4])}")
+    return Check(
+        "ollama", "pass", f"{len(names)} models resident: {', '.join(names[:4])}"
+    )
 
 
 def check_embeddings() -> Check:
     started = time.perf_counter()
     out = http_json(
-        f"{OLLAMA_URL}/api/embeddings", timeout=90,
-        payload={"model": "nomic-embed-text", "prompt": "autonomic regulation in preterm infants"},
+        f"{OLLAMA_URL}/api/embeddings",
+        timeout=90,
+        payload={
+            "model": "nomic-embed-text",
+            "prompt": "autonomic regulation in preterm infants",
+        },
     )
     if out is None:
         return Check("embeddings", "skip", "embedding model unavailable")
     dims = len(out.get("embedding") or [])
     seconds = time.perf_counter() - started
     status = "pass" if dims == 768 else "fail"
-    return Check("embeddings", status, f"{dims} dims in {seconds * 1000:.0f} ms", seconds)
+    return Check(
+        "embeddings", status, f"{dims} dims in {seconds * 1000:.0f} ms", seconds
+    )
 
 
 def check_model_residency() -> Check:
@@ -126,33 +145,45 @@ def check_model_residency() -> Check:
     which is what a visitor experiences as "the site is broken".
     """
     try:
-        with urllib.request.urlopen(f"{OLLAMA_URL}/api/ps", timeout=10) as r:  # noqa: S310
+        with urllib.request.urlopen(
+            f"{OLLAMA_URL}/api/ps", timeout=10
+        ) as r:  # noqa: S310
             held = json.load(r).get("models", [])
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
         return Check("model-residency", "skip", "model server not reachable")
     if not held:
-        return Check("model-residency", "fail", "no model resident; run `make model-warm`")
+        return Check(
+            "model-residency", "fail", "no model resident; run `make model-warm`"
+        )
     names = {m.get("name", "").split(":")[0] for m in held}
     total_gb = sum(m.get("size", 0) for m in held) / 1e9
     # Both must be held, or the embedder evicts the generalist on every query.
     missing = {"esd-buddy", "nomic-embed-text"} - names
     if missing:
         return Check(
-            "model-residency", "fail",
+            "model-residency",
+            "fail",
             f"resident: {', '.join(sorted(names))} ({total_gb:.1f} GB); missing {', '.join(sorted(missing))} "
             "-- eviction thrash will make every answer pay a reload",
         )
-    return Check("model-residency", "pass", f"{', '.join(sorted(names))} held, {total_gb:.1f} GB")
+    return Check(
+        "model-residency", "pass", f"{', '.join(sorted(names))} held, {total_gb:.1f} GB"
+    )
 
 
 def check_index() -> Check:
     manifest = PROJECT_ROOT / "dashboard" / "data" / "index_manifest.json"
     if not manifest.exists():
-        return Check("retrieval-index", "fail", "index_manifest.json missing; run make assistant-reindex")
+        return Check(
+            "retrieval-index",
+            "fail",
+            "index_manifest.json missing; run make assistant-reindex",
+        )
     data = json.loads(manifest.read_text(encoding="utf-8"))
     age_h = (time.time() - manifest.stat().st_mtime) / 3600
     return Check(
-        "retrieval-index", "pass",
+        "retrieval-index",
+        "pass",
         f"{data['chunks']} chunks / {data['source_count']} sources, "
         f"{data['embedded']} embedded ({data['embedding_model']}), {age_h:.1f} h old",
     )
@@ -176,7 +207,13 @@ def check_reindex_incremental() -> Check:
     with tempfile.TemporaryDirectory() as tmp:
         scratch = Path(tmp) / "verify_index.sqlite3"
         code, out = run(
-            [PY_BIN, "scripts/build_assistant_index.py", "--sparse-only", "--index-path", str(scratch)],
+            [
+                PY_BIN,
+                "scripts/build_assistant_index.py",
+                "--sparse-only",
+                "--index-path",
+                str(scratch),
+            ],
             timeout=1200,
         )
         if code != 0:
@@ -200,13 +237,25 @@ def check_reindex_incremental() -> Check:
         built = scratch.exists()
     if not built:
         return Check("reindex", "fail", "rebuild produced no index file")
-    return Check("reindex", "pass", f"verified rebuild produced {chunks} chunks (live index untouched)")
+    return Check(
+        "reindex",
+        "pass",
+        f"verified rebuild produced {chunks} chunks (live index untouched)",
+    )
 
 
 def check_eval() -> Check:
     code, out = run([PY_BIN, "scripts/run_assistant_eval.py"], timeout=900)
-    rates = [ln.strip() for ln in out.splitlines() if ln.startswith(("routing", "PHI", "citations"))]
-    return Check("assistant-eval", "pass" if code == 0 else "fail", " · ".join(rates) or last_line(out))
+    rates = [
+        ln.strip()
+        for ln in out.splitlines()
+        if ln.startswith(("routing", "PHI", "citations"))
+    ]
+    return Check(
+        "assistant-eval",
+        "pass" if code == 0 else "fail",
+        " · ".join(rates) or last_line(out),
+    )
 
 
 def check_chaos() -> Check:
@@ -216,7 +265,15 @@ def check_chaos() -> Check:
 
 def check_self_heal() -> Check:
     code, out = run(
-        [PY_BIN, "scripts/self_heal.py", "--once", "--dry-run", "--json", "--base-url", DASHBOARD_URL],
+        [
+            PY_BIN,
+            "scripts/self_heal.py",
+            "--once",
+            "--dry-run",
+            "--json",
+            "--base-url",
+            DASHBOARD_URL,
+        ],
         timeout=180,
     )
     if code not in (0, 2):
@@ -232,7 +289,8 @@ def check_self_heal() -> Check:
     if report.get("healthy"):
         return Check("self-heal", "pass", "all surfaces healthy")
     return Check(
-        "self-heal", "pass",
+        "self-heal",
+        "pass",
         f"detected {len(report.get('findings', []))} finding(s) -> rung '{report.get('rung')}' (dry run)",
     )
 
@@ -248,14 +306,17 @@ def check_site_scrape(skip_network: bool) -> Check:
         return Check("site-scrape", "fail", "no organization_site_data.json produced")
     data = json.loads(artifact.read_text(encoding="utf-8"))
     studies = len(data.get("studies") or [])
-    return Check("site-scrape", "pass", f"esdlabsc.com parsed, {studies} studies in the snapshot")
+    return Check(
+        "site-scrape", "pass", f"esdlabsc.com parsed, {studies} studies in the snapshot"
+    )
 
 
 def check_similar_studies(skip_network: bool) -> Check:
     if skip_network:
         return Check("study-landscape", "skip", "--skip-network")
     code, out = run(
-        [PY_BIN, "dashboard/pipelines/build_similar_studies.py", "--limit", "3"], timeout=900
+        [PY_BIN, "dashboard/pipelines/build_similar_studies.py", "--limit", "3"],
+        timeout=900,
     )
     if code != 0:
         return Check("study-landscape", "fail", last_line(out))
@@ -263,7 +324,11 @@ def check_similar_studies(skip_network: bool) -> Check:
     data = json.loads(artifact.read_text(encoding="utf-8"))
     total = sum(len(v["matches"]) for v in data["studies"].values())
     changes = len(data.get("changes") or [])
-    return Check("study-landscape", "pass", f"{total} comparable records, {changes} change(s) vs last snapshot")
+    return Check(
+        "study-landscape",
+        "pass",
+        f"{total} comparable records, {changes} change(s) vs last snapshot",
+    )
 
 
 def check_dashboard_api() -> Check:
@@ -274,7 +339,8 @@ def check_dashboard_api() -> Check:
     status = http_json(f"{DASHBOARD_URL}/api/assistant/status")
     ok = live.get("status") == "alive" and health is not None
     return Check(
-        "dashboard-api", "pass" if ok else "fail",
+        "dashboard-api",
+        "pass" if ok else "fail",
         f"livez={live.get('status')} healthz={(health or {}).get('status')} "
         f"assistant={(status or {}).get('state')}",
     )
@@ -301,7 +367,9 @@ def check_answer_simulation() -> Check:
 
     for key, question, expect in cases:
         started = time.perf_counter()
-        out = http_json(f"{DASHBOARD_URL}/api/buddy", timeout=300, payload={"message": question})
+        out = http_json(
+            f"{DASHBOARD_URL}/api/buddy", timeout=300, payload={"message": question}
+        )
         elapsed = time.perf_counter() - started
         latencies.append(elapsed)
         if out is None:
@@ -323,7 +391,9 @@ def check_answer_simulation() -> Check:
     )
     if failures:
         detail += " | " + "; ".join(failures)
-    return Check("answer-simulation", "fail" if failures else "pass", detail, max(latencies))
+    return Check(
+        "answer-simulation", "fail" if failures else "pass", detail, max(latencies)
+    )
 
 
 def statistics_median(xs: list[float]) -> float:
@@ -340,7 +410,8 @@ def check_stack_budget() -> Check:
     totals = data["default_totals"]
     host = data["host"]
     return Check(
-        "stack-budget", "pass",
+        "stack-budget",
+        "pass",
         f"declared {totals['memory_gb']:.2f} GB / {totals['cpus']:.0f} cpu "
         f"against {host['memory_gb']} GB / {host['cpus']} cpu",
     )
@@ -354,21 +425,38 @@ def check_helm() -> Check:
     if code != 0:
         return Check("helm-chart", "fail", last_line(out))
     code2, out2 = run(
-        [helm, "template", "esd-lab", "k8s/helm/esd-lab-dashboard",
-         "--set", "existingClaims.readings=r", "--set", "existingClaims.data=d"],
+        [
+            helm,
+            "template",
+            "esd-lab",
+            "k8s/helm/esd-lab-dashboard",
+            "--set",
+            "existingClaims.readings=r",
+            "--set",
+            "existingClaims.data=d",
+        ],
         timeout=180,
     )
     if code2 != 0:
         return Check("helm-chart", "fail", last_line(out2))
     kinds = out2.count("\nkind:") + out2.count("kind: ")
-    return Check("helm-chart", "pass", f"lint clean, template renders {kinds} manifests")
+    return Check(
+        "helm-chart", "pass", f"lint clean, template renders {kinds} manifests"
+    )
 
 
 def check_docker() -> Check:
     if shutil.which("docker") is None:
         return Check("docker-stack", "skip", "no docker daemon on this host")
-    code, out = run(["docker", "compose", "-f", "docker-compose.yml", "config", "--quiet"], timeout=180)
-    return Check("docker-stack", "pass" if code == 0 else "fail", last_line(out) or "compose config valid")
+    code, out = run(
+        ["docker", "compose", "-f", "docker-compose.yml", "config", "--quiet"],
+        timeout=180,
+    )
+    return Check(
+        "docker-stack",
+        "pass" if code == 0 else "fail",
+        last_line(out) or "compose config valid",
+    )
 
 
 def check_repo_hygiene() -> Check:
@@ -380,10 +468,14 @@ def check_repo_hygiene() -> Check:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--skip-network", action="store_true", help="skip the scrapers")
-    parser.add_argument("--quick", action="store_true", help="skip the slow rebuild and scrape checks")
+    parser.add_argument(
+        "--quick", action="store_true", help="skip the slow rebuild and scrape checks"
+    )
     args = parser.parse_args(argv)
 
     checks: list[Callable[[], Check]] = [
@@ -415,7 +507,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = check()
         except Exception as exc:  # noqa: BLE001 - a raising check is a failing check
-            result = Check(getattr(check, "__name__", "check"), "fail", f"raised: {exc}")
+            result = Check(
+                getattr(check, "__name__", "check"), "fail", f"raised: {exc}"
+            )
         result.seconds = result.seconds or (time.perf_counter() - started)
         results.append(result)
         if not args.json:
@@ -427,13 +521,21 @@ def main(argv: list[str] | None = None) -> int:
     skipped = sum(r.status == "skip" for r in results)
 
     if args.json:
-        print(json.dumps(
-            {"results": [r.__dict__ for r in results],
-             "passed": passed, "failed": failed, "skipped": skipped},
-            indent=2,
-        ))
+        print(
+            json.dumps(
+                {
+                    "results": [r.__dict__ for r in results],
+                    "passed": passed,
+                    "failed": failed,
+                    "skipped": skipped,
+                },
+                indent=2,
+            )
+        )
     else:
-        print(f"\n  {passed} passed, {failed} failed, {skipped} skipped, of {len(results)} automations")
+        print(
+            f"\n  {passed} passed, {failed} failed, {skipped} skipped, of {len(results)} automations"
+        )
         if skipped:
             print("  (skips are unavailable capabilities on this host, not passes)")
     return 1 if failed else 0

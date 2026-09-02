@@ -100,10 +100,14 @@ CANDIDATES: tuple[Candidate, ...] = (
     Candidate("primary", "qwen2.5", "14b", 131072, "apache-2.0", "128K context"),
     Candidate("primary", "mistral-nemo", "12b", 131072, "apache-2.0", "128K context"),
     Candidate("primary", "phi4", "14b", 16384, "mit", "16K context"),
-    Candidate("primary", "qwen2.5", "7b", 131072, "apache-2.0", "CPU-viable fallback tier"),
+    Candidate(
+        "primary", "qwen2.5", "7b", 131072, "apache-2.0", "CPU-viable fallback tier"
+    ),
     # Embeddings: small, CPU-resident, always on.
     Candidate("embedding", "nomic-embed-text", "latest", 8192, "apache-2.0", "768 dim"),
-    Candidate("embedding", "all-minilm", "latest", 512, "apache-2.0", "384 dim fallback"),
+    Candidate(
+        "embedding", "all-minilm", "latest", 512, "apache-2.0", "384 dim fallback"
+    ),
 )
 
 #: Licences we will deploy without a human reading them first. Anything else
@@ -122,7 +126,11 @@ def _fetch(url: str, *, accept: str | None = None, timeout: int = 30) -> bytes:
 
 def fetch_manifest(name: str, tag: str, *, timeout: int = 30) -> dict[str, Any]:
     url = f"{REGISTRY}/{name}/manifests/{tag}"
-    raw = _fetch(url, accept="application/vnd.docker.distribution.manifest.v2+json", timeout=timeout)
+    raw = _fetch(
+        url,
+        accept="application/vnd.docker.distribution.manifest.v2+json",
+        timeout=timeout,
+    )
     payload = json.loads(raw)
     if "errors" in payload:
         code = payload["errors"][0].get("code", "UNKNOWN")
@@ -163,14 +171,18 @@ def resolve_candidate(candidate: Candidate, *, license_dir: Path | None) -> Reso
     manifest = fetch_manifest(candidate.name, candidate.tag)
     layers = manifest.get("layers", [])
 
-    model_layers = [layer for layer in layers if layer.get("mediaType") == MODEL_MEDIA_TYPE]
+    model_layers = [
+        layer for layer in layers if layer.get("mediaType") == MODEL_MEDIA_TYPE
+    ]
     if not model_layers:
         raise ResolutionError(f"{candidate.ref} has no model layer")
     model_layer = model_layers[0]
 
     license_id = "not-published"
     license_sha = ""
-    license_layers = [layer for layer in layers if layer.get("mediaType") == LICENSE_MEDIA_TYPE]
+    license_layers = [
+        layer for layer in layers if layer.get("mediaType") == LICENSE_MEDIA_TYPE
+    ]
     if license_layers:
         blob = fetch_blob(candidate.name, license_layers[0]["digest"])
         license_id = identify_license(blob.decode("utf-8", errors="replace"))
@@ -190,7 +202,14 @@ def resolve_candidate(candidate: Candidate, *, license_dir: Path | None) -> Reso
         license_sha256=license_sha,
         source_url=f"https://ollama.com/library/{candidate.name}:{candidate.tag}",
         resolved_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        layers=[{"mediaType": lyr.get("mediaType"), "digest": lyr.get("digest"), "size": lyr.get("size")} for lyr in layers],
+        layers=[
+            {
+                "mediaType": lyr.get("mediaType"),
+                "digest": lyr.get("digest"),
+                "size": lyr.get("size"),
+            }
+            for lyr in layers
+        ],
     )
 
 
@@ -224,28 +243,41 @@ def select(
             reasons.append(f"{candidate.ref}: unreachable or absent ({exc})")
             continue
         if resolved.size_gb > max_gb:
-            reasons.append(f"{candidate.ref}: {resolved.size_gb:.2f} GB exceeds {max_gb:.2f} GB budget")
+            reasons.append(
+                f"{candidate.ref}: {resolved.size_gb:.2f} GB exceeds {max_gb:.2f} GB budget"
+            )
             continue
         if resolved.context < min_context:
-            reasons.append(f"{candidate.ref}: {resolved.context} ctx below {min_context}")
+            reasons.append(
+                f"{candidate.ref}: {resolved.context} ctx below {min_context}"
+            )
             continue
         if require_permissive and resolved.license_id not in PERMISSIVE:
-            reasons.append(f"{candidate.ref}: licence '{resolved.license_id}' needs review before deploy")
+            reasons.append(
+                f"{candidate.ref}: licence '{resolved.license_id}' needs review before deploy"
+            )
             continue
         return resolved, reasons
     raise ResolutionError(
-        f"No candidate satisfied role '{role}'. Checked:\n  " + "\n  ".join(reasons or ["(none)"])
+        f"No candidate satisfied role '{role}'. Checked:\n  "
+        + "\n  ".join(reasons or ["(none)"])
     )
 
 
-def write_config(primary: Resolved, embedding: Resolved, *, vram_gb: float) -> dict[str, Any]:
+def write_config(
+    primary: Resolved, embedding: Resolved, *, vram_gb: float
+) -> dict[str, Any]:
     """Extend the existing config rather than replacing it.
 
     Every key the hosted path already reads is preserved verbatim: the hosted
     NVIDIA tier stays defined and simply stops being the default, so a rollback
     is a one-line policy change rather than a restore.
     """
-    existing = json.loads(CONFIG_PATH.read_text(encoding="utf-8")) if CONFIG_PATH.exists() else {}
+    existing = (
+        json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        if CONFIG_PATH.exists()
+        else {}
+    )
     existing.update(
         {
             "schema_version": 5,
@@ -317,10 +349,21 @@ def write_manifest(resolved: list[Resolved], *, vram_gb: float) -> dict[str, Any
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--vram-gb", type=float, default=12.0, help="VRAM tier to resolve for (default: 12)")
-    parser.add_argument("--min-context", type=int, default=16384, help="Minimum context window")
-    parser.add_argument("--write", action="store_true", help="Pin the result to config/ and models/")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--vram-gb",
+        type=float,
+        default=12.0,
+        help="VRAM tier to resolve for (default: 12)",
+    )
+    parser.add_argument(
+        "--min-context", type=int, default=16384, help="Minimum context window"
+    )
+    parser.add_argument(
+        "--write", action="store_true", help="Pin the result to config/ and models/"
+    )
     parser.add_argument(
         "--allow-restricted-license",
         action="store_true",
@@ -337,14 +380,20 @@ def main(argv: list[str] | None = None) -> int:
     license_dir = LICENSE_DIR if args.write else None
     try:
         primary, primary_skips = select(
-            CANDIDATES, "primary",
-            max_gb=max_gb, min_context=args.min_context,
-            license_dir=license_dir, require_permissive=not args.allow_restricted_license,
+            CANDIDATES,
+            "primary",
+            max_gb=max_gb,
+            min_context=args.min_context,
+            license_dir=license_dir,
+            require_permissive=not args.allow_restricted_license,
         )
         embedding, embed_skips = select(
-            CANDIDATES, "embedding",
-            max_gb=2.0, min_context=512,
-            license_dir=license_dir, require_permissive=not args.allow_restricted_license,
+            CANDIDATES,
+            "embedding",
+            max_gb=2.0,
+            min_context=512,
+            license_dir=license_dir,
+            require_permissive=not args.allow_restricted_license,
         )
     except ResolutionError as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
@@ -356,7 +405,9 @@ def main(argv: list[str] | None = None) -> int:
         print()
 
     for item in (primary, embedding):
-        print(f"  {item.role:<10} {item.ref:<26} {item.size_gb:>6.2f} GB  ctx {item.context:<7} {item.license_id}")
+        print(
+            f"  {item.role:<10} {item.ref:<26} {item.size_gb:>6.2f} GB  ctx {item.context:<7} {item.license_id}"
+        )
         print(f"             {item.digest}")
 
     if not args.write:
@@ -365,11 +416,13 @@ def main(argv: list[str] | None = None) -> int:
 
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(
-        json.dumps(write_config(primary, embedding, vram_gb=args.vram_gb), indent=2) + "\n",
+        json.dumps(write_config(primary, embedding, vram_gb=args.vram_gb), indent=2)
+        + "\n",
         encoding="utf-8",
     )
     MANIFEST_PATH.write_text(
-        json.dumps(write_manifest([primary, embedding], vram_gb=args.vram_gb), indent=2) + "\n",
+        json.dumps(write_manifest([primary, embedding], vram_gb=args.vram_gb), indent=2)
+        + "\n",
         encoding="utf-8",
     )
     print(f"\nWrote {CONFIG_PATH.relative_to(PROJECT_ROOT)}")

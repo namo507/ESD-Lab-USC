@@ -23,6 +23,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- **CI had been red on `main` for every commit since 2026-08-28.** Four jobs
+  were failing at once and each had a different cause, so nothing about the
+  red X said which. All four are fixed and verified locally against the same
+  gates CI runs.
+- **`black --check` failed the whole `test-python` matrix, and took `isort`
+  and `flake8` down with it.** Seventeen files had never been formatted at the
+  repository's own 88-column setting -- fourteen of them the automation scripts
+  added over the last week, plus `src/models/ml_pipeline.py`,
+  `src/models/markov_chain_models.py` and `tests/test_nano_buddy.py`. Because
+  the formatting step ran first and failed, the two steps behind it were
+  skipped on every run, which hid a real `flake8` error underneath: `E741` on
+  an `l` loop variable in `scripts/benchmark_local_models.py`. Formatted, and
+  the loop variable renamed to `layer`.
+- **The Docker runtime smoke test asserted a route the server had already
+  retired.** `scripts/check_dashboard_runtime.py` required `/dashboard/` to
+  land on `/overview`, but `/overview` was replaced by `/esd-lab` and the
+  runtime now 301s every legacy dashboard path straight there
+  (`LEGACY_DASHBOARD_PATHS`). The check failed the instant the container came
+  up healthy, which is the worst kind of false alarm: the runtime was fine and
+  the probe said it was broken. It now reads the front door from one constant
+  and asserts that `/overview` and `/dashboard/` both redirect to it, so the
+  retirement is covered rather than contradicted.
+- **The contrast probe was scoring the front door under two names it never
+  measures.** `/` and `/overview` both redirect to `/esd-lab`, so the probe
+  loaded that one page twice and failed it against a 60-text-node floor sized
+  for a data route. The front door is a deliberately sparse landing page: it
+  renders 21 text nodes when perfectly healthy, close enough to the ~18 of an
+  error page that a node count cannot tell them apart. The guard now resolves
+  per landed path, `/esd-lab` is measured under its own name, and the sparse
+  page is certified by a content marker instead of a node count. The marker is
+  matched on `textContent`, not `innerText`: `innerText` applies CSS
+  `text-transform`, and this page uppercases the marker, so an `innerText`
+  match failed on a page that was rendering it correctly.
+- **A real WCAG AA failure on the front door, which the broken guard had been
+  hiding.** With the probe measuring `/esd-lab` for the first time, the `ask`
+  submit button came back at 4.26:1 in both themes and all four interaction
+  states, under the 4.5 a 16px bold label needs: a Cool White (`#f4f4f6`) label
+  on a Discovery Blue fill. The brand layer gains
+  `--esd-on-discovery-blue: #ffffff`, the palette's answer for a label sitting
+  on that fill, measuring 4.68:1 -- the most any label can reach on it. A
+  token rather than a literal because the front door's CSS module is guarded
+  by `darkModeSurfaceGuard.test.ts`, which rejects hardcoded colours there,
+  and it caught the first attempt.
+- **The canonical Docker stack's local model tier pointed at a runtime that
+  could not serve it.** `docker-compose.yml` set
+  `DASHBOARD_ASSISTANT_LOCAL_API_BASE` to Docker Model Runner on the host
+  gateway while `DASHBOARD_ASSISTANT_LOCAL_MODEL` stayed `esd-buddy` -- and
+  `esd-buddy` only exists inside the stack's own `ollama` service, built there
+  by `scripts/sync_local_model.py`. Nothing reconciles the two at runtime: the
+  assistant posts whatever model name it is given to whatever endpoint it is
+  given, so every local-tier request could only 404. The fallback rungs had
+  the same shape, `phi4-mini:latest` and `qwen2.5:1.5b` being Ollama tags
+  rather than Model Runner `ai/...` references. The endpoint now addresses the
+  in-stack service and matches `local.default_api_base` in
+  `config/llm_model.json`. Because the tier is opt-in
+  (`DASHBOARD_ASSISTANT_LOCAL_ENABLED` defaults to false), the stack looked
+  healthy the whole time. `scripts/check_compose_config.py` now fails when an
+  endpoint and its model names describe different runtimes, in either
+  direction, with the contract test in `tests/test_ops_automation.py` updated:
+  it had asserted `host.docker.internal` for all three Compose files, which is
+  what pinned the canonical stack to the wrong endpoint.
+- **`chaos_suite.py` reported a missing precondition as a failure.** The
+  `model-down` scenario called a hard fail, "sparse-only retrieval returned
+  nothing", on any host without a built retrieval index -- a fresh checkout
+  and CI included. `retrieval.search()` is behaving correctly there; there is
+  simply nothing to search. That one scenario failed the whole sweep, and
+  `check_automations.py` with it. It now skips on a missing index, matching
+  the `gpu-missing` scenario beside it, and keeps the fail for the case that
+  matters: an index that exists but returns nothing. With a real index built,
+  all nine scenarios pass.
+- **The Pages `_redirects` file sent legacy paths through a retired route.**
+  `/dashboard*` pointed at `/overview`, which `_worker.js` then redirects to
+  `/esd-lab` -- two hops to reach one page, through a route the SPA no longer
+  renders. The static table now names the same targets as the worker's own
+  retired-route set, and covers `/overview` and `/discovery/overview` too.
+- **The browser dashboard fixture had drifted two months behind the payload it
+  mirrors.** `web/public/dashboard/data/dashboard_data.json` is what a static
+  preview serves at `/dashboard/data/dashboard_data.json`, the URL
+  `useStudyData` and `useRedcapData` fetch; the live runtime serves that same
+  URL from `dashboard/data/dashboard_data.json` instead. Nothing regenerated
+  the fixture, so previews and the contrast probe rendered numbers from
+  2026-07-01 against a runtime payload from 2026-08-28. It is now derived by
+  `scripts/sync_public_dashboard_fixture.py`, the way
+  `build_lab_readings_index.py` derives `web/lab-readings.json`, wired into
+  `make dashboard-refresh`, gated in CI with `--check`, and covered by a
+  contract test.
 - **QA keyboard shortcuts could file a decision against the wrong visit.**
   `qaSelectedEpoch` lives in the global UI store rather than component state,
   so it does not reset when you move between visits. The keydown effect

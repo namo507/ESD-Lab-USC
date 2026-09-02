@@ -46,13 +46,35 @@ import { writeFileSync } from 'node:fs';
    error state with ~18 text nodes. Adding it back without supplying that data
    would trip the render guard rather than pass quietly -- which is the point. */
 const ROUTES = [
-  '/', '/overview', '/redcap', '/redcap-portfolio', '/pipeline-health',
+  '/', '/esd-lab', '/redcap', '/redcap-portfolio', '/pipeline-health',
   '/participants', '/qa', '/results', '/runs', '/publications',
   '/data-explorer', '/matlab', '/ecg-quality', '/sdoh-map', '/executive',
 ];
 
 /* Lowest observed is ~169 on a healthy route; the excluded error state is 18. */
 const MIN_TEXT_NODES = 60;
+
+/* The render guard measures where a route LANDS, not what was requested, and
+   the front door has to be judged on its own terms.
+
+   `/` and `/overview` both redirect to `/esd-lab`, so the probe was scoring
+   that one page against the 60-node floor under two other names -- and failing
+   it. The front door is not broken: it is a deliberately sparse, character-led
+   landing page that renders 21 text nodes when perfectly healthy, which is too
+   close to the ~18 of an error state for a node count alone to tell the two
+   apart. So it carries a content marker instead: text that only the real page
+   renders, which an error or blank page cannot produce.
+
+   `/overview` is gone from ROUTES because it was never a distinct page here --
+   it is a retired route, redirected in the SPA, in the runtime server and at
+   the Pages edge. The front door it lands on is now measured under its own
+   path. */
+const SPARSE_ROUTE_GUARDS = {
+  '/esd-lab': { minTextNodes: 15, marker: 'Early Social Development' },
+};
+
+const guardFor = (landedPath) =>
+  SPARSE_ROUTE_GUARDS[landedPath] || { minTextNodes: MIN_TEXT_NODES, marker: null };
 
 const args = process.argv.slice(2);
 const argOf = (flag, dflt) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : dflt; };
@@ -194,6 +216,12 @@ for (const route of ROUTES) {
   if (!loaded) { unrendered.push(`${route} (navigation failed)`); continue; }
   await page.waitForTimeout(1800);
 
+  /* Read the guard from the landed path: several routes redirect client-side,
+     and the page that has to clear the guard is the one actually rendered. */
+  const landed = await page.evaluate(() => location.pathname.replace(/\/$/, '') || '/');
+  const guard = guardFor(landed);
+  const landedLabel = landed === route ? route : `${route} -> ${landed}`;
+
   for (const theme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: theme });
     await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
@@ -207,8 +235,21 @@ for (const route of ROUTES) {
     await page.waitForTimeout(500);
 
     const { out, textNodes } = await collectResting(page);
-    if (theme === 'light' && textNodes < MIN_TEXT_NODES) {
-      unrendered.push(`${route} (${textNodes} text nodes, expected >= ${MIN_TEXT_NODES})`);
+    if (theme === 'light') {
+      if (textNodes < guard.minTextNodes) {
+        unrendered.push(
+          `${landedLabel} (${textNodes} text nodes, expected >= ${guard.minTextNodes})`);
+      } else if (guard.marker) {
+        /* textContent, not innerText, and case-insensitive: innerText applies
+           CSS text-transform, and this page renders the marker through an
+           uppercasing rule -- so an innerText match fails on a page that is
+           rendering the marker perfectly well. */
+        const present = await page.evaluate(
+          (m) => document.body.textContent.toLowerCase().includes(m), guard.marker.toLowerCase());
+        if (!present) {
+          unrendered.push(`${landedLabel} (rendered without the marker "${guard.marker}")`);
+        }
+      }
     }
     for (const f of out) findings.push({ ...f, theme, route });
     await collectStates(page, findings, theme, route);

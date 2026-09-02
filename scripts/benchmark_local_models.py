@@ -47,10 +47,16 @@ OLLAMA = "http://127.0.0.1:11434"
 QUESTIONS: tuple[tuple[str, str], ...] = (
     ("visit-schedule", "Which instruments are administered at the 12 month visit?"),
     ("cptd", "What is CPTd and how is skin temperature collected?"),
-    ("groups", "What are the participant groups in the NANO study and what do the codes mean?"),
+    (
+        "groups",
+        "What are the participant groups in the NANO study and what do the codes mean?",
+    ),
     ("ecg", "What hardware is used to record ECG, and at what sampling rate?"),
     ("coding", "What tool is used for behavioural coding and is it double-coded?"),
-    ("unanswerable", "What was the median household income of enrolled families in 2019?"),
+    (
+        "unanswerable",
+        "What was the median household income of enrolled families in 2019?",
+    ),
 )
 
 SYSTEM = (
@@ -104,7 +110,8 @@ class Result:
             return round(statistics.median(xs), 1) if xs else 0.0
 
         faithful = (
-            1.0 if self.total_numbers == 0
+            1.0
+            if self.total_numbers == 0
             else round(1 - self.unsupported_numbers / self.total_numbers, 3)
         )
         return {
@@ -115,7 +122,11 @@ class Result:
             "faithfulness": faithful,
             "unsupported_numbers": self.unsupported_numbers,
             "total_numbers": self.total_numbers,
-            "context_overlap": round(statistics.median(self.context_overlap), 3) if self.context_overlap else 0.0,
+            "context_overlap": (
+                round(statistics.median(self.context_overlap), 3)
+                if self.context_overlap
+                else 0.0
+            ),
             "admitted_unanswerable": self.admitted_unanswerable,
             "empty_answers": self.empty_answers,
             "reasoning_leaks": self.reasoning_leaks,
@@ -126,14 +137,19 @@ class Result:
         }
 
 
-def stream_chat(model: str, prompt: str, context: str, *, timeout: int) -> tuple[str, float, float, int]:
+def stream_chat(
+    model: str, prompt: str, context: str, *, timeout: int
+) -> tuple[str, float, float, int]:
     """Return (text, ttft_ms, total_ms, tokens). Streams so TTFT is real."""
     body = json.dumps(
         {
             "model": model,
             "messages": [
                 {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": f"CONTEXT:\n{context}\n\nQUESTION: {prompt}"},
+                {
+                    "role": "user",
+                    "content": f"CONTEXT:\n{context}\n\nQUESTION: {prompt}",
+                },
             ],
             "stream": True,
             # A realistic budget, not a generous one. An earlier run used 220 and
@@ -177,15 +193,24 @@ def license_for(model: str) -> str:
     """Identify the model's licence from the registry, not from memory."""
     try:
         from scripts.resolve_local_models import (
-            LICENSE_MEDIA_TYPE, fetch_blob, fetch_manifest, identify_license,
+            LICENSE_MEDIA_TYPE,
+            fetch_blob,
+            fetch_manifest,
+            identify_license,
         )
 
         name, _, tag = model.partition(":")
         manifest = fetch_manifest(name, tag or "latest")
-        layers = [l for l in manifest.get("layers", []) if l.get("mediaType") == LICENSE_MEDIA_TYPE]
+        layers = [
+            layer
+            for layer in manifest.get("layers", [])
+            if layer.get("mediaType") == LICENSE_MEDIA_TYPE
+        ]
         if not layers:
             return "not-published"
-        return identify_license(fetch_blob(name, layers[0]["digest"]).decode("utf-8", "replace"))
+        return identify_license(
+            fetch_blob(name, layers[0]["digest"]).decode("utf-8", "replace")
+        )
     except Exception:  # noqa: BLE001 - an unidentifiable licence is not permissive
         return "unknown"
 
@@ -198,10 +223,14 @@ def evaluate(model: str, *, timeout: int, verbose: bool) -> Result:
     result = Result(model=model)
     result.license_id = license_for(model)
     for key, question in QUESTIONS:
-        hits = search(question, limit=5, embed_base_url=None)  # sparse: fast and identical per model
+        hits = search(
+            question, limit=5, embed_base_url=None
+        )  # sparse: fast and identical per model
         context = "\n\n".join(f"[{h.source_path}]\n{h.text[:900]}" for h in hits)
         try:
-            answer, ttft, total, tokens = stream_chat(model, question, context, timeout=timeout)
+            answer, ttft, total, tokens = stream_chat(
+                model, question, context, timeout=timeout
+            )
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             result.error = f"{type(exc).__name__}: {exc}"
             return result
@@ -234,8 +263,16 @@ def evaluate(model: str, *, timeout: int, verbose: bool) -> Result:
             lowered = answer.lower()
             result.admitted_unanswerable = any(
                 phrase in lowered
-                for phrase in ("do not have", "don't have", "not in the context", "no information",
-                               "does not contain", "not provided", "cannot", "unable")
+                for phrase in (
+                    "do not have",
+                    "don't have",
+                    "not in the context",
+                    "no information",
+                    "does not contain",
+                    "not provided",
+                    "cannot",
+                    "unable",
+                )
             )
 
         if verbose:
@@ -244,21 +281,31 @@ def evaluate(model: str, *, timeout: int, verbose: bool) -> Result:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--models", default="", help="comma-separated; default is everything installed")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--models", default="", help="comma-separated; default is everything installed"
+    )
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--write", type=Path, default=None, help="write the ranked report here")
+    parser.add_argument(
+        "--write", type=Path, default=None, help="write the ranked report here"
+    )
     args = parser.parse_args(argv)
 
     if args.models:
         models = [m.strip() for m in args.models.split(",") if m.strip()]
     else:
         try:
-            with urllib.request.urlopen(f"{OLLAMA}/api/tags", timeout=10) as r:  # noqa: S310
+            with urllib.request.urlopen(
+                f"{OLLAMA}/api/tags", timeout=10
+            ) as r:  # noqa: S310
                 models = [
-                    m["name"] for m in json.load(r).get("models", []) if "embed" not in m["name"]
+                    m["name"]
+                    for m in json.load(r).get("models", [])
+                    if "embed" not in m["name"]
                 ]
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             print(f"cannot reach Ollama at {OLLAMA}: {exc}", file=sys.stderr)
@@ -294,9 +341,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps({"ranked": summaries, "failed": failed}, indent=2))
     else:
-        print(f"\n  {'model':<16}{'licence':>13}{'lic':>7}{'usable':>8}{'faith':>7}{'ground':>8}{'total':>9}")
+        print(
+            f"\n  {'model':<16}{'licence':>13}{'lic':>7}{'usable':>8}{'faith':>7}{'ground':>8}{'total':>9}"
+        )
         for s in summaries:
-            usable = "yes" if s["usable"] else f"NO({s['empty_answers']}e/{s['reasoning_leaks']}r)"
+            usable = (
+                "yes"
+                if s["usable"]
+                else f"NO({s['empty_answers']}e/{s['reasoning_leaks']}r)"
+            )
             print(
                 f"  {s['model']:<16}{s['license']:>13}{('ok' if s['permissive'] else 'REVIEW'):>7}"
                 f"{usable:>8}{s['faithfulness']:>7.2f}"
@@ -306,7 +359,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {s['model']:<22}  FAILED: {s['error']}")
         if summaries:
             best = summaries[0]
-            print(f"\n  winner: {best['model']}  ({best['license']}, faithfulness {best['faithfulness']:.2f})")
+            print(
+                f"\n  winner: {best['model']}  ({best['license']}, faithfulness {best['faithfulness']:.2f})"
+            )
             blocked = [s for s in summaries if not s["permissive"]]
             if blocked and blocked[0]["faithfulness"] > best["faithfulness"]:
                 top = blocked[0]

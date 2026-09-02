@@ -9,6 +9,7 @@ whichever unlucky visitor asks the first question.
     python scripts/warm_local_model.py
     python scripts/warm_local_model.py --check    # report residency, load nothing
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,7 +29,8 @@ KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "24h")
 
 def _post(path: str, payload: dict, timeout: int) -> dict | None:
     request = urllib.request.Request(
-        f"{OLLAMA}{path}", data=json.dumps(payload).encode("utf-8"),
+        f"{OLLAMA}{path}",
+        data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
     )
     try:
@@ -41,16 +43,22 @@ def _post(path: str, payload: dict, timeout: int) -> dict | None:
 def resident_models() -> list[dict]:
     """What Ollama currently holds in memory, as opposed to on disk."""
     try:
-        with urllib.request.urlopen(f"{OLLAMA}/api/ps", timeout=10) as response:  # noqa: S310
+        with urllib.request.urlopen(
+            f"{OLLAMA}/api/ps", timeout=10
+        ) as response:  # noqa: S310
             return json.load(response).get("models", [])
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
         return []
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--check", action="store_true", help="report residency without loading")
+    parser.add_argument(
+        "--check", action="store_true", help="report residency without loading"
+    )
     parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args(argv)
 
@@ -64,7 +72,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         for m in held:
             gb = m.get("size", 0) / 1e9
-            print(f"  {m.get('name'):<24} {gb:5.2f} GB resident, expires {m.get('expires_at', '?')[:19]}")
+            print(
+                f"  {m.get('name'):<24} {gb:5.2f} GB resident, expires {m.get('expires_at', '?')[:19]}"
+            )
         return 0 if wanted in resident else 1
 
     if wanted in resident:
@@ -72,7 +82,11 @@ def main(argv: list[str] | None = None) -> int:
 
     started = time.perf_counter()
     # An empty prompt loads the weights without spending tokens generating.
-    out = _post("/api/generate", {"model": args.model, "keep_alive": KEEP_ALIVE, "prompt": ""}, args.timeout)
+    out = _post(
+        "/api/generate",
+        {"model": args.model, "keep_alive": KEEP_ALIVE, "prompt": ""},
+        args.timeout,
+    )
     if out is None:
         print(f"  FAILED to warm {args.model} at {OLLAMA}", file=sys.stderr)
         return 1
@@ -92,7 +106,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(f"  warmed {args.model} in {elapsed:.1f}s (load {load:.1f}s), held for {KEEP_ALIVE}")
+    print(
+        f"  warmed {args.model} in {elapsed:.1f}s (load {load:.1f}s), held for {KEEP_ALIVE}"
+    )
     return 0
 
 

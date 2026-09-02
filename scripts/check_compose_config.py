@@ -124,6 +124,71 @@ def _service_environment(service: dict[str, Any]) -> dict[str, str]:
     return {}
 
 
+def _compose_default(value: str) -> str:
+    """Return the ``${VAR:-default}`` fallback, or the literal value."""
+    text = value.strip()
+    if text.startswith("${") and text.endswith("}") and ":-" in text:
+        return text[2:-1].split(":-", 1)[1].strip()
+    return text
+
+
+def _local_model_runtime_errors(
+    path: Path, services: dict[str, Any], environment: dict[str, str]
+) -> list[str]:
+    """The local model tier must name one runtime, not two.
+
+    The endpoint and the model names are set independently, and nothing at
+    runtime reconciles them: the assistant posts whatever
+    ``DASHBOARD_ASSISTANT_LOCAL_MODEL`` says to whatever
+    ``DASHBOARD_ASSISTANT_LOCAL_API_BASE`` says. When those came from different
+    runtimes -- an in-stack Ollama model name sent to Docker Model Runner on
+    the host gateway -- every local-tier request 404'd, and because the tier is
+    opt-in the stack looked healthy until someone turned it on.
+
+    Ollama and Docker Model Runner are told apart by their model naming: Model
+    Runner serves ``ai/<name>`` references, Ollama serves bare ``name:tag``.
+    """
+    errors: list[str] = []
+    api_base = _compose_default(
+        environment.get("DASHBOARD_ASSISTANT_LOCAL_API_BASE", "")
+    )
+    if not api_base:
+        return errors
+
+    names = [_compose_default(environment.get("DASHBOARD_ASSISTANT_LOCAL_MODEL", ""))]
+    names += [
+        entry.strip()
+        for entry in _compose_default(
+            environment.get("DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS", "")
+        ).split(",")
+    ]
+    names = [name for name in names if name]
+    if not names:
+        return errors
+
+    serves_ollama = "ollama" in services or "//ollama:" in api_base
+    model_runner_names = [name for name in names if name.startswith("ai/")]
+
+    if serves_ollama:
+        if "//ollama:" not in api_base:
+            errors.append(
+                f"{path}: this stack runs an ollama service, so "
+                "DASHBOARD_ASSISTANT_LOCAL_API_BASE must address it "
+                f"(got {api_base})"
+            )
+        if model_runner_names:
+            errors.append(
+                f"{path}: Ollama tier cannot serve Docker Model Runner names: "
+                + ", ".join(model_runner_names)
+            )
+    elif not model_runner_names:
+        errors.append(
+            f"{path}: local tier points at Docker Model Runner ({api_base}) but "
+            "names no ai/... model: " + ", ".join(names)
+        )
+    return errors
+
+
 def _port_is_loopback_only(port: Any) -> bool:
     if isinstance(port, str):
         return port.startswith("127.0.0.1:") or port.startswith("[::1]:")
@@ -193,6 +258,8 @@ def validate_compose(path: Path) -> list[str]:
         "${NANO_ID_SALT:-${PARTICIPANT_ID_SALT:-}}"
     ):
         errors.append(f"{path}: NANO_ID_SALT must preserve the participant-salt alias")
+
+    errors.extend(_local_model_runtime_errors(path, services, dashboard_environment))
 
     ports = dashboard.get("ports") or []
     if not ports or not all(_port_is_loopback_only(port) for port in ports):

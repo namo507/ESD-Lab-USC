@@ -676,6 +676,82 @@ def test_share_compose_defaults_cloudflared_to_http2():
         assert errors == []
 
 
+def test_local_model_runtime_check_rejects_a_split_runtime():
+    """The endpoint and the model names must describe the same runtime.
+
+    Nothing reconciles them at runtime -- the assistant posts whatever model
+    name it is given to whatever endpoint it is given -- and because the local
+    tier is opt-in, a split configuration looks healthy until someone enables
+    it and every request 404s. Both drift directions are covered because both
+    have shipped.
+    """
+    model_runner = "http://host.docker.internal:12434/engines/v1"
+    ollama = "http://ollama:11434/v1"
+
+    # An Ollama model name sent to Docker Model Runner.
+    errors = check_compose_config._local_model_runtime_errors(
+        Path("compose.yml"),
+        {"dashboard": {}, "ollama": {}},
+        {
+            "DASHBOARD_ASSISTANT_LOCAL_API_BASE": (
+                "${DASHBOARD_ASSISTANT_LOCAL_API_BASE:-" + model_runner + "}"
+            ),
+            "DASHBOARD_ASSISTANT_LOCAL_MODEL": (
+                "${DASHBOARD_ASSISTANT_LOCAL_MODEL:-esd-buddy}"
+            ),
+        },
+    )
+    assert any("must address it" in error for error in errors)
+
+    # A Docker Model Runner endpoint with no ai/... model to serve.
+    errors = check_compose_config._local_model_runtime_errors(
+        Path("compose.yml"),
+        {"dashboard": {}},
+        {
+            "DASHBOARD_ASSISTANT_LOCAL_API_BASE": model_runner,
+            "DASHBOARD_ASSISTANT_LOCAL_MODEL": "esd-buddy",
+        },
+    )
+    assert any("names no ai/... model" in error for error in errors)
+
+    # Model Runner references offered by an Ollama tier.
+    errors = check_compose_config._local_model_runtime_errors(
+        Path("compose.yml"),
+        {"dashboard": {}, "ollama": {}},
+        {
+            "DASHBOARD_ASSISTANT_LOCAL_API_BASE": ollama,
+            "DASHBOARD_ASSISTANT_LOCAL_MODEL": "esd-buddy",
+            "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS": "ai/qwen2.5:7b",
+        },
+    )
+    assert any("Docker Model Runner names" in error for error in errors)
+
+    # Both coherent shapes pass.
+    assert (
+        check_compose_config._local_model_runtime_errors(
+            Path("compose.yml"),
+            {"dashboard": {}, "ollama": {}},
+            {
+                "DASHBOARD_ASSISTANT_LOCAL_API_BASE": ollama,
+                "DASHBOARD_ASSISTANT_LOCAL_MODEL": "esd-buddy",
+                "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS": "phi4-mini:latest",
+            },
+        )
+        == []
+    )
+    assert (
+        check_compose_config._local_model_runtime_errors(
+            Path("compose.yml"),
+            {"dashboard": {}},
+            {
+                "DASHBOARD_ASSISTANT_LOCAL_API_BASE": model_runner,
+                "DASHBOARD_ASSISTANT_LOCAL_MODEL": "ai/qwen2.5:7b",
+            },
+        )
+        == []
+    )
+
+
 def test_compose_uses_provider_chain_contract_and_scoped_autoheal():
     root = Path(__file__).resolve().parents[1]
     for compose_file in [
@@ -698,12 +774,25 @@ def test_compose_uses_provider_chain_contract_and_scoped_autoheal():
         assert "DASHBOARD_ASSISTANT_FALLBACK_CHAIN" in environment
         assert environment["DASHBOARD_ASSISTANT_LOCAL_ENABLED"].endswith("-false}")
         # localhost inside a container is the container, not the host runtime.
-        assert "host.docker.internal" in (
-            environment["DASHBOARD_ASSISTANT_LOCAL_API_BASE"]
-        )
+        # Which runtime it *is* depends on the stack: the canonical compose
+        # ships its own `ollama` service and must address that by service name,
+        # while docker/compose.{dev,prod}.yml reach Docker Model Runner on the
+        # host gateway. Asserting host.docker.internal for all three is what
+        # pinned the canonical stack to an endpoint that could not serve the
+        # `esd-buddy` model it was configured with.
+        local_api_base = environment["DASHBOARD_ASSISTANT_LOCAL_API_BASE"]
+        assert "localhost" not in local_api_base
+        assert "127.0.0.1" not in local_api_base
+        if "ollama" in services:
+            assert "//ollama:" in local_api_base
+        else:
+            assert "host.docker.internal" in local_api_base
         assert "host.docker.internal:host-gateway" in (
             services["dashboard"]["extra_hosts"]
         )
+        # The endpoint and the model names have to describe one runtime.
+        # Docker Model Runner serves `ai/<name>`; Ollama serves `name:tag`.
+        assert check_compose_config.validate_compose(compose_file) == []
         assert environment["DASHBOARD_ASSISTANT_ENABLED"] == (
             "${DASHBOARD_ASSISTANT_ENABLED:-true}"
         )

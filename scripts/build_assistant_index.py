@@ -8,6 +8,7 @@ The build writes into a staging file and renames it over the live index, so a
 query arriving mid-rebuild is served by the previous index right up to the
 rename. There is no window in which a half-built index answers anything.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,13 +31,13 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Write somewhere other than the live index. Used by health checks, which "
-             "must verify the build works without replacing a good index with a worse one.",
+        "must verify the build works without replacing a good index with a worse one.",
     )
     parser.add_argument(
         "--sparse-only",
         action="store_true",
         help="Build FTS5 only. Retrieval still works and gets measurably worse; "
-             "the manifest records degraded=true so the status endpoint can say so.",
+        "the manifest records degraded=true so the status endpoint can say so.",
     )
     args = parser.parse_args(argv)
 

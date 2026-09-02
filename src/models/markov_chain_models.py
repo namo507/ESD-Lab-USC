@@ -75,7 +75,10 @@ def estimate_transition_rates(
                 Q[i, j] = transition_counts[i, j] / holding_times[i]
         Q[i, i] = -Q[i, :].sum()
 
-    logger.info("estimate_transition_rates: Q matrix estimated from %d transitions.", int(transition_counts.sum()))
+    logger.info(
+        "estimate_transition_rates: Q matrix estimated from %d transitions.",
+        int(transition_counts.sum()),
+    )
     return Q
 
 
@@ -158,7 +161,9 @@ def compare_group_transitions(
                 ll += np.log(rate) - Q[fi, fi] * dur  # type: ignore[operator]
         return ll
 
-    ll_separate = sum(_log_lik(rate_matrices[n], d) for n, d in zip(group_names, group_dfs))
+    ll_separate = sum(
+        _log_lik(rate_matrices[n], d) for n, d in zip(group_names, group_dfs)
+    )
     ll_pooled = _log_lik(Q_pooled, pooled_df)
     lrt_stat = 2.0 * (ll_separate - ll_pooled)
     n_states = Q_pooled.shape[0]
@@ -167,7 +172,10 @@ def compare_group_transitions(
     p_value = float(stats.chi2.sf(lrt_stat, df=df_lrt))
 
     logger.info(
-        "compare_group_transitions: LRT χ²(%.0f)=%.3f, p=%.4f", df_lrt, lrt_stat, p_value
+        "compare_group_transitions: LRT χ²(%.0f)=%.3f, p=%.4f",
+        df_lrt,
+        lrt_stat,
+        p_value,
     )
     return {
         "rate_matrices": rate_matrices,
@@ -234,12 +242,16 @@ def simulate_hda_trajectory(
     resampled_states = np.clip(resampled_states, 0, len(states) - 1)
     state_values = [states[i] for i in resampled_states]
 
-    result = pd.DataFrame({
-        "time_sec": uniform_t,
-        "state_idx": state_values,
-        "phase": [state_names[s] for s in state_values],
-    })
+    result = pd.DataFrame(
+        {
+            "time_sec": uniform_t,
+            "state_idx": state_values,
+            "phase": [state_names[s] for s in state_values],
+        }
+    )
     logger.info(
-        "simulate_hda_trajectory: simulated %.1fs with %d transitions.", duration_sec, len(times) - 1
+        "simulate_hda_trajectory: simulated %.1fs with %d transitions.",
+        duration_sec,
+        len(times) - 1,
     )
     return result

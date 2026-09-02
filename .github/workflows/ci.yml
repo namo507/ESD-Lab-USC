@@ -75,6 +75,12 @@ jobs:
       - name: Validate Compose config
         run: python scripts/check_compose_config.py
 
+      # The browser fixture is what previews serve at
+      # /dashboard/data/dashboard_data.json. Nothing regenerated it, and it
+      # spent two months behind the payload it mirrors before anything noticed.
+      - name: Check generated browser dashboard fixture
+        run: python scripts/sync_public_dashboard_fixture.py --check
+
       - name: Check formatting (black)
         run: black --check src/ tests/ scripts/ redcap/
 
