@@ -5,6 +5,7 @@ Used as the container healthcheck. "Running" is not the same as "producing", so
 a builder whose manifest has gone stale reports unhealthy and autoheal restarts
 it.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,7 +36,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     age = time.time() - MANIFEST.stat().st_mtime
     if age > args.max_age_seconds:
-        say(f"index manifest is {age / 86400:.1f} d old (max {args.max_age_seconds / 86400:.1f} d)")
+        say(
+            f"index manifest is {age / 86400:.1f} d old (max {args.max_age_seconds / 86400:.1f} d)"
+        )
         return 1
     say(f"index manifest is {age / 3600:.1f} h old")
     return 0

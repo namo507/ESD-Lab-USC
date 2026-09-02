@@ -10,9 +10,23 @@ x-dashboard-assistant-environment: &dashboard-assistant-environment
   DASHBOARD_ASSISTANT_GEMINI_API_BASE: ${DASHBOARD_ASSISTANT_GEMINI_API_BASE:-https://generativelanguage.googleapis.com/v1beta/openai}
   DASHBOARD_ASSISTANT_GEMINI_MODEL: ${DASHBOARD_ASSISTANT_GEMINI_MODEL:-gemini-3.5-flash}
   DASHBOARD_ASSISTANT_LOCAL_ENABLED: ${DASHBOARD_ASSISTANT_LOCAL_ENABLED:-false}
-  # From inside a container, Docker Model Runner is reached through the host
-  # gateway rather than localhost.
-  DASHBOARD_ASSISTANT_LOCAL_API_BASE: ${DASHBOARD_ASSISTANT_LOCAL_API_BASE:-http://host.docker.internal:12434/engines/v1}
+  # This stack ships its own model runtime: the `ollama` service below, on this
+  # same network, holding the weights bind-mounted from ./models/ollama.
+  #
+  # This pointed at Docker Model Runner on the host gateway
+  # (host.docker.internal:12434) while the model name below stayed `esd-buddy`
+  # -- and `esd-buddy` only exists inside the `ollama` service, built there by
+  # scripts/sync_local_model.py. So the endpoint and the model name named two
+  # different runtimes, and the local tier could only ever 404. The fallback
+  # rungs have the same shape: `phi4-mini:latest` and `qwen2.5:1.5b` are Ollama
+  # tags, not Model Runner `ai/...` names.
+  #
+  # The address matches `local.default_api_base` in config/llm_model.json,
+  # which is what scripts/sync_local_model.py writes and reads. The
+  # host-gateway Model Runner tier still exists -- docker/compose.dev.yml and
+  # compose.prod.yml serve `ai/qwen2.5:7b` from it -- it is just not what this
+  # stack runs.
+  DASHBOARD_ASSISTANT_LOCAL_API_BASE: ${DASHBOARD_ASSISTANT_LOCAL_API_BASE:-http://ollama:11434/v1}
   DASHBOARD_ASSISTANT_LOCAL_MODEL: ${DASHBOARD_ASSISTANT_LOCAL_MODEL:-esd-buddy}
   # One runtime serves several models, so "the local tier is down" is rarely the
   # real failure -- one model is cold, wedged, or missing. Each entry becomes its

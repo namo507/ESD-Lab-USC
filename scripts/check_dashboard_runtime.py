@@ -31,6 +31,13 @@ SHARE_STATE_DIR = (
 )
 SHARE_ORIGIN_RECORD = SHARE_STATE_DIR / "last_origin.txt"
 EXPECTED_SPA_TITLE = "NANO Dashboard · ESD Lab"
+# The single front door. `/overview` was retired in favour of it, and the
+# runtime 301s every legacy dashboard path here
+# (`LEGACY_DASHBOARD_PATHS` in dashboard/server/live_dashboard_server.py).
+# This probe asserted the pre-retirement target long after the server
+# stopped serving it, which failed the Docker smoke test on every run.
+FRONT_DOOR_PATH = "/esd-lab"
+RETIRED_DASHBOARD_PATHS = ("/overview", "/dashboard/")
 FRAME_URL_RE = re.compile(
     r'<iframe[^>]*id=["\']dashboard-frame["\'][^>]*src=["\']([^"\']+)["\']',
     re.IGNORECASE,
@@ -114,10 +121,9 @@ def wait_for(description: str, timeout: int, probe, interval: float = 2.0):
 def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     health_url = f"{base_url}/api/healthz"
     page_url = f"{base_url}/"
-    overview_url = f"{base_url}/overview"
+    front_door_url = f"{base_url}{FRONT_DOOR_PATH}"
     nano_url = f"{base_url}/nano/dashboard"
     buddy_url = f"{base_url}/api/buddy"
-    legacy_page_url = f"{base_url}/dashboard/"
     runtime_url = f"{base_url}/dashboard/data/runtime_status.json"
     dashboard_url = f"{base_url}/dashboard/data/dashboard_data.json"
     nano_dashboard_url = f"{base_url}/dashboard/data/nano_dashboard_data.json"
@@ -143,9 +149,9 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
     if EXPECTED_SPA_TITLE not in page_html:
         raise RuntimeError("root SPA shell did not contain the expected title")
 
-    overview_html = fetch_text(overview_url, timeout=timeout)
-    if EXPECTED_SPA_TITLE not in overview_html:
-        raise RuntimeError("overview SPA shell did not contain the expected title")
+    front_door_html = fetch_text(front_door_url, timeout=timeout)
+    if EXPECTED_SPA_TITLE not in front_door_html:
+        raise RuntimeError("front-door SPA shell did not contain the expected title")
 
     nano_html = fetch_text(nano_url, timeout=timeout)
     if EXPECTED_SPA_TITLE not in nano_html:
@@ -153,11 +159,13 @@ def probe_dashboard_runtime(base_url: str, timeout: int) -> dict[str, Any]:
             "NANO dashboard SPA shell did not contain the expected title"
         )
 
-    legacy_final_url = fetch_final_url(legacy_page_url, timeout=timeout)
-    if not legacy_final_url.rstrip("/").endswith("/overview"):
-        raise RuntimeError(
-            f"legacy /dashboard/ path did not redirect to /overview (got {legacy_final_url})"
-        )
+    for retired_path in RETIRED_DASHBOARD_PATHS:
+        final_url = fetch_final_url(f"{base_url}{retired_path}", timeout=timeout)
+        if not final_url.rstrip("/").endswith(FRONT_DOOR_PATH):
+            raise RuntimeError(
+                f"retired path {retired_path} did not redirect to "
+                f"{FRONT_DOOR_PATH} (got {final_url})"
+            )
 
     runtime = fetch_json(runtime_url, timeout=timeout)
     dashboard = fetch_json(dashboard_url, timeout=timeout)

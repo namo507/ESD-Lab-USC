@@ -311,9 +311,24 @@ def test_buddy_instrument_question_prefers_requested_month(tmp_path):
     buddy._load_nano_metrics = lambda: {
         "meta": {"study": "NANO", "as_of": "2026-07-14"},
         "assessments": [
-            {"instrument": "NNNS-II", "timepoint": "month_2", "complete": 8, "expected": 10},
-            {"instrument": "Bayley-4", "timepoint": "month_12", "complete": 14, "expected": 21},
-            {"instrument": "ADOS-2", "timepoint": "month_12", "complete": 11, "expected": 21},
+            {
+                "instrument": "NNNS-II",
+                "timepoint": "month_2",
+                "complete": 8,
+                "expected": 10,
+            },
+            {
+                "instrument": "Bayley-4",
+                "timepoint": "month_12",
+                "complete": 14,
+                "expected": 21,
+            },
+            {
+                "instrument": "ADOS-2",
+                "timepoint": "month_12",
+                "complete": 11,
+                "expected": 21,
+            },
         ],
     }
 

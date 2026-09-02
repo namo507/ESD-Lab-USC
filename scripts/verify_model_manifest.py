@@ -8,6 +8,7 @@ turns that into a build failure.
     python scripts/verify_model_manifest.py
     python scripts/verify_model_manifest.py --local   # also check on-disk blobs
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,18 +20,29 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.resolve_local_models import MANIFEST_PATH, ResolutionError, fetch_manifest  # noqa: E402
+from scripts.resolve_local_models import (  # noqa: E402
+    MANIFEST_PATH,
+    ResolutionError,
+    fetch_manifest,
+)
 
 MODEL_MEDIA_TYPE = "application/vnd.ollama.image.model"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--local", action="store_true", help="also verify blobs present under models/ollama")
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="also verify blobs present under models/ollama",
+    )
     args = parser.parse_args(argv)
 
     if not MANIFEST_PATH.exists():
-        print("models/MANIFEST.json missing; run `make models-resolve` first", file=sys.stderr)
+        print(
+            "models/MANIFEST.json missing; run `make models-resolve` first",
+            file=sys.stderr,
+        )
         return 1
 
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -44,7 +56,11 @@ def main(argv: list[str] | None = None) -> int:
         except ResolutionError as exc:
             failures.append(f"{ref}: {exc}")
             continue
-        layers = [lyr for lyr in live.get("layers", []) if lyr.get("mediaType") == MODEL_MEDIA_TYPE]
+        layers = [
+            lyr
+            for lyr in live.get("layers", [])
+            if lyr.get("mediaType") == MODEL_MEDIA_TYPE
+        ]
         if not layers:
             failures.append(f"{ref}: no model layer in the live manifest")
             continue
@@ -57,16 +73,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  ok  {ref:<28} {entry['digest'][:26]}…  {entry['license']}")
 
         if args.local:
-            blob = PROJECT_ROOT / "models" / "ollama" / "blobs" / live_digest.replace(":", "-")
+            blob = (
+                PROJECT_ROOT
+                / "models"
+                / "ollama"
+                / "blobs"
+                / live_digest.replace(":", "-")
+            )
             if not blob.exists():
-                failures.append(f"{ref}: pinned blob not present at {blob.relative_to(PROJECT_ROOT)}")
+                failures.append(
+                    f"{ref}: pinned blob not present at {blob.relative_to(PROJECT_ROOT)}"
+                )
 
     if failures:
         print("\nFAILED:", file=sys.stderr)
         for failure in failures:
             print(f"  {failure}", file=sys.stderr)
         return 1
-    print(f"\n{len(manifest.get('models', []))} models verified against the live registry.")
+    print(
+        f"\n{len(manifest.get('models', []))} models verified against the live registry."
+    )
     return 0
 
 

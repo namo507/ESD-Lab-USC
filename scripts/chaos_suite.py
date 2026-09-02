@@ -49,21 +49,43 @@ def _skip_no_docker() -> Result | None:
 
 # ---------------------------------------------------------------------------
 
+
 def scenario_model_down() -> Result:
     """Model server unreachable -> deterministic answers continue.
 
     Required outcome: retrieval still returns hits from the sparse half, and the
     router still classifies without a model. The site does not depend on the
     model being up.
+
+    An absent index is a missing precondition, not a failure of the fallback
+    path: `retrieval.search()` correctly returns nothing when there is nothing
+    to search. Reporting that as a fail said "the sparse half is broken" on
+    every host that had not run `make assistant-reindex` -- including a fresh
+    checkout and CI -- and took the whole sweep down with it. `gpu-missing`
+    below already skips on the same missing artifact; this now matches it.
     """
+    if not retrieval.DEFAULT_INDEX_PATH.exists():
+        return Result(
+            "model-down",
+            "skip",
+            "no retrieval index; run `make assistant-reindex` first",
+        )
+
     hits = retrieval.search("CPTd skin temperature", limit=3, embed_base_url=None)
     routed = plan_domain("how many NANO records are there?")
     if not hits:
-        return Result("model-down", "fail", "sparse-only retrieval returned nothing")
+        return Result(
+            "model-down",
+            "fail",
+            "index is present but sparse-only retrieval returned nothing",
+        )
     if not routed.model_free:
-        return Result("model-down", "fail", "lookup did not route to the deterministic tier")
+        return Result(
+            "model-down", "fail", "lookup did not route to the deterministic tier"
+        )
     return Result(
-        "model-down", "pass",
+        "model-down",
+        "pass",
         f"sparse-only retrieval returned {len(hits)} hits; lookup routed model-free",
     )
 
@@ -75,7 +97,9 @@ def scenario_model_slow() -> Result:
     degraded model must never trip liveness lives in the template, and a
     regression there is what actually causes the crash loop.
     """
-    template = PROJECT_ROOT / "k8s/helm/esd-lab-dashboard/templates/deployment-ollama.yaml"
+    template = (
+        PROJECT_ROOT / "k8s/helm/esd-lab-dashboard/templates/deployment-ollama.yaml"
+    )
     if not template.exists():
         return Result("model-slow", "fail", "ollama deployment template missing")
     text = template.read_text(encoding="utf-8")
@@ -87,8 +111,16 @@ def scenario_model_slow() -> Result:
     # Asserting on the raw text would fail whenever someone rewrapped it.
     lowered = " ".join(text.lower().replace("#", " ").split())
     if "readiness" not in lowered or "warm model cache" not in lowered:
-        return Result("model-slow", "fail", "probe-semantics comment missing; the rule will be undone")
-    return Result("model-slow", "pass", "all three probes declared with the readiness-not-liveness rule recorded")
+        return Result(
+            "model-slow",
+            "fail",
+            "probe-semantics comment missing; the rule will be undone",
+        )
+    return Result(
+        "model-slow",
+        "pass",
+        "all three probes declared with the readiness-not-liveness rule recorded",
+    )
 
 
 def scenario_corrupt_index() -> Result:
@@ -99,10 +131,16 @@ def scenario_corrupt_index() -> Result:
         try:
             hits = retrieval.search("anything", index_path=corrupt, embed_base_url=None)
         except sqlite3.DatabaseError as exc:
-            return Result("corrupt-index", "fail", f"search raised on a corrupt index: {exc}")
+            return Result(
+                "corrupt-index", "fail", f"search raised on a corrupt index: {exc}"
+            )
         if hits:
             return Result("corrupt-index", "fail", "corrupt index returned hits")
-    return Result("corrupt-index", "pass", "corrupt index degrades to empty results without raising")
+    return Result(
+        "corrupt-index",
+        "pass",
+        "corrupt index degrades to empty results without raising",
+    )
 
 
 def scenario_stale_redcap() -> Result:
@@ -119,7 +157,8 @@ def scenario_stale_redcap() -> Result:
     if not freshness:
         return Result("stale-redcap", "fail", "no freshness finding produced")
     return Result(
-        "stale-redcap", "pass",
+        "stale-redcap",
+        "pass",
         f"{len(freshness)} freshness SLA breach(es) detected as findings, not exceptions",
     )
 
@@ -135,20 +174,34 @@ def scenario_scrape_429() -> Result:
     if "exc.code == 429" not in text:
         return Result("scrape-429", "fail", "no 429 branch in the fetch path")
     if "kept previous snapshot" not in text:
-        return Result("scrape-429", "fail", "an empty result could overwrite a good snapshot")
-    return Result("scrape-429", "pass", "429 backs off; an all-failed run keeps the last good snapshot")
+        return Result(
+            "scrape-429", "fail", "an empty result could overwrite a good snapshot"
+        )
+    return Result(
+        "scrape-429",
+        "pass",
+        "429 backs off; an all-failed run keeps the last good snapshot",
+    )
 
 
 def scenario_gpu_missing() -> Result:
     """No GPU -> CPU fallback with an honest warning, never a hard crash."""
     manifest = retrieval.read_manifest()
     if manifest is None:
-        return Result("gpu-missing", "skip", "no index manifest; run `make assistant-reindex` first")
+        return Result(
+            "gpu-missing",
+            "skip",
+            "no index manifest; run `make assistant-reindex` first",
+        )
     # Sparse-only is the CPU/no-model path and it must actually work.
     hits = retrieval.search("REDCap portfolio", limit=3, embed_base_url=None)
     if not hits:
         return Result("gpu-missing", "fail", "CPU/sparse path returned nothing")
-    return Result("gpu-missing", "pass", f"CPU sparse path serves {len(hits)} hits; manifest records degraded state")
+    return Result(
+        "gpu-missing",
+        "pass",
+        f"CPU sparse path serves {len(hits)} hits; manifest records degraded state",
+    )
 
 
 def scenario_oom_pressure() -> Result:
@@ -157,8 +210,16 @@ def scenario_oom_pressure() -> Result:
 
     _, _, mem_total = declared()
     if mem_total > HOST_MEMORY_GB:
-        return Result("oom-pressure", "fail", f"declared {mem_total:.2f} GB exceeds {HOST_MEMORY_GB} GB host")
-    return Result("oom-pressure", "pass", f"declared {mem_total:.2f} GB leaves {HOST_MEMORY_GB - mem_total:.2f} GB headroom")
+        return Result(
+            "oom-pressure",
+            "fail",
+            f"declared {mem_total:.2f} GB exceeds {HOST_MEMORY_GB} GB host",
+        )
+    return Result(
+        "oom-pressure",
+        "pass",
+        f"declared {mem_total:.2f} GB leaves {HOST_MEMORY_GB - mem_total:.2f} GB headroom",
+    )
 
 
 def scenario_repeated_failure() -> Result:
@@ -168,14 +229,22 @@ def scenario_repeated_failure() -> Result:
     for _ in range(self_heal.HOLD_AFTER_FAILURES):
         self_heal.record_failure("rebuild", state, now)
     if not self_heal.should_hold("rebuild", state, now):
-        return Result("repeated-failure", "fail", "supervisor did not hold after repeated failures")
+        return Result(
+            "repeated-failure",
+            "fail",
+            "supervisor did not hold after repeated failures",
+        )
     # And a rung that has not failed must still be attempted.
     if self_heal.should_hold("reload", state, now):
         return Result("repeated-failure", "fail", "hold leaked across rungs")
     # The window must expire.
     if self_heal.should_hold("rebuild", state, now + self_heal.HOLD_WINDOW_SECONDS + 1):
         return Result("repeated-failure", "fail", "hold never expires")
-    return Result("repeated-failure", "pass", "holds after 3 failures, scoped per rung, expires with the window")
+    return Result(
+        "repeated-failure",
+        "pass",
+        "holds after 3 failures, scoped per rung, expires with the window",
+    )
 
 
 def scenario_model_ladder() -> Result:
@@ -190,16 +259,23 @@ def scenario_model_ladder() -> Result:
 
     from dashboard.assistant.local_chat_assistant import AssistantConfig
 
-    previous = {k: os.environ.get(k) for k in (
-        "DASHBOARD_ASSISTANT_LOCAL_ENABLED", "DASHBOARD_ASSISTANT_LOCAL_MODEL",
-        "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS", "DASHBOARD_ASSISTANT_PROVIDER",
-    )}
-    os.environ.update({
-        "DASHBOARD_ASSISTANT_LOCAL_ENABLED": "true",
-        "DASHBOARD_ASSISTANT_PROVIDER": "ollama",
-        "DASHBOARD_ASSISTANT_LOCAL_MODEL": "primary-model",
-        "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS": "second-model, third-model",
-    })
+    previous = {
+        k: os.environ.get(k)
+        for k in (
+            "DASHBOARD_ASSISTANT_LOCAL_ENABLED",
+            "DASHBOARD_ASSISTANT_LOCAL_MODEL",
+            "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS",
+            "DASHBOARD_ASSISTANT_PROVIDER",
+        )
+    }
+    os.environ.update(
+        {
+            "DASHBOARD_ASSISTANT_LOCAL_ENABLED": "true",
+            "DASHBOARD_ASSISTANT_PROVIDER": "ollama",
+            "DASHBOARD_ASSISTANT_LOCAL_MODEL": "primary-model",
+            "DASHBOARD_ASSISTANT_LOCAL_FALLBACK_MODELS": "second-model, third-model",
+        }
+    )
     try:
         configs = AssistantConfig.from_env().provider_configs()
     finally:
@@ -212,12 +288,19 @@ def scenario_model_ladder() -> Result:
     local = [c for c in configs if c.normalized_provider == "local"]
     models = [c.model for c in local]
     if models[:3] != ["primary-model", "second-model", "third-model"]:
-        return Result("model-ladder", "fail", f"ladder did not expand in order: {models}")
+        return Result(
+            "model-ladder", "fail", f"ladder did not expand in order: {models}"
+        )
     # Independent breakers are what make a failed rung skippable rather than fatal.
     if len({id(c) for c in local}) != len(local):
-        return Result("model-ladder", "fail", "rungs share a config object, so they share a breaker")
+        return Result(
+            "model-ladder",
+            "fail",
+            "rungs share a config object, so they share a breaker",
+        )
     return Result(
-        "model-ladder", "pass",
+        "model-ladder",
+        "pass",
         f"{len(local)} local rungs in order ({', '.join(models)}), each with its own breaker",
     )
 
@@ -236,7 +319,9 @@ SCENARIOS: dict[str, Callable[[], Result]] = {
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--scenario", action="append", choices=sorted(SCENARIOS))
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
@@ -246,7 +331,8 @@ def main(argv: list[str] | None = None) -> int:
     for name in names:
         try:
             result = SCENARIOS[name]()
-        except Exception as exc:  # noqa: BLE001 - a raising scenario is a failing scenario
+        # A raising scenario is a failing scenario.
+        except Exception as exc:  # noqa: BLE001
             result = Result(name, "fail", f"scenario raised: {exc}")
         result.name = result.name or name
         results.append(result)
@@ -260,7 +346,9 @@ def main(argv: list[str] | None = None) -> int:
         passed = sum(r.status == "pass" for r in results)
         skipped = sum(r.status == "skip" for r in results)
         failed = sum(r.status == "fail" for r in results)
-        print(f"\n{passed} passed, {failed} failed, {skipped} skipped, of {len(results)} scenarios")
+        print(
+            f"\n{passed} passed, {failed} failed, {skipped} skipped, of {len(results)} scenarios"
+        )
 
     return 1 if any(r.status == "fail" for r in results) else 0
 

@@ -12,6 +12,12 @@
   --esd-science-blue: #91baf4;
   --esd-cool-blue: #e6eefc;
   --esd-cool-white: #f4f4f6;
+  /* Label colour for anything filled with Discovery Blue. Cool White measures
+     4.26:1 on that fill, under the 4.5 normal-size text needs; pure white
+     measures 4.68:1, which is the most any label can reach on it. Named so a
+     filled control asks for the right value instead of guessing, the way
+     --blue-ink already does for Discovery Blue used as text. */
+  --esd-on-discovery-blue: #ffffff;
   --esd-jet-black: #000000;
   --esd-orange: #f57f00;
   --esd-red: #d74e2d;

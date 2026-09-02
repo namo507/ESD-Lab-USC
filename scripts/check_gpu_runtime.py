@@ -69,9 +69,15 @@ def detect_gpu() -> GpuInfo:
     if shutil.which("nvidia-smi"):
         try:
             proc = subprocess.run(  # noqa: S603
-                ["nvidia-smi", "--query-gpu=name,memory.total,driver_version",
-                 "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=20, check=False,
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total,driver_version",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                check=False,
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 first = proc.stdout.strip().splitlines()[0]
@@ -84,7 +90,9 @@ def detect_gpu() -> GpuInfo:
                         driver=parts[2],
                         detected_by="nvidia-smi",
                     )
-            info.notes.append(f"nvidia-smi present but returned no device (rc={proc.returncode})")
+            info.notes.append(
+                f"nvidia-smi present but returned no device (rc={proc.returncode})"
+            )
         except (subprocess.TimeoutExpired, OSError, ValueError) as exc:
             info.notes.append(f"nvidia-smi failed: {exc}")
     else:
@@ -107,7 +115,6 @@ def detect_gpu() -> GpuInfo:
         info.notes.append("no libcuda on the host")
 
     return info
-
 
 
 def cpu_threads() -> int:
@@ -160,11 +167,12 @@ def installed_models(base_url: str = "http://127.0.0.1:11434") -> list[dict[str,
     import urllib.request
 
     try:
-        with urllib.request.urlopen(f"{base_url}/api/tags", timeout=6) as response:  # noqa: S310
+        with urllib.request.urlopen(
+            f"{base_url}/api/tags", timeout=6
+        ) as response:  # noqa: S310
             return json.loads(response.read()).get("models", [])
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError):
         return []
-
 
 
 def _configured_fallback_models(present: list[dict[str, Any]]) -> list[str]:
@@ -177,9 +185,9 @@ def _configured_fallback_models(present: list[dict[str, Any]]) -> list[str]:
     if not config.exists():
         return []
     try:
-        declared = (json.loads(config.read_text(encoding="utf-8")).get("local") or {}).get(
-            "fallback_models"
-        ) or []
+        declared = (
+            json.loads(config.read_text(encoding="utf-8")).get("local") or {}
+        ).get("fallback_models") or []
     except (OSError, json.JSONDecodeError):
         return []
     names = {m.get("name", "") for m in present}
@@ -193,12 +201,16 @@ def _configured_serving_model() -> str | None:
     if not config.exists():
         return None
     try:
-        return (json.loads(config.read_text(encoding="utf-8")).get("local") or {}).get("serving_model")
+        return (json.loads(config.read_text(encoding="utf-8")).get("local") or {}).get(
+            "serving_model"
+        )
     except (OSError, json.JSONDecodeError):
         return None
 
 
-def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dict[str, Any]]) -> dict[str, Any]:
+def choose_tier(
+    gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dict[str, Any]]
+) -> dict[str, Any]:
     """Pick the runtime configuration this host can actually serve."""
     budget_gb = round(gpu.vram_gb * VRAM_USABLE_FRACTION, 2) if gpu.vram_gb else 0.0
     models = (manifest or {}).get("models", [])
@@ -220,7 +232,7 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
             "embedding": (embedding or {}).get("ref"),
             "keep_alive": "30m",
             "max_loaded_models": 2,
-            "num_gpu_layers": -1,           # offload everything
+            "num_gpu_layers": -1,  # offload everything
             "fallback_models": _configured_fallback_models(present),
             "reason": (
                 f"{primary['ref']} needs {primary['size_gb']:.2f} GB and the card offers "
@@ -246,7 +258,11 @@ def choose_tier(gpu: GpuInfo, manifest: dict[str, Any] | None, present: list[dic
         cpu_generalist = configured
     else:
         smaller = sorted(
-            (m for m in present if m.get("size", 0) and "embed" not in m.get("name", "")),
+            (
+                m
+                for m in present
+                if m.get("size", 0) and "embed" not in m.get("name", "")
+            ),
             key=lambda m: m.get("size", 0),
         )
         cpu_generalist = smaller[0]["name"] if smaller else None
@@ -308,7 +324,8 @@ def build_report() -> dict[str, Any]:
             for m in (manifest or {}).get("models", [])
         ],
         "ollama_installed": [
-            {"name": m.get("name"), "size_gb": round(m.get("size", 0) / 1e9, 2)} for m in present
+            {"name": m.get("name"), "size_gb": round(m.get("size", 0) / 1e9, 2)}
+            for m in present
         ],
         "plan": plan,
     }
@@ -336,34 +353,46 @@ ESD_RUNTIME_DEGRADED={degraded}
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--env", action="store_true", help="emit shell-sourceable configuration")
-    parser.add_argument("--require-gpu", action="store_true", help="fail when no usable GPU is present")
-    parser.add_argument("--ollama-url", default=os.environ.get("ESD_OLLAMA_URL", "http://127.0.0.1:11434"))
+    parser.add_argument(
+        "--env", action="store_true", help="emit shell-sourceable configuration"
+    )
+    parser.add_argument(
+        "--require-gpu", action="store_true", help="fail when no usable GPU is present"
+    )
+    parser.add_argument(
+        "--ollama-url",
+        default=os.environ.get("ESD_OLLAMA_URL", "http://127.0.0.1:11434"),
+    )
     args = parser.parse_args(argv)
 
     report = build_report()
     plan = report["plan"]
 
     if args.env:
-        print(ENV_TEMPLATE.format(
-            api_base=f"{args.ollama_url}/v1",
-            generalist=plan["generalist"] or "",
-            fallback_models=",".join(plan.get("fallback_models") or []),
-            embed_base=args.ollama_url,
-            keep_alive=plan["keep_alive"],
-            max_loaded=plan["max_loaded_models"],
-            context_budget=plan["context_budget"],
-            max_new_tokens=plan["max_new_tokens"],
-            request_timeout=plan["request_timeout_seconds"],
-            num_thread=plan["num_thread"],
-            # One request at a time on CPU: parallel decodes split the same
-            # cores and make every answer slower than serialising them.
-            num_parallel=1 if plan["tier"] == "cpu" else 2,
-            tier=plan["tier"],
-            degraded=str(plan["degraded"]).lower(),
-        ), end="")
+        print(
+            ENV_TEMPLATE.format(
+                api_base=f"{args.ollama_url}/v1",
+                generalist=plan["generalist"] or "",
+                fallback_models=",".join(plan.get("fallback_models") or []),
+                embed_base=args.ollama_url,
+                keep_alive=plan["keep_alive"],
+                max_loaded=plan["max_loaded_models"],
+                context_budget=plan["context_budget"],
+                max_new_tokens=plan["max_new_tokens"],
+                request_timeout=plan["request_timeout_seconds"],
+                num_thread=plan["num_thread"],
+                # One request at a time on CPU: parallel decodes split the same
+                # cores and make every answer slower than serialising them.
+                num_parallel=1 if plan["tier"] == "cpu" else 2,
+                tier=plan["tier"],
+                degraded=str(plan["degraded"]).lower(),
+            ),
+            end="",
+        )
         return 0
 
     if args.json:
@@ -372,7 +401,9 @@ def main(argv: list[str] | None = None) -> int:
         gpu = report["gpu"]
         print("GPU")
         if gpu["present"]:
-            print(f"  {gpu['name'] or 'device present'}  {gpu['vram_gb'] or '?'} GB  driver {gpu['driver'] or '?'}")
+            print(
+                f"  {gpu['name'] or 'device present'}  {gpu['vram_gb'] or '?'} GB  driver {gpu['driver'] or '?'}"
+            )
             print(f"  detected by {gpu['detected_by']}")
         else:
             print("  none detected")
@@ -395,14 +426,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  generalist   {plan['generalist'] or '(none available)'}")
         print(f"  embedding    {plan['embedding'] or '(none)'}")
         print(f"  gpu layers   {plan['num_gpu_layers']}")
-        print(f"  context      {plan['context_budget']} tokens, {plan['max_new_tokens']} max new")
+        print(
+            f"  context      {plan['context_budget']} tokens, {plan['max_new_tokens']} max new"
+        )
         print(f"  threads      {plan['num_thread']} of {os.cpu_count()} logical")
         print(f"  reason       {plan['reason']}")
         if plan["speed_warning"]:
             print(f"\n  ⚠ {plan['speed_warning']}")
 
     if args.require_gpu and plan["tier"] != "gpu":
-        print("\nFAILED: --require-gpu was set and no usable GPU tier is available.", file=sys.stderr)
+        print(
+            "\nFAILED: --require-gpu was set and no usable GPU tier is available.",
+            file=sys.stderr,
+        )
         return 1
     return 0
 

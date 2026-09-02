@@ -56,7 +56,7 @@ DEFAULT_BASE_URL = os.environ.get("DASHBOARD_LOCAL_URL", "http://127.0.0.1:8080"
 #: stale data is a correct answer about an out-of-date artifact, and the buddy
 #: is expected to say so rather than quote the stale number as current.
 FRESHNESS_SLA = {
-    "dashboard/data/redcap_portfolio.json": 5400,      # matches config/redcap_projects.yml
+    "dashboard/data/redcap_portfolio.json": 5400,  # matches config/redcap_projects.yml
     "dashboard/data/dashboard_data.json": 86_400,
     "dashboard/data/index_manifest.json": 604_800,
     "dashboard/data/similar_studies.json": 172_800,
@@ -67,8 +67,15 @@ HOLD_WINDOW_SECONDS = 900
 HOLD_AFTER_FAILURES = 3
 
 RUNGS = (
-    "detect", "soften", "degrade", "reload",
-    "restart", "rebuild", "reconcile", "notify", "hold",
+    "detect",
+    "soften",
+    "degrade",
+    "reload",
+    "restart",
+    "rebuild",
+    "reconcile",
+    "notify",
+    "hold",
 )
 
 
@@ -120,6 +127,7 @@ def _get_json(url: str, timeout: int = 8) -> dict[str, Any] | None:
 # Rung 0 — detect
 # ---------------------------------------------------------------------------
 
+
 def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
     """Poll the live surfaces and the freshness SLAs."""
     findings: list[Finding] = []
@@ -132,7 +140,14 @@ def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
     # 404s livez -- reporting that as critical would have the supervisor trying
     # to restart a perfectly healthy server.
     if health is None and live is None:
-        findings.append(Finding("livez", "process answering neither /api/livez nor /api/healthz", 4, "critical"))
+        findings.append(
+            Finding(
+                "livez",
+                "process answering neither /api/livez nor /api/healthz",
+                4,
+                "critical",
+            )
+        )
     elif health is None:
         findings.append(Finding("healthz", "not answering /api/healthz", 4, "critical"))
     elif health.get("status") != "ok":
@@ -145,11 +160,15 @@ def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
         # A degraded model is a readiness problem, never a liveness one. It must
         # not restart the process: that throws away the warm model cache and
         # turns a slow answer into an outage.
-        findings.append(Finding("assistant", f"assistant state={status.get('state')!r}", 1))
+        findings.append(
+            Finding("assistant", f"assistant state={status.get('state')!r}", 1)
+        )
 
     portfolio = _get_json(f"{base_url}/api/redcap/portfolio-health")
     if portfolio is not None and portfolio.get("status") not in {None, "ok", "live"}:
-        findings.append(Finding("redcap", f"portfolio health={portfolio.get('status')!r}", 0))
+        findings.append(
+            Finding("redcap", f"portfolio health={portfolio.get('status')!r}", 0)
+        )
 
     now = time.time()
     for rel, budget in FRESHNESS_SLA.items():
@@ -160,7 +179,11 @@ def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
         age = now - path.stat().st_mtime
         if age > budget:
             findings.append(
-                Finding("freshness", f"{rel} is {age / 3600:.1f} h old (SLA {budget / 3600:.1f} h)", 5)
+                Finding(
+                    "freshness",
+                    f"{rel} is {age / 3600:.1f} h old (SLA {budget / 3600:.1f} h)",
+                    5,
+                )
             )
 
     return findings
@@ -170,10 +193,16 @@ def detect(base_url: str = DEFAULT_BASE_URL) -> list[Finding]:
 # Repair actions. Every one is idempotent and safe to run twice.
 # ---------------------------------------------------------------------------
 
+
 def _run(command: list[str], timeout: int = 300) -> tuple[bool, str]:
     try:
         proc = subprocess.run(  # noqa: S603
-            command, cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=timeout, check=False
+            command,
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
         )
         return proc.returncode == 0, (proc.stdout or proc.stderr or "")[-400:]
     except (subprocess.TimeoutExpired, OSError) as exc:
@@ -182,14 +211,22 @@ def _run(command: list[str], timeout: int = 300) -> tuple[bool, str]:
 
 def rung_soften(_: list[Finding], dry: bool) -> Outcome:
     """The breaker is already in provider.py; this only records the transition."""
-    return Outcome("soften", "provider-failover", True,
-                   "circuit breaker handles tier failover in-process")
+    return Outcome(
+        "soften",
+        "provider-failover",
+        True,
+        "circuit breaker handles tier failover in-process",
+    )
 
 
 def rung_degrade(_: list[Finding], dry: bool) -> Outcome:
     """Deterministic grounding is the floor and is always available."""
-    return Outcome("degrade", "deterministic-grounding", True,
-                   "nano_buddy answers metric questions with no model in the loop")
+    return Outcome(
+        "degrade",
+        "deterministic-grounding",
+        True,
+        "nano_buddy answers metric questions with no model in the loop",
+    )
 
 
 def rung_reload(_: list[Finding], dry: bool) -> Outcome:
@@ -197,8 +234,12 @@ def rung_reload(_: list[Finding], dry: bool) -> Outcome:
     if dry:
         return Outcome("reload", "model-reload", True, f"would probe {base}/api/tags")
     ok = _get_json(f"{base}/api/tags") is not None
-    return Outcome("reload", "model-reload", ok,
-                   "model server reachable" if ok else "model server unreachable")
+    return Outcome(
+        "reload",
+        "model-reload",
+        ok,
+        "model server reachable" if ok else "model server unreachable",
+    )
 
 
 def rung_restart(_: list[Finding], dry: bool) -> Outcome:
@@ -208,20 +249,35 @@ def rung_restart(_: list[Finding], dry: bool) -> Outcome:
     Racing them from here would mean two supervisors restarting the same
     container, so this reports rather than acts.
     """
-    return Outcome("restart", "delegated", True,
-                   "autoheal / liveness probe owns restart; supervisor does not race it")
+    return Outcome(
+        "restart",
+        "delegated",
+        True,
+        "autoheal / liveness probe owns restart; supervisor does not race it",
+    )
 
 
 def rung_rebuild(_: list[Finding], dry: bool) -> Outcome:
     if dry:
-        return Outcome("rebuild", "index-rebuild", True, "would run scripts/build_assistant_index.py")
-    ok, detail = _run([sys.executable, "scripts/build_assistant_index.py"], timeout=1800)
+        return Outcome(
+            "rebuild",
+            "index-rebuild",
+            True,
+            "would run scripts/build_assistant_index.py",
+        )
+    ok, detail = _run(
+        [sys.executable, "scripts/build_assistant_index.py"], timeout=1800
+    )
     return Outcome("rebuild", "index-rebuild", ok, detail)
 
 
 def rung_reconcile(_: list[Finding], dry: bool) -> Outcome:
-    return Outcome("reconcile", "cronjob-reconcile", True,
-                   "declared state restored by the reconcile CronJob on its next tick")
+    return Outcome(
+        "reconcile",
+        "cronjob-reconcile",
+        True,
+        "declared state restored by the reconcile CronJob on its next tick",
+    )
 
 
 RUNG_ACTIONS: dict[int, Callable[[list[Finding], bool], Outcome]] = {
@@ -237,6 +293,7 @@ RUNG_ACTIONS: dict[int, Callable[[list[Finding], bool], Outcome]] = {
 # ---------------------------------------------------------------------------
 # Hold state
 # ---------------------------------------------------------------------------
+
 
 def _load_state() -> dict[str, Any]:
     if not STATE_PATH.exists():
@@ -259,7 +316,8 @@ def should_hold(rung: str, state: dict[str, Any], now: float | None = None) -> b
     """Whether this rung has failed too often to keep trying."""
     now = now if now is not None else time.time()
     recent = [
-        entry for entry in state.get("failures", [])
+        entry
+        for entry in state.get("failures", [])
         if entry.get("rung") == rung and now - entry.get("at", 0) <= HOLD_WINDOW_SECONDS
     ]
     return len(recent) >= HOLD_AFTER_FAILURES
@@ -268,7 +326,8 @@ def should_hold(rung: str, state: dict[str, Any], now: float | None = None) -> b
 def record_failure(rung: str, state: dict[str, Any], now: float | None = None) -> None:
     now = now if now is not None else time.time()
     failures = [
-        entry for entry in state.get("failures", [])
+        entry
+        for entry in state.get("failures", [])
         if now - entry.get("at", 0) <= HOLD_WINDOW_SECONDS
     ]
     failures.append({"rung": rung, "at": now})
@@ -278,6 +337,7 @@ def record_failure(rung: str, state: dict[str, Any], now: float | None = None) -
 # ---------------------------------------------------------------------------
 # Cycle
 # ---------------------------------------------------------------------------
+
 
 def cycle(*, base_url: str = DEFAULT_BASE_URL, dry_run: bool = False) -> dict[str, Any]:
     """One detect-and-repair pass. Climbs at most one rung."""
@@ -289,7 +349,9 @@ def cycle(*, base_url: str = DEFAULT_BASE_URL, dry_run: bool = False) -> dict[st
         return {"healthy": True, "findings": [], "rung": None}
 
     detail = [f"{f.check}: {f.detail}" for f in findings]
-    log_event({"rung": "detect", "trigger": "poll", "outcome": "degraded", "findings": detail})
+    log_event(
+        {"rung": "detect", "trigger": "poll", "outcome": "degraded", "findings": detail}
+    )
 
     target = min(f.suggested_rung for f in findings) or 1
     target = max(1, target)
@@ -297,12 +359,16 @@ def cycle(*, base_url: str = DEFAULT_BASE_URL, dry_run: bool = False) -> dict[st
 
     if should_hold(rung_name, state):
         # Stop. Make it loud. Wait for a person.
-        log_event({
-            "rung": "hold", "trigger": rung_name, "outcome": "halted",
-            "detail": f"{HOLD_AFTER_FAILURES} failures of '{rung_name}' within "
-                      f"{HOLD_WINDOW_SECONDS}s; automated repair frozen",
-            "findings": detail,
-        })
+        log_event(
+            {
+                "rung": "hold",
+                "trigger": rung_name,
+                "outcome": "halted",
+                "detail": f"{HOLD_AFTER_FAILURES} failures of '{rung_name}' within "
+                f"{HOLD_WINDOW_SECONDS}s; automated repair frozen",
+                "findings": detail,
+            }
+        )
         _save_state(state)
         return {"healthy": False, "findings": detail, "rung": "hold", "held": True}
 
@@ -312,24 +378,37 @@ def cycle(*, base_url: str = DEFAULT_BASE_URL, dry_run: bool = False) -> dict[st
         record_failure(rung_name, state)
     _save_state(state)
 
-    log_event({
-        "rung": outcome.rung, "trigger": detail[0] if detail else "unknown",
-        "outcome": "repaired" if outcome.ok else "failed",
-        "action": outcome.action, "detail": outcome.detail, "findings": detail,
-    })
+    log_event(
+        {
+            "rung": outcome.rung,
+            "trigger": detail[0] if detail else "unknown",
+            "outcome": "repaired" if outcome.ok else "failed",
+            "action": outcome.action,
+            "detail": outcome.detail,
+            "findings": detail,
+        }
+    )
     return {
-        "healthy": False, "findings": detail, "rung": outcome.rung,
-        "action": outcome.action, "ok": outcome.ok, "detail": outcome.detail,
+        "healthy": False,
+        "findings": detail,
+        "rung": outcome.rung,
+        "action": outcome.action,
+        "ok": outcome.ok,
+        "detail": outcome.detail,
     }
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--once", action="store_true", help="run one cycle and exit")
     parser.add_argument("--watch", action="store_true", help="loop until interrupted")
     parser.add_argument("--interval", type=int, default=60)
-    parser.add_argument("--dry-run", action="store_true", help="detect and plan, repair nothing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="detect and plan, repair nothing"
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args(argv)
 

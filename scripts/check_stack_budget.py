@@ -11,6 +11,7 @@ Two questions, deliberately separate:
 the host. `cpus` is a quota rather than a reservation, so CPU may oversubscribe
 and the check only warns.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -48,7 +49,13 @@ def parse_size_gb(value: object) -> float:
         return 0.0
     number = float(match.group(1))
     unit = match.group(2).lower()
-    return {"": number / 1e9, "k": number / 1e6, "m": number / 1024, "g": number, "t": number * 1024}[unit]
+    return {
+        "": number / 1e9,
+        "k": number / 1e6,
+        "m": number / 1024,
+        "g": number,
+        "t": number * 1024,
+    }[unit]
 
 
 def parse_cpus(value: object) -> float:
@@ -86,9 +93,11 @@ def observed() -> list[dict[str, str]] | None:
         return None
     try:
         proc = subprocess.run(  # noqa: S603
-            ["docker", "stats", "--no-stream", "--format",
-             "{{json .}}"],
-            capture_output=True, text=True, timeout=60, check=False,
+            ["docker", "stats", "--no-stream", "--format", "{{json .}}"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
         )
     except (subprocess.TimeoutExpired, OSError):
         return None
@@ -112,12 +121,23 @@ def main(argv: list[str] | None = None) -> int:
     live = observed()
 
     if args.json:
-        print(json.dumps({
-            "declared": [{"service": n, "cpus": c, "memory_gb": m, "profile_gated": g} for n, c, m, g in rows],
-            "default_totals": {"cpus": cpu_total, "memory_gb": round(mem_total, 2)},
-            "host": {"cpus": HOST_CPUS, "memory_gb": HOST_MEMORY_GB},
-            "observed": live,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "declared": [
+                        {"service": n, "cpus": c, "memory_gb": m, "profile_gated": g}
+                        for n, c, m, g in rows
+                    ],
+                    "default_totals": {
+                        "cpus": cpu_total,
+                        "memory_gb": round(mem_total, 2),
+                    },
+                    "host": {"cpus": HOST_CPUS, "memory_gb": HOST_MEMORY_GB},
+                    "observed": live,
+                },
+                indent=2,
+            )
+        )
         return 0 if mem_total <= HOST_MEMORY_GB else 1
 
     print(f"Declared limits (host: {HOST_CPUS} CPU / {HOST_MEMORY_GB} GB)\n")
@@ -125,15 +145,21 @@ def main(argv: list[str] | None = None) -> int:
         tag = "  (profile-gated)" if gated else ""
         print(f"  {name:<24} {cpus:>6.2f} cpu  {mem:>5.2f} GB{tag}")
     print(f"\n  {'default total':<24} {cpu_total:>6.2f} cpu  {mem_total:>5.2f} GB")
-    print(f"  {'headroom':<24} {HOST_CPUS - cpu_total:>6.2f} cpu  {HOST_MEMORY_GB - mem_total:>5.2f} GB")
+    print(
+        f"  {'headroom':<24} {HOST_CPUS - cpu_total:>6.2f} cpu  {HOST_MEMORY_GB - mem_total:>5.2f} GB"
+    )
 
     status = 0
     if mem_total > HOST_MEMORY_GB:
-        print(f"\nFAIL: declared memory {mem_total:.2f} GB exceeds the {HOST_MEMORY_GB} GB host budget.")
+        print(
+            f"\nFAIL: declared memory {mem_total:.2f} GB exceeds the {HOST_MEMORY_GB} GB host budget."
+        )
         print("      mem_limit is a hard cap; the overage OOM-kills rather than swaps.")
         status = 1
     if cpu_total > HOST_CPUS:
-        print(f"\nnote: CPU quota sums to {cpu_total:.2f} over {HOST_CPUS} cores. `cpus` is a quota, not a")
+        print(
+            f"\nnote: CPU quota sums to {cpu_total:.2f} over {HOST_CPUS} cores. `cpus` is a quota, not a"
+        )
         print("      reservation, so this oversubscribes rather than failing.")
 
     if live is None:
@@ -141,7 +167,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("\nObserved (docker stats):")
         for row in live:
-            print(f"  {row.get('Name', '?'):<24} {row.get('CPUPerc', '?'):>8}  {row.get('MemUsage', '?')}")
+            print(
+                f"  {row.get('Name', '?'):<24} {row.get('CPUPerc', '?'):>8}  {row.get('MemUsage', '?')}"
+            )
     return status
 
 

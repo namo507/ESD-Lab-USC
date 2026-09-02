@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -268,3 +269,27 @@ def test_dashboard_controls_are_normalized_and_clamped():
     assert controls["clinical_cutoffs"]["dp_epsilon"] == 10
     assert controls["feature_flags"]["redcap.writeback"] is True
     assert controls["feature_flags"]["redcap.pipelineHealth"] is False
+
+
+def test_public_dashboard_fixture_tracks_the_runtime_payload():
+    """The preview fixture and the runtime payload must not drift apart.
+
+    `web/public/dashboard/data/dashboard_data.json` is what a static preview
+    serves at the URL the SPA fetches, while the live runtime serves that URL
+    from `dashboard/data/dashboard_data.json`. Nothing regenerated the fixture,
+    so it sat two months behind and every preview route -- including the one CI
+    measures for contrast -- rendered numbers the runtime had replaced.
+    """
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "scripts"))
+    import sync_public_dashboard_fixture as fixture
+
+    source = root / "dashboard" / "data" / "dashboard_data.json"
+    target = root / "web" / "public" / "dashboard" / "data" / "dashboard_data.json"
+
+    assert target.exists(), "browser dashboard fixture is missing"
+    expected = fixture.render(json.loads(source.read_text(encoding="utf-8")))
+    assert target.read_text(encoding="utf-8") == expected, (
+        "run `python scripts/sync_public_dashboard_fixture.py` to refresh "
+        "the browser dashboard fixture"
+    )

@@ -121,6 +121,7 @@ dashboard-refresh:  ## Rebuild dashboard JSON and readings metadata locally
 	$(PYTHON) dashboard/pipelines/build_readings_index.py
 	$(PYTHON) scripts/build_lab_readings_index.py
 	$(PYTHON) dashboard/pipelines/build_dashboard_data.py --bootstrap-demo-inputs --fallback-synthetic
+	$(PYTHON) scripts/sync_public_dashboard_fixture.py
 	node scripts/gen_redcap_constants.mjs
 	$(PYTHON) dashboard/context_skill/extract_context.py --emit
 	$(PYTHON) scripts/prepare_dashboard_assistant.py --reindex || true

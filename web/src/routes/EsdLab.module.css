@@ -289,9 +289,11 @@
   border: 1px solid var(--esd-discovery-blue);
   border-radius: var(--r-pill, 999px);
   background: var(--esd-discovery-blue);
-  /* The fill is Discovery Blue in both themes, so the label does not invert --
-     but it still comes from the palette rather than a literal. */
-  color: var(--esd-cool-white);
+  /* The fill is Discovery Blue in both themes, so the label does not invert.
+     It was Cool White, which measures 4.26:1 on that fill against the 4.5 this
+     16px bold label needs. The on-blue token is the palette's answer for a
+     label sitting on Discovery Blue and measures 4.68:1. */
+  color: var(--esd-on-discovery-blue);
   padding: 0.95rem 2.1rem;
   font: inherit;
   font-size: 1.02rem;
