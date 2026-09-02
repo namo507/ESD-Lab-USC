@@ -93,6 +93,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `gpu-missing` scenario beside it, and keeps the fail for the case that
   matters: an index that exists but returns nothing. With a real index built,
   all nine scenarios pass.
+- **The `dashboard-image` Trivy scan failed on three fixable HIGH CVEs.** This
+  one was red on `main` too, for every Docker Build run back to 2026-08-28, so
+  it is not this branch's -- but it is the last check between this PR and a
+  green board, and both halves are one-line bumps. `browserslist` 4.28.2, in
+  `web/package-lock.json` via `autoprefixer`, carries CVE-2026-73088
+  (prototype pollution) and CVE-2026-73089 (unbounded memory growth), both
+  fixed in 4.28.7; the lockfile now resolves 4.28.8. `tar` 7.5.19 is not in the
+  web dependency tree at all -- it is bundled inside the npm the image installs
+  globally, and carries CVE-2026-73566 (DoS via a crafted long-path archive),
+  fixed in 7.5.21. `NPM_VERSION` moves 11.19.0 to 11.19.1, which bundles
+  7.5.22, rather than adding a fourth surgical replacement beside the existing
+  `ip-address` and `brace-expansion` patches. Both fixed versions were checked
+  against the artifacts the scan actually reads: the resolved lockfile, and the
+  unpacked npm tarball.
 - **The Pages `_redirects` file sent legacy paths through a retired route.**
   `/dashboard*` pointed at `/overview`, which `_worker.js` then redirects to
   `/esd-lab` -- two hops to reach one page, through a route the SPA no longer

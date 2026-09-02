@@ -5,7 +5,11 @@ LABEL maintainer="ESD Lab USC <esd-lab@usc.edu>" \
     description="Runtime image for the ESD Lab USC NANO live dashboard"
 
 ARG PIP_VERSION=25.3
-ARG NPM_VERSION=11.19.0
+# 11.19.1, not 11.19.0: npm bundles its own tar, and 11.19.0 ships tar
+# 7.5.19, which CVE-2026-73566 (DoS via a crafted long-path archive) fixes in
+# 7.5.21. 11.19.1 bundles 7.5.22. A patch bump is cheaper and less brittle than
+# a fourth surgical replacement in the block below.
+ARG NPM_VERSION=11.19.1
 ARG SETUPTOOLS_VERSION=80.10.2
 ARG WHEEL_VERSION=0.46.3
 
