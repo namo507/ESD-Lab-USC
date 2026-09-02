@@ -23,6 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   site no longer sends visitor IP and user-agent to a third party on load.
 
 ### Fixed
+- **Five shell scripts had CRLF line endings and could not run on Linux.**
+  `Devcontainer CI` had been failing on `main` for 13 consecutive runs, since
+  2026-08-27, and it only runs on push to `main`, so no pull request could ever
+  have caught it. The whole failure was
+  `.devcontainer/post-create.sh: line 2: set: pipefail\r: invalid option name`:
+  with CRLF endings bash reads the trailing carriage return as part of the last
+  token on every line, so `set -euo pipefail` asks for an option named
+  `pipefail\r` and the script dies on line 2, taking the container build with
+  it. `scripts/share_dashboard.sh`, `run_full_pipeline.sh`,
+  `backup_verification.sh` and `prune_logs.sh` were in the same state -- two of
+  them Makefile entry points (`make dashboard-share`, `make run-pipeline`).
+  All five are now LF and pass `bash -n`. `check_repository_hygiene.py` gains a
+  rule that fails on a tracked shell script with CRLF endings, identified by
+  extension or by an `sh`-family shebang, because the defect is invisible in a
+  diff and review will never catch it twice.
 - **CI had been red on `main` for every commit since 2026-08-28.** Four jobs
   were failing at once and each had a different cause, so nothing about the
   red X said which. All four are fixed and verified locally against the same

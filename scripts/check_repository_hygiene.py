@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Fail when non-runtime archives or oversized artifacts enter the Git tree."""
+"""Fail when non-runtime archives, oversized artifacts, or CRLF shell scripts
+enter the Git tree."""
 
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ FORBIDDEN_PREFIXES = (
     "design-qa/",
     "reports/NANO_statistical_analysis_files/",
 )
+SHELL_SUFFIXES = {".sh", ".bash"}
 FORBIDDEN_PATHS = {
     "NANO_Dashboard_Docs_HowTo_Implementation_Prompt.md",
     "dashboard/app.js",
@@ -26,6 +28,18 @@ FORBIDDEN_PATHS = {
     "reports/NANO_statistical_analysis.html",
     "scripts/parse_css.py",
 }
+
+
+def is_shell_script(path: Path) -> bool:
+    """A shell script by extension, or by a `sh`-family shebang."""
+    if path.suffix in SHELL_SUFFIXES:
+        return True
+    try:
+        with path.open("rb") as handle:
+            first_line = handle.readline(128)
+    except OSError:
+        return False
+    return first_line.startswith(b"#!") and b"sh" in first_line
 
 
 def tracked_files() -> list[str]:
@@ -62,6 +76,18 @@ def main() -> int:
             errors.append(
                 f"tracked file exceeds 20 MiB ({size / 1024 / 1024:.1f} MiB): "
                 f"{relative_path}"
+            )
+
+        # A shell script with CRLF endings does not run on Linux: bash reads
+        # the trailing \r as part of the last token on every line, so
+        # `set -euo pipefail` becomes the option name "pipefail\r" and the
+        # script dies on line 2. This took the devcontainer build down for 13
+        # consecutive runs on main, and it is invisible in a diff -- which is
+        # exactly why it needs a check rather than review.
+        if is_shell_script(path) and b"\r\n" in path.read_bytes():
+            errors.append(
+                f"shell script has CRLF line endings and will not run on "
+                f"Linux: {relative_path}"
             )
 
     if errors:
