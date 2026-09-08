@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="32" viewBox="0 0 180 32" fill="none">
+  <rect x="0" y="4" width="24" height="24" fill="#73000a"></rect>
+  <rect x="6" y="10" width="12" height="2" fill="#ffcc00"></rect>
+  <rect x="6" y="15" width="12" height="2" fill="#ffffff"></rect>
+  <rect x="6" y="20" width="7" height="2" fill="#ffffff"></rect>
+  <text x="34" y="22" font-family="&#39;Source Serif 4&#39;, Georgia, serif" font-size="18" font-weight="600" fill="#0e1013" letter-spacing="-0.2">ESD Lab</text>
+  <text x="34" y="30" font-family="&#39;Source Sans 3&#39;, sans-serif" font-size="8" fill="#6b7076" letter-spacing="1.2">UNIVERSITY OF SOUTH CAROLINA</text>
+</svg>

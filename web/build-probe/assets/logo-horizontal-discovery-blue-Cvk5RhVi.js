@@ -1,0 +1,1 @@
+var e=`/assets/logo-horizontal-discovery-blue-CXLO2xvf.png`;export{e as t};

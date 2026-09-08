@@ -1,0 +1,1 @@
+var e=`/assets/uofsc-horizontal-garnet-C_k90Ppl.png`;export{e as t};

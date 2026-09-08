@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="NANO Study Dashboard - ESD Lab, University of South Carolina. Longitudinal neurodevelopmental research tracking 260 very preterm infants." />
+    <meta property="og:title" content="NANO Study Dashboard - ESD Lab" />
+    <meta property="og:description" content="Longitudinal neurodevelopmental research dashboard for the ESD Lab at the University of South Carolina." />
+    <title>NANO Dashboard · ESD Lab</title>
+    <link rel="icon" href="/mark.svg" type="image/svg+xml" />
+    <!--
+      Pre-paint theme resolution. This has to be an inline, render-blocking
+      script in <head>: the same call lives in main.tsx, but that module is the
+      app bundle, so it cannot run until ~220 kB has downloaded, parsed, and
+      executed. Until it does, the stylesheet's light defaults are what paints,
+      and a dark-mode visitor gets a full-screen white flash on every cold load
+      (measured at 1.2 s on a throttled bundle -- the whole page, not a corner).
+
+      Keep the storage key and the resolution order identical to
+      store/ui.ts::loadInitialTheme + resolveTheme. If those change, change this
+      too, or the flash comes back as a *wrong-theme* flash, which is worse.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = null;
+          try { stored = localStorage.getItem("esd-nano-theme"); } catch (e) { /* privacy mode */ }
+          var mode = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+          var resolved =
+            mode !== "system"
+              ? mode
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          var root = document.documentElement;
+          root.setAttribute("data-theme", resolved);
+          root.setAttribute("data-esd-theme", resolved);
+        } catch (e) {
+          /* Never let a theme preference break the boot. */
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-BQMYn63W.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-aKtaBQYM.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-C6Llx0fO.js">
+    <link rel="modulepreload" crossorigin href="/assets/react-DdD2AjRc.js">
+    <link rel="modulepreload" crossorigin href="/assets/router-CR8exdwk.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-BVJBuW4v.js">
+    <link rel="modulepreload" crossorigin href="/assets/primitives-DGfa7KQq.js">
+    <link rel="modulepreload" crossorigin href="/assets/types-Djzf8RVT.js">
+    <link rel="modulepreload" crossorigin href="/assets/with-selector-BOoAZ_8W.js">
+    <link rel="modulepreload" crossorigin href="/assets/esm-ClC49ZUy.js">
+    <link rel="modulepreload" crossorigin href="/assets/audit-c5WNbCHM.js">
+    <link rel="modulepreload" crossorigin href="/assets/phiScrub-B7P7gUPg.js">
+    <link rel="stylesheet" crossorigin href="/assets/primitives-bU4UT6LP.css">
+    <link rel="stylesheet" crossorigin href="/assets/index-BqWIgqZV.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
