@@ -14,6 +14,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import {
+  assistantStatusLabel,
+  fetchLiveAssistantStatus,
+  isAssistantUsable,
+  normalizeAssistantFailureMessage,
+  resyncAssistant,
+} from "@/api/chatApi";
 import { nanoBuddyCitationHref } from "@/api/nanoBuddyApi";
 import { useRedcapPortfolio } from "@/api/redcapPortfolio";
 import { BuddyScene } from "@/components/buddy3d/BuddyScene";
@@ -132,6 +139,10 @@ export function EsdLab() {
   const glyphRefs = useRef(new Map<StudyKey, HTMLButtonElement>());
   const [anchor, setAnchor] = useState<Vec2 | null>(null);
   const [question, setQuestion] = useState("");
+  const [assistantLabel, setAssistantLabel] = useState("Checking model status...");
+  const [assistantReady, setAssistantReady] = useState(false);
+  const [assistantBusy, setAssistantBusy] = useState(true);
+  const [resyncBusy, setResyncBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Freshness is relative to *now*, so it has to be recomputed as time passes.
@@ -139,6 +150,20 @@ export function EsdLab() {
   // refetch, which is a stale reading of a live artifact -- exactly the thing
   // the ambient line exists to report honestly.
   const now = useNow(30_000);
+
+  const refreshAssistantStatus = useCallback(async (signal?: AbortSignal) => {
+    setAssistantBusy(true);
+    try {
+      const current = await fetchLiveAssistantStatus(signal);
+      setAssistantReady(isAssistantUsable(current));
+      setAssistantLabel(assistantStatusLabel(current));
+    } catch (error) {
+      setAssistantReady(false);
+      setAssistantLabel(normalizeAssistantFailureMessage(error));
+    } finally {
+      setAssistantBusy(false);
+    }
+  }, []);
 
   const status = useMemo(() => ambientStatus(portfolio.data, now), [portfolio.data, now]);
   const answerBlocks = useMemo(
@@ -188,6 +213,26 @@ export function EsdLab() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [conversation, intent]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshAssistantStatus(controller.signal);
+    return () => controller.abort();
+  }, [refreshAssistantStatus]);
+
+  const onResyncModel = useCallback(async () => {
+    if (resyncBusy) return;
+    setResyncBusy(true);
+    try {
+      await resyncAssistant();
+      await refreshAssistantStatus();
+    } catch (error) {
+      setAssistantReady(false);
+      setAssistantLabel(normalizeAssistantFailureMessage(error));
+    } finally {
+      setResyncBusy(false);
+    }
+  }, [refreshAssistantStatus, resyncBusy]);
 
   const onAsk = useCallback(
     (seed: string) => {
@@ -300,8 +345,27 @@ export function EsdLab() {
       {/* One ambient line. The timestamp exists but waits to be asked for. */}
       <p className={styles.ambient} title={status.detail}>
         <span className={styles.dot} data-status={status.word} aria-hidden="true" />
-        <span className={styles.ambientWord}>{status.word}</span>
+        <span className={styles.ambientWord}>{status.word === "offline" ? "portfolio offline" : status.word}</span>
         <span className={styles.ambientDetail}>{status.detail}</span>
+      </p>
+
+      <p className={styles.assistantAmbient}>
+        <span
+          className={styles.dot}
+          data-status={assistantBusy ? "stale" : assistantReady ? "live" : "offline"}
+          aria-hidden="true"
+        />
+        <span className={styles.ambientWord}>model</span>
+        <span className={styles.assistantDetail}>{assistantLabel}</span>
+        <button
+          type="button"
+          className={styles.modelResyncBtn}
+          onClick={() => { void onResyncModel(); }}
+          disabled={resyncBusy}
+          aria-label="Refresh model connection"
+        >
+          {resyncBusy ? "resyncing..." : "refresh model"}
+        </button>
       </p>
 
       <form

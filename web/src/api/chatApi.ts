@@ -1,5 +1,6 @@
 import { logAudit } from "@/lib/audit";
 import { scrubPhi } from "@/lib/phiScrub";
+import { devBackendPreflightReason } from "@/config/runtimeFlags";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -106,6 +107,11 @@ const ASSISTANT_RESYNC_ENDPOINT = "/api/assistant/resync";
 const LEGACY_STATUS_ENDPOINT = "/api/chat/status";
 const ASSISTANT_CHAT_ENDPOINT = "/api/assistant/chat";
 const LEGACY_CHAT_ENDPOINT = "/api/chat";
+
+const RUNTIME_FLAGS = {
+  DEV: import.meta.env.DEV,
+  VITE_LIVE_ASSISTANT: import.meta.env.VITE_LIVE_ASSISTANT,
+};
 
 const SAFE_STATUS_MESSAGES: Record<Exclude<AssistantState, "ready">, string> = {
   "setup-required": "The assistant setup is incomplete for this deployment.",
@@ -293,11 +299,37 @@ export function publicAssistantMessage(value: unknown, fallback: string): string
 }
 
 function safeRequestError(status?: number): Error {
+  const preflightReason = devBackendPreflightReason(RUNTIME_FLAGS);
+  if (preflightReason && (status === 404 || status === 503 || status === undefined)) {
+    return new Error(preflightReason);
+  }
   if (status === 429) return new Error(SAFE_STATUS_MESSAGES["rate-limited"]);
   if (status === 408 || status === 504) return new Error(SAFE_STATUS_MESSAGES.timeout);
   if (status === 401 || status === 403) return new Error(SAFE_STATUS_MESSAGES["credentials-missing"]);
   if (status && status >= 500) return new Error(SAFE_STATUS_MESSAGES["provider-unreachable"]);
   return new Error("The assistant request could not be completed.");
+}
+
+export function normalizeAssistantFailureMessage(error: unknown): string {
+  const preflightReason = devBackendPreflightReason(RUNTIME_FLAGS);
+  const message = error instanceof Error ? error.message : "The assistant request could not be completed.";
+  if (message.toLowerCase().includes("mock route not found")) {
+    return preflightReason
+      ?? "Mock API route mismatch: /api/assistant/* is unavailable. Start the backend at http://127.0.0.1:8080, or enable live assistant routing (VITE_LIVE_ASSISTANT=true).";
+  }
+  if (!preflightReason) return message;
+
+  const lowered = message.toLowerCase();
+  if (
+    lowered.includes("mock route not found")
+    || lowered.includes("could not be completed")
+    || lowered.includes("stream ended unexpectedly")
+    || lowered.includes("temporarily unreachable")
+    || lowered.includes("failed to fetch")
+  ) {
+    return preflightReason;
+  }
+  return message;
 }
 
 function safeStreamError(value: unknown): Error {
