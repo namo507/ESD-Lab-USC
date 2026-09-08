@@ -111,6 +111,7 @@ const LEGACY_CHAT_ENDPOINT = "/api/chat";
 const RUNTIME_FLAGS = {
   DEV: import.meta.env.DEV,
   VITE_LIVE_ASSISTANT: import.meta.env.VITE_LIVE_ASSISTANT,
+  // Add additional runtime flags here if needed
 };
 
 const SAFE_STATUS_MESSAGES: Record<Exclude<AssistantState, "ready">, string> = {
@@ -373,7 +374,7 @@ async function requestProxy(path: string, accept: string, init?: RequestInit): P
     });
   } catch (error) {
     if (isAbortError(error)) throw error;
-    throw safeRequestError(503);
+    throw new Error(normalizeAssistantFailureMessage(safeRequestError(503)));
   }
 }
 

@@ -301,6 +301,43 @@
   padding-left: 2px;
 }
 
+.messageTableWrap {
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--assistant-blue) 16%, var(--assistant-line));
+  border-radius: 12px;
+  background: var(--assistant-surface);
+}
+
+.messageTable {
+  width: 100%;
+  min-width: 320px;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.messageTable th,
+.messageTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--assistant-line) 90%, transparent);
+  text-align: left;
+  vertical-align: top;
+}
+
+.messageTable th {
+  background: color-mix(in srgb, var(--assistant-tint) 70%, var(--assistant-surface));
+  color: var(--assistant-fg);
+  font-weight: 800;
+}
+
+.messageTable tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--assistant-tint) 24%, transparent);
+}
+
+.messageTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .citations {
   display: flex;
   flex-wrap: wrap;

@@ -5,7 +5,7 @@
       "study": "NANO",
       "long_name": "Neurodevelopment of Autonomic and Neural Organization",
       "state": "Actively Enrolling",
-      "as_of": "2026-08-28",
+      "as_of": "2026-09-08",
       "n_target": 260,
       "source": "synthetic",
       "aggregate_only": true
@@ -92,7 +92,7 @@
       "pt": 105,
       "td": 53,
       "total": 210,
-      "last_updated": "2026-08-28T18:40:44Z"
+      "last_updated": "2026-09-08T14:52:14Z"
     },
     "attention": {
       "hda_sustained_pct": 44.5,
@@ -245,27 +245,27 @@
       ]
     },
     "autonomic": {
-      "rsa_baseline_ms2": 3.302,
+      "rsa_baseline_ms2": 3.304,
       "cptd_mean_c": 1.98,
       "by_window": [
         {
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.302,
+          "rsa_baseline_ms2": 3.304,
           "cptd_mean_c": 1.63
         },
         {
           "window": "6m",
-          "rsa_baseline_ms2": 3.614,
+          "rsa_baseline_ms2": 3.606,
           "cptd_mean_c": 1.59
         },
         {
           "window": "9m",
-          "rsa_baseline_ms2": 3.84,
+          "rsa_baseline_ms2": 3.861,
           "cptd_mean_c": 1.53
         },
         {
           "window": "12m",
-          "rsa_baseline_ms2": 4.07,
+          "rsa_baseline_ms2": 4.061,
           "cptd_mean_c": 1.48
         }
       ],
@@ -273,25 +273,25 @@
         {
           "group": "ASIB",
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.223,
+          "rsa_baseline_ms2": 3.221,
           "cptd_mean_c": 1.82
         },
         {
           "group": "ASIB",
           "window": "6m",
-          "rsa_baseline_ms2": 3.391,
+          "rsa_baseline_ms2": 3.378,
           "cptd_mean_c": 1.77
         },
         {
           "group": "ASIB",
           "window": "9m",
-          "rsa_baseline_ms2": 3.504,
+          "rsa_baseline_ms2": 3.521,
           "cptd_mean_c": 1.72
         },
         {
           "group": "ASIB",
           "window": "12m",
-          "rsa_baseline_ms2": 3.614,
+          "rsa_baseline_ms2": 3.591,
           "cptd_mean_c": 1.67
         },
         {
@@ -303,43 +303,43 @@
         {
           "group": "PT",
           "window": "6m",
-          "rsa_baseline_ms2": 3.634,
+          "rsa_baseline_ms2": 3.623,
           "cptd_mean_c": 1.62
         },
         {
           "group": "PT",
           "window": "9m",
-          "rsa_baseline_ms2": 3.861,
+          "rsa_baseline_ms2": 3.885,
           "cptd_mean_c": 1.57
         },
         {
           "group": "PT",
           "window": "12m",
-          "rsa_baseline_ms2": 4.107,
+          "rsa_baseline_ms2": 4.102,
           "cptd_mean_c": 1.52
         },
         {
           "group": "TD",
           "window": "1-3m",
-          "rsa_baseline_ms2": 3.38,
+          "rsa_baseline_ms2": 3.389,
           "cptd_mean_c": 1.38
         },
         {
           "group": "TD",
           "window": "6m",
-          "rsa_baseline_ms2": 3.797,
+          "rsa_baseline_ms2": 3.8,
           "cptd_mean_c": 1.33
         },
         {
           "group": "TD",
           "window": "9m",
-          "rsa_baseline_ms2": 4.135,
+          "rsa_baseline_ms2": 4.152,
           "cptd_mean_c": 1.28
         },
         {
           "group": "TD",
           "window": "12m",
-          "rsa_baseline_ms2": 4.45,
+          "rsa_baseline_ms2": 4.449,
           "cptd_mean_c": 1.23
         }
       ]
@@ -360,24 +360,24 @@
           "due": 3,
           "upcoming_14d": 0,
           "overdue": 3,
-          "completed": 201,
+          "completed": 195,
           "expected": 210,
-          "window_adherence_pct": 99.5
+          "window_adherence_pct": 100.0
         },
         {
           "id": "month_2",
-          "due": 8,
+          "due": 7,
           "upcoming_14d": 0,
-          "overdue": 8,
-          "completed": 182,
+          "overdue": 7,
+          "completed": 190,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
         {
           "id": "month_3",
-          "due": 2,
-          "upcoming_14d": 0,
-          "overdue": 2,
+          "due": 12,
+          "upcoming_14d": 7,
+          "overdue": 5,
           "completed": 186,
           "expected": 210,
           "window_adherence_pct": 100.0
@@ -387,7 +387,7 @@
           "due": 6,
           "upcoming_14d": 0,
           "overdue": 6,
-          "completed": 151,
+          "completed": 154,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
@@ -396,25 +396,25 @@
           "due": 5,
           "upcoming_14d": 0,
           "overdue": 5,
-          "completed": 136,
+          "completed": 126,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
         {
           "id": "month_12",
-          "due": 32,
+          "due": 33,
           "upcoming_14d": 0,
-          "overdue": 32,
-          "completed": 99,
+          "overdue": 33,
+          "completed": 114,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
         {
           "id": "month_24",
-          "due": 4,
+          "due": 6,
           "upcoming_14d": 0,
-          "overdue": 4,
-          "completed": 12,
+          "overdue": 6,
+          "completed": 16,
           "expected": 210,
           "window_adherence_pct": 100.0
         },
@@ -432,58 +432,58 @@
     "pipeline": [
       {
         "stage": "Ingested",
-        "count": 1373,
+        "count": 1400,
         "delta_7d": 42,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1254
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1266
       },
       {
         "stage": "ECG preproc",
-        "count": 1328,
+        "count": 1355,
         "delta_7d": 38,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1212
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1225
       },
       {
         "stage": "Temp preproc",
-        "count": 1328,
+        "count": 1355,
         "delta_7d": 35,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1212
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1225
       },
       {
         "stage": "Behavioral coding",
-        "count": 1328,
+        "count": 1355,
         "delta_7d": 31,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1212
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1225
       },
       {
         "stage": "Feature matrix",
-        "count": 1231,
+        "count": 1246,
         "delta_7d": 29,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1124
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1126
       },
       {
         "stage": "Imputation (MICE m=20)",
-        "count": 1231,
+        "count": 1246,
         "delta_7d": 26,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 1124
+        "qc_pass_pct": 90.4,
+        "qa_passed": 1126
       },
       {
         "stage": "Model-ready",
         "count": 140,
         "delta_7d": 8,
-        "qc_pass_pct": 91.3,
-        "qa_passed": 128
+        "qc_pass_pct": 90.4,
+        "qa_passed": 127
       }
     ],
     "pipeline_summary": {
-      "qa_passed_sessions": 1254,
-      "qa_pass_pct": 91.3,
-      "open_qc_actions": 119,
+      "qa_passed_sessions": 1265,
+      "qa_pass_pct": 90.4,
+      "open_qc_actions": 135,
       "unit": "aggregate sessions"
     },
     "assessments": [
@@ -514,9 +514,9 @@
       {
         "instrument": "NNNS-II",
         "timepoint": "month_3",
-        "complete": 167,
+        "complete": 166,
         "expected": 204,
-        "pct_complete": 81.9,
+        "pct_complete": 81.4,
         "applicable": true
       },
       {
@@ -594,33 +594,33 @@
       {
         "instrument": "CSBS",
         "timepoint": "month_6",
-        "complete": 151,
-        "expected": 194,
-        "pct_complete": 77.8,
+        "complete": 154,
+        "expected": 197,
+        "pct_complete": 78.2,
         "applicable": true
       },
       {
         "instrument": "CSBS",
         "timepoint": "month_9",
-        "complete": 136,
-        "expected": 175,
-        "pct_complete": 77.7,
+        "complete": 126,
+        "expected": 179,
+        "pct_complete": 70.4,
         "applicable": true
       },
       {
         "instrument": "CSBS",
         "timepoint": "month_12",
-        "complete": 99,
-        "expected": 146,
-        "pct_complete": 67.8,
+        "complete": 114,
+        "expected": 158,
+        "pct_complete": 72.2,
         "applicable": true
       },
       {
         "instrument": "CSBS",
         "timepoint": "month_24",
-        "complete": 12,
-        "expected": 26,
-        "pct_complete": 46.2,
+        "complete": 16,
+        "expected": 34,
+        "pct_complete": 47.1,
         "applicable": true
       },
       {
@@ -882,33 +882,33 @@
       {
         "instrument": "ASQ-3",
         "timepoint": "month_6",
-        "complete": 151,
-        "expected": 194,
-        "pct_complete": 77.8,
+        "complete": 153,
+        "expected": 197,
+        "pct_complete": 77.7,
         "applicable": true
       },
       {
         "instrument": "ASQ-3",
         "timepoint": "month_9",
-        "complete": 131,
-        "expected": 175,
-        "pct_complete": 74.9,
+        "complete": 124,
+        "expected": 179,
+        "pct_complete": 69.3,
         "applicable": true
       },
       {
         "instrument": "ASQ-3",
         "timepoint": "month_12",
-        "complete": 100,
-        "expected": 146,
-        "pct_complete": 68.5,
+        "complete": 120,
+        "expected": 158,
+        "pct_complete": 75.9,
         "applicable": true
       },
       {
         "instrument": "ASQ-3",
         "timepoint": "month_24",
-        "complete": 12,
-        "expected": 26,
-        "pct_complete": 46.2,
+        "complete": 18,
+        "expected": 34,
+        "pct_complete": 52.9,
         "applicable": true
       },
       {
@@ -1087,33 +1087,33 @@
         {
           "key": "ecg_signal",
           "label": "ECG signal QA",
-          "done": 1254,
-          "total": 1254,
+          "done": 1265,
+          "total": 1265,
           "status": "ready"
         },
         {
           "key": "temperature",
           "label": "Temperature validity QA",
-          "done": 1253,
-          "total": 1254,
+          "done": 1264,
+          "total": 1265,
           "status": "ready"
         },
         {
           "key": "behavior_sync",
           "label": "Behavior and physiology sync QA",
-          "done": 1252,
-          "total": 1254,
+          "done": 1263,
+          "total": 1265,
           "status": "ready"
         }
       ],
-      "open_qc_actions": 119,
+      "open_qc_actions": 135,
       "sop_ack_pct": 94.7
     },
     "redcap": {
       "api_token_valid": false,
-      "last_sync": "2026-08-28T18:40:44Z",
+      "last_sync": "2026-09-08T14:52:14Z",
       "records_locked": 0,
-      "double_entry_discrepancies": 22,
+      "double_entry_discrepancies": 25,
       "instruments_defined": 14,
       "dags": 0,
       "sync_health": "ok",
@@ -1165,7 +1165,7 @@
       "label": "ESD Lab Reading Library",
       "index_source": "non-PHI documents and SOPs",
       "indexed_documents": 24,
-      "last_indexed": "2026-08-28T18:40:05"
+      "last_indexed": "2026-09-08T14:51:41"
     },
     "study_meta": {
       "award": "R01MH132925",
@@ -1179,7 +1179,7 @@
     },
     "active_followup": {
       "1_3m": 186,
-      "6_12m": 99,
+      "6_12m": 114,
       "24_36m": 0
     },
     "ecg_quality": {
@@ -1360,7 +1360,7 @@
         "asib_slope_mean": 0.04,
         "pt_intercept_mean": 3.3,
         "pt_slope_mean": 0.06,
-        "td_intercept_mean": 3.38,
+        "td_intercept_mean": 3.39,
         "td_slope_mean": 0.08,
         "asib_vs_td_intercept_p": null,
         "asib_vs_td_slope_p": null,
@@ -1412,23 +1412,23 @@
           {
             "group": "td",
             "timepoint_m": 1,
-            "mean": 3.38,
-            "ci_low": 2.91,
-            "ci_high": 3.85
+            "mean": 3.39,
+            "ci_low": 2.92,
+            "ci_high": 3.86
           },
           {
             "group": "td",
             "timepoint_m": 2,
-            "mean": 3.46,
+            "mean": 3.47,
             "ci_low": 2.98,
-            "ci_high": 3.94
+            "ci_high": 3.96
           },
           {
             "group": "td",
             "timepoint_m": 3,
-            "mean": 3.54,
-            "ci_low": 3.04,
-            "ci_high": 4.04
+            "mean": 3.55,
+            "ci_low": 3.05,
+            "ci_high": 4.05
           }
         ]
       }

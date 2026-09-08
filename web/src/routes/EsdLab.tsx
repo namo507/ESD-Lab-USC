@@ -21,7 +21,7 @@ import {
   normalizeAssistantFailureMessage,
   resyncAssistant,
 } from "@/api/chatApi";
-import { nanoBuddyCitationHref } from "@/api/nanoBuddyApi";
+import { fetchNanoBuddyStatus, nanoBuddyCitationHref } from "@/api/nanoBuddyApi";
 import { useRedcapPortfolio } from "@/api/redcapPortfolio";
 import { BuddyScene } from "@/components/buddy3d/BuddyScene";
 import type { Vec2 } from "@/components/buddy3d/gaze";
@@ -139,6 +139,7 @@ export function EsdLab() {
   const glyphRefs = useRef(new Map<StudyKey, HTMLButtonElement>());
   const [anchor, setAnchor] = useState<Vec2 | null>(null);
   const [question, setQuestion] = useState("");
+  const [preflightWarning, setPreflightWarning] = useState<string | null>(null);
   const [assistantLabel, setAssistantLabel] = useState("Checking model status...");
   const [assistantReady, setAssistantReady] = useState(false);
   const [assistantBusy, setAssistantBusy] = useState(true);
@@ -215,8 +216,26 @@ export function EsdLab() {
   }, [conversation, intent]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
     const controller = new AbortController();
-    void refreshAssistantStatus(controller.signal);
+
+    void (async () => {
+      try {
+        await Promise.all([
+          fetchNanoBuddyStatus(controller.signal),
+          refreshAssistantStatus(controller.signal),
+        ]);
+        setPreflightWarning(null);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setPreflightWarning(
+          error instanceof Error
+            ? error.message
+            : "Live assistant backend is unreachable. Start the dashboard service.",
+        );
+      }
+    })();
+
     return () => controller.abort();
   }, [refreshAssistantStatus]);
 
@@ -226,9 +245,10 @@ export function EsdLab() {
     try {
       await resyncAssistant();
       await refreshAssistantStatus();
+      setPreflightWarning(null);
     } catch (error) {
       setAssistantReady(false);
-      setAssistantLabel(normalizeAssistantFailureMessage(error));
+      setPreflightWarning(normalizeAssistantFailureMessage(error));
     } finally {
       setResyncBusy(false);
     }
@@ -345,10 +365,11 @@ export function EsdLab() {
       {/* One ambient line. The timestamp exists but waits to be asked for. */}
       <p className={styles.ambient} title={status.detail}>
         <span className={styles.dot} data-status={status.word} aria-hidden="true" />
-        <span className={styles.ambientWord}>{status.word === "offline" ? "portfolio offline" : status.word}</span>
+        <span className={styles.ambientWord}>
+          {status.word === "offline" ? "portfolio offline" : status.word}
+        </span>
         <span className={styles.ambientDetail}>{status.detail}</span>
       </p>
-
       <p className={styles.assistantAmbient}>
         <span
           className={styles.dot}
@@ -367,6 +388,11 @@ export function EsdLab() {
           {resyncBusy ? "resyncing..." : "refresh model"}
         </button>
       </p>
+      {preflightWarning && (
+        <p className={styles.preflightWarning} role="status" aria-live="polite">
+          {preflightWarning}
+        </p>
+      )}
 
       <form
         className={styles.askBar}
