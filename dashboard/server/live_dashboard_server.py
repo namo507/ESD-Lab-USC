@@ -370,6 +370,7 @@ ASSISTANT_RATE_LIMIT_PATHS = frozenset(
         "/api/chat",
         "/api/buddy",
         "/api/assistant/chat",
+        "/api/assistant/resync",
         "/api/presentation/jobs",
         "/api/presentation/plan",
     }
@@ -4063,6 +4064,10 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
             self._handle_stream_chat()
             return
 
+        if request_path == "/api/assistant/resync":
+            self._handle_assistant_resync()
+            return
+
         if request_path == "/api/buddy":
             self._handle_buddy()
             return
@@ -4413,6 +4418,38 @@ class RepoRequestHandler(SimpleHTTPRequestHandler):
                     "refused": False,
                 },
                 status=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+
+    def _handle_assistant_resync(self) -> None:
+        """Reinitialize assistant and buddy from current runtime configuration.
+
+        This allows operators to recover from transient provider outages from the
+        UI without editing files or restarting the whole dashboard process.
+        """
+        try:
+            try:
+                from src.utils.env_loader import load_project_env
+
+                load_project_env(force=True)
+            except Exception:
+                # Resync should still proceed when env loader is unavailable.
+                pass
+
+            with ASSISTANT_CHAT_LOCK:
+                self.assistant = DashboardChatAssistant()
+                self.buddy = NanoBuddyAssistant(self.assistant)
+
+            payload = self._assistant_status_payload()
+            payload["resynced"] = True
+            self._send_json(payload)
+        except Exception:  # pragma: no cover - defensive control endpoint
+            logger.exception("Assistant resync failed")
+            self._send_json(
+                {
+                    "error": "Assistant resync failed. Check backend logs and provider configuration.",
+                    "status": "error",
+                },
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
     def _handle_table_query(self) -> None:

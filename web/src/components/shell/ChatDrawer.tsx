@@ -5,6 +5,8 @@ import {
   assistantStatusLabel,
   fetchLiveAssistantStatus,
   isAssistantUsable,
+  normalizeAssistantFailureMessage,
+  resyncAssistant,
   streamChat,
   type AssistantStatus,
   type ChatMessage,
@@ -277,6 +279,7 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<AssistantStatus | null>(null);
   const [statusBusy, setStatusBusy] = useState(true);
+  const [resyncBusy, setResyncBusy] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -481,6 +484,24 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
     abortRef.current?.abort();
   }, []);
 
+  const onResyncAssistant = useCallback(async () => {
+    if (resyncBusy) return;
+    setResyncBusy(true);
+    try {
+      await resyncAssistant();
+      await refreshStatus();
+    } catch (error) {
+      const message = normalizeAssistantFailureMessage(error);
+      setStatus((current) => ({
+        status: "provider-unreachable",
+        error: message,
+        model: current?.model ?? null,
+      }));
+    } finally {
+      setResyncBusy(false);
+    }
+  }, [refreshStatus, resyncBusy]);
+
   const statusTone = statusBusy
     ? "loading"
     : status?.status === "ready"
@@ -547,6 +568,15 @@ export function ChatDrawer({ showLauncher = true }: { showLauncher?: boolean }) 
                 <span>{redcapFreshnessLabel}</span>
               </div>
             )}
+            <button
+              type="button"
+              className={styles.resyncBtn}
+              onClick={() => { void onResyncAssistant(); }}
+              disabled={resyncBusy}
+              aria-label="Resync assistant"
+            >
+              {resyncBusy ? "Resyncing..." : "Refresh & resync"}
+            </button>
           </div>
 
           <button

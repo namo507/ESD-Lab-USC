@@ -102,6 +102,7 @@ interface ChatStreamChunk {
 }
 
 const ASSISTANT_STATUS_ENDPOINT = "/api/assistant/status";
+const ASSISTANT_RESYNC_ENDPOINT = "/api/assistant/resync";
 const LEGACY_STATUS_ENDPOINT = "/api/chat/status";
 const ASSISTANT_CHAT_ENDPOINT = "/api/assistant/chat";
 const LEGACY_CHAT_ENDPOINT = "/api/chat";
@@ -497,4 +498,25 @@ export async function fetchAssistantStatus(signal?: AbortSignal): Promise<Assist
 /** Kept as the UI-facing name; it now uses only the dashboard/Pages proxy. */
 export async function fetchLiveAssistantStatus(signal?: AbortSignal): Promise<AssistantStatus> {
   return fetchAssistantStatus(signal);
+}
+
+/**
+ * Ask the backend to reinitialize assistant runtime state and provider clients.
+ *
+ * This endpoint never returns provider credentials; it only returns the same
+ * public status envelope used by the status endpoint.
+ */
+export async function resyncAssistant(signal?: AbortSignal): Promise<AssistantStatus> {
+  const response = await requestJson(ASSISTANT_RESYNC_ENDPOINT, {
+    method: "POST",
+    signal,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ reason: "ui-resync" }),
+  });
+  if (!response.ok) throw safeRequestError(response.status);
+  try {
+    return normalizeStatus((await response.json()) as AssistantStatusPayload);
+  } catch {
+    throw new Error("The assistant returned an invalid status response.");
+  }
 }

@@ -120,6 +120,39 @@
   letter-spacing: 0.035em;
 }
 
+.warningPill {
+  max-width: 360px;
+  align-items: flex-start;
+  border-color: color-mix(in srgb, #fff 34%, transparent);
+  background: color-mix(in srgb, #fff 18%, transparent);
+  color: #fff;
+  font-size: 8.5px;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.resyncBtn {
+  min-height: 28px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, #fff 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 16%, transparent);
+  color: #fff;
+  font: 800 9px/1.2 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.resyncBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, #fff 24%, transparent);
+}
+
+.resyncBtn:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .statusDot {
   width: 6px;
   height: 6px;

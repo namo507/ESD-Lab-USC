@@ -571,6 +571,41 @@ def test_chat_http_boundaries_reject_invalid_input_before_success_headers(
             assert error_fragment in response["error"]
 
 
+def test_assistant_resync_endpoint_reinitializes_runtime(monkeypatch, tmp_path):
+    class StubAssistant(_UnusedAssistant):
+        pass
+
+    assistant_ctor_calls = []
+    buddy_ctor_calls = []
+
+    def make_assistant():
+        assistant_ctor_calls.append("called")
+        return StubAssistant()
+
+    class StubBuddy:
+        def __init__(self, assistant):
+            buddy_ctor_calls.append(assistant)
+
+    monkeypatch.setattr(live_dashboard_server, "DashboardChatAssistant", make_assistant)
+    monkeypatch.setattr(live_dashboard_server, "NanoBuddyAssistant", StubBuddy)
+
+    with _running_api_server(tmp_path) as port:
+        status, headers, payload = _api_request(
+            port,
+            "POST",
+            "/api/assistant/resync",
+            {},
+        )
+
+    assert status == 200
+    assert headers["content-type"].startswith("application/json")
+    assert payload and payload.get("resynced") is True
+    assert payload.get("status") == "ready"
+    assert len(assistant_ctor_calls) == 1
+    assert len(buddy_ctor_calls) == 1
+    assert isinstance(buddy_ctor_calls[0], StubAssistant)
+
+
 def test_presentation_concept_limit_precedes_sync_and_job_work(monkeypatch, tmp_path):
     class SpyAssistant(_UnusedAssistant):
         plan_calls = 0
